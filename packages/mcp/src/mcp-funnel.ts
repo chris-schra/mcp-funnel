@@ -8,7 +8,7 @@ import {
   type CallToolResult,
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ProxyConfig } from './config.js';
+import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -241,6 +241,7 @@ export class MCPProxy {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
+  private _normalizedServers: TargetServer[];
   private _toolMapping: Map<
     string,
     { client: Client | null; originalName: string; command?: ICommand }
@@ -258,6 +259,7 @@ export class MCPProxy {
 
   constructor(config: ProxyConfig) {
     this._config = config;
+    this._normalizedServers = normalizeServers(config.servers);
 
     // Deprecation warning for legacy flags
     if (
@@ -403,7 +405,7 @@ export class MCPProxy {
   }
 
   private async connectToTargetServers() {
-    const connectionPromises = this._config.servers.map(
+    const connectionPromises = this._normalizedServers.map(
       async (targetServer) => {
         try {
           logEvent('info', 'server:connect_start', {

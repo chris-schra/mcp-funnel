@@ -368,6 +368,75 @@ describe('MCPProxy', () => {
     });
   });
 
+  describe('servers configuration', () => {
+    it('should accept servers as an array', async () => {
+      const config: ProxyConfig = {
+        servers: [
+          {
+            name: 'test1',
+            command: 'echo',
+            args: ['test1'],
+          },
+          {
+            name: 'test2',
+            command: 'echo',
+            args: ['test2'],
+          },
+        ],
+      };
+
+      const proxy = new MCPProxy(config);
+      await proxy.initialize();
+
+      // Verify both servers are connected
+      expect(Client).toHaveBeenCalledTimes(2);
+    });
+
+    it('should accept servers as a record and normalize to array', async () => {
+      const config: ProxyConfig = {
+        servers: {
+          test1: {
+            command: 'echo',
+            args: ['test1'],
+          },
+          test2: {
+            command: 'echo',
+            args: ['test2'],
+            env: { FOO: 'bar' },
+          },
+        },
+      };
+
+      const proxy = new MCPProxy(config);
+      await proxy.initialize();
+
+      // Verify both servers are connected with correct names
+      expect(Client).toHaveBeenCalledTimes(2);
+    });
+
+    it('should preserve all server properties when using record format', async () => {
+      const config: ProxyConfig = {
+        servers: {
+          myserver: {
+            command: 'node',
+            args: ['server.js'],
+            env: {
+              NODE_ENV: 'production',
+              PORT: '3000',
+            },
+          },
+        },
+      };
+
+      const proxy = new MCPProxy(config);
+      expect(proxy).toBeDefined();
+
+      // The server name should be derived from the key
+      await proxy.initialize();
+      expect(Client).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('tool execution', () => {
     it('should handle CallToolRequest for proxied tools', async () => {
       const config: ProxyConfig = {

@@ -1,5 +1,5 @@
 import { MCPProxy } from './mcp-funnel.js';
-import { ProxyConfig, ProxyConfigSchema } from './config.js';
+import { ProxyConfig, ProxyConfigSchema, normalizeServers } from './config.js';
 import { readFileSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -105,9 +105,10 @@ async function main() {
     process.exit(1);
   }
 
+  const normalizedServers = normalizeServers(config.servers);
   logEvent('info', 'cli:config_loaded', {
     path: resolvedPath,
-    servers: (config.servers || []).map((s) => ({
+    servers: normalizedServers.map((s) => ({
       name: s.name,
       cmd: s.command,
     })),

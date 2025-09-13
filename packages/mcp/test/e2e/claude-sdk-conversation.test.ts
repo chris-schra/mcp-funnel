@@ -169,13 +169,13 @@ const expectStrictNumber = (response: string, expected?: number) => {
       const allowedTools = hasNoCoreTools
         ? [] // No core tools with exposeCoreTools: []
         : hasCoreTools
-        ? [
-            'mcp__mcp-funnel__discover_tools_by_words',
-            'mcp__mcp-funnel__get_tool_schema',
-            'mcp__mcp-funnel__bridge_tool_request',
-            'mcp__mcp-funnel__load_toolset',
-          ]
-        : []; // Default to no core tools for other configs
+          ? [
+              'mcp__mcp-funnel__discover_tools_by_words',
+              'mcp__mcp-funnel__get_tool_schema',
+              'mcp__mcp-funnel__bridge_tool_request',
+              'mcp__mcp-funnel__load_toolset',
+            ]
+          : []; // Default to no core tools for other configs
 
       const queryInstance = query({
         prompt: messageGenerator(),
