@@ -84,6 +84,9 @@ export class BridgeToolRequest extends BaseCoreTool {
     }
 
     try {
+      if (!mapping.client) {
+        throw new Error(`Tool ${toolName} has no client connection`);
+      }
       const result = await mapping.client.callTool({
         name: mapping.originalName,
         arguments: toolArguments,

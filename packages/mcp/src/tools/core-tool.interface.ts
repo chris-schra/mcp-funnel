@@ -1,6 +1,7 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ProxyConfig } from '../config.js';
+import { ICommand } from '@mcp-funnel/commands-core';
 
 /**
  * Context provided to core tools for accessing proxy state and capabilities
@@ -16,7 +17,10 @@ export interface CoreToolContext {
   toolDefinitionCache?: Map<string, { serverName: string; tool: Tool }>;
 
   /** Mapping of tool names to their client and original names */
-  toolMapping?: Map<string, { client: Client; originalName: string }>;
+  toolMapping?: Map<
+    string,
+    { client: Client | null; originalName: string; command?: ICommand }
+  >;
 
   /** Set of dynamically enabled tool names */
   dynamicallyEnabledTools: Set<string>;

@@ -1,7 +1,8 @@
 import { MCPProxy } from '../../src/mcp-funnel.js';
 import { ProxyConfig } from '../../src/config.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+// TODO: Will be used when implementing server transport
+// import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+// import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 /**
  * Create a standalone MCP Funnel server that can be spawned by Claude SDK
@@ -11,7 +12,7 @@ export async function createTestFunnelServer(configPath: string) {
   // Load config from path provided as argument
   const fs = await import('fs');
   const config: ProxyConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-  
+
   // Create and start the proxy
   const proxy = new MCPProxy(config);
   await proxy.start();
@@ -24,7 +25,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error('Usage: tsx test-harness.ts <config-path>');
     process.exit(1);
   }
-  
+
   createTestFunnelServer(configPath).catch((error) => {
     console.error('Test harness error:', error);
     process.exit(1);

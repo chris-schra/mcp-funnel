@@ -3,9 +3,6 @@ node_modules/
 
 # Build outputs
 dist/
-*.js
-*.d.ts
-*.js.map
 
 # Configuration files with secrets
 .env
@@ -49,3 +46,4 @@ haino.config.json
 .mcp-funnel.json
 
 .logs
+*.tsbuildinfo
