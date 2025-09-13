@@ -1,22 +1,25 @@
 {
-  "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "strict": true,
+    "isolatedModules": true,
+    "lib": ["esnext", "dom"],
+    "moduleResolution": "Bundler",
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowJs": true,
     "baseUrl": ".",
+    "rootDir": "./",
+    "rootDirs": ["./packages"],
+    "types": ["node"],
+    "jsx": "react-jsx",
     "paths": {
+      "mcp-funnel": ["./packages/mcp/src/index.ts"],
       "@mcp-funnel/commands-core": ["./packages/commands/core/src/index.ts"],
-      "mcp-funnel": ["./packages/mcp/src/index.ts"]
-    },
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true
+    }
   },
-  "files": [],
-  "references": [
-    { "path": "./packages/mcp" },
-    { "path": "./packages/commands/core" },
-    { "path": "./packages/commands/validate" },
-    { "path": "./packages/server" },
-    { "path": "./packages/web" }
-  ]
+  "include": ["./src/**/*.ts", "./test/**/*.ts", "./packages/**/*"],
+  "exclude": ["**/node_modules/**/*", "**/dist/**/*"]
 }

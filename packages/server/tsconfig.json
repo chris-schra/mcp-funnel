@@ -1,12 +1,9 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "paths": {
-      "mcp-funnel": ["./src/types/shims/mcp-funnel.d.ts"]
-    }
+    "rootDirs": ["src"],
+    "outDir": "./dist"
   },
-  "include": ["./src/**/*"],
-  "references": [{ "path": "../mcp" }, { "path": "../commands/core" }]
+  "include": ["./src/**/*.ts"],
+  "exclude": ["../packages/**/*", "**/dist/**/*", "**/node_modules/**/*"]
 }

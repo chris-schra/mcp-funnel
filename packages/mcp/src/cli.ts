@@ -1,4 +1,4 @@
-import { MCPProxy } from './mcp-funnel.js';
+import { MCPProxy } from './index.js';
 import { ProxyConfig, ProxyConfigSchema, normalizeServers } from './config.js';
 import { readFileSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';

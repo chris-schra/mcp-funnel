@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MCPProxy } from '../../src/mcp-funnel.js';
+import { MCPProxy } from '../../src';
 import { ProxyConfig } from '../../src/config.js';
 
 describe('LoadToolset - Reality Check', () => {

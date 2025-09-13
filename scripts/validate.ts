@@ -256,109 +256,166 @@ class MonorepoValidator {
     }
   }
 
+  private findNearestTsConfig(filePath: string): string | null {
+    let currentDir = path.dirname(filePath);
+    const rootDir = path.parse(currentDir).root;
+
+    while (currentDir !== rootDir) {
+      const configPath = path.join(currentDir, 'tsconfig.json');
+      if (ts.sys.fileExists(configPath)) {
+        return configPath;
+      }
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) break; // Reached root
+      currentDir = parentDir;
+    }
+
+    return null;
+  }
+
   private async validateTypeScript(files: string[]) {
-    // Find tsconfig
-    const configPath = ts.findConfigFile(
-      process.cwd(),
-      ts.sys.fileExists,
-      'tsconfig.json',
-    );
-    if (!configPath) {
-      console.warn(
-        chalk.yellow('No tsconfig.json found, skipping TypeScript validation'),
-      );
-      return;
-    }
+    // Filter to only TypeScript files
+    const tsFiles = files.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
 
-    const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
-    const parsed = ts.parseJsonConfigFileContent(
-      config,
-      ts.sys,
-      path.dirname(configPath),
-    );
-    const {
-      options,
-      errors,
-      fileNames: projectFileNames,
-    } = parsed as unknown as {
-      options: ts.CompilerOptions;
-      errors: ts.Diagnostic[];
-      fileNames: string[];
-    };
+    // Group files by their nearest tsconfig.json
+    const filesByConfig = new Map<string, string[]>();
 
-    if (errors.length > 0) {
-      console.error(chalk.red('Error parsing tsconfig.json:'));
-      errors.forEach((error) => {
-        console.error(`  ${error.messageText}`);
-      });
-      return;
-    }
-
-    // Always load full program (all TS files from the project),
-    // but filter reported diagnostics to the requested files/glob if provided.
-    const allTsProjectFiles = projectFileNames.filter(
-      (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
-    );
-
-    const program = ts.createProgram({
-      rootNames: allTsProjectFiles,
-      options: { ...options, noEmit: true },
-    });
-
-    // Get diagnostics for each file
-    const sourceFiles = program
-      .getSourceFiles()
-      .filter((sf) => !sf.isDeclarationFile);
-
-    // Determine scope filtering based on provided files/glob
-    const tsFilesScope = new Set(
-      files.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx')),
-    );
-    const filterToScope = tsFilesScope.size > 0;
-
-    for (const sourceFile of sourceFiles) {
-      const diagnostics = [
-        ...program.getSemanticDiagnostics(sourceFile),
-        ...program.getSyntacticDiagnostics(sourceFile),
-      ];
-
-      // Skip diagnostics outside of the requested scope when a specific
-      // files/glob argument was provided.
-      if (filterToScope && !tsFilesScope.has(sourceFile.fileName)) {
+    for (const file of tsFiles) {
+      const configPath = this.findNearestTsConfig(file);
+      if (!configPath) {
+        console.warn(chalk.yellow(`No tsconfig.json found for ${file}, skipping`));
         continue;
       }
 
-      for (const diagnostic of diagnostics) {
-        if (!diagnostic.file) continue;
+      if (!filesByConfig.has(configPath)) {
+        filesByConfig.set(configPath, []);
+      }
+      filesByConfig.get(configPath)?.push(file);
+    }
 
-        const file = diagnostic.file.fileName;
-        const start = diagnostic.start || 0;
-        const { line, character } = ts.getLineAndCharacterOfPosition(
-          diagnostic.file,
-          start,
-        );
+    // If no TypeScript files or no configs found, also check if we're in a monorepo
+    // and should validate all packages
+    if (filesByConfig.size === 0 && tsFiles.length === 0) {
+      // Check for composite project at root
+      const rootConfig = ts.findConfigFile(
+        process.cwd(),
+        ts.sys.fileExists,
+        'tsconfig.json',
+      );
 
-        const message = ts.flattenDiagnosticMessageText(
-          diagnostic.messageText,
-          '\n',
-        );
+      if (rootConfig) {
+        const { config } = ts.readConfigFile(rootConfig, ts.sys.readFile);
 
-        // Check if there's a suggested fix
-        const suggestedFix = this.getTypeScriptFix(diagnostic);
+        // If composite project, validate each referenced project
+        if (config.references && config.references.length > 0) {
+          for (const ref of config.references) {
+            const refPath = path.resolve(path.dirname(rootConfig), ref.path, 'tsconfig.json');
+            if (ts.sys.fileExists(refPath)) {
+              const refConfig = ts.readConfigFile(refPath, ts.sys.readFile);
+              const refParsed = ts.parseJsonConfigFileContent(
+                refConfig.config,
+                ts.sys,
+                path.dirname(refPath),
+              );
 
-        this.fileResults[file]?.push({
-          tool: 'typescript',
-          message,
-          severity:
-            diagnostic.category === ts.DiagnosticCategory.Error
-              ? 'error'
-              : 'warning',
-          line: line + 1,
-          column: character + 1,
-          ruleId: `TS${diagnostic.code}`,
-          fixable: Boolean(suggestedFix),
-          suggestedFix,
+              const refTsFiles = refParsed.fileNames.filter(
+                (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
+              );
+
+              if (refTsFiles.length > 0) {
+                filesByConfig.set(refPath, refTsFiles);
+              }
+            }
+          }
+        } else {
+          // Single project - get all its files
+          const parsed = ts.parseJsonConfigFileContent(
+            config,
+            ts.sys,
+            path.dirname(rootConfig),
+          );
+
+          const projectTsFiles = parsed.fileNames.filter(
+            (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
+          );
+
+          if (projectTsFiles.length > 0) {
+            filesByConfig.set(rootConfig, projectTsFiles);
+          }
+        }
+      }
+    }
+
+    // Now validate each group of files with their appropriate tsconfig
+    for (const [configPath, configFiles] of filesByConfig) {
+      const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
+
+      // Parse the config to get all project files and options
+      const parsed = ts.parseJsonConfigFileContent(
+        config,
+        ts.sys,
+        path.dirname(configPath),
+      );
+
+      if (parsed.errors.length > 0) {
+        console.error(chalk.red(`Error parsing ${configPath}:`));
+        parsed.errors.forEach((error) => {
+          const message = ts.flattenDiagnosticMessageText(error.messageText, '\n');
+          console.error(`  ${message}`);
         });
+        continue;
+      }
+
+      // Create program with all files from this config
+      // This ensures proper module resolution within the package
+      const program = ts.createProgram({
+        rootNames: parsed.fileNames,
+        options: { ...parsed.options, noEmit: true },
+      });
+
+      // Get diagnostics only for files in our validation scope
+      const filesToValidate = new Set(configFiles);
+      const sourceFiles = program
+        .getSourceFiles()
+        .filter((sf) => !sf.isDeclarationFile && filesToValidate.has(sf.fileName));
+
+      for (const sourceFile of sourceFiles) {
+        const diagnostics = [
+          ...program.getSemanticDiagnostics(sourceFile),
+          ...program.getSyntacticDiagnostics(sourceFile),
+        ];
+
+        for (const diagnostic of diagnostics) {
+          if (!diagnostic.file) continue;
+
+          const file = diagnostic.file.fileName;
+          const start = diagnostic.start || 0;
+          const { line, character } = ts.getLineAndCharacterOfPosition(
+            diagnostic.file,
+            start,
+          );
+
+          const message = ts.flattenDiagnosticMessageText(
+            diagnostic.messageText,
+            '\n',
+          );
+
+          // Check if there's a suggested fix
+          const suggestedFix = this.getTypeScriptFix(diagnostic);
+
+          const isError = diagnostic.category === ts.DiagnosticCategory.Error;
+
+          this.fileResults[file]?.push({
+            tool: 'typescript',
+            message,
+            severity: isError ? 'error' : 'warning',
+            line: line + 1,
+            column: character + 1,
+            ruleId: `TS${diagnostic.code}`,
+            fixable: Boolean(suggestedFix),
+            suggestedFix,
+          });
+        }
       }
     }
   }

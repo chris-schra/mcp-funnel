@@ -1,11 +1,7 @@
 import { startWebServer } from './index.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-  ProxyConfigSchema,
-  normalizeServers,
-  type ProxyConfig,
-} from 'mcp-funnel';
+import { ProxyConfigSchema, ProxyConfig, normalizeServers } from 'mcp-funnel';
 
 function loadConfig(): ProxyConfig & {
   servers: Array<{

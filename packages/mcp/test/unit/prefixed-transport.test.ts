@@ -44,9 +44,7 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('Transport Creation', () => {
     it('should spawn process with correct arguments', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const transport = new PrefixedStdioClientTransport('test-server', {
         command: 'npx',
@@ -69,9 +67,7 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('Stderr Prefixing', () => {
     it('should prefix stderr output with server name', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
@@ -102,9 +98,7 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should ignore empty lines in stderr', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
@@ -136,9 +130,7 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('MCP Message Handling', () => {
     it('should parse and forward valid JSON-RPC messages', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const transport = new PrefixedStdioClientTransport('test', {
         command: 'test',
@@ -164,9 +156,7 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should prefix non-JSON stdout as server logs', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
@@ -197,9 +187,7 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('Transport Methods', () => {
     it('should send messages through stdin', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const transport = new PrefixedStdioClientTransport('test', {
         command: 'test',
@@ -225,9 +213,7 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should throw error when sending before start', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const transport = new PrefixedStdioClientTransport('test', {
         command: 'test',
@@ -242,9 +228,7 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should handle process close event', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const transport = new PrefixedStdioClientTransport('test', {
         command: 'test',
@@ -262,9 +246,7 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should handle process error event', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const transport = new PrefixedStdioClientTransport('test', {
         command: 'test',
@@ -283,9 +265,7 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should kill process on close', async () => {
-      const { PrefixedStdioClientTransport } = await import(
-        '../../src/mcp-funnel'
-      );
+      const { PrefixedStdioClientTransport } = await import('../../src');
 
       const transport = new PrefixedStdioClientTransport('test', {
         command: 'test',

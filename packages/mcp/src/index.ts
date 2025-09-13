@@ -710,4 +710,5 @@ export class MCPProxy {
 }
 
 // Export for library usage
-export type { ProxyConfig, ProxyConfigSchema } from './config.js';
+export { ProxyConfigSchema, normalizeServers } from './config.js';
+export type { ProxyConfig, ServersRecord } from './config.js';

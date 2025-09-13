@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { MCPProxy } from '../../src/mcp-funnel.js';
+import { MCPProxy } from '../../src';
 import { ProxyConfig } from '../../src/config.js';
 import { spawn, ChildProcess } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';

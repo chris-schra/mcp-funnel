@@ -90,6 +90,8 @@ toolsRoute.post(
         return c.json({ error: `Tool not found: ${name}` }, 404);
       }
 
+      if (!mapping.client) throw new Error('No mapping client found');
+
       const result = await mapping.client.callTool({
         name: mapping.originalName,
         arguments: body.arguments,

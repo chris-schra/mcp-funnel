@@ -33,7 +33,7 @@
     "!dist/**/*.map"
   ],
   "scripts": {
-    "dev": "tsx src/mcp-funnel.ts",
+    "dev": "tsx src/index.ts",
     "build": "tsx build.ts",
     "build:watch": "tsx build.ts --watch",
     "release": "yarn npm audit && npm publish --access public"
