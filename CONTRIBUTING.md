@@ -102,6 +102,37 @@ Closes #123"
 - Clean, searchable history
 - Easy to revert if needed
 
+##### File Filtering During Squash Merge
+
+Feature branches may contain temporary coordination files that should not reach `develop`. Use the `.feature/` folder for such files:
+
+```bash
+.feature/
+├── TASK.md           # Agent coordination
+├── NOTES.md          # Development notes
+├── hub-status.json   # Merge planning
+└── agent-logs/       # Debug outputs
+```
+
+**Implementation Options:**
+
+1. **Primary Method - Automated Script**:
+   ```bash
+   # Use the provided squash script
+   scripts/squash-merge.sh feat/your-feature-hub
+   ```
+
+2. **GitHub Integration**:
+   - Branch protection blocks PRs containing `.feature/` files
+   - Comment `/merge` on PR to trigger automated squash via GitHub Action
+   - Provides audit trail and eliminates human error
+
+**Benefits:**
+- **Deterministic**: Clear `.feature/` convention
+- **Error prevention**: Automated filtering prevents typos/missed steps
+- **Hybrid safety**: Multiple methods ensure files never leak to develop
+- **Audit trail**: GitHub Actions provide better logs than local troubleshooting
+
 #### 3. Develop → Main Merge (Squash Merge)
 
 ```bash
@@ -227,6 +258,7 @@ Each agent:
    - Review and merge agent PRs
    - Resolve conflicts between agent work
    - Ensure feature completeness
+   - Store coordination files in `.feature/` folder (excluded from develop)
 
 ### Before Merging
 
@@ -262,11 +294,12 @@ Each agent:
 1. Title: `feat: complete feature description`
 2. Target branch: `develop`
 3. Review focus: Feature completeness and quality
-4. Merge method: Squash and merge
+4. Merge method: Use `scripts/squash-merge.sh` or comment `/merge` for automated squash
 5. Description should include:
    - All agent contributions
    - Testing performed
    - Breaking changes (if any)
+6. **Important**: Ensure `.feature/` files are excluded from final merge
 
 ### Develop → Main PR
 

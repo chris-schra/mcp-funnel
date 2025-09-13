@@ -1,34 +1,48 @@
 import { startWebServer } from './index.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import {
+  ProxyConfigSchema,
+  normalizeServers,
+  type ProxyConfig,
+} from 'mcp-funnel';
 
-function loadConfig(): {
+function loadConfig(): ProxyConfig & {
   servers: Array<{
     name: string;
     command: string;
     args?: string[];
     env?: Record<string, string>;
   }>;
-  hideTools?: string[];
-  exposeTools?: string[];
-  enableDynamicDiscovery?: boolean;
-  hackyDiscovery?: boolean;
 } {
   const configPathEnv = process.env.MCP_FUNNEL_CONFIG_PATH;
   const defaultPath = resolve(process.cwd(), '.mcp-funnel.json');
   const configPath = configPathEnv ?? defaultPath;
+
   if (existsSync(configPath)) {
-    const txt = readFileSync(configPath, 'utf-8');
-    const parsed = JSON.parse(txt) as unknown;
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'servers' in parsed &&
-      Array.isArray((parsed as { servers: unknown }).servers)
-    ) {
-      return parsed as ReturnType<typeof loadConfig>;
+    try {
+      const txt = readFileSync(configPath, 'utf-8');
+      const parsed = JSON.parse(txt) as unknown;
+
+      // Use ProxyConfigSchema to validate the full configuration
+      const validatedConfig = ProxyConfigSchema.parse(parsed);
+
+      // Normalize servers to array format for consistent return type
+      const normalizedServers = normalizeServers(validatedConfig.servers);
+
+      return {
+        ...validatedConfig,
+        servers: normalizedServers,
+      };
+    } catch (error) {
+      console.error(
+        `[server] Failed to parse config from ${configPath}:`,
+        error,
+      );
+      // Fall back to empty config only if parsing fails
     }
   }
+
   return { servers: [] };
 }
 

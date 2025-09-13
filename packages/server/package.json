@@ -7,12 +7,15 @@
   "scripts": {
     "dev": "tsx watch src/dev.ts",
     "build": "tsx build.ts && tsc --emitDeclarationOnly --declaration --project tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.2",
     "@hono/zod-validator": "^0.7.2",
     "hono": "^4.9.7",
+    "mcp-funnel": "workspace:*",
     "ws": "^8.18.3",
     "zod": "^4.1.8"
   },
@@ -21,6 +24,7 @@
     "@types/ws": "^8.18.1",
     "esbuild": "^0.25.9",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

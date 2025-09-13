@@ -8,8 +8,5 @@
     }
   },
   "include": ["./src/**/*"],
-  "references": [
-    { "path": "../mcp" },
-    { "path": "../commands/core" }
-  ]
+  "references": [{ "path": "../mcp" }, { "path": "../commands/core" }]
 }

@@ -1,0 +1,18 @@
+{
+  "servers": {
+    "github": {
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "github"]
+    },
+    "filesystem": {
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "filesystem"]
+    }
+  },
+  "exposeCoreTools": [
+    "discover_tools_by_words",
+    "get_tool_schema",
+    "bridge_tool_request",
+    "load_toolset"
+  ]
+}

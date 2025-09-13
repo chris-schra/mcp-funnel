@@ -66,9 +66,8 @@ Create a `.mcp-funnel.json` file in your project directory:
 
 ```json
 {
-  "servers": [
-    {
-      "name": "github",
+  "servers": {
+    "github": {
       "command": "docker",
       "args": [
         "run",
@@ -79,13 +78,11 @@ Create a `.mcp-funnel.json` file in your project directory:
         "ghcr.io/github/github-mcp-server"
       ]
     },
-    {
-      "name": "memory",
+    "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"]
     },
-    {
-      "name": "filesystem",
+    "filesystem": {
       "command": "npx",
       "args": [
         "-y",
@@ -93,7 +90,7 @@ Create a `.mcp-funnel.json` file in your project directory:
         "/path/to/allowed/directory"
       ]
     }
-  ],
+  },
   "hideTools": [
     "github__list_workflow_runs",
     "github__get_workflow_run_logs",
@@ -108,8 +105,8 @@ Create a `.mcp-funnel.json` file in your project directory:
 
 ### Configuration Options
 
-- **servers**: Array of MCP servers to connect to
-  - `name`: Unique identifier (used as tool prefix)
+- **servers**: Record of MCP servers to connect to (server name as key)
+  - Key: Server name (used as tool prefix)
   - `command`: Command to execute
   - `args`: Command arguments (optional)
   - `env`: Environment variables (optional)
@@ -269,14 +266,13 @@ Hacky Discovery is a workaround for Claude Code's lack of dynamic tool updates. 
 
 ```json
 {
-  "servers": [
-    {
-      "name": "github",
+  "servers": {
+    "github": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": { "GITHUB_TOKEN": "your-token" }
     }
-  ],
+  },
   "hackyDiscovery": true
 }
 ```

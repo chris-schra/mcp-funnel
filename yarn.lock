@@ -908,8 +908,10 @@ __metadata:
     "@types/ws": "npm:^8.18.1"
     esbuild: "npm:^0.25.9"
     hono: "npm:^4.9.7"
+    mcp-funnel: "workspace:*"
     tsx: "npm:^4.20.5"
     typescript: "npm:^5.9.2"
+    vitest: "npm:^3.2.4"
     ws: "npm:^8.18.3"
     zod: "npm:^4.1.8"
   languageName: unknown
@@ -3777,7 +3779,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"mcp-funnel@workspace:packages/mcp":
+"mcp-funnel@workspace:*, mcp-funnel@workspace:packages/mcp":
   version: 0.0.0-use.local
   resolution: "mcp-funnel@workspace:packages/mcp"
   dependencies:
