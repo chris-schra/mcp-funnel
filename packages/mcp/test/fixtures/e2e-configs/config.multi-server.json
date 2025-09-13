@@ -2,15 +2,14 @@
   "servers": [
     {
       "name": "github",
-      "command": "node",
-      "args": ["../../e2e/mock-server-runner.js", "github"]
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "github"]
     },
     {
       "name": "filesystem",
-      "command": "node",
-      "args": ["../../e2e/mock-server-runner.js", "filesystem"]
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "filesystem"]
     }
   ],
-  "hackyDiscovery": true,
-  "enableDynamicDiscovery": true
+  "exposeCoreTools": ["discover_tools_by_words", "get_tool_schema", "bridge_tool_request", "load_toolset"]
 }

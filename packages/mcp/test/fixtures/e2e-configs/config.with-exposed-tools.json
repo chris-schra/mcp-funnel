@@ -2,10 +2,9 @@
   "servers": [
     {
       "name": "mockserver",
-      "command": "node",
-      "args": ["../../e2e/mock-server-runner.js", "github"]
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "test"]
     }
   ],
-  "exposeTools": ["mockserver__exposed_tool", "mockserver__create_*"],
-  "hackyDiscovery": false
+  "exposeTools": ["mockserver__exposed_tool", "mockserver__create_*"]
 }

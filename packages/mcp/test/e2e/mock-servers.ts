@@ -233,3 +233,50 @@ export const createMockMemoryServer = () =>
       })),
     ],
   });
+
+export const createMockTestServer = () =>
+  createSdkMcpServer({
+    name: 'mockserver',
+    version: '1.0.0',
+    tools: [
+      tool(
+        'echo',
+        'Echo back the message',
+        {
+          message: z.string().describe('Message to echo'),
+        },
+        async (args) => ({
+          content: [
+            {
+              type: 'text',
+              text: args.message,
+            },
+          ],
+        }),
+      ),
+      tool('exposed_tool', 'A tool that should be exposed', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Exposed tool called',
+          },
+        ],
+      })),
+      tool('hidden_tool', 'A tool that should be hidden', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Hidden tool called',
+          },
+        ],
+      })),
+      tool('other_tool', 'Another tool for testing', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Other tool called',
+          },
+        ],
+      })),
+    ],
+  });

@@ -2,3 +2,4 @@
 **/.next
 **/coverage
 node_modules
+*.tsbuildinfo

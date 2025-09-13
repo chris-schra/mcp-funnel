@@ -2,13 +2,12 @@
   "servers": [
     {
       "name": "goodserver",
-      "command": "node",
-      "args": ["../../e2e/mock-server-runner.js", "github"]
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "test"]
     },
     {
       "name": "badserver",
       "command": "false"
     }
-  ],
-  "hackyDiscovery": false
+  ]
 }

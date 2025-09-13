@@ -158,6 +158,25 @@ const expectStrictNumber = (response: string, expected?: number) => {
       };
 
       // Start the query
+      // Determine allowed tools based on config
+      const hasNoCoreTools = configFile === 'config.normal.json';
+      const hasCoreTools = [
+        'config.minimal.json',
+        'config.with-mock-server.json',
+        'config.multi-server.json',
+      ].includes(configFile);
+
+      const allowedTools = hasNoCoreTools
+        ? [] // No core tools with exposeCoreTools: []
+        : hasCoreTools
+        ? [
+            'mcp__mcp-funnel__discover_tools_by_words',
+            'mcp__mcp-funnel__get_tool_schema',
+            'mcp__mcp-funnel__bridge_tool_request',
+            'mcp__mcp-funnel__load_toolset',
+          ]
+        : []; // Default to no core tools for other configs
+
       const queryInstance = query({
         prompt: messageGenerator(),
         options: {
@@ -195,12 +214,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
             }
           },
           // Strongly constrain tool usage to avoid permission prompts (e.g., Read)
-          allowedTools: [
-            'mcp__mcp-funnel__discover_tools_by_words',
-            'mcp__mcp-funnel__get_tool_schema',
-            'mcp__mcp-funnel__bridge_tool_request',
-            'mcp__mcp-funnel__load_toolset',
-          ],
+          allowedTools,
           disallowedTools: ['Read', 'Write', 'List', 'SearchInWorkspace'],
           canUseTool: async (name, input) => {
             toolCalls.push({ name, input });
@@ -376,7 +390,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
 
     times(maxRuns).forEach((time) => {
       const i = time + 1;
-      describe.concurrent(`Hacky Discovery Mode (Run ${i})`, () => {
+      describe.concurrent(`Core Tools Discovery Mode (Run ${i})`, () => {
         test.concurrent(
           'should connect to MCP Funnel and expose only discovery tools',
           async () => {
@@ -386,7 +400,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
 
               // ask about available tools
               const toolsResponse = await conversation.sendMessage(
-                'Does mcp-funnel expose a tool named mcp__mcp-funnel__discover_tools_by_words? After any reasoning, output a final line containing EXACTLY YES or NO with no quotes, punctuation, or other text. The last line will be parsed.',
+                'Is the tool "mcp__mcp-funnel__discover_tools_by_words" available to you? You MUST reply with ONLY YES or NO on the last line.',
               );
 
               expectStrictResponse(toolsResponse, 'YES');
@@ -557,12 +571,12 @@ const expectStrictNumber = (response: string, expected?: number) => {
           );
 
           const response1 = await conversation.sendMessage(
-            'Discover tools by word "github". IF there are tools that start with "github__" you **MUST** reply only with "YES" ELSE you must list available tools exposed by MCP servers.',
+            'Use mcp__mcp-funnel__discover_tools_by_words with words="github". After getting the results, check: Are there any tools that start with "github__"? Reply with ONLY YES or NO on the last line.',
           );
           expectStrictResponse(response1, 'YES');
 
           const response2 = await conversation.sendMessage(
-            'Discover tools by word "filesystem". IF there are tools that start with "filesystem__" you **MUST** reply only with "YES" ELSE you must list available tools exposed by MCP servers.',
+            'Use mcp__mcp-funnel__discover_tools_by_words with words="filesystem". After getting the results, check: Are there any tools that start with "filesystem__"? Reply with ONLY YES or NO on the last line.',
           );
 
           expectStrictResponse(response2, 'YES');

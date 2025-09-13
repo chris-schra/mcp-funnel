@@ -487,16 +487,6 @@ export class MCPProxy {
     this._server.setRequestHandler(ListToolsRequestSchema, async () => {
       const allTools: Tool[] = [];
 
-      // In hacky discovery mode, only expose core tools
-      if (this._config.hackyDiscovery) {
-        for (const coreTool of this.coreTools.values()) {
-          allTools.push(coreTool.tool);
-        }
-        // Still populate the tool caches for bridge/schema tools
-        await this.populateToolCaches();
-        return { tools: allTools };
-      }
-
       // Add core tools
       for (const coreTool of this.coreTools.values()) {
         allTools.push(coreTool.tool);
@@ -509,17 +499,21 @@ export class MCPProxy {
           for (const tool of response.tools) {
             const fullToolName = `${serverName}__${tool.name}`;
 
-            // Cache tool descriptions and definitions for discovery
-            this._toolDescriptionCache.set(fullToolName, {
-              serverName,
-              description: tool.description || '',
-            });
-            this._toolDefinitionCache.set(fullToolName, {
-              serverName,
-              tool,
-            });
+            // Only cache tools that should be exposed according to filtering rules
+            if (this.shouldExposeTool(serverName, tool.name)) {
+              // Cache tool descriptions and definitions for discovery
+              this._toolDescriptionCache.set(fullToolName, {
+                serverName,
+                description: tool.description || '',
+              });
+              this._toolDefinitionCache.set(fullToolName, {
+                serverName,
+                tool,
+              });
+            }
 
-            // Always register in toolMapping for call handling
+            // Always register in toolMapping for call handling (even for hidden tools)
+            // This allows bridge_tool_request to work if a tool name is known
             this._toolMapping.set(fullToolName, {
               client,
               originalName: tool.name,
@@ -646,17 +640,21 @@ export class MCPProxy {
         for (const tool of response.tools) {
           const fullToolName = `${serverName}__${tool.name}`;
 
-          // Cache tool descriptions and definitions
-          this._toolDescriptionCache.set(fullToolName, {
-            serverName,
-            description: tool.description || '',
-          });
-          this._toolDefinitionCache.set(fullToolName, {
-            serverName,
-            tool,
-          });
+          // Only cache tools that should be exposed according to filtering rules
+          if (this.shouldExposeTool(serverName, tool.name)) {
+            // Cache tool descriptions and definitions
+            this._toolDescriptionCache.set(fullToolName, {
+              serverName,
+              description: tool.description || '',
+            });
+            this._toolDefinitionCache.set(fullToolName, {
+              serverName,
+              tool,
+            });
+          }
 
-          // Always register in toolMapping for call handling
+          // Always register in toolMapping for call handling (even for hidden tools)
+          // This allows bridge_tool_request to work if a tool name is known
           this._toolMapping.set(fullToolName, {
             client,
             originalName: tool.name,
