@@ -122,19 +122,14 @@ export const createMockGitHubServer = () =>
           ],
         }),
       ),
-      tool(
-        'get_me',
-        'Get authenticated user details',
-        {},
-        async () => ({
-          content: [
-            {
-              type: 'text',
-              text: 'Authenticated as mock-user',
-            },
-          ],
-        }),
-      ),
+      tool('get_me', 'Get authenticated user details', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Authenticated as mock-user',
+          },
+        ],
+      })),
     ],
   });
 
@@ -228,18 +223,13 @@ export const createMockMemoryServer = () =>
           ],
         }),
       ),
-      tool(
-        'list_memories',
-        'List all stored memories',
-        {},
-        async () => ({
-          content: [
-            {
-              type: 'text',
-              text: 'Listed all memories',
-            },
-          ],
-        }),
-      ),
+      tool('list_memories', 'List all stored memories', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Listed all memories',
+          },
+        ],
+      })),
     ],
   });

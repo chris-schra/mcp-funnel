@@ -866,6 +866,38 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mcp-funnel/command-ts-validate@workspace:packages/commands/validate":
+  version: 0.0.0-use.local
+  resolution: "@mcp-funnel/command-ts-validate@workspace:packages/commands/validate"
+  dependencies:
+    "@mcp-funnel/commands-core": "workspace:^"
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    chalk: "npm:^5.3.0"
+    esbuild: "npm:^0.25.9"
+    eslint: "npm:^9.10.0"
+    globby: "npm:^14.0.0"
+    prettier: "npm:^3.1.0"
+    tsx: "npm:^4.20.5"
+    typescript: "npm:^5.9.2"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
+"@mcp-funnel/commands-core@workspace:*, @mcp-funnel/commands-core@workspace:^, @mcp-funnel/commands-core@workspace:packages/commands/core":
+  version: 0.0.0-use.local
+  resolution: "@mcp-funnel/commands-core@workspace:packages/commands/core"
+  dependencies:
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    esbuild: "npm:^0.25.9"
+    tsx: "npm:^4.20.5"
+    typescript: "npm:^5.9.2"
+    vitest: "npm:^3.2.4"
+    zod: "npm:^4.1.8"
+  languageName: unknown
+  linkType: soft
+
 "@mcp-funnel/server@workspace:packages/server":
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/server@workspace:packages/server"
@@ -2079,6 +2111,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^5.3.0":
+  version: 5.6.2
+  resolution: "chalk@npm:5.6.2"
+  checksum: 10c0/99a4b0f0e7991796b1e7e3f52dceb9137cae2a9dfc8fc0784a550dc4c558e15ab32ed70b14b21b52beb2679b4892b41a0aa44249bcb996f01e125d58477c6976
+  languageName: node
+  linkType: hard
+
 "check-error@npm:^2.1.1":
   version: 2.1.1
   resolution: "check-error@npm:2.1.1"
@@ -2608,7 +2647,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^9.35.0":
+"eslint@npm:^9.10.0, eslint@npm:^9.35.0":
   version: 9.35.0
   resolution: "eslint@npm:9.35.0"
   dependencies:
@@ -3138,7 +3177,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globby@npm:^14.1.0":
+"globby@npm:^14.0.0, globby@npm:^14.1.0":
   version: 14.1.0
   resolution: "globby@npm:14.1.0"
   dependencies:
@@ -3744,6 +3783,7 @@ __metadata:
   dependencies:
     "@anthropic-ai/claude-code": "npm:^1.0.112"
     "@hono/zod-validator": "npm:^0.7.2"
+    "@mcp-funnel/commands-core": "workspace:*"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
     "@types/node": "npm:^24.3.1"
     esbuild: "npm:^0.25.9"
@@ -4460,7 +4500,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.6.2":
+"prettier@npm:^3.1.0, prettier@npm:^3.6.2":
   version: 3.6.2
   resolution: "prettier@npm:3.6.2"
   bin:

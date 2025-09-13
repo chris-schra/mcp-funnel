@@ -16,6 +16,7 @@
     "prettier": "prettier -c \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint --ext .ts,.tsx",
     "validate": "tsx scripts/validate.ts --fix",
+    "validate:new": "tsx packages/mcp/src/cli.ts run ts-validate --fix",
     "test": "vitest run",
     "test:e2e": "TEST_E2E=true vitest run",
     "test:ui": "vitest --ui",

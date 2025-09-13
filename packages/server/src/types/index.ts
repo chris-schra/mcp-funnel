@@ -66,13 +66,13 @@ export const WSEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('tool.executing'),
-      payload: z.object({
-        toolName: z.string(),
+    payload: z.object({
+      toolName: z.string(),
       arguments: z.unknown(),
-        requestId: z.string(),
-        timestamp: z.string(),
-      }),
+      requestId: z.string(),
+      timestamp: z.string(),
     }),
+  }),
   z.object({
     type: z.literal('tool.result'),
     payload: z.object({

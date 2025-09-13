@@ -1,4 +1,8 @@
-import { query, type SDKUserMessage, type SDKMessage } from '@anthropic-ai/claude-code';
+import {
+  query,
+  type SDKUserMessage,
+  type SDKMessage,
+} from '@anthropic-ai/claude-code';
 import { spawn, type ChildProcess } from 'child_process';
 import { randomUUID } from 'crypto';
 import { ProxyConfig } from '../../src/config.js';
@@ -33,7 +37,10 @@ export class E2ETestHelper {
 
   async startFunnel(config: ProxyConfig): Promise<void> {
     // Create temp config file
-    this.configPath = path.join(__dirname, `../fixtures/test-config-${this.sessionId}.json`);
+    this.configPath = path.join(
+      __dirname,
+      `../fixtures/test-config-${this.sessionId}.json`,
+    );
     await fs.mkdir(path.dirname(this.configPath), { recursive: true });
     await fs.writeFile(this.configPath, JSON.stringify(config, null, 2));
 
@@ -45,11 +52,17 @@ export class E2ETestHelper {
 
     // Wait for server to start
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Funnel startup timeout')), 5000);
-      
+      const timeout = setTimeout(
+        () => reject(new Error('Funnel startup timeout')),
+        5000,
+      );
+
       this.funnelProcess!.stderr?.on('data', (data) => {
         const message = data.toString();
-        if (message.includes('Server running') || message.includes('initialized')) {
+        if (
+          message.includes('Server running') ||
+          message.includes('initialized')
+        ) {
           clearTimeout(timeout);
           resolve();
         }
@@ -98,7 +111,7 @@ export class E2ETestHelper {
       for await (const message of response) {
         this.messages.push(message);
         if (message.type === 'assistant') {
-          const content = (message.message as any).content;
+          const content = (message.message as { content: unknown }).content;
           if (typeof content === 'string') {
             finalResponse += content;
           } else if (Array.isArray(content)) {
@@ -125,48 +138,55 @@ export class E2ETestHelper {
   async cleanup(): Promise<void> {
     if (this.funnelProcess) {
       this.funnelProcess.kill();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    
+
     if (this.configPath) {
       try {
         await fs.unlink(this.configPath);
-      } catch (error) {
+      } catch (_error) {
         // Ignore cleanup errors
       }
     }
   }
 
-  private async* createPromptGenerator(message: SDKUserMessage): AsyncGenerator<SDKUserMessage> {
+  private async *createPromptGenerator(
+    message: SDKUserMessage,
+  ): AsyncGenerator<SDKUserMessage> {
     yield message;
   }
 
   // Helper methods for assertions
   findToolCall(toolName: string): ToolCall | undefined {
-    return this.toolCallLog.find(call => call.name === toolName);
+    return this.toolCallLog.find((call) => call.name === toolName);
   }
 
   findToolCalls(pattern: string | RegExp): ToolCall[] {
     if (typeof pattern === 'string') {
-      return this.toolCallLog.filter(call => call.name.includes(pattern));
+      return this.toolCallLog.filter((call) => call.name.includes(pattern));
     }
-    return this.toolCallLog.filter(call => pattern.test(call.name));
+    return this.toolCallLog.filter((call) => pattern.test(call.name));
   }
 
   getSystemMessage(): SDKMessage | undefined {
-    return this.messages.find(m => m.type === 'system' && (m as any).subtype === 'init');
+    return this.messages.find(
+      (m) =>
+        m.type === 'system' && (m as { subtype?: string }).subtype === 'init',
+    );
   }
 
   getExposedTools(): string[] {
     const systemMsg = this.getSystemMessage();
     if (systemMsg && systemMsg.type === 'system') {
-      return (systemMsg as any).tools || [];
+      return (systemMsg as { tools?: string[] }).tools || [];
     }
     return [];
   }
 }
 
-export function createTestConfig(overrides: Partial<ProxyConfig> = {}): ProxyConfig {
+export function createTestConfig(
+  overrides: Partial<ProxyConfig> = {},
+): ProxyConfig {
   return {
     servers: [],
     ...overrides,

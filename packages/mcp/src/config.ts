@@ -18,6 +18,25 @@ export const ProxyConfigSchema = z.object({
   // If true, bridge_tool_request may resolve unprefixed tool names to a unique
   // fully-prefixed match (e.g., "echo" -> "mockserver__echo"). Defaults to false.
   allowShortToolNames: z.boolean().optional(),
+  commands: z
+    .object({
+      enabled: z.boolean().default(false),
+      list: z
+        .array(z.string())
+        .optional()
+        .describe('List of command names to enable, empty means all'),
+    })
+    .optional(),
+  // @deprecated Use 'commands' instead of 'developmentTools'
+  developmentTools: z
+    .object({
+      enabled: z.boolean().default(false),
+      tools: z
+        .array(z.string())
+        .optional()
+        .describe('List of tool names to enable, empty means all'),
+    })
+    .optional(),
 });
 
 export type TargetServer = z.infer<typeof TargetServerSchema>;

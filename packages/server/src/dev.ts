@@ -2,7 +2,18 @@ import { startWebServer } from './index.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-function loadConfig(): { servers: Array<{ name: string; command: string; args?: string[]; env?: Record<string, string> }>; hideTools?: string[]; exposeTools?: string[]; enableDynamicDiscovery?: boolean; hackyDiscovery?: boolean } {
+function loadConfig(): {
+  servers: Array<{
+    name: string;
+    command: string;
+    args?: string[];
+    env?: Record<string, string>;
+  }>;
+  hideTools?: string[];
+  exposeTools?: string[];
+  enableDynamicDiscovery?: boolean;
+  hackyDiscovery?: boolean;
+} {
   const configPathEnv = process.env.MCP_FUNNEL_CONFIG_PATH;
   const defaultPath = resolve(process.cwd(), '.mcp-funnel.json');
   const configPath = configPathEnv ?? defaultPath;
@@ -36,7 +47,10 @@ async function main() {
   try {
     await proxy.initialize();
   } catch (e) {
-    console.error('[server] MCP proxy initialization failed, starting web server without backends:', e);
+    console.error(
+      '[server] MCP proxy initialization failed, starting web server without backends:',
+      e,
+    );
   }
   await startWebServer(proxy, { port, host });
 }

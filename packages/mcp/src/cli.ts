@@ -35,6 +35,22 @@ async function main() {
   // Config resolution:
   // 1. Explicit: npx mcp-funnel path/to/config.json
   // 2. Implicit: npx mcp-funnel (uses .mcp-funnel.json from cwd)
+  // Check for 'run' command
+  if (process.argv[2] === 'run') {
+    const { runCommand } = await import('./commands/run.js');
+    const commandName = process.argv[3];
+
+    if (!commandName) {
+      console.error('Usage: npx mcp-funnel run <command> [...args]');
+      console.error('Example: npx mcp-funnel run validate --fix');
+      process.exit(1);
+    }
+
+    const commandArgs = process.argv.slice(4);
+    await runCommand(commandName, commandArgs);
+    return; // Exit after running tool
+  }
+
   const configPath = process.argv[2] || '.mcp-funnel.json';
   const resolvedPath = resolve(process.cwd(), configPath);
 

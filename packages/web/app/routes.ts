@@ -4,4 +4,3 @@ export default [
   index('routes/_index.tsx'),
   // Add additional routes here as needed
 ] satisfies RouteConfig;
-

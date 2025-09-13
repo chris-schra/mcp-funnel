@@ -1,0 +1,55 @@
+{
+  "name": "@mcp-funnel/command-ts-validate",
+  "version": "0.0.1",
+  "description": "TypeScript validation command for MCP Funnel - runs prettier, eslint, and TypeScript validation",
+  "author": "Christoph Schramm",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chris-schra/mcp-funnel.git"
+  },
+  "keywords": [
+    "mcp",
+    "tools",
+    "typescript",
+    "validation",
+    "prettier",
+    "eslint"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "build": "tsx build.ts",
+    "build:watch": "tsx build.ts --watch",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@mcp-funnel/commands-core": "workspace:^",
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "chalk": "^5.3.0",
+    "eslint": "^9.10.0",
+    "globby": "^14.0.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "esbuild": "^0.25.9",
+    "tsx": "^4.20.5",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "yarn@4.9.2"
+}
