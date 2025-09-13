@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
+  // @ts-expect-error type mismatch in packages
+  plugins: [tsconfigPaths()],
   test: {
     globals: true,
     environment: 'node',
