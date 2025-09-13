@@ -3,9 +3,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '~/lib/api';
 import { cn } from '~/lib/cn';
 
+interface Tool {
+  name: string;
+  serverName: string;
+  description?: string;
+  enabled: boolean;
+}
+
+interface ToolsResponse {
+  tools: Tool[];
+}
+
 export function ToolExplorer() {
   const [search, setSearch] = useState('');
-  const [selectedTool, setSelectedTool] = useState<any>(null);
+  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -31,8 +42,13 @@ export function ToolExplorer() {
   });
 
   const executeMutation = useMutation({
-    mutationFn: ({ name, args }: { name: string; args?: any }) =>
-      api.tools.execute(name, args),
+    mutationFn: ({
+      name,
+      args,
+    }: {
+      name: string;
+      args?: Record<string, unknown>;
+    }) => api.tools.execute(name, args),
   });
 
   return (
@@ -55,7 +71,7 @@ export function ToolExplorer() {
         </div>
       ) : (
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
-          {data?.tools?.map((tool: any) => (
+          {(data as ToolsResponse | undefined)?.tools?.map((tool) => (
             <div
               key={tool.name}
               className={cn(
@@ -131,7 +147,7 @@ export function ToolExplorer() {
                     <div className="mt-4 p-3 rounded bg-muted">
                       <h5 className="text-xs font-medium mb-1">Result:</h5>
                       <pre className="text-xs overflow-auto">
-                        {JSON.stringify(executeMutation.data as any, null, 2)}
+                        {JSON.stringify(executeMutation.data, null, 2)}
                       </pre>
                     </div>
                   )}

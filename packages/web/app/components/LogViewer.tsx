@@ -21,7 +21,7 @@ export function LogViewer() {
           <div className="text-muted-foreground">No logs yet...</div>
         ) : (
           <div className="space-y-1">
-            {logs.map((log: any) => (
+            {logs.map((log) => (
               <div
                 key={log.id}
                 className={cn(

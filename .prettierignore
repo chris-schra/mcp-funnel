@@ -3,3 +3,4 @@
 **/coverage
 node_modules
 *.tsbuildinfo
+packages/web/build/client/assets

@@ -40,7 +40,7 @@ export const api = {
       return res.json();
     },
 
-    execute: async (name: string, args?: Record<string, any>) => {
+    execute: async (name: string, args?: Record<string, unknown>) => {
       const res = await fetch(`${API_BASE}/tools/${name}/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,7 +66,7 @@ export const api = {
       return res.json();
     },
 
-    update: async (updates: any) => {
+    update: async (updates: Record<string, unknown>) => {
       const res = await fetch(`${API_BASE}/config`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
