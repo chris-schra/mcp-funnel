@@ -17,9 +17,12 @@ async function buildAll() {
 
   // Build TypeScript types
   console.log('📦 Building TypeScript types...');
-  execSync('tsc --emitDeclarationOnly --declaration --declarationMap', {
-    stdio: 'inherit',
-  });
+  execSync(
+    'tsc --emitDeclarationOnly --declaration --declarationMap --project tsconfig.build.json',
+    {
+      stdio: 'inherit',
+    },
+  );
 
   console.log('📦 Bundling ESM...');
   await build({

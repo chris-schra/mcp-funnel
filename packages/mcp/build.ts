@@ -17,23 +17,26 @@ async function buildAll() {
 
   // Build TypeScript types
   console.log('📦 Building TypeScript types...');
-  execSync('tsc --build', {
-    stdio: 'inherit',
-  });
+  execSync(
+    'tsc --emitDeclarationOnly --declaration --declarationMap --project tsconfig.build.json',
+    {
+      stdio: 'inherit',
+    },
+  );
 
   console.log('📦 Bundling...');
   await Promise.all([
     // Build ESM version
     build({
       ...sharedOptions,
-      entryPoints: ['src/mcp-funnel.ts'],
+      entryPoints: ['src/index.ts'],
       format: 'esm',
       outfile: `${outdir}/esm/index.js`,
     }),
     // Build CommonJS version
     build({
       ...sharedOptions,
-      entryPoints: ['src/mcp-funnel.ts'],
+      entryPoints: ['src/index.ts'],
       format: 'cjs',
       outfile: `${outdir}/cjs/index.cjs`,
     }),
