@@ -17,12 +17,9 @@ async function buildAll() {
 
   // Build TypeScript types
   console.log('📦 Building TypeScript types...');
-  execSync(
-    'tsc -p tsconfig.build.json --emitDeclarationOnly --declaration --declarationMap',
-    {
-      stdio: 'inherit',
-    },
-  );
+  execSync('tsc --build', {
+    stdio: 'inherit',
+  });
 
   console.log('📦 Bundling...');
   await Promise.all([
