@@ -155,7 +155,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: 'text',
-            text: args.message as string,
+            text: (args?.message as string) || '',
           },
         ],
       };
@@ -164,7 +164,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: 'text',
-            text: `Created issue "${args.title}" in ${args.repository}`,
+            text: `Created issue "${args?.title || ''}" in ${args?.repository || ''}`,
           },
         ],
       };
@@ -173,7 +173,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: 'text',
-            text: `Listed issues from ${args.repository}`,
+            text: `Listed issues from ${args?.repository || ''}`,
           },
         ],
       };
@@ -182,7 +182,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: 'text',
-            text: `Contents of ${args.path}: mock file data`,
+            text: `Contents of ${args?.path || ''}: mock file data`,
           },
         ],
       };
@@ -191,7 +191,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: 'text',
-            text: `Wrote to ${args.path}`,
+            text: `Wrote to ${args?.path || ''}`,
           },
         ],
       };
@@ -200,7 +200,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: 'text',
-            text: `Files in ${args.path}: file1.txt, file2.js`,
+            text: `Files in ${args?.path || ''}: file1.txt, file2.js`,
           },
         ],
       };

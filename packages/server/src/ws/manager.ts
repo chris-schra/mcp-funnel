@@ -110,7 +110,7 @@ export class WebSocketManager {
         throw new Error(`Tool not found: ${payload.toolName}`);
       }
 
-      if (!mapping.client) throw new Error('No mapping client found');
+      if (!mapping.client) throw new Error(`No mapping client found for tool: ${payload.toolName}`);
 
       const result = await mapping.client.callTool({
         name: mapping.originalName,

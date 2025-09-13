@@ -88,8 +88,11 @@ describe('MCPProxy', () => {
       };
 
       const parsed = ProxyConfigSchema.parse(minimalConfig);
-      expect(parsed.servers[0].args).toBeUndefined();
-      expect(parsed.servers[0].env).toBeUndefined();
+      const servers = Array.isArray(parsed.servers)
+        ? parsed.servers
+        : Object.values(parsed.servers);
+      expect(servers[0].args).toBeUndefined();
+      expect(servers[0].env).toBeUndefined();
       expect(parsed.hideTools).toBeUndefined();
       expect(parsed.exposeTools).toBeUndefined();
       expect(parsed.enableDynamicDiscovery).toBeUndefined();
