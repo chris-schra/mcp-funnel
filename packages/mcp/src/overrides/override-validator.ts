@@ -53,6 +53,29 @@ export class OverrideValidator {
       }
     }
 
+    // Size validations (TASK-032)
+    // Check description length
+    if (
+      overriddenTool.description &&
+      overriddenTool.description.length > 5000
+    ) {
+      warnings.push(
+        `Description is very long (${overriddenTool.description.length} chars), consider shortening`,
+      );
+    }
+
+    // Check schema size
+    try {
+      const schemaJson = JSON.stringify(overriddenTool.inputSchema);
+      if (schemaJson.length > 50000) {
+        errors.push(
+          `Schema size too large (${schemaJson.length} bytes), maximum 50000 bytes allowed`,
+        );
+      }
+    } catch (error) {
+      errors.push(`Failed to serialize schema for size validation: ${error}`);
+    }
+
     return { valid: errors.length === 0, errors, warnings };
   }
 }
