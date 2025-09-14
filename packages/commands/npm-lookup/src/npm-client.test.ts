@@ -220,7 +220,7 @@ describe('NPMClient', () => {
       const result = await client.getPackage('react');
 
       expect(result.description).toHaveLength(500);
-      expect(result.description).toEndWith('...');
+      expect(result.description).toMatch(/\.\.\.$/);
     });
 
     it('should cache successful responses', async () => {
@@ -465,6 +465,14 @@ describe('NPMClient', () => {
     });
 
     it('should cache search results', async () => {
+      // Mock the first call (react with limit 20)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockSearchResponse,
+      });
+
+      // Mock the second call (react with limit 10 - different cache key)
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -508,7 +516,7 @@ describe('NPMClient', () => {
       const result = await client.searchPackages('react');
 
       expect(result.results[0].description).toHaveLength(500);
-      expect(result.results[0].description).toEndWith('...');
+      expect(result.results[0].description).toMatch(/\.\.\.$/);
     });
   });
 

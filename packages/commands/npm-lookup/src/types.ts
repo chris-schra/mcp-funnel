@@ -65,19 +65,15 @@ export interface NPMPackageResponse {
     type: string;
     url: string;
   };
-  author?:
-    | string
-    | {
-        name: string;
-        email?: string;
-        url?: string;
-      };
-  license?:
-    | string
-    | {
-        type: string;
-        url?: string;
-      };
+  author?: string | {
+    name: string;
+    email?: string;
+    url?: string;
+  };
+  license?: string | {
+    type: string;
+    url?: string;
+  };
   readme?: string;
   readmeFilename?: string;
 }
@@ -96,19 +92,15 @@ export interface NPMVersionInfo {
     url: string;
   };
   keywords?: string[];
-  author?:
-    | string
-    | {
-        name: string;
-        email?: string;
-        url?: string;
-      };
-  license?:
-    | string
-    | {
-        type: string;
-        url?: string;
-      };
+  author?: string | {
+    name: string;
+    email?: string;
+    url?: string;
+  };
+  license?: string | {
+    type: string;
+    url?: string;
+  };
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;

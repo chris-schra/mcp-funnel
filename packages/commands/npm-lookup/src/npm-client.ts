@@ -5,6 +5,7 @@ import type {
   SearchResultItem,
   NPMPackageResponse,
   NPMSearchResponse,
+  NPMVersionInfo,
 } from './types.js';
 
 /**
@@ -21,10 +22,7 @@ export class PackageNotFoundError extends Error {
  * Error thrown when the NPM registry API returns an unexpected response
  */
 export class NPMRegistryError extends Error {
-  constructor(
-    message: string,
-    public statusCode?: number,
-  ) {
+  constructor(message: string, public statusCode?: number) {
     super(message);
     this.name = 'NPMRegistryError';
   }
@@ -78,17 +76,12 @@ export class NPMClient {
 
       return packageInfo;
     } catch (error) {
-      if (
-        error instanceof PackageNotFoundError ||
-        error instanceof NPMRegistryError
-      ) {
+      if (error instanceof PackageNotFoundError || error instanceof NPMRegistryError) {
         throw error;
       }
 
       // Network or other errors
-      throw new NPMRegistryError(
-        `Failed to fetch package "${packageName}": ${error instanceof Error ? error.message : String(error)}`,
-      );
+      throw new NPMRegistryError(`Failed to fetch package "${packageName}": ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -99,10 +92,7 @@ export class NPMClient {
    * @returns Search results
    * @throws {NPMRegistryError} When registry returns an error
    */
-  async searchPackages(
-    query: string,
-    limit: number = 20,
-  ): Promise<SearchResults> {
+  async searchPackages(query: string, limit: number = 20): Promise<SearchResults> {
     const clampedLimit = Math.min(Math.max(1, limit), 250);
 
     // Check cache first
@@ -139,9 +129,7 @@ export class NPMClient {
       }
 
       // Network or other errors
-      throw new NPMRegistryError(
-        `Failed to search packages with query "${query}": ${error instanceof Error ? error.message : String(error)}`,
-      );
+      throw new NPMRegistryError(`Failed to search packages with query "${query}": ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -151,18 +139,13 @@ export class NPMClient {
   private transformPackageResponse(data: NPMPackageResponse): PackageInfo {
     const latestVersion = data['dist-tags'].latest;
     const versionInfo = data.versions[latestVersion];
-    const publishedAt =
-      data.time[latestVersion] || data.time.created || new Date().toISOString();
+    const publishedAt = data.time[latestVersion] || data.time.created || new Date().toISOString();
 
     // Normalize author
     let author: string | undefined;
     if (typeof data.author === 'string') {
       author = data.author;
-    } else if (
-      data.author &&
-      typeof data.author === 'object' &&
-      data.author.name
-    ) {
+    } else if (data.author && typeof data.author === 'object' && data.author.name) {
       author = data.author.name;
     }
 
@@ -170,22 +153,13 @@ export class NPMClient {
     let license: string | undefined;
     if (typeof data.license === 'string') {
       license = data.license;
-    } else if (
-      data.license &&
-      typeof data.license === 'object' &&
-      data.license.type
-    ) {
+    } else if (data.license && typeof data.license === 'object' && data.license.type) {
       license = data.license.type;
     }
 
     // Truncate README and description
-    const readme = data.readme
-      ? this.truncateText(data.readme, 5000)
-      : undefined;
-    const description = this.truncateText(
-      data.description || versionInfo?.description || '',
-      500,
-    );
+    const readme = data.readme ? this.truncateText(data.readme, 5000) : undefined;
+    const description = this.truncateText(data.description || versionInfo?.description || '', 500);
 
     return {
       name: data.name,
