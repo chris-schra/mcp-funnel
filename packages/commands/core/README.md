@@ -183,7 +183,7 @@ const registry = new CommandRegistry();
 registry.register(new MyCommand());
 
 // For MCP
-const mcpTools = registry.getAllMCPTools();
+const mcpTools = registry.getAllMCPDefinitions();
 
 // For CLI
 const command = registry.getCommandForCLI('my-command');
@@ -368,10 +368,8 @@ Control which tools are exposed:
 ```json
 {
   "commands": {
-    "npm": {
-      "enabled": true,
-      "tools": ["lookup", "search"] // Enable specific tools
-    }
+    "enabled": true,
+    "list": ["npm"]
   },
   "exposeTools": [
     "cmd__npm__lookup", // Include specific tools
