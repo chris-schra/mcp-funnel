@@ -13,13 +13,17 @@ export interface ICommand {
   readonly description: string;
 
   /**
-   * Execute the command via MCP protocol.
-   * Called when an AI assistant invokes the command through the MCP interface.
+   * Execute a specific tool from this command via MCP protocol.
+   * Called when an AI assistant invokes a tool through the MCP interface.
    *
+   * @param toolName - Name of the specific tool to execute
    * @param args - Arguments passed from the MCP client as a JSON object
    * @returns MCP-compliant tool result containing text or resource content
    */
-  executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult>;
+  executeToolViaMCP(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult>;
 
   /**
    * Execute the command via CLI interface.
@@ -31,12 +35,13 @@ export interface ICommand {
   executeViaCLI(args: string[]): Promise<void>;
 
   /**
-   * Get the MCP tool definition for this command.
-   * Used to register the command with MCP servers and provide schema information.
+   * Get the MCP tool definitions for this command.
+   * Used to register the command's tools with MCP servers and provide schema information.
+   * Commands can expose multiple tools that share the same underlying implementation.
    *
-   * @returns MCP Tool definition with name, description, and input schema
+   * @returns Array of MCP Tool definitions with name, description, and input schema
    */
-  getMCPDefinition(): Tool;
+  getMCPDefinitions(): Tool[];
 }
 
 /**

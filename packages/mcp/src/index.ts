@@ -250,7 +250,12 @@ export class MCPProxy {
   private _normalizedServers: TargetServer[];
   private _toolMapping: Map<
     string,
-    { client: Client | null; originalName: string; command?: ICommand }
+    {
+      client: Client | null;
+      originalName: string;
+      toolName?: string;
+      command?: ICommand;
+    }
   > = new Map();
   private _dynamicallyEnabledTools: Set<string> = new Set();
   private _toolDescriptionCache: Map<
@@ -337,7 +342,7 @@ export class MCPProxy {
       const registry = await discoverCommands(commandsPath);
       const enabledCommands = this._config.commands.list || [];
 
-      // Register each enabled command with cmd__ prefix
+      // Register each enabled command's tools with cmd__[commandName]__[toolName] prefix
       for (const commandName of registry.getAllCommandNames()) {
         const command = registry.getCommandForMCP(commandName);
         if (
@@ -345,32 +350,37 @@ export class MCPProxy {
           (enabledCommands.length === 0 ||
             enabledCommands.includes(command.name))
         ) {
-          const prefixedName = `cmd__${command.name}`;
-          const mcpDef = command.getMCPDefinition();
+          const mcpDefs = command.getMCPDefinitions();
 
-          // Add to command cache with prefix
-          // Commands must have descriptions per their MCP definition
-          if (!mcpDef.description) {
-            throw new Error(
-              `Command ${command.name} is missing a description in its MCP definition`,
-            );
+          // Register each tool from this command
+          for (const mcpDef of mcpDefs) {
+            const prefixedName = `cmd__${command.name}__${mcpDef.name}`;
+
+            // Add to command cache with prefix
+            // Commands must have descriptions per their MCP definition
+            if (!mcpDef.description) {
+              throw new Error(
+                `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
+              );
+            }
+            this._toolDescriptionCache.set(prefixedName, {
+              serverName: 'development-commands',
+              description: mcpDef.description,
+            });
+
+            this._toolDefinitionCache.set(prefixedName, {
+              serverName: 'development-commands',
+              tool: { ...mcpDef, name: prefixedName },
+            });
+
+            // Store mapping for execution
+            this._toolMapping.set(prefixedName, {
+              client: null, // Development commands don't use a client
+              originalName: mcpDef.name,
+              toolName: mcpDef.name, // Store the specific tool name
+              command, // Store the actual command instance
+            });
           }
-          this._toolDescriptionCache.set(prefixedName, {
-            serverName: 'development-commands',
-            description: mcpDef.description,
-          });
-
-          this._toolDefinitionCache.set(prefixedName, {
-            serverName: 'development-commands',
-            tool: { ...mcpDef, name: prefixedName },
-          });
-
-          // Store mapping for execution
-          this._toolMapping.set(prefixedName, {
-            client: null, // Development commands don't use a client
-            originalName: command.name,
-            command, // Store the actual command instance
-          });
         }
       }
     } catch (error) {
@@ -612,7 +622,10 @@ export class MCPProxy {
         if (mapping && mapping.command) {
           try {
             logEvent('info', 'tool:call_dev', { name: toolName });
-            const result = await mapping.command.executeViaMCP(toolArgs || {});
+            const result = await mapping.command.executeToolViaMCP(
+              mapping.toolName || mapping.originalName,
+              toolArgs || {},
+            );
             return result;
           } catch (error) {
             logError('tool:dev_execution_failed', error, { name: toolName });
