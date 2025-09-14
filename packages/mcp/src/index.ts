@@ -929,6 +929,36 @@ export class MCPProxy {
   set overrideManager(manager: OverrideManager | undefined) {
     this._overrideManager = manager;
   }
+
+  async shutdown(): Promise<void> {
+    // Clear override caches if override manager exists
+    if (this._overrideManager) {
+      this._overrideManager.clearCache();
+    }
+
+    // Close all client connections
+    for (const [serverName, client] of this._clients) {
+      try {
+        await client.close();
+        console.error(`[proxy] Closed connection to: ${serverName}`);
+      } catch (error) {
+        console.error(
+          `[proxy] Error closing connection to ${serverName}:`,
+          error,
+        );
+      }
+    }
+    this._clients.clear();
+
+    // Clear all internal caches
+    this._toolDescriptionCache.clear();
+    this._toolDefinitionCache.clear();
+    this._toolMapping.clear();
+    this._dynamicallyEnabledTools.clear();
+    this.coreTools.clear();
+
+    console.error('[proxy] Shutdown completed');
+  }
 }
 
 // Export for library usage
