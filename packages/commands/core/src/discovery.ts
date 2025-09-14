@@ -159,8 +159,8 @@ function isValidCommand(command: unknown): command is ICommand {
   return (
     typeof c.name === 'string' &&
     typeof c.description === 'string' &&
-    typeof c.executeViaMCP === 'function' &&
+    typeof c.executeToolViaMCP === 'function' &&
     typeof c.executeViaCLI === 'function' &&
-    typeof c.getMCPDefinition === 'function'
+    typeof c.getMCPDefinitions === 'function'
   );
 }

@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export async function runCommand(name: string, args: string[]): Promise<void> {
   try {
     // Discover commands from packages/commands directory
-    const commandsPath = resolve(__dirname, '../../../commands');
+    const commandsPath = resolve(__dirname, '../../../packages/commands');
     const registry = await discoverCommands(commandsPath);
 
     const command = registry.getCommandForCLI(name);

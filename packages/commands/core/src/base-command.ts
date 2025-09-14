@@ -11,11 +11,12 @@ export abstract class BaseCommand implements ICommand {
   abstract readonly name: string;
   abstract readonly description: string;
 
-  abstract executeViaMCP(
+  abstract executeToolViaMCP(
+    toolName: string,
     args: Record<string, unknown>,
   ): Promise<import('@modelcontextprotocol/sdk/types.js').CallToolResult>;
   abstract executeViaCLI(args: string[]): Promise<void>;
-  abstract getMCPDefinition(): import('@modelcontextprotocol/sdk/types.js').Tool;
+  abstract getMCPDefinitions(): import('@modelcontextprotocol/sdk/types.js').Tool[];
 
   /**
    * Parse common command options from arguments

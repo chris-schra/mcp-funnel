@@ -61,7 +61,7 @@
   // Built-in CLI commands exposed via MCP
   "commands": {
     "enabled": true,
-    "list": ["validate"]
+    "list": ["ts-validate"]
   },
   "exposeTools": null,
   "exposeCoreTools": ["discover_*", "load_toolset"],

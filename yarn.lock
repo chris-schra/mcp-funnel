@@ -866,6 +866,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mcp-funnel/command-npm-lookup@workspace:packages/commands/npm-lookup":
+  version: 0.0.0-use.local
+  resolution: "@mcp-funnel/command-npm-lookup@workspace:packages/commands/npm-lookup"
+  dependencies:
+    "@mcp-funnel/commands-core": "workspace:^"
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    esbuild: "npm:^0.25.9"
+    tsx: "npm:^4.20.5"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate":
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate"
