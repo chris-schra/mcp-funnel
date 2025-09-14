@@ -23,6 +23,8 @@ import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError, getServerStreamLogPath } from './logger.js';
+import { OverrideManager } from './overrides/override-manager.js';
+import { OverrideValidator } from './overrides/override-validator.js';
 
 import Package from '../package.json';
 export {
@@ -267,6 +269,8 @@ export class MCPProxy {
     { serverName: string; tool: Tool }
   > = new Map();
   private coreTools: Map<string, ICoreTool> = new Map();
+  private _overrideManager?: OverrideManager;
+  private _overrideValidator?: OverrideValidator;
 
   constructor(config: ProxyConfig) {
     this._config = config;
@@ -295,6 +299,12 @@ export class MCPProxy {
         },
       },
     );
+
+    // Initialize override system if configured
+    if (config.toolOverrides) {
+      this._overrideManager = new OverrideManager(config.toolOverrides);
+      this._overrideValidator = new OverrideValidator();
+    }
   }
 
   async initialize() {
@@ -369,11 +379,11 @@ export class MCPProxy {
                 );
               }
               this._toolDescriptionCache.set(displayName, {
-                serverName: 'development-commands',
+                serverName: 'commands',
                 description: mcpDef.description,
               });
               this._toolDefinitionCache.set(displayName, {
-                serverName: 'development-commands',
+                serverName: 'commands',
                 tool: { ...mcpDef, name: displayName },
               });
               this._toolMapping.set(displayName, {
@@ -403,33 +413,122 @@ export class MCPProxy {
         }
       };
 
-      // 1) Bundled commands
-      const bundledRegistry = await discoverCommands(commandsPath);
-      await registerFromRegistry(bundledRegistry);
+      // 1) Bundled commands (only when the directory exists in this build)
+      try {
+        const { existsSync } = await import('fs');
+        if (existsSync(commandsPath)) {
+          const bundledRegistry = await discoverCommands(commandsPath);
+          await registerFromRegistry(bundledRegistry);
+        }
+      } catch {
+        // ignore
+      }
 
       // 2) Zero-config auto-scan for installed command packages under node_modules/@mcp-funnel
       try {
         const scopeDir = join(process.cwd(), 'node_modules', '@mcp-funnel');
-        const { readdirSync } = await import('fs');
-        const entries = readdirSync(scopeDir, { withFileTypes: true });
-        const candidateDirs = entries
-          .filter(
-            (e: any) => e.isDirectory?.() && e.name.startsWith('command-'),
-          )
-          .map((e: any) => join(scopeDir, e.name));
-        for (const dir of candidateDirs) {
-          try {
-            const reg = await discoverCommands(dir);
-            await registerFromRegistry(reg);
-          } catch (e) {
-            console.warn(`[proxy] Failed to load command from ${dir}:`, e);
+        const { readdirSync, existsSync } = await import('fs');
+        if (existsSync(scopeDir)) {
+          const entries = readdirSync(scopeDir, { withFileTypes: true });
+          const packageDirs = entries
+            .filter(
+              (e: any) => e.isDirectory?.() && e.name.startsWith('command-'),
+            )
+            .map((e: any) => join(scopeDir, e.name));
+
+          const isValidCommand = (obj: unknown): obj is ICommand => {
+            if (!obj || typeof obj !== 'object') return false;
+            const c = obj as any;
+            return (
+              typeof c.name === 'string' &&
+              typeof c.description === 'string' &&
+              typeof c.executeToolViaMCP === 'function' &&
+              typeof c.executeViaCLI === 'function' &&
+              typeof c.getMCPDefinitions === 'function'
+            );
+          };
+
+          for (const pkgDir of packageDirs) {
+            try {
+              const pkgJsonPath = join(pkgDir, 'package.json');
+              if (!existsSync(pkgJsonPath)) continue;
+              const { readFile } = await import('fs/promises');
+              const pkg = JSON.parse(
+                await readFile(pkgJsonPath, 'utf-8'),
+              ) as any;
+              const entry = pkg.module || pkg.main;
+              if (!entry) continue;
+              const mod = await import(join(pkgDir, entry));
+              const candidate = (mod as any).default || (mod as any).command;
+              const chosen = isValidCommand(candidate)
+                ? candidate
+                : (Object.values(mod as any).find(isValidCommand) as
+                    | ICommand
+                    | undefined);
+              if (
+                chosen &&
+                (enabledCommands.length === 0 ||
+                  enabledCommands.includes(chosen.name))
+              ) {
+                // Reuse registration logic
+                const mcpDefs = chosen.getMCPDefinitions();
+                const isSingle = mcpDefs.length === 1;
+                const singleMatchesCommand =
+                  isSingle && mcpDefs[0]?.name === chosen.name;
+                for (const mcpDef of mcpDefs) {
+                  const useCompact =
+                    singleMatchesCommand && mcpDef.name === chosen.name;
+                  const displayName = useCompact
+                    ? `${chosen.name}`
+                    : `${chosen.name}_${mcpDef.name}`;
+                  if (!mcpDef.description) {
+                    throw new Error(
+                      `Tool ${mcpDef.name} from command ${chosen.name} is missing a description`,
+                    );
+                  }
+                  this._toolDescriptionCache.set(displayName, {
+                    serverName: 'commands',
+                    description: mcpDef.description,
+                  });
+                  this._toolDefinitionCache.set(displayName, {
+                    serverName: 'commands',
+                    tool: { ...mcpDef, name: displayName },
+                  });
+                  this._toolMapping.set(displayName, {
+                    client: null,
+                    originalName: mcpDef.name,
+                    toolName: mcpDef.name,
+                    command: chosen,
+                  });
+                  const legacyLong = `cmd__${chosen.name}__${mcpDef.name}`;
+                  this._toolMapping.set(legacyLong, {
+                    client: null,
+                    originalName: mcpDef.name,
+                    toolName: mcpDef.name,
+                    command: chosen,
+                  });
+                  if (useCompact) {
+                    const legacyShort = `cmd__${chosen.name}`;
+                    this._toolMapping.set(legacyShort, {
+                      client: null,
+                      originalName: mcpDef.name,
+                      toolName: mcpDef.name,
+                      command: chosen,
+                    });
+                  }
+                }
+              }
+            } catch (_err) {
+              // skip invalid package
+              continue;
+            }
           }
         }
       } catch (_e) {
         // No scope directory or unreadable; ignore
       }
     } catch (error) {
-      console.error('Failed to load development commands:', error);
+      console.error('Failed to load commands:', error);
     }
   }
 
@@ -572,18 +671,55 @@ export class MCPProxy {
           for (const tool of response.tools) {
             const fullToolName = `${serverName}__${tool.name}`;
 
-            // Only cache tools that should be exposed according to filtering rules
-            if (this.shouldExposeTool(serverName, tool.name)) {
-              // Cache tool descriptions and definitions for discovery
-              this._toolDescriptionCache.set(fullToolName, {
-                serverName,
-                description: tool.description || '',
-              });
-              this._toolDefinitionCache.set(fullToolName, {
-                serverName,
+            // Apply overrides if configured
+            let processedTool = tool;
+            if (this._overrideManager) {
+              const overriddenTool = this._overrideManager.applyOverrides(
                 tool,
-              });
+                fullToolName,
+              );
+
+              // Validate override if validator is enabled
+              if (
+                this._overrideValidator &&
+                this._config.overrideSettings?.validateOverrides
+              ) {
+                const validation = this._overrideValidator.validateOverride(
+                  tool,
+                  overriddenTool,
+                );
+
+                if (!validation.valid) {
+                  console.error(
+                    `[proxy] Invalid override for ${fullToolName}:`,
+                    validation.errors,
+                  );
+                  processedTool = tool;
+                } else {
+                  if (validation.warnings.length > 0) {
+                    console.warn(
+                      `[proxy] Override warnings for ${fullToolName}:`,
+                      validation.warnings,
+                    );
+                  }
+                  processedTool = overriddenTool;
+                }
+              } else {
+                processedTool = overriddenTool;
+              }
+            } else {
+              processedTool = tool;
             }
+
+            // Cache the processed tool
+            this._toolDescriptionCache.set(fullToolName, {
+              serverName,
+              description: processedTool.description || '',
+            });
+            this._toolDefinitionCache.set(fullToolName, {
+              serverName,
+              tool: processedTool,
+            });
 
             // Always register in toolMapping for call handling (even for hidden tools)
             // This allows bridge_tool_request to work if a tool name is known
@@ -592,34 +728,26 @@ export class MCPProxy {
               originalName: tool.name,
             });
 
-            // Check if tool is always visible (bypasses all discovery logic)
+            // Check flags for visibility
             const isAlwaysVisible = this.isAlwaysVisible(serverName, tool.name);
 
-            // Check if tool should be exposed based on configuration
             const shouldExposeByConfig = this.shouldExposeTool(
               serverName,
               tool.name,
             );
 
-            // If dynamic discovery is enabled AND tool is not always visible
-            if (this._config.enableDynamicDiscovery && !isAlwaysVisible) {
-              // Only show if dynamically enabled
-              if (!this._dynamicallyEnabledTools.has(fullToolName)) {
-                continue; // Skip tools not yet enabled
-              }
-              // Tool was dynamically enabled, add it
-              allTools.push({
-                ...tool,
-                name: fullToolName,
-                description: `[${serverName}] ${tool.description || ''}`,
-              });
-              continue;
-            }
+            const isDynamicallyEnabled =
+              this._dynamicallyEnabledTools.has(fullToolName);
 
-            // Tool is either:
-            // 1. Always visible (alwaysVisibleTools)
-            // 2. Exposed by config when NOT in dynamic discovery mode (exposeTools/hideTools)
-            if (isAlwaysVisible || shouldExposeByConfig) {
+            // Show when:
+            // 1) Dynamically enabled at runtime
+            // 2) Always visible
+            // 3) Exposed by static config
+            if (
+              isDynamicallyEnabled ||
+              isAlwaysVisible ||
+              shouldExposeByConfig
+            ) {
               allTools.push({
                 ...tool,
                 name: fullToolName,
@@ -636,11 +764,11 @@ export class MCPProxy {
         }
       }
 
-      // Add development command tools from cache
+      // Add command tools from cache
       for (const [toolName, definition] of this._toolDefinitionCache) {
-        if (definition.serverName === 'development-commands') {
+        if (definition.serverName === 'commands') {
           // Check if command should be exposed based on configuration
-          if (this.shouldExposeTool('development-commands', toolName)) {
+          if (this.shouldExposeTool('commands', toolName)) {
             allTools.push(definition.tool);
           }
         }
@@ -653,7 +781,7 @@ export class MCPProxy {
     this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
 
-      // Development command invocation based on mapping
+      // Command invocation based on mapping
       {
         const mapping = this._toolMapping.get(toolName);
         if (mapping && mapping.command) {
@@ -720,18 +848,24 @@ export class MCPProxy {
         for (const tool of response.tools) {
           const fullToolName = `${serverName}__${tool.name}`;
 
-          // Only cache tools that should be exposed according to filtering rules
-          if (this.shouldExposeTool(serverName, tool.name)) {
-            // Cache tool descriptions and definitions
-            this._toolDescriptionCache.set(fullToolName, {
-              serverName,
-              description: tool.description || '',
-            });
-            this._toolDefinitionCache.set(fullToolName, {
-              serverName,
+          // Apply overrides if configured
+          let processedTool = tool;
+          if (this._overrideManager) {
+            processedTool = this._overrideManager.applyOverrides(
               tool,
-            });
+              fullToolName,
+            );
           }
+
+          // Cache tool descriptions and definitions for discovery
+          this._toolDescriptionCache.set(fullToolName, {
+            serverName,
+            description: processedTool.description || '',
+          });
+          this._toolDefinitionCache.set(fullToolName, {
+            serverName,
+            tool: processedTool,
+          });
 
           // Always register in toolMapping for call handling (even for hidden tools)
           // This allows bridge_tool_request to work if a tool name is known
@@ -790,3 +924,4 @@ export class MCPProxy {
 // Export for library usage
 export { ProxyConfigSchema, normalizeServers } from './config.js';
 export type { ProxyConfig, ServersRecord } from './config.js';
+export { OverrideManager, OverrideValidator } from './overrides/index.js';

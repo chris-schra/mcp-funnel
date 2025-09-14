@@ -2,6 +2,7 @@ import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
 import { resolveToolName } from '../../utils/tool-resolver.js';
+import type { ICommand } from '@mcp-funnel/commands-core';
 
 export interface BridgeToolRequestParams {
   tool: string;
@@ -76,7 +77,14 @@ export class BridgeToolRequest extends BaseCoreTool {
     }
 
     const toolName = resolution.toolName!;
-    const mapping = context.toolMapping.get(toolName);
+    const mapping = context.toolMapping.get(toolName) as
+      | {
+          client: any;
+          originalName: string;
+          command?: ICommand;
+          toolName?: string;
+        }
+      | undefined;
     if (!mapping) {
       throw new Error(
         `Internal error: resolved tool ${toolName} not found in mapping`,
@@ -84,15 +92,26 @@ export class BridgeToolRequest extends BaseCoreTool {
     }
 
     try {
-      if (!mapping.client) {
-        throw new Error(`Tool ${toolName} has no client connection`);
+      // Command path: execute via command interface when present
+      if (mapping.command) {
+        const result = await mapping.command.executeToolViaMCP(
+          mapping.toolName || mapping.originalName,
+          toolArguments || {},
+        );
+        return result as CallToolResult;
       }
-      const result = await mapping.client.callTool({
-        name: mapping.originalName,
-        arguments: toolArguments,
-      });
 
-      return result as CallToolResult;
+      // Server bridge path
+      if (mapping.client) {
+        const result = await mapping.client.callTool({
+          name: mapping.originalName,
+          arguments: toolArguments,
+        });
+        return result as CallToolResult;
+      }
+
+      // Neither server client nor command is available
+      throw new Error(`Tool ${toolName} has no client connection`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

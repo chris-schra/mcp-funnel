@@ -1,6 +1,6 @@
 # @mcp-funnel/commands-core
 
-Core infrastructure for building MCP Funnel development commands that work both via CLI and MCP protocol.
+Core infrastructure for building MCP Funnel commands that work both via CLI and MCP protocol.
 
 ## Overview
 
@@ -376,11 +376,11 @@ Control which tools are exposed:
     "list": ["npm"]
   },
   "exposeTools": [
-    "development-commands__npm_lookup", // Include specific tools
-    "development-commands__npm_search"
+    "commands__npm_lookup", // Include specific tools
+    "commands__npm_search"
   ],
   "hideTools": [
-    "development-commands__npm_search" // Or hide specific tools
+    "commands__npm_search" // Or hide specific tools
   ]
 }
 ```

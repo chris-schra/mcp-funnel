@@ -14,7 +14,7 @@
   "type": "module",
   "scripts": {
     "build": "yarn workspaces foreach -v --topological-dev -p -A run build",
-    "release": "yarn build && yarn workspaces foreach -v --topological-dev -p -A run release",
+    "release": "yarn build && yarn workspaces foreach --exclude mcp-funnel-monorepo -v --topological-dev -p -A run release",
     "prettier": "prettier -c \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint --ext .ts,.tsx",
     "validate": "tsx packages/mcp/src/cli.ts run ts-validate --fix",

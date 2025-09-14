@@ -48,7 +48,7 @@ vi.mock('./npm-client.js', () => {
   };
 });
 
-describe('Development Command Integration', () => {
+describe('Command Integration', () => {
   describe('MCP tool exposure', () => {
     let mockNPMClient: NPMClient;
 
@@ -99,7 +99,7 @@ describe('Development Command Integration', () => {
       const proxy = new MCPProxy(config);
       await proxy.initialize();
 
-      // Check that development command tools are in the tool definition cache
+      // Check that command tools are in the tool definition cache
       const toolDefinitionCache = proxy.toolDefinitionCache;
 
       // Verify npm_lookup is registered
@@ -110,14 +110,14 @@ describe('Development Command Integration', () => {
       const searchTool = toolDefinitionCache.get('npm_search');
 
       expect(lookupTool).toBeDefined();
-      expect(lookupTool!.serverName).toBe('development-commands');
+      expect(lookupTool!.serverName).toBe('commands');
       expect(lookupTool!.tool.name).toBe('npm_lookup');
       expect(lookupTool!.tool.description).toBe(
         'Get detailed information about an NPM package',
       );
 
       expect(searchTool).toBeDefined();
-      expect(searchTool!.serverName).toBe('development-commands');
+      expect(searchTool!.serverName).toBe('commands');
       expect(searchTool!.tool.name).toBe('npm_search');
       expect(searchTool!.tool.description).toBe('Search for NPM packages');
 
@@ -239,7 +239,7 @@ describe('Development Command Integration', () => {
       const proxy = new MCPProxy(config);
       await proxy.initialize();
 
-      // Check that no development command tools are registered
+      // Check that no command tools are registered
       const toolDefinitionCache = proxy.toolDefinitionCache;
       expect(toolDefinitionCache.has('npm_lookup')).toBe(false);
       expect(toolDefinitionCache.has('npm_search')).toBe(false);

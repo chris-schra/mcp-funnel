@@ -1,7 +1,7 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 /**
- * Core interface for development commands that support both MCP and CLI execution.
+ * Core interface for commands that support both MCP and CLI execution.
  * Commands implementing this interface can be called via the MCP protocol by AI assistants
  * or executed directly from the command line.
  */

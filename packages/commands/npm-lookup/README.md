@@ -156,8 +156,8 @@ To use the NPM command with MCP Funnel, add it to your `.mcp-funnel.json`:
     "list": ["npm"]
   },
   "exposeTools": [
-    "development-commands__npm_lookup",
-    "development-commands__npm_search"
+    "commands__npm_lookup",
+    "commands__npm_search"
   ]
 }
 ```
@@ -173,9 +173,9 @@ The `commands.list` array specifies which commands to enable. To use multiple co
     "list": ["npm", "ts-validate"]
   },
   "exposeTools": [
-    "development-commands__npm_lookup",
-    "development-commands__npm_search",
-    "development-commands__ts-validate"
+    "commands__npm_lookup",
+    "commands__npm_search",
+    "commands__ts-validate"
   ]
 }
 ```
@@ -189,7 +189,7 @@ To hide specific NPM tools you don't need:
     "list": ["npm"]
   },
   "hideTools": [
-    "development-commands__npm_search" // Hide search, keep only lookup
+    "commands__npm_search" // Hide search, keep only lookup
   ]
 }
 ```

@@ -102,9 +102,7 @@ Create a `.mcp-funnel.json` file in your project directory:
     "memory__debug_*",
     "memory__dashboard_*",
     "github__get_team_members"
-  ],
-  "enableDynamicDiscovery": false,
-  "hackyDiscovery": false
+  ]
 }
 ```
 
@@ -119,8 +117,14 @@ Create a `.mcp-funnel.json` file in your project directory:
 - **exposeTools**: Include patterns for external tools to expose (optional)
 - **hideTools**: Exclude patterns for external tools to hide (optional)
 - **exposeCoreTools**: Include patterns for internal MCP Funnel tools (optional, defaults to all enabled)
-- **enableDynamicDiscovery**: Enable experimental dynamic tool discovery (default: false)
 - **hackyDiscovery**: Enable minimal context mode with dynamic tool bridging (default: false)
+
+### alwaysVisibleTools vs exposeTools
+
+- Use **exposeTools** alone when you want a tool visible at startup. No duplication in alwaysVisibleTools is needed for server-backed tools.
+- Use **alwaysVisibleTools** when you want a server tool to bypass all gating (expose/hide, future pattern changes). It wins over hideTools. You do not need to repeat it in exposeTools.
+- **Commands are special**: listing them requires exposeTools using commands__…; alwaysVisibleTools does not apply to dev-command listing.
+
 
 ### Filtering Patterns
 
@@ -191,8 +195,8 @@ The NPM command provides package lookup and search capabilities using the NPM re
     "list": ["npm"]
   },
   "exposeTools": [
-    "development-commands__npm_lookup",
-    "development-commands__npm_search"
+    "commands__npm_lookup",
+    "commands__npm_search"
   ]
 }
 ```
@@ -249,7 +253,7 @@ Notes:
 
 - No extra config is required beyond enabling `commands.enabled`.
 - To limit which commands load, specify `commands.list`. If omitted, all discovered commands are exposed.
-- Existing `exposeTools`/`hideTools` still apply (e.g., `development-commands__npm_*`).
+- Existing `exposeTools`/`hideTools` still apply (e.g., `commands__npm_*`).
 
 ### Multi-Tool Commands
 
@@ -360,25 +364,47 @@ MCP Funnel provides a three-tier visibility system for managing which tools are 
 
 ### 1. Always Visible Tools (`alwaysVisibleTools`)
 
-Tools matching these patterns are **always exposed from startup**, even when using dynamic discovery mode. Perfect for critical tools you always want available.
+Tools matching these patterns are **always exposed from startup**, even when using the dynamic discovery pattern (empty allowlist). Perfect for critical tools you always want available.
 
 ```json
 {
   "alwaysVisibleTools": [
     "github__create_pull_request", // Always show this specific tool
     "memory__store_*" // Always show all store operations
-  ],
-  "enableDynamicDiscovery": true // Other tools hidden until discovered
+  ]
 }
 ```
 
 ### 2. Discoverable Tools (`exposeTools`)
 
-When `enableDynamicDiscovery: true`, these tools are hidden initially but can be discovered and enabled dynamically. When discovery is disabled, they're visible from startup.
+When using an empty allowlist (`exposeTools: []`), these tools are hidden initially but can be discovered and enabled dynamically via `load_toolset`. When allowlisted in `exposeTools`, they're visible from startup.
 
 ### 3. Hidden Tools (`hideTools`)
 
 Tools matching these patterns are never exposed, regardless of other settings.
+
+### Dynamic Discovery
+
+To start with a minimal surface and enable tools on demand:
+
+```json
+{
+  "exposeTools": [],
+  "alwaysVisibleTools": [],
+  "exposeCoreTools": ["discover_*", "get_tool_schema", "load_toolset", "bridge_tool_request"]
+}
+```
+
+Runtime flow:
+
+- Search: `discover_tools_by_words` with keywords (e.g., "context7").
+- Enable: `load_toolset` with explicit tool names or patterns (e.g., ["context7__resolve_library_id", "context7__get-library-docs"]).
+- Call: Use the enabled tools normally.
+
+Notes:
+
+- Dev commands can remain visible by allowlisting `commands__npm_*` and `commands__ts-validate` in `exposeTools`, or they can be loaded dynamically like any other tool.
+- The proxy now caches tool descriptions regardless of visibility, so discovery works even when `exposeTools` is empty. Dynamically enabled tools become visible immediately and persist for the session.
 
 ## 🚀 Hacky Discovery Mode (Ultra-Low Context)
 
