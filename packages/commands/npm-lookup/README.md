@@ -76,7 +76,7 @@ npx mcp-funnel run npm search --help
 
 When used via MCP (Model Context Protocol), the NPM command exposes these tools:
 
-### cmd**npm**lookup
+### cmd__npm__lookup
 
 Retrieves detailed information about a specific NPM package.
 
@@ -107,7 +107,7 @@ Retrieves detailed information about a specific NPM package.
 }
 ```
 
-### cmd**npm**search
+### cmd__npm__search
 
 Searches for NPM packages matching a query string.
 
@@ -123,9 +123,9 @@ Searches for NPM packages matching a query string.
     },
     "limit": {
       "type": "number",
-      "description": "Maximum number of results to return (1-250, default: 20)",
+      "description": "Maximum number of results to return (1–50, default: 20)",
       "minimum": 1,
-      "maximum": 250
+      "maximum": 50
     }
   },
   "required": ["query"]
@@ -152,10 +152,8 @@ To use the NPM command with MCP Funnel, add it to your `.mcp-funnel.json`:
 ```json
 {
   "commands": {
-    "npm": {
-      "enabled": true,
-      "tools": ["lookup", "search"]
-    }
+    "enabled": true,
+    "list": ["npm"]
   },
   "exposeTools": ["cmd__npm__lookup", "cmd__npm__search"]
 }
@@ -163,10 +161,26 @@ To use the NPM command with MCP Funnel, add it to your `.mcp-funnel.json`:
 
 ### Filtering Specific Tools
 
-Hide tools you don't need:
+The `commands.list` array specifies which commands to enable. To use multiple commands:
 
 ```json
 {
+  "commands": {
+    "enabled": true,
+    "list": ["npm", "ts-validate"]
+  },
+  "exposeTools": ["cmd__npm__lookup", "cmd__npm__search", "cmd__ts-validate__ts-validate"]
+}
+```
+
+To hide specific NPM tools you don't need:
+
+```json
+{
+  "commands": {
+    "enabled": true,
+    "list": ["npm"]
+  },
   "hideTools": [
     "cmd__npm__search" // Hide search, keep only lookup
   ]

@@ -60,7 +60,7 @@ export class NPMCommand implements ICommand {
             },
             limit: {
               type: 'number',
-              description: `Max results (default: 10, max: ${MAX_SEARCH_RESULTS})`,
+              description: `Max results (default: 20, max: ${MAX_SEARCH_RESULTS})`,
             },
           },
           required: ['query'],
