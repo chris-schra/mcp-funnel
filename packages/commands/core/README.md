@@ -187,9 +187,221 @@ const command = registry.getCommandForCLI('my-command');
 - **`discoverCommands(searchPath)`**: Auto-discover commands from directory
 - **`discoverCommandsFromDefault()`**: Discover from default location
 
+## Multi-Tool Commands
+
+Commands can expose multiple tools through the MCP protocol while maintaining a single CLI interface. This pattern is useful for commands that provide related functionality grouped under a common domain.
+
+### Overview
+
+The multi-tool pattern allows:
+
+- **Logical grouping**: Related operations under one command umbrella
+- **Shared resources**: Common caching, configuration, error handling
+- **Flexible control**: Enable/disable individual tools via configuration
+- **Consistent prefixing**: All tools get the same `cmd__commandname__` prefix
+
+### Implementation
+
+To create a multi-tool command, implement `executeToolViaMCP` instead of `executeViaMCP`:
+
+```typescript
+import { ICommand, Tool } from '@mcp-funnel/commands-core';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+
+export class MyMultiCommand implements ICommand {
+  readonly name = 'multi-example';
+  readonly description = 'Example multi-tool command';
+
+  // Handle tool-specific execution via MCP
+  async executeToolViaMCP(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
+    switch (toolName) {
+      case 'lookup':
+        return this.handleLookup(args);
+      case 'search':
+        return this.handleSearch(args);
+      default:
+        throw new Error(`Unknown tool: ${toolName}`);
+    }
+  }
+
+  // CLI interface routes to appropriate subcommand
+  async executeViaCLI(args: string[]): Promise<void> {
+    const [subcommand, ...subArgs] = args;
+
+    switch (subcommand) {
+      case 'lookup':
+        return this.cliLookup(subArgs);
+      case 'search':
+        return this.cliSearch(subArgs);
+      case '--help':
+      case 'help':
+        return this.showHelp();
+      default:
+        throw new Error(`Unknown subcommand: ${subcommand}`);
+    }
+  }
+
+  // Return multiple tool definitions
+  getMCPDefinitions(): Tool[] {
+    return [
+      {
+        name: 'lookup',
+        description: 'Look up specific items',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Item ID to lookup',
+            },
+          },
+          required: ['id'],
+        },
+      },
+      {
+        name: 'search',
+        description: 'Search for items',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: {
+              type: 'string',
+              description: 'Search query',
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum results',
+              default: 10,
+            },
+          },
+          required: ['query'],
+        },
+      },
+    ];
+  }
+
+  private async handleLookup(args: Record<string, unknown>): Promise<CallToolResult> {
+    const { id } = args;
+    // Implementation
+    return {
+      content: [{ type: 'text', text: `Looked up: ${id}` }],
+    };
+  }
+
+  private async handleSearch(args: Record<string, unknown>): Promise<CallToolResult> {
+    const { query, limit = 10 } = args;
+    // Implementation
+    return {
+      content: [{ type: 'text', text: `Search results for: ${query}` }],
+    };
+  }
+
+  private async cliLookup(args: string[]): Promise<void> {
+    // CLI implementation
+    console.log('Lookup via CLI:', args);
+  }
+
+  private async cliSearch(args: string[]): Promise<void> {
+    // CLI implementation
+    console.log('Search via CLI:', args);
+  }
+
+  private showHelp(): void {
+    console.log(`
+Usage: npx mcp-funnel run ${this.name} <subcommand> [options]
+
+Subcommands:
+  lookup <id>        Look up item by ID
+  search <query>     Search for items
+  help              Show this help
+
+Examples:
+  npx mcp-funnel run ${this.name} lookup item-123
+  npx mcp-funnel run ${this.name} search "test query"
+    `);
+  }
+}
+```
+
+### MCP Tool Registration
+
+Multi-tool commands expose tools with the pattern `cmd__commandname__toolname`:
+
+```typescript
+// For a command named 'npm' with tools 'lookup' and 'search'
+// Tools are exposed as:
+// - cmd__npm__lookup
+// - cmd__npm__search
+```
+
+### Configuration
+
+Control which tools are exposed:
+
+```json
+{
+  "commands": {
+    "npm": {
+      "enabled": true,
+      "tools": ["lookup", "search"]  // Enable specific tools
+    }
+  },
+  "exposeTools": [
+    "cmd__npm__lookup",     // Include specific tools
+    "cmd__npm__search"
+  ],
+  "hideTools": [
+    "cmd__npm__search"      // Or hide specific tools
+  ]
+}
+```
+
+### Example: NPM Command
+
+The NPM command demonstrates the multi-tool pattern:
+
+```bash
+# CLI usage
+npx mcp-funnel run npm lookup express
+npx mcp-funnel run npm search "test framework"
+npx mcp-funnel run npm --help
+
+# MCP tools exposed
+cmd__npm__lookup    # Package lookup
+cmd__npm__search    # Package search
+```
+
+**Benefits:**
+- Shared NPM client and caching between tools
+- Consistent error handling across operations
+- Related functionality grouped logically
+- Individual tool filtering capability
+
+### When to Use Multi-Tool Pattern
+
+Consider multi-tool commands for:
+
+- **API clients**: CRUD operations (create, read, update, delete)
+- **File operations**: Different file manipulations (read, write, search, validate)
+- **Development tools**: Related dev operations (lint, test, build, deploy)
+- **External services**: Multiple operations on the same service/API
+
+### Single vs Multi-Tool Decision
+
+| Use Single Tool When | Use Multi-Tool When |
+|---------------------|-------------------|
+| Command has one clear purpose | Command covers multiple related operations |
+| No shared state or resources | Operations share configuration/caching |
+| Unlikely to expand functionality | Planning to add related tools |
+| Simplicity is paramount | Logical grouping provides value |
+
 ## Examples
 
-See the `ts-validate` command in `packages/commands/ts-validate` for a complete example.
+- **Single-tool**: `ts-validate` command in `packages/commands/ts-validate`
+- **Multi-tool**: `npm` command in `packages/commands/npm-lookup`
 
 ## Contributing
 
