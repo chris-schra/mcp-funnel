@@ -76,7 +76,7 @@ npx mcp-funnel run npm search --help
 
 When used via MCP (Model Context Protocol), the NPM command exposes these tools:
 
-### cmd**npm**lookup
+### `cmd__npm__lookup`
 
 Retrieves detailed information about a specific NPM package.
 
@@ -107,7 +107,7 @@ Retrieves detailed information about a specific NPM package.
 }
 ```
 
-### cmd**npm**search
+### `cmd__npm__search`
 
 Searches for NPM packages matching a query string.
 
