@@ -20,7 +20,13 @@ export class TsValidateCommand implements ICommand {
     const options: ValidateOptions = {
       files: args.files as string[] | undefined,
       glob: args.glob as string | undefined,
-      fix: Boolean(args.fix),
+      // MCP: `autoFix` (default true). Back-compat: if `fix` provided, use it when autoFix is undefined.
+      fix:
+        args.autoFix === undefined
+          ? args.fix === undefined
+            ? true
+            : Boolean(args.fix)
+          : Boolean(args.autoFix),
       cache: args.cache !== false,
     };
     const compact = args.compact === undefined ? true : Boolean(args.compact);
@@ -119,12 +125,17 @@ ${chalk.bold('Examples:')}
         if (Object.keys(summary.fileResults).length === 0) {
           console.info(chalk.green('✨ No files to validate'));
           // Still report tool statuses if any were skipped/failed
-          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
-          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          const failed =
+            summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped =
+            summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
           if (failed.length > 0 || skipped.length > 0) {
             console.info(chalk.blue.bold('\n🛠 Tool Status:'));
             for (const s of [...failed, ...skipped]) {
-              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
+              const label =
+                s.status === 'failed'
+                  ? chalk.red('failed')
+                  : chalk.yellow('skipped');
               const reason = s.reason ? ` (${s.reason})` : '';
               const err = s.error ? `: ${s.error}` : '';
               console.info(`  - ${s.tool}: ${label}${reason}${err}`);
@@ -138,16 +149,23 @@ ${chalk.bold('Examples:')}
           (r) => r.length > 0,
         );
 
-        const anyFailed = summary.toolStatuses?.some((s) => s.status === 'failed');
+        const anyFailed = summary.toolStatuses?.some(
+          (s) => s.status === 'failed',
+        );
         if (!hasIssues) {
           console.info(chalk.green('✅ All files passed validation!'));
           // Report tool statuses if any skipped/failed
-          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
-          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          const failed =
+            summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped =
+            summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
           if (failed.length > 0 || skipped.length > 0) {
             console.info(chalk.blue.bold('\n🛠 Tool Status:'));
             for (const s of [...failed, ...skipped]) {
-              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
+              const label =
+                s.status === 'failed'
+                  ? chalk.red('failed')
+                  : chalk.yellow('skipped');
               const reason = s.reason ? ` (${s.reason})` : '';
               const err = s.error ? `: ${s.error}` : '';
               console.info(`  - ${s.tool}: ${label}${reason}${err}`);
@@ -261,6 +279,11 @@ ${chalk.bold('Examples:')}
             fix: {
               type: 'boolean',
               description: 'Automatically fix fixable issues',
+            },
+            autoFix: {
+              type: 'boolean',
+              description:
+                'Enable auto-fix for Prettier and ESLint (default: true). Back-compat alias: fix',
             },
             cache: {
               type: 'boolean',

@@ -26,7 +26,9 @@ describe('MonorepoValidator local-first resolution', () => {
 
   it('handles empty folder gracefully (no files)', async () => {
     const v = new MonorepoValidator();
-    const summary = await v.validate({ glob: path.join(tmp, '**/*.{ts,tsx,js,jsx,json}') });
+    const summary = await v.validate({
+      glob: path.join(tmp, '**/*.{ts,tsx,js,jsx,json}'),
+    });
     expect(summary.totalFiles).toBe(0);
     expect(summary.filesWithErrors).toBe(0);
   });
@@ -39,10 +41,13 @@ describe('MonorepoValidator local-first resolution', () => {
 
     const v = new MonorepoValidator();
     const summary = await v.validate({ files: [file] });
-    const statuses = summary.toolStatuses.reduce((acc, s) => {
-      acc[s.tool] = s;
-      return acc;
-    }, {} as Record<string, typeof summary.toolStatuses[number]>);
+    const statuses = summary.toolStatuses.reduce(
+      (acc, s) => {
+        acc[s.tool] = s;
+        return acc;
+      },
+      {} as Record<string, (typeof summary.toolStatuses)[number]>,
+    );
 
     expect(statuses['prettier']).toBeTruthy();
     expect(['ok', 'failed']).toContain(statuses['prettier'].status);
@@ -73,7 +78,11 @@ describe('MonorepoValidator local-first resolution', () => {
     );
     await fs.writeFile(
       path.join(prettierDir, 'package.json'),
-      JSON.stringify({ name: 'prettier', version: '3.2.0', module: 'index.mjs' }, null, 2),
+      JSON.stringify(
+        { name: 'prettier', version: '3.2.0', module: 'index.mjs' },
+        null,
+        2,
+      ),
     );
 
     // Local ESM eslint stub
@@ -91,7 +100,11 @@ describe('MonorepoValidator local-first resolution', () => {
     );
     await fs.writeFile(
       path.join(eslintDir, 'package.json'),
-      JSON.stringify({ name: 'eslint', version: '9.10.0', module: 'index.mjs' }, null, 2),
+      JSON.stringify(
+        { name: 'eslint', version: '9.10.0', module: 'index.mjs' },
+        null,
+        2,
+      ),
     );
 
     const file = path.join(proj, 'index.ts');
@@ -103,10 +116,13 @@ describe('MonorepoValidator local-first resolution', () => {
       process.chdir(proj);
       const v = new MonorepoValidator();
       const summary = await v.validate({ files: [file] });
-      const statuses = summary.toolStatuses.reduce((acc, s) => {
-        acc[s.tool] = s;
-        return acc;
-      }, {} as Record<string, typeof summary.toolStatuses[number]>);
+      const statuses = summary.toolStatuses.reduce(
+        (acc, s) => {
+          acc[s.tool] = s;
+          return acc;
+        },
+        {} as Record<string, (typeof summary.toolStatuses)[number]>,
+      );
 
       expect(statuses['prettier']).toBeTruthy();
       expect(statuses['prettier'].status).toBe('ok');

@@ -128,7 +128,9 @@ When exposed via MCP, the command accepts these parameters:
 {
   "files": ["file1.ts", "file2.ts"],  // Specific files
   "glob": "src/**/*.ts",               // OR glob pattern
-  "fix": true,                         // Auto-fix issues
+  "autoFix": true,                     // Auto-fix Prettier & ESLint (default: true)
+  "fix": true,                         // Back-compat alias for autoFix
+  "compact": true,                     // Omit clean files from fileResults (default: true)
   "cache": true                        // Use cache (default: true)
 }
 ```

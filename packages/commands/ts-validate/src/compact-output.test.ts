@@ -60,4 +60,3 @@ describe('MCP output compact option', () => {
     expect(payload.fileResults[file].length).toBe(0);
   });
 });
-
