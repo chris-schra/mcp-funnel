@@ -314,4 +314,101 @@ describe('Override Integration', () => {
     expect(createIssue).toBeDefined();
     expect(createIssue?._meta?.annotations).toBeUndefined();
   });
+
+  it('should support tool renaming through overrides', async () => {
+    // Configure the mock client to return a test tool that will be renamed
+    mockClient.listTools.mockResolvedValue({
+      tools: [
+        {
+          name: 'check_embedding_mode',
+          description: 'Check the current embedding mode configuration',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              verbose: {
+                type: 'boolean',
+                description: 'Include detailed output',
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    // Create proxy config with tool renaming override
+    const config: ProxyConfig = {
+      servers: [
+        {
+          name: 'memory',
+          command: 'memory-command',
+        },
+      ],
+      toolOverrides: {
+        memory__check_embedding_mode: {
+          name: 'memory__check',
+          description: 'Check memory system status (renamed for simplicity)',
+        },
+      },
+    };
+
+    // Create the proxy
+    proxy = new MCPProxy(config);
+
+    // Mock the internal client mapping
+    // @ts-expect-error - accessing private property for test
+    proxy._clients = new Map([['memory', mockClient]]);
+    // @ts-expect-error - accessing private property for test
+    proxy._toolMapping = new Map([
+      [
+        'memory__check_embedding_mode',
+        {
+          client: mockClient,
+          originalName: 'check_embedding_mode',
+          toolName: 'check_embedding_mode',
+        },
+      ],
+    ]);
+
+    // Initialize the proxy (this sets up the handlers)
+    await proxy.initialize();
+
+    // Get the handler for ListToolsRequestSchema
+    const listToolsCall = mockServer.setRequestHandler.mock.calls.find(
+      (call) => {
+        const schema = call[0] as { parse?: (data: unknown) => unknown };
+        try {
+          return schema.parse && schema.parse({ method: 'tools/list' });
+        } catch {
+          return false;
+        }
+      },
+    );
+
+    expect(listToolsCall).toBeDefined();
+
+    // Execute the handler
+    const handler = listToolsCall?.[1];
+    const result = await handler?.({}, {});
+
+    // Verify that the tool was renamed
+    expect(result?.tools).toBeDefined();
+    expect(result.tools.length).toBeGreaterThan(0);
+
+    // The tool should now have the new name from the override
+    const renamedTool = result.tools.find(
+      (t: Tool) => t.name === 'memory__check',
+    );
+
+    expect(renamedTool).toBeDefined();
+    expect(renamedTool?.description).toBe(
+      '[memory] Check memory system status (renamed for simplicity)',
+    );
+    expect(renamedTool?.inputSchema?.properties).toHaveProperty('verbose');
+
+    // Verify that the original tool name is not in the results
+    const originalTool = result.tools.find(
+      (t: Tool) => t.name === 'memory__check_embedding_mode',
+    );
+    expect(originalTool).toBeUndefined();
+  });
 });

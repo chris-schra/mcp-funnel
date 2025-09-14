@@ -91,4 +91,29 @@ describe('OverrideManager', () => {
     const result = manager.applyOverrides(tool, 'test__test');
     expect(result).toEqual(tool);
   });
+
+  it('should support renaming tools via name override', () => {
+    const manager = new OverrideManager({
+      memory__check_embedding_mode: {
+        name: 'memory__check',
+        description: 'Check memory system status (renamed for simplicity)',
+      },
+    });
+
+    const tool: Tool = {
+      name: 'check_embedding_mode',
+      description: 'Check the current embedding mode configuration',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {},
+      },
+    };
+
+    const result = manager.applyOverrides(tool, 'memory__check_embedding_mode');
+    expect(result.name).toBe('memory__check');
+    expect(result.description).toBe(
+      'Check memory system status (renamed for simplicity)',
+    );
+    expect(result.inputSchema).toEqual(tool.inputSchema);
+  });
 });

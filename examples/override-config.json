@@ -146,6 +146,11 @@
       "name": "memory__search",
       "title": "Search Memories",
       "description": "Search through stored memories using semantic similarity"
+    },
+
+    "memory__check_embedding_mode": {
+      "name": "memory__check",
+      "description": "Check memory system status (renamed for simplicity)"
     }
   },
 

@@ -752,7 +752,10 @@ export class MCPProxy {
             ) {
               allTools.push({
                 ...processedTool,
-                name: fullToolName,
+                name:
+                  processedTool.name !== tool.name
+                    ? processedTool.name
+                    : fullToolName,
                 description: `[${serverName}] ${processedTool.description || ''}`,
               });
             }
