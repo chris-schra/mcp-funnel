@@ -13,7 +13,7 @@ const sharedOptions: BuildOptions = {
 };
 
 async function buildAll() {
-  console.log('🔨 Building @mcp-funnel/ts-validate...\n');
+  console.log('🔨 Building @mcp-funnel/command-npm-lookup...\n');
 
   // Build TypeScript types
   console.log('📦 Building TypeScript types...');
