@@ -541,7 +541,11 @@ export class MonorepoValidator {
 
         // Only add if not fixed or if it's unfixable
         if (!validationResult.fixedAutomatically || !validationResult.fixable) {
-          this.fileResults[file]?.push(validationResult);
+          // Ensure the file entry exists before pushing
+          if (!this.fileResults[file]) {
+            this.fileResults[file] = [];
+          }
+          this.fileResults[file].push(validationResult);
         }
       }
 
@@ -549,7 +553,11 @@ export class MonorepoValidator {
       if (autoFix && result.output) {
         const fixCount = result.fixableErrorCount + result.fixableWarningCount;
         if (fixCount > 0) {
-          this.fileResults[file]?.push({
+          // Ensure the file entry exists before pushing
+          if (!this.fileResults[file]) {
+            this.fileResults[file] = [];
+          }
+          this.fileResults[file].push({
             tool: 'eslint',
             message: `Fixed ${fixCount} issue(s)`,
             severity: 'info',

@@ -749,9 +749,9 @@ export class MCPProxy {
               shouldExposeByConfig
             ) {
               allTools.push({
-                ...tool,
+                ...processedTool,
                 name: fullToolName,
-                description: `[${serverName}] ${tool.description || ''}`,
+                description: `[${serverName}] ${processedTool.description || ''}`,
               });
             }
           }

@@ -45,10 +45,14 @@ export async function runCommand(name: string, args: string[]): Promise<void> {
       if (existsSync(scopeDir)) {
         const entries = readdirSync(scopeDir, { withFileTypes: true });
         const packageDirs = entries
-          .filter((e: any) => e.isDirectory?.() && e.name.startsWith('command-'))
+          .filter(
+            (e: any) => e.isDirectory?.() && e.name.startsWith('command-'),
+          )
           .map((e: any) => join(scopeDir, e.name));
 
-        const isValidCommand = (obj: unknown): obj is import('@mcp-funnel/commands-core').ICommand => {
+        const isValidCommand = (
+          obj: unknown,
+        ): obj is import('@mcp-funnel/commands-core').ICommand => {
           if (!obj || typeof obj !== 'object') return false;
           const c = obj as any;
           return (
@@ -69,7 +73,10 @@ export async function runCommand(name: string, args: string[]): Promise<void> {
             const entry = pkg.module || pkg.main;
             if (!entry) continue;
             const mod = await import(join(pkgDir, entry));
-            const candidate = (mod as any).default || (mod as any).command || Object.values(mod as any)[0];
+            const candidate =
+              (mod as any).default ||
+              (mod as any).command ||
+              Object.values(mod as any)[0];
             if (isValidCommand(candidate)) {
               registry.register(candidate);
             }

@@ -185,9 +185,9 @@ describe('Override Integration', () => {
     );
 
     expect(overriddenTool).toBeDefined();
-    // Note: Description gets server prefix applied after overrides, so we test the annotation instead
+    // Note: Description gets server prefix applied after overrides
     expect(overriddenTool?.description).toBe(
-      '[test-server] Original description',
+      '[test-server] Overridden description',
     );
     expect((overriddenTool as any)?._meta?.annotations?.category).toBe(
       'testing',
