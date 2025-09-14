@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NPMCommand } from './command.js';
-import { NPMClient } from './npm-client.js';
+import type { NPMClient } from './npm-client.js';
+// NPMClient is mocked below, not directly imported for implementation
 
 // Mock the NPM client
 vi.mock('./npm-client.js', () => {
@@ -18,7 +19,10 @@ vi.mock('./npm-client.js', () => {
       }
     },
     NPMRegistryError: class extends Error {
-      constructor(message: string, public statusCode?: number) {
+      constructor(
+        message: string,
+        public statusCode?: number,
+      ) {
         super(message);
         this.name = 'NPMRegistryError';
       }
@@ -28,12 +32,18 @@ vi.mock('./npm-client.js', () => {
 
 describe('NPMCommand', () => {
   let command: NPMCommand;
-  let mockClient: any;
+  let mockClient: {
+    getPackage: ReturnType<typeof vi.fn>;
+    searchPackages: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
-    command = new NPMCommand();
-    // Get the mock client instance
-    mockClient = (command as any).client;
+    // Create mock client directly
+    mockClient = {
+      getPackage: vi.fn(),
+      searchPackages: vi.fn(),
+    };
+    command = new NPMCommand(mockClient as unknown as NPMClient);
   });
 
   describe('getMCPDefinitions', () => {
@@ -47,7 +57,7 @@ describe('NPMCommand', () => {
 
     it('should have correct schema for lookup tool', () => {
       const definitions = command.getMCPDefinitions();
-      const lookupTool = definitions.find(tool => tool.name === 'lookup');
+      const lookupTool = definitions.find((tool) => tool.name === 'lookup');
 
       expect(lookupTool).toBeDefined();
       expect(lookupTool?.inputSchema.properties).toHaveProperty('package');
@@ -56,7 +66,7 @@ describe('NPMCommand', () => {
 
     it('should have correct schema for search tool', () => {
       const definitions = command.getMCPDefinitions();
-      const searchTool = definitions.find(tool => tool.name === 'search');
+      const searchTool = definitions.find((tool) => tool.name === 'search');
 
       expect(searchTool).toBeDefined();
       expect(searchTool?.inputSchema.properties).toHaveProperty('query');
@@ -70,25 +80,29 @@ describe('NPMCommand', () => {
       name: 'lodash',
       version: '4.17.21',
       description: 'Lodash modular utilities.',
-      publishedAt: '2021-02-20T16:23:21.141Z'
+      publishedAt: '2021-02-20T16:23:21.141Z',
     };
 
     const mockSearchResults = {
-      results: [{
-        name: 'lodash',
-        version: '4.17.21',
-        description: 'Lodash modular utilities.',
-        date: '2021-02-20T16:23:21.141Z',
-        score: 0.95
-      }],
-      total: 1
+      results: [
+        {
+          name: 'lodash',
+          version: '4.17.21',
+          description: 'Lodash modular utilities.',
+          date: '2021-02-20T16:23:21.141Z',
+          score: 0.95,
+        },
+      ],
+      total: 1,
     };
 
     describe('lookup tool', () => {
       it('should successfully lookup a package', async () => {
         mockClient.getPackage.mockResolvedValueOnce(mockPackageInfo);
 
-        const result = await command.executeToolViaMCP('lookup', { package: 'lodash' });
+        const result = await command.executeToolViaMCP('lookup', {
+          package: 'lodash',
+        });
 
         expect(mockClient.getPackage).toHaveBeenCalledWith('lodash');
         expect(result.content[0].text).toContain('"name": "lodash"');
@@ -99,14 +113,20 @@ describe('NPMCommand', () => {
         const result = await command.executeToolViaMCP('lookup', {});
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('package parameter must be a string');
+        expect(result.content[0].text).toContain(
+          'package parameter must be a string',
+        );
       });
 
       it('should return error for invalid package parameter type', async () => {
-        const result = await command.executeToolViaMCP('lookup', { package: 123 });
+        const result = await command.executeToolViaMCP('lookup', {
+          package: 123,
+        });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('package parameter must be a string');
+        expect(result.content[0].text).toContain(
+          'package parameter must be a string',
+        );
       });
     });
 
@@ -114,9 +134,14 @@ describe('NPMCommand', () => {
       it('should successfully search for packages', async () => {
         mockClient.searchPackages.mockResolvedValueOnce(mockSearchResults);
 
-        const result = await command.executeToolViaMCP('search', { query: 'lodash' });
+        const result = await command.executeToolViaMCP('search', {
+          query: 'lodash',
+        });
 
-        expect(mockClient.searchPackages).toHaveBeenCalledWith('lodash', undefined);
+        expect(mockClient.searchPackages).toHaveBeenCalledWith(
+          'lodash',
+          undefined,
+        );
         expect(result.content[0].text).toContain('"name": "lodash"');
         expect(result.isError).toBeUndefined();
       });
@@ -124,7 +149,10 @@ describe('NPMCommand', () => {
       it('should search with custom limit', async () => {
         mockClient.searchPackages.mockResolvedValueOnce(mockSearchResults);
 
-        const result = await command.executeToolViaMCP('search', { query: 'lodash', limit: 5 });
+        const result = await command.executeToolViaMCP('search', {
+          query: 'lodash',
+          limit: 5,
+        });
 
         expect(mockClient.searchPackages).toHaveBeenCalledWith('lodash', 5);
         expect(result.isError).toBeUndefined();
@@ -134,21 +162,33 @@ describe('NPMCommand', () => {
         const result = await command.executeToolViaMCP('search', {});
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('query parameter must be a string');
+        expect(result.content[0].text).toContain(
+          'query parameter must be a string',
+        );
       });
 
       it('should return error for invalid limit parameter', async () => {
-        const result = await command.executeToolViaMCP('search', { query: 'test', limit: 'invalid' });
+        const result = await command.executeToolViaMCP('search', {
+          query: 'test',
+          limit: 'invalid',
+        });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('limit must be a number between 1 and 50');
+        expect(result.content[0].text).toContain(
+          'limit must be a number between 1 and 50',
+        );
       });
 
       it('should return error for out of range limit', async () => {
-        const result = await command.executeToolViaMCP('search', { query: 'test', limit: 100 });
+        const result = await command.executeToolViaMCP('search', {
+          query: 'test',
+          limit: 100,
+        });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('limit must be a number between 1 and 50');
+        expect(result.content[0].text).toContain(
+          'limit must be a number between 1 and 50',
+        );
       });
     });
 

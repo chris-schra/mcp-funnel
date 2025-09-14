@@ -1,10 +1,18 @@
 import { ICommand, Tool, CallToolResult } from '@mcp-funnel/commands-core';
-import { NPMClient, PackageNotFoundError, NPMRegistryError } from './npm-client.js';
+import {
+  NPMClient,
+  PackageNotFoundError,
+  NPMRegistryError,
+} from './npm-client.js';
 
 export class NPMCommand implements ICommand {
   readonly name = 'npm';
   readonly description = 'NPM package lookup and search';
-  private client = new NPMClient();
+  private client: NPMClient;
+
+  constructor(client?: NPMClient) {
+    this.client = client || new NPMClient();
+  }
 
   getMCPDefinitions(): Tool[] {
     return [
@@ -16,15 +24,15 @@ export class NPMCommand implements ICommand {
           properties: {
             package: {
               type: 'string',
-              description: 'Package name'
+              description: 'Package name',
             },
             version: {
               type: 'string',
-              description: 'Specific version (optional)'
-            }
+              description: 'Specific version (optional)',
+            },
           },
-          required: ['package']
-        }
+          required: ['package'],
+        },
       },
       {
         name: 'search',
@@ -34,107 +42,133 @@ export class NPMCommand implements ICommand {
           properties: {
             query: {
               type: 'string',
-              description: 'Search query'
+              description: 'Search query',
             },
             limit: {
               type: 'number',
-              description: 'Max results (default: 10, max: 50)'
-            }
+              description: 'Max results (default: 10, max: 50)',
+            },
           },
-          required: ['query']
-        }
-      }
+          required: ['query'],
+        },
+      },
     ];
   }
 
-  async executeToolViaMCP(toolName: string, args: Record<string, unknown>): Promise<CallToolResult> {
+  async executeToolViaMCP(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
     try {
       switch (toolName) {
-        case 'lookup':
+        case 'lookup': {
           if (typeof args.package !== 'string') {
             return {
-              content: [{
-                type: 'text',
-                text: 'Error: package parameter must be a string'
-              }],
-              isError: true
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error: package parameter must be a string',
+                },
+              ],
+              isError: true,
             };
           }
 
           const packageInfo = await this.client.getPackage(args.package);
           return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify(packageInfo, null, 2)
-            }]
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(packageInfo, null, 2),
+              },
+            ],
           };
+        }
 
-        case 'search':
+        case 'search': {
           if (typeof args.query !== 'string') {
             return {
-              content: [{
-                type: 'text',
-                text: 'Error: query parameter must be a string'
-              }],
-              isError: true
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error: query parameter must be a string',
+                },
+              ],
+              isError: true,
             };
           }
 
           const limit = args.limit as number | undefined;
-          if (limit !== undefined && (typeof limit !== 'number' || limit < 1 || limit > 50)) {
+          if (
+            limit !== undefined &&
+            (typeof limit !== 'number' || limit < 1 || limit > 50)
+          ) {
             return {
-              content: [{
-                type: 'text',
-                text: 'Error: limit must be a number between 1 and 50'
-              }],
-              isError: true
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error: limit must be a number between 1 and 50',
+                },
+              ],
+              isError: true,
             };
           }
 
           const results = await this.client.searchPackages(args.query, limit);
           return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify(results, null, 2)
-            }]
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(results, null, 2),
+              },
+            ],
           };
+        }
 
         default:
           return {
-            content: [{
-              type: 'text',
-              text: `Error: Unknown tool: ${toolName}`
-            }],
-            isError: true
+            content: [
+              {
+                type: 'text',
+                text: `Error: Unknown tool: ${toolName}`,
+              },
+            ],
+            isError: true,
           };
       }
     } catch (error) {
       if (error instanceof PackageNotFoundError) {
         return {
-          content: [{
-            type: 'text',
-            text: `Package not found: ${error.message}`
-          }],
-          isError: true
+          content: [
+            {
+              type: 'text',
+              text: `Package not found: ${error.message}`,
+            },
+          ],
+          isError: true,
         };
       }
 
       if (error instanceof NPMRegistryError) {
         return {
-          content: [{
-            type: 'text',
-            text: `NPM Registry error: ${error.message}`
-          }],
-          isError: true
+          content: [
+            {
+              type: 'text',
+              text: `NPM Registry error: ${error.message}`,
+            },
+          ],
+          isError: true,
         };
       }
 
       return {
-        content: [{
-          type: 'text',
-          text: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`
-        }],
-        isError: true
+        content: [
+          {
+            type: 'text',
+            text: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+        isError: true,
       };
     }
   }
@@ -151,7 +185,7 @@ export class NPMCommand implements ICommand {
           process.exit(1);
         }
         const result = await this.client.getPackage(packageName);
-        console.log(JSON.stringify(result, null, 2));
+        console.info(JSON.stringify(result, null, 2));
       } else if (subcommand === 'search') {
         const query = rest.join(' ');
         if (!query) {
@@ -173,7 +207,7 @@ export class NPMCommand implements ICommand {
 
         const finalQuery = rest.join(' ');
         const results = await this.client.searchPackages(finalQuery, limit);
-        console.log(JSON.stringify(results, null, 2));
+        console.info(JSON.stringify(results, null, 2));
       } else {
         console.error('Usage: npm <lookup|search> ...');
         console.error('  npm lookup <package-name>');
@@ -191,7 +225,9 @@ export class NPMCommand implements ICommand {
         process.exit(1);
       }
 
-      console.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(
+        `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+      );
       process.exit(1);
     }
   }
