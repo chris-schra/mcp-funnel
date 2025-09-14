@@ -52,7 +52,7 @@ Create or update `.mcp-funnel.json`:
   ],
   "commands": {
     "enabled": true,
-    "tools": ["validate"]
+    "list": ["ts-validate"]
   }
 }
 ```
