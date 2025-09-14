@@ -10,19 +10,12 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
  */
 export class CommandRegistry {
   private commands = new Map<string, ICommand>();
-  private commandTools = new Map<string, string>();
 
   /**
    * Register a command with the registry
    */
   register(command: ICommand): void {
     this.commands.set(command.name, command);
-
-    // Register tool name mappings for MCP execution
-    const tools = command.getMCPDefinitions();
-    for (const tool of tools) {
-      this.commandTools.set(tool.name, command.name);
-    }
   }
 
   /**
@@ -58,22 +51,10 @@ export class CommandRegistry {
   }
 
   /**
-   * Get a command by MCP tool name for tool execution
-   */
-  getCommandForMCPTool(toolName: string): ICommand | undefined {
-    const commandName = this.commandTools.get(toolName);
-    if (!commandName) {
-      return undefined;
-    }
-    return this.commands.get(commandName);
-  }
-
-  /**
    * Clear all registered commands
    */
   clear(): void {
     this.commands.clear();
-    this.commandTools.clear();
   }
 
   /**
