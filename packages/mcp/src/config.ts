@@ -14,11 +14,55 @@ export const TargetServerWithoutNameSchema = z.object({
 });
 
 export const ToolOverrideSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
+  title: z.string().optional(),
   description: z.string().optional(),
-  inputSchema: z.record(z.string(), z.any()).optional(),
-  handler: z.string().optional(),
-  disabled: z.boolean().optional(),
+  inputSchema: z
+    .object({
+      strategy: z.enum(['replace', 'merge', 'deep-merge']).default('merge'),
+      properties: z
+        .record(
+          z.string(),
+          z.record(
+            z.string(),
+            z.union([
+              z.string(),
+              z.number(),
+              z.boolean(),
+              z.array(z.string()),
+              z.record(z.string(), z.string()),
+            ]),
+          ),
+        )
+        .optional(),
+      required: z.array(z.string()).optional(),
+      propertyOverrides: z
+        .record(
+          z.string(),
+          z.object({
+            description: z.string().optional(),
+            default: z
+              .union([z.string(), z.number(), z.boolean(), z.null()])
+              .optional(),
+            enum: z
+              .array(z.union([z.string(), z.number(), z.boolean()]))
+              .optional(),
+            type: z
+              .enum(['string', 'number', 'boolean', 'object', 'array'])
+              .optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  annotations: z
+    .object({
+      category: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      deprecated: z.boolean().optional(),
+      deprecationMessage: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const ProxyConfigSchema = z.object({
@@ -45,11 +89,13 @@ export const ProxyConfigSchema = z.object({
         .describe('List of command names to enable, empty means all'),
     })
     .optional(),
-  toolOverrides: z.array(ToolOverrideSchema).optional(),
+  toolOverrides: z.record(z.string(), ToolOverrideSchema).optional(),
   overrideSettings: z
     .object({
-      enabled: z.boolean().default(true),
-      allowDisable: z.boolean().default(true),
+      allowPreRegistration: z.boolean().default(false),
+      warnOnMissingTools: z.boolean().default(true),
+      applyToDynamic: z.boolean().default(true),
+      validateOverrides: z.boolean().default(true),
     })
     .optional(),
   // @deprecated Use 'commands' instead of 'developmentTools'
