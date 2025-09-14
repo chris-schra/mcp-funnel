@@ -171,6 +171,66 @@ Available core tools:
 
 If `exposeCoreTools` is not specified, all core tools are enabled by default.
 
+## 📦 Built-in Commands
+
+MCP Funnel includes several built-in commands that provide useful functionality:
+
+### NPM Command
+
+The NPM command provides package lookup and search capabilities using the NPM registry API.
+
+**Tools exposed:**
+- `cmd__npm__lookup` - Get detailed information about a specific NPM package
+- `cmd__npm__search` - Search for packages matching a query
+
+**Configuration:**
+```json
+{
+  "commands": {
+    "npm": {
+      "enabled": true,
+      "tools": ["lookup", "search"]
+    }
+  },
+  "exposeTools": [
+    "cmd__npm__lookup",
+    "cmd__npm__search"
+  ]
+}
+```
+
+**Example usage:**
+```bash
+# CLI usage
+npx mcp-funnel run npm lookup express
+npx mcp-funnel run npm search "test framework"
+
+# MCP usage (via Claude or other clients)
+# "Look up the express package for me"
+# "Search for TypeScript testing frameworks"
+```
+
+**Features:**
+- Comprehensive package metadata including dependencies and statistics
+- Smart search with relevance scoring
+- Built-in caching (5 minutes) for improved performance
+- Error handling for missing packages and network issues
+
+For detailed documentation, see [NPM Command README](packages/commands/npm-lookup/README.md).
+
+### Multi-Tool Commands
+
+Commands can expose multiple tools, as demonstrated by the NPM command. This pattern allows:
+
+- **Logical grouping**: Related functionality under one command
+- **Shared resources**: Common caching, configuration, and error handling
+- **Flexible filtering**: Enable/disable individual tools within a command
+
+When creating custom commands, consider the multi-tool pattern for:
+- API clients (list, get, create, update operations)
+- File operations (read, write, search, validate)
+- Development tools (lint, test, build, deploy)
+
 ## 🚀 Usage
 
 ### With Claude Code CLI
