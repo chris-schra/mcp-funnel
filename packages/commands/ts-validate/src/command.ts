@@ -23,13 +23,35 @@ export class TsValidateCommand implements ICommand {
       fix: Boolean(args.fix),
       cache: args.cache !== false,
     };
-
+    const compact = args.compact === undefined ? true : Boolean(args.compact);
     const result = await validator.validate(options);
+
+    // Compact fileResults by default: include only files with results
+    let out = result as any;
+    if (compact) {
+      const compacted: Record<string, unknown[]> = {};
+      for (const [file, list] of Object.entries(result.fileResults)) {
+        if (list.length > 0) compacted[file] = list;
+      }
+      out = { ...result, fileResults: compacted };
+      if (out.processedFiles) delete out.processedFiles;
+    } else {
+      // Expand to include clean files with empty arrays
+      const expanded: Record<string, unknown[]> = { ...result.fileResults };
+      const allFiles: string[] = (result as any).processedFiles || [];
+      for (const f of allFiles) {
+        if (!Object.prototype.hasOwnProperty.call(expanded, f)) {
+          expanded[f] = [] as unknown[];
+        }
+      }
+      out = { ...result, fileResults: expanded };
+      if (out.processedFiles) delete out.processedFiles;
+    }
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(result, null, 2),
+          text: JSON.stringify(out, null, 2),
         },
       ],
     };
@@ -244,6 +266,11 @@ ${chalk.bold('Examples:')}
               type: 'boolean',
               description:
                 'Use caching for faster subsequent runs (default: true)',
+            },
+            compact: {
+              type: 'boolean',
+              description:
+                'When true (default), omit files with no results from fileResults',
             },
           },
         },

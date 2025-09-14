@@ -109,6 +109,8 @@ export interface ValidateOptions {
 export interface ValidationSummary {
   // File-centric view for AI processing
   fileResults: FileValidationResults;
+  // All files processed (used for optional expansion when compact=false)
+  processedFiles?: string[];
 
   // Summary stats
   totalFiles: number;
@@ -150,13 +152,8 @@ export class MonorepoValidator {
 
     if (files.length === 0) {
       console.warn(chalk.yellow('No files found matching the pattern'));
-      return this.createSummary([]);
+      return this.createSummary([], 0);
     }
-
-    // Initialize results structure
-    files.forEach((file) => {
-      this.fileResults[file] = [];
-    });
 
     const toolStatuses: ToolRunStatus[] = [];
 
@@ -338,7 +335,10 @@ export class MonorepoValidator {
 
     await Promise.allSettled(tasks);
 
-    return this.createSummary(toolStatuses);
+    const summary = this.createSummary(toolStatuses, files.length);
+    // Attach processed files for optional expansion in the caller (not part of public API)
+    summary.processedFiles = files;
+    return summary;
   }
 
   private async resolveFiles(options: ValidateOptions): Promise<string[]> {
@@ -680,7 +680,10 @@ export class MonorepoValidator {
     return fixableErrors[code];
   }
 
-  private createSummary(toolStatuses: ToolRunStatus[]): ValidationSummary {
+  private createSummary(
+    toolStatuses: ToolRunStatus[],
+    totalFilesCount: number,
+  ): ValidationSummary {
     const filesWithErrors = Object.keys(this.fileResults).filter(
       (file) => this.fileResults[file].length > 0,
     );
@@ -698,7 +701,8 @@ export class MonorepoValidator {
 
     return {
       fileResults: this.fileResults,
-      totalFiles: Object.keys(this.fileResults).length,
+      processedFiles: undefined, // set by caller if needed
+      totalFiles: totalFilesCount,
       filesWithErrors: filesWithErrors.length,
       fixableFiles,
       unfixableFiles,
