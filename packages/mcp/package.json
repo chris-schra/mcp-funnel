@@ -26,6 +26,10 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.cjs"
+    },
+    "./overrides": {
+      "import": "./dist/overrides/index.js",
+      "types": "./dist/types/overrides/index.d.ts"
     }
   },
   "files": [
@@ -36,6 +40,8 @@
     "dev": "tsx src/index.ts",
     "build": "tsx build.ts",
     "build:watch": "tsx build.ts --watch",
+    "test:overrides": "vitest run src/overrides/__tests__",
+    "test:overrides:watch": "vitest watch src/overrides/__tests__",
     "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {

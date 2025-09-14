@@ -123,8 +123,7 @@ Create a `.mcp-funnel.json` file in your project directory:
 
 - Use **exposeTools** alone when you want a tool visible at startup. No duplication in alwaysVisibleTools is needed for server-backed tools.
 - Use **alwaysVisibleTools** when you want a server tool to bypass all gating (expose/hide, future pattern changes). It wins over hideTools. You do not need to repeat it in exposeTools.
-- **Commands are special**: listing them requires exposeTools using commands__…; alwaysVisibleTools does not apply to dev-command listing.
-
+- **Commands are special**: listing them requires exposeTools using commands\_\_…; alwaysVisibleTools does not apply to dev-command listing.
 
 ### Filtering Patterns
 
@@ -184,24 +183,24 @@ MCP Funnel includes several built-in commands that provide useful functionality:
 The NPM command provides package lookup and search capabilities using the NPM registry API.
 
 **Tools exposed:**
+
 - `npm_lookup` - Get detailed information about a specific NPM package
 - `npm_search` - Search for packages matching a query
 
 **Configuration:**
+
 ```json
 {
   "commands": {
     "enabled": true,
     "list": ["npm"]
   },
-  "exposeTools": [
-    "commands__npm_lookup",
-    "commands__npm_search"
-  ]
+  "exposeTools": ["commands__npm_lookup", "commands__npm_search"]
 }
 ```
 
 **Example usage:**
+
 ```bash
 # CLI usage
 npx mcp-funnel run npm lookup express
@@ -213,6 +212,7 @@ npx mcp-funnel run npm search "test framework"
 ```
 
 **Features:**
+
 - Comprehensive package metadata including dependencies and statistics
 - Smart search with relevance scoring
 - Built-in caching (5 minutes) for improved performance
@@ -264,6 +264,7 @@ Commands can expose multiple tools, as demonstrated by the NPM command. This pat
 - **Flexible filtering**: Enable/disable individual tools within a command
 
 When creating custom commands, consider the multi-tool pattern for:
+
 - API clients (list, get, create, update operations)
 - File operations (read, write, search, validate)
 - Development tools (lint, test, build, deploy)
@@ -279,7 +280,7 @@ Add to your configuration (e.g. `path/to/your/project/.mcp.json`):
   "mcpServers": {
     "mcp-funnel": {
       "command": "npx",
-      "args": ["-y" ,"mcp-funnel"]
+      "args": ["-y", "mcp-funnel"]
     }
   }
 }
@@ -391,7 +392,12 @@ To start with a minimal surface and enable tools on demand:
 {
   "exposeTools": [],
   "alwaysVisibleTools": [],
-  "exposeCoreTools": ["discover_*", "get_tool_schema", "load_toolset", "bridge_tool_request"]
+  "exposeCoreTools": [
+    "discover_*",
+    "get_tool_schema",
+    "load_toolset",
+    "bridge_tool_request"
+  ]
 }
 ```
 
@@ -516,6 +522,122 @@ Many of these tools are rarely used:
 - Debug and diagnostic tools
 - Dashboard interfaces
 - Advanced embedding operations
+
+## 🎛️ Tool Overrides
+
+MCP Funnel provides powerful tool override capabilities that allow you to customize tool metadata, input schemas, and behavior without modifying the original MCP servers.
+
+### Basic Usage
+
+Add `toolOverrides` to your configuration to modify tools:
+
+```json
+{
+  "servers": [...],
+  "toolOverrides": {
+    "github__create_issue": {
+      "title": "Create GitHub Issue (Enhanced)",
+      "description": "Create a new GitHub issue with enhanced validation",
+      "inputSchema": {
+        "strategy": "merge",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "default": "medium"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Advanced Schema Override Strategies
+
+**Replace Strategy**: Completely replace the original input schema
+
+```json
+"tool_name": {
+  "inputSchema": {
+    "strategy": "replace",
+    "properties": {
+      "newField": {"type": "string"}
+    },
+    "required": ["newField"]
+  }
+}
+```
+
+**Merge Strategy** (default): Shallow merge properties
+
+```json
+"tool_name": {
+  "inputSchema": {
+    "strategy": "merge",
+    "properties": {
+      "additionalField": {"type": "string"}
+    }
+  }
+}
+```
+
+**Deep-Merge Strategy**: Recursively merge nested objects
+
+```json
+"tool_name": {
+  "inputSchema": {
+    "strategy": "deep-merge",
+    "propertyOverrides": {
+      "existingField": {
+        "description": "Enhanced description",
+        "default": "new default value"
+      }
+    }
+  }
+}
+```
+
+### Pattern-Based Overrides
+
+Use wildcards to apply overrides to multiple tools:
+
+```json
+{
+  "toolOverrides": {
+    "github__*": {
+      "annotations": {
+        "category": "github-operations",
+        "tags": ["github", "version-control"]
+      }
+    },
+    "*__delete_*": {
+      "title": "⚠️ ${originalTitle}",
+      "annotations": {
+        "deprecated": false,
+        "deprecationMessage": "Use with extreme caution"
+      }
+    }
+  }
+}
+```
+
+### Tool Annotations
+
+Enhance tools with metadata for better organization:
+
+```json
+"tool_name": {
+  "annotations": {
+    "category": "data-management",
+    "tags": ["memory", "persistence"],
+    "deprecated": true,
+    "deprecationMessage": "Use tool_name_v2 instead"
+  }
+}
+```
+
+For comprehensive examples, see [examples/override-config.json](examples/override-config.json).
 
 ### The MCP Funnel Solution
 
