@@ -283,7 +283,9 @@ export class MyMultiCommand implements ICommand {
     ];
   }
 
-  private async handleLookup(args: Record<string, unknown>): Promise<CallToolResult> {
+  private async handleLookup(
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
     const { id } = args;
     // Implementation
     return {
@@ -291,7 +293,9 @@ export class MyMultiCommand implements ICommand {
     };
   }
 
-  private async handleSearch(args: Record<string, unknown>): Promise<CallToolResult> {
+  private async handleSearch(
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
     const { query, limit = 10 } = args;
     // Implementation
     return {
@@ -346,15 +350,15 @@ Control which tools are exposed:
   "commands": {
     "npm": {
       "enabled": true,
-      "tools": ["lookup", "search"]  // Enable specific tools
+      "tools": ["lookup", "search"] // Enable specific tools
     }
   },
   "exposeTools": [
-    "cmd__npm__lookup",     // Include specific tools
+    "cmd__npm__lookup", // Include specific tools
     "cmd__npm__search"
   ],
   "hideTools": [
-    "cmd__npm__search"      // Or hide specific tools
+    "cmd__npm__search" // Or hide specific tools
   ]
 }
 ```
@@ -375,6 +379,7 @@ cmd__npm__search    # Package search
 ```
 
 **Benefits:**
+
 - Shared NPM client and caching between tools
 - Consistent error handling across operations
 - Related functionality grouped logically
@@ -391,12 +396,12 @@ Consider multi-tool commands for:
 
 ### Single vs Multi-Tool Decision
 
-| Use Single Tool When | Use Multi-Tool When |
-|---------------------|-------------------|
-| Command has one clear purpose | Command covers multiple related operations |
-| No shared state or resources | Operations share configuration/caching |
-| Unlikely to expand functionality | Planning to add related tools |
-| Simplicity is paramount | Logical grouping provides value |
+| Use Single Tool When             | Use Multi-Tool When                        |
+| -------------------------------- | ------------------------------------------ |
+| Command has one clear purpose    | Command covers multiple related operations |
+| No shared state or resources     | Operations share configuration/caching     |
+| Unlikely to expand functionality | Planning to add related tools              |
+| Simplicity is paramount          | Logical grouping provides value            |
 
 ## Examples
 

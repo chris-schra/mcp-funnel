@@ -21,7 +21,8 @@
     "test:e2e": "TEST_E2E=true vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev:npm-lookup": "tsx packages/mcp/src/cli.ts run npm lookup \"vitest\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",

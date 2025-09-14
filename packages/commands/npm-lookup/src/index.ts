@@ -1,13 +1,16 @@
 // NPM command with lookup and search functionality
 export { NPMCommand } from './command.js';
-export { NPMClient, PackageNotFoundError, NPMRegistryError } from './npm-client.js';
+export {
+  NPMClient,
+  PackageNotFoundError,
+  NPMRegistryError,
+} from './npm-client.js';
 export type {
   PackageInfo,
   SearchResults,
   SearchResultItem,
   NPMPackageResponse,
   NPMSearchResponse,
-  NPMVersionInfo,
 } from './types.js';
 
 import { NPMCommand } from './command.js';

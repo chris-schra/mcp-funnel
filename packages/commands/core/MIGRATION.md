@@ -30,7 +30,7 @@ export interface ICommand {
 
   executeToolViaMCP(
     toolName: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
   ): Promise<CallToolResult>;
   executeViaCLI(args: string[]): Promise<void>;
   getMCPDefinitions(): Tool[];
@@ -86,6 +86,7 @@ async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
 ### 2. Tool Naming in MCP
 
 With the new interface, tools are exposed in MCP with the naming convention:
+
 - Single-tool command: `cmd__[commandName]__[toolName]`
 - Multiple-tool command: `cmd__[commandName]__[tool1Name]`, `cmd__[commandName]__[tool2Name]`, etc.
 
@@ -112,7 +113,9 @@ export class TsValidateCommand implements ICommand {
     return {
       name: this.name,
       description: this.description,
-      inputSchema: { /* ... */ }
+      inputSchema: {
+        /* ... */
+      },
     };
   }
 }
@@ -127,7 +130,7 @@ export class TsValidateCommand implements ICommand {
 
   async executeToolViaMCP(
     toolName: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
   ): Promise<CallToolResult> {
     // For single-tool commands, delegate to the original implementation
     return this.executeViaMCP(args);
@@ -146,8 +149,10 @@ export class TsValidateCommand implements ICommand {
       {
         name: this.name,
         description: this.description,
-        inputSchema: { /* ... */ }
-      }
+        inputSchema: {
+          /* ... */
+        },
+      },
     ];
   }
 }
@@ -164,7 +169,7 @@ export class FileToolsCommand implements ICommand {
 
   async executeToolViaMCP(
     toolName: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
   ): Promise<CallToolResult> {
     switch (toolName) {
       case 'file-read':
@@ -183,18 +188,24 @@ export class FileToolsCommand implements ICommand {
       {
         name: 'file-read',
         description: 'Read file contents',
-        inputSchema: { /* ... */ }
+        inputSchema: {
+          /* ... */
+        },
       },
       {
         name: 'file-write',
         description: 'Write file contents',
-        inputSchema: { /* ... */ }
+        inputSchema: {
+          /* ... */
+        },
       },
       {
         name: 'file-delete',
         description: 'Delete a file',
-        inputSchema: { /* ... */ }
-      }
+        inputSchema: {
+          /* ... */
+        },
+      },
     ];
   }
 

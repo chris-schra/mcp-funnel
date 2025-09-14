@@ -5,6 +5,7 @@ A powerful NPM package discovery and information retrieval tool for MCP Funnel. 
 ## Overview
 
 The NPM command exposes two primary tools:
+
 - **lookup**: Get detailed information about a specific package
 - **search**: Find packages matching a search query
 
@@ -75,11 +76,12 @@ npx mcp-funnel run npm search --help
 
 When used via MCP (Model Context Protocol), the NPM command exposes these tools:
 
-### cmd__npm__lookup
+### cmd**npm**lookup
 
 Retrieves detailed information about a specific NPM package.
 
 **Input Schema:**
+
 ```json
 {
   "type": "object",
@@ -94,6 +96,7 @@ Retrieves detailed information about a specific NPM package.
 ```
 
 **Usage Example:**
+
 ```javascript
 // Via MCP client
 {
@@ -104,11 +107,12 @@ Retrieves detailed information about a specific NPM package.
 }
 ```
 
-### cmd__npm__search
+### cmd**npm**search
 
 Searches for NPM packages matching a query string.
 
 **Input Schema:**
+
 ```json
 {
   "type": "object",
@@ -129,6 +133,7 @@ Searches for NPM packages matching a query string.
 ```
 
 **Usage Example:**
+
 ```javascript
 // Via MCP client
 {
@@ -152,10 +157,7 @@ To use the NPM command with MCP Funnel, add it to your `.mcp-funnel.json`:
       "tools": ["lookup", "search"]
     }
   },
-  "exposeTools": [
-    "cmd__npm__lookup",
-    "cmd__npm__search"
-  ]
+  "exposeTools": ["cmd__npm__lookup", "cmd__npm__search"]
 }
 ```
 
@@ -166,7 +168,7 @@ Hide tools you don't need:
 ```json
 {
   "hideTools": [
-    "cmd__npm__search"  // Hide search, keep only lookup
+    "cmd__npm__search" // Hide search, keep only lookup
   ]
 }
 ```
@@ -204,6 +206,7 @@ Hide tools you don't need:
 The NPM command provides specific error types for different scenarios:
 
 ### PackageNotFoundError
+
 Thrown when a package doesn't exist in the NPM registry.
 
 ```json
@@ -219,6 +222,7 @@ Thrown when a package doesn't exist in the NPM registry.
 ```
 
 ### NPMRegistryError
+
 Thrown when the NPM registry API returns an error or is unreachable.
 
 ```json
@@ -246,27 +250,35 @@ The NPM command includes built-in caching to improve performance and reduce API 
 ### Common Issues
 
 **1. Package Not Found**
+
 ```
 Error: Package "typo-package-name" not found on NPM registry
 ```
+
 - **Solution**: Check the package name spelling and ensure it exists on NPM
 
 **2. Network Errors**
+
 ```
 Error: Failed to fetch package "express": getaddrinfo ENOTFOUND registry.npmjs.org
 ```
+
 - **Solution**: Check your internet connection and NPM registry accessibility
 
 **3. Rate Limiting**
+
 ```
 Error: NPM registry returned 429: Too Many Requests
 ```
+
 - **Solution**: Wait a moment and retry. The built-in caching helps reduce API calls
 
 **4. Large Search Results**
+
 ```
 Search query returned too many results, consider refining your search
 ```
+
 - **Solution**: Use more specific search terms or reduce the limit parameter
 
 ### Debug Mode

@@ -38,6 +38,7 @@ npx mcp-funnel run npm lookup jest
 ```
 
 **Expected Jest Lookup Output**:
+
 ```
 Package Information:
 
@@ -89,6 +90,7 @@ npx mcp-funnel run npm lookup express
 ```
 
 **Expected Output (Dependencies Section)**:
+
 ```
 Dependencies:
   accepts: ^1.3.8
@@ -182,6 +184,7 @@ npx mcp-funnel run npm lookup some-package-name
 ```
 
 **Look for these indicators in the output**:
+
 - Recent `Published` date
 - Active maintainers list
 - Repository URL (check GitHub activity)

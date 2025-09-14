@@ -1,14 +1,11 @@
 import { discoverCommands } from '@mcp-funnel/commands-core';
 import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function runCommand(name: string, args: string[]): Promise<void> {
   try {
     // Discover commands from packages/commands directory
-    const commandsPath = resolve(__dirname, '../../../packages/commands');
+    // Use process.cwd() to find the root and navigate to commands
+    const commandsPath = resolve(process.cwd(), 'packages/commands');
     const registry = await discoverCommands(commandsPath);
 
     const command = registry.getCommandForCLI(name);
