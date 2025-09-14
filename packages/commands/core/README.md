@@ -27,7 +27,10 @@ export class MyCommand implements ICommand {
   readonly description = 'Description of what my command does';
 
   // For MCP execution (returns JSON)
-  async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
+  async executeToolViaMCP(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
     // Process args and return result
     return {
       content: [
@@ -45,18 +48,20 @@ export class MyCommand implements ICommand {
     console.log('Command executed!');
   }
 
-  // MCP tool definition
-  getMCPDefinition(): Tool {
-    return {
-      name: this.name,
-      description: this.description,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          // Define your command's parameters
+  // MCP tool definitions
+  getMCPDefinitions(): Tool[] {
+    return [
+      {
+        name: this.name,
+        description: this.description,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            // Define your command's parameters
+          },
         },
       },
-    };
+    ];
   }
 }
 ```
@@ -74,7 +79,10 @@ export class MyCommand extends BaseCommand {
   // - parseCommonOptions() for parsing --verbose, --dry-run, etc.
   // - log() and logError() for output handling
 
-  async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
+  async executeToolViaMCP(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
     const options = this.parseCommonOptions(args);
     // Implementation
   }
@@ -85,8 +93,20 @@ export class MyCommand extends BaseCommand {
     // Implementation
   }
 
-  getMCPDefinition(): Tool {
+  getMCPDefinitions(): Tool[] {
     // Command schema
+    return [
+      {
+        name: this.name,
+        description: this.description,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            // Define your command's parameters
+          },
+        },
+      },
+    ];
   }
 }
 ```
