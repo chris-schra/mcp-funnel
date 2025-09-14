@@ -248,7 +248,7 @@ export class MonorepoValidator {
     tasks.push(
       (async () => {
         try {
-          await this.validatePrettier(files, options.fix);
+          const pr = await this.validatePrettier(files, options.fix);
           const origin: 'local' | 'bundled' =
             prettierLocal && satisfies(prettierLocal.version, COMPAT.prettier)
               ? 'local'
@@ -258,6 +258,8 @@ export class MonorepoValidator {
             status: 'ok',
             origin,
             version: origin === 'local' ? prettierLocal?.version : undefined,
+            configFound: pr.configFound,
+            reason: pr.configFound ? undefined : 'prettier-defaults',
           });
         } catch (e) {
           toolStatuses.push({
@@ -384,8 +386,12 @@ export class MonorepoValidator {
     });
   }
 
-  private async validatePrettier(files: string[], autoFix?: boolean) {
+  private async validatePrettier(
+    files: string[],
+    autoFix?: boolean,
+  ): Promise<{ configFound: boolean }> {
     const prettier = this.prettierMod!;
+    let configFound = false;
     for (const file of files) {
       // Use prettier's built-in getFileInfo to check if file should be ignored
       const fileInfo = await prettier.getFileInfo(file, {
@@ -399,7 +405,9 @@ export class MonorepoValidator {
 
       try {
         const source = await fs.readFile(file, 'utf-8');
-        const options = (await prettier.resolveConfig(file)) || {};
+        const resolved = await prettier.resolveConfig(file);
+        if (resolved) configFound = true;
+        const options = resolved || {};
 
         const formatted = await prettier.format(source, {
           ...options,
@@ -443,6 +451,7 @@ export class MonorepoValidator {
         });
       }
     }
+    return { configFound };
   }
 
   private async validateESLint(files: string[], autoFix?: boolean) {

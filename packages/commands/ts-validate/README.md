@@ -169,7 +169,8 @@ Returns a JSON result with:
       "status": "ok" | "skipped" | "failed",
       "origin": "local" | "bundled",          // present when available
       "version": "3.2.0",                       // present when available (local)
-      "reason": "no-eslint-config" | "no-tsconfig" | "no-ts-files", // when skipped
+      "configFound": true | false,               // Prettier: whether a project config was found
+      "reason": "prettier-defaults" | "no-eslint-config" | "no-tsconfig" | "no-ts-files", // 'prettier-defaults' when Prettier used defaults
       "error": "<message>"                      // when failed
     }
   ]
