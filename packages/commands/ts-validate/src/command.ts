@@ -7,6 +7,14 @@ export class TsValidateCommand implements ICommand {
   readonly name = 'ts-validate';
   readonly description = 'Run prettier, eslint, and TypeScript validation';
 
+  async executeToolViaMCP(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
+    // For single-tool commands, delegate to the original implementation
+    return this.executeViaMCP(args);
+  }
+
   async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
     const validator = new MonorepoValidator();
     const options: ValidateOptions = {
@@ -185,33 +193,35 @@ ${chalk.bold('Examples:')}
     }
   }
 
-  getMCPDefinition(): Tool {
-    return {
-      name: this.name,
-      description: this.description,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          files: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Specific files to validate',
-          },
-          glob: {
-            type: 'string',
-            description: 'Glob pattern to match files',
-          },
-          fix: {
-            type: 'boolean',
-            description: 'Automatically fix fixable issues',
-          },
-          cache: {
-            type: 'boolean',
-            description:
-              'Use caching for faster subsequent runs (default: true)',
+  getMCPDefinitions(): Tool[] {
+    return [
+      {
+        name: this.name,
+        description: this.description,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            files: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Specific files to validate',
+            },
+            glob: {
+              type: 'string',
+              description: 'Glob pattern to match files',
+            },
+            fix: {
+              type: 'boolean',
+              description: 'Automatically fix fixable issues',
+            },
+            cache: {
+              type: 'boolean',
+              description:
+                'Use caching for faster subsequent runs (default: true)',
+            },
           },
         },
       },
-    };
+    ];
   }
 }
