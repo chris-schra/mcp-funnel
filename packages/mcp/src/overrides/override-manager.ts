@@ -91,7 +91,7 @@ export class OverrideManager {
     if (!original) {
       return {
         type: 'object' as const,
-        properties: override.properties as any,
+        properties: override.properties as Record<string, JSONSchema>,
         required: override.required,
       };
     }
@@ -102,7 +102,7 @@ export class OverrideManager {
       case 'replace':
         return {
           type: 'object' as const,
-          properties: override.properties as any,
+          properties: override.properties as Record<string, JSONSchema>,
           required: override.required,
         };
 
@@ -111,7 +111,7 @@ export class OverrideManager {
           ...original,
           properties: {
             ...original.properties,
-            ...(override.properties as any),
+            ...(override.properties as Record<string, JSONSchema>),
           },
           required: override.required || original.required,
         };
@@ -131,7 +131,7 @@ export class OverrideManager {
     if (!original) {
       return {
         type: 'object' as const,
-        properties: override.properties as any,
+        properties: override.properties as Record<string, JSONSchema>,
         required: override.required,
       };
     }
@@ -140,7 +140,7 @@ export class OverrideManager {
       type: 'object' as const,
       properties: this.deepMergeProperties(
         (original.properties || {}) as Record<string, JSONSchema>,
-        (override.properties || {}) as any,
+        (override.properties || {}) as Record<string, JSONSchema>,
       ),
       required: override.required || original.required,
     };

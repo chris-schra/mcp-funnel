@@ -606,7 +606,9 @@ export class MonorepoValidator {
               this.tsNs = (await import(
                 localTs.modulePath
               )) as unknown as typeof import('typescript');
-            } catch (_e) {}
+            } catch (_e) {
+              // Ignore import errors, fall back to bundled
+            }
           }
           if (!this.tsNs) {
             this.tsNs = (await import(

@@ -136,8 +136,10 @@ describe('Override Integration', () => {
     proxy = new MCPProxy(config);
 
     // Mock the internal client mapping
-    (proxy as any)._clients = new Map([['test-server', mockClient]]);
-    (proxy as any)._toolMapping = new Map([
+    // @ts-expect-error - accessing private property for test
+    proxy._clients = new Map([['test-server', mockClient]]);
+    // @ts-expect-error - accessing private property for test
+    proxy._toolMapping = new Map([
       [
         'test-server__test_tool',
         {
@@ -189,9 +191,7 @@ describe('Override Integration', () => {
     expect(overriddenTool?.description).toBe(
       '[test-server] Overridden description',
     );
-    expect((overriddenTool as any)?._meta?.annotations?.category).toBe(
-      'testing',
-    );
+    expect(overriddenTool?._meta?.annotations?.category).toBe('testing');
   });
 
   it('should apply pattern-based overrides when listing tools', async () => {
@@ -236,8 +236,11 @@ describe('Override Integration', () => {
     proxy = new MCPProxy(config);
 
     // Mock the internal mappings
-    (proxy as any)._clients = new Map([['github', mockClient]]);
-    (proxy as any)._toolMapping = new Map([
+    // @ts-expect-error - accessing private property for test
+    proxy._clients = new Map([['github', mockClient]]);
+
+    // @ts-expect-error - accessing private property for test
+    proxy._toolMapping = new Map([
       [
         'github__list_issues',
         {
@@ -300,17 +303,15 @@ describe('Override Integration', () => {
 
     // List tools should have the override applied
     expect(listIssues).toBeDefined();
-    expect((listIssues as any)?._meta?.annotations?.category).toBe('query');
-    expect((listIssues as any)?._meta?.annotations?.tags).toEqual([
-      'read-only',
-    ]);
+    expect(listIssues?._meta?.annotations?.category).toBe('query');
+    expect(listIssues?._meta?.annotations?.tags).toEqual(['read-only']);
 
     expect(listPRs).toBeDefined();
-    expect((listPRs as any)?._meta?.annotations?.category).toBe('query');
-    expect((listPRs as any)?._meta?.annotations?.tags).toEqual(['read-only']);
+    expect(listPRs?._meta?.annotations?.category).toBe('query');
+    expect(listPRs?._meta?.annotations?.tags).toEqual(['read-only']);
 
     // Create tool should not have the override applied
     expect(createIssue).toBeDefined();
-    expect((createIssue as any)?._meta?.annotations).toBeUndefined();
+    expect(createIssue?._meta?.annotations).toBeUndefined();
   });
 });

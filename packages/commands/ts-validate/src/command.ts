@@ -1,5 +1,10 @@
 import { ICommand, Tool, CallToolResult } from '@mcp-funnel/commands-core';
-import { MonorepoValidator, ValidateOptions } from './validator.js';
+import {
+  FileValidationResults,
+  MonorepoValidator,
+  ValidateOptions,
+  ValidationSummary,
+} from './validator.js';
 import chalk from 'chalk';
 import path from 'path';
 
@@ -19,10 +24,8 @@ export class TsValidateCommand implements ICommand {
     const validator = new MonorepoValidator();
     const mcpFiles = ((): string[] | undefined => {
       if (Array.isArray(args.files)) return args.files as string[];
-      if (Array.isArray((args as any).paths))
-        return (args as any).paths as string[];
-      if (typeof (args as any).dir === 'string')
-        return [String((args as any).dir)];
+      if (Array.isArray(args.paths)) return args.paths as string[];
+      if (typeof args.dir === 'string') return [String(args.dir)];
       return undefined;
     })();
     const options: ValidateOptions = {
@@ -35,19 +38,20 @@ export class TsValidateCommand implements ICommand {
             ? true
             : Boolean(args.fix)
           : Boolean(args.autoFix),
-      cache: args.cache !== false,
+      cache: args.cache === true, // Default to false for safety
       tsConfigFile:
-        typeof (args as any).tsConfigFile === 'string'
-          ? String((args as any).tsConfigFile)
+        typeof args.tsConfigFile === 'string'
+          ? String(args.tsConfigFile)
           : undefined,
     };
     const compact = args.compact === undefined ? true : Boolean(args.compact);
     const result = await validator.validate(options);
 
     // Compact fileResults by default: include only files with results
-    let out = result as any;
+    let out: ValidationSummary & { processedFiles?: string[] } =
+      result as ValidationSummary & { processedFiles?: string[] };
     if (compact) {
-      const compacted: Record<string, unknown[]> = {};
+      const compacted: FileValidationResults = {};
       for (const [file, list] of Object.entries(result.fileResults)) {
         if (list.length > 0) compacted[file] = list;
       }
@@ -55,11 +59,13 @@ export class TsValidateCommand implements ICommand {
       if (out.processedFiles) delete out.processedFiles;
     } else {
       // Expand to include clean files with empty arrays
-      const expanded: Record<string, unknown[]> = { ...result.fileResults };
-      const allFiles: string[] = (result as any).processedFiles || [];
+      const expanded: FileValidationResults = { ...result.fileResults };
+      const allFiles: string[] =
+        (result as ValidationSummary & { processedFiles?: string[] })
+          .processedFiles || [];
       for (const f of allFiles) {
         if (!Object.prototype.hasOwnProperty.call(expanded, f)) {
-          expanded[f] = [] as unknown[];
+          expanded[f] = [];
         }
       }
       out = { ...result, fileResults: expanded };
@@ -96,8 +102,7 @@ ${chalk.bold('Usage:')} validate [options] [glob-pattern]
 ${chalk.bold('Options:')}
   --fix          Automatically fix fixable issues
   --json         Output results as JSON
-  --cache        Use caching for faster subsequent runs (default: true)
-  --no-cache     Disable caching
+  --cache        Enable ESLint caching for faster subsequent runs (default: false)
   --show-actions Show suggested actions for AI
   --help         Show this help message
 
@@ -122,7 +127,7 @@ ${chalk.bold('Examples:')}
       files: files,
       glob: globPattern,
       fix: flags.includes('--fix'),
-      cache: !flags.includes('--no-cache'),
+      cache: flags.includes('--cache'), // Default to false, enable with --cache
     };
 
     try {

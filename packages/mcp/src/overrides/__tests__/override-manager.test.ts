@@ -38,7 +38,9 @@ describe('OverrideManager', () => {
       },
     };
     const result = manager.applyOverrides(tool, 'github__list_issues');
-    expect((result as any)._meta?.annotations?.category).toBe('query');
+    expect((result._meta?.annotations as { category?: string })?.category).toBe(
+      'query',
+    );
   });
 
   it('should handle input schema merging with merge strategy', () => {

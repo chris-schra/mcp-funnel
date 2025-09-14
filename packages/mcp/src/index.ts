@@ -19,7 +19,7 @@ import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
 import { matchesPattern } from './utils/pattern-matcher.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
-import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
+import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError, getServerStreamLogPath } from './logger.js';
@@ -432,13 +432,13 @@ export class MCPProxy {
           const entries = readdirSync(scopeDir, { withFileTypes: true });
           const packageDirs = entries
             .filter(
-              (e: any) => e.isDirectory?.() && e.name.startsWith('command-'),
+              (e: Dirent) => e.isDirectory() && e.name.startsWith('command-'),
             )
-            .map((e: any) => join(scopeDir, e.name));
+            .map((e: Dirent) => join(scopeDir, e.name));
 
           const isValidCommand = (obj: unknown): obj is ICommand => {
             if (!obj || typeof obj !== 'object') return false;
-            const c = obj as any;
+            const c = obj as Record<string, unknown>;
             return (
               typeof c.name === 'string' &&
               typeof c.description === 'string' &&
@@ -453,16 +453,18 @@ export class MCPProxy {
               const pkgJsonPath = join(pkgDir, 'package.json');
               if (!existsSync(pkgJsonPath)) continue;
               const { readFile } = await import('fs/promises');
-              const pkg = JSON.parse(
-                await readFile(pkgJsonPath, 'utf-8'),
-              ) as any;
+              const pkg = JSON.parse(await readFile(pkgJsonPath, 'utf-8')) as {
+                module?: string;
+                main?: string;
+              };
               const entry = pkg.module || pkg.main;
               if (!entry) continue;
               const mod = await import(join(pkgDir, entry));
-              const candidate = (mod as any).default || (mod as any).command;
+              const modObj = mod as Record<string, unknown>;
+              const candidate = modObj.default || modObj.command;
               const chosen = isValidCommand(candidate)
                 ? candidate
-                : (Object.values(mod as any).find(isValidCommand) as
+                : (Object.values(modObj).find(isValidCommand) as
                     | ICommand
                     | undefined);
               if (
