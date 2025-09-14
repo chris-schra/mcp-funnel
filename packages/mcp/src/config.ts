@@ -13,6 +13,14 @@ export const TargetServerWithoutNameSchema = z.object({
   env: z.record(z.string(), z.string()).optional(),
 });
 
+export const ToolOverrideSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  inputSchema: z.record(z.string(), z.any()).optional(),
+  handler: z.string().optional(),
+  disabled: z.boolean().optional(),
+});
+
 export const ProxyConfigSchema = z.object({
   servers: z.union([
     z.array(TargetServerSchema),
@@ -37,6 +45,13 @@ export const ProxyConfigSchema = z.object({
         .describe('List of command names to enable, empty means all'),
     })
     .optional(),
+  toolOverrides: z.array(ToolOverrideSchema).optional(),
+  overrideSettings: z
+    .object({
+      enabled: z.boolean().default(true),
+      allowDisable: z.boolean().default(true),
+    })
+    .optional(),
   // @deprecated Use 'commands' instead of 'developmentTools'
   developmentTools: z
     .object({
@@ -54,6 +69,7 @@ export type TargetServerWithoutName = z.infer<
   typeof TargetServerWithoutNameSchema
 >;
 export type ServersRecord = Record<string, TargetServerWithoutName>;
+export type ToolOverride = z.infer<typeof ToolOverrideSchema>;
 export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
 
 /**
