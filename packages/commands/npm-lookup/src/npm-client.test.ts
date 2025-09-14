@@ -13,6 +13,74 @@ global.fetch = mockFetch;
 describe('NPMClient', () => {
   let client: NPMClient;
 
+  const mockPackageResponse: NPMPackageResponse = {
+    _id: 'react',
+    _rev: '123-abc',
+    name: 'react',
+    'dist-tags': {
+      latest: '18.2.0',
+    },
+    versions: {
+      '18.2.0': {
+        name: 'react',
+        version: '18.2.0',
+        description:
+          'React is a JavaScript library for building user interfaces.',
+        main: 'index.js',
+        dependencies: {
+          'loose-envify': '^1.1.0',
+        },
+        devDependencies: {
+          typescript: '^4.0.0',
+        },
+        _id: 'react@18.2.0',
+        _nodeVersion: '16.14.0',
+        _npmVersion: '8.5.0',
+        dist: {
+          integrity: 'sha512-xxx',
+          shasum: 'abc123',
+          tarball: 'https://registry.npmjs.org/react/-/react-18.2.0.tgz',
+          fileCount: 10,
+          unpackedSize: 1024,
+        },
+        _npmUser: {
+          name: 'testuser',
+          email: 'test@example.com',
+        },
+        maintainers: [
+          {
+            name: 'testuser',
+            email: 'test@example.com',
+          },
+        ],
+        _hasShrinkwrap: false,
+      },
+    },
+    time: {
+      created: '2011-05-27T00:00:00.000Z',
+      modified: '2023-01-01T00:00:00.000Z',
+      '18.2.0': '2022-06-14T20:00:00.000Z',
+    },
+    maintainers: [
+      {
+        name: 'testuser',
+        email: 'test@example.com',
+      },
+    ],
+    description: 'React is a JavaScript library for building user interfaces.',
+    homepage: 'https://reactjs.org',
+    keywords: ['react', 'javascript', 'ui'],
+    repository: {
+      type: 'git',
+      url: 'git+https://github.com/facebook/react.git',
+    },
+    author: 'Meta Platforms, Inc. and affiliates.',
+    license: 'MIT',
+    readme:
+      'This is a very long README content that should be truncated if it exceeds the limit...',
+    readmeFilename: 'README.md',
+  };
+
   beforeEach(() => {
     client = new NPMClient();
     mockFetch.mockClear();
@@ -23,75 +91,6 @@ describe('NPMClient', () => {
   });
 
   describe('getPackage', () => {
-    const mockPackageResponse: NPMPackageResponse = {
-      _id: 'react',
-      _rev: '123-abc',
-      name: 'react',
-      'dist-tags': {
-        latest: '18.2.0',
-      },
-      versions: {
-        '18.2.0': {
-          name: 'react',
-          version: '18.2.0',
-          description:
-            'React is a JavaScript library for building user interfaces.',
-          main: 'index.js',
-          dependencies: {
-            'loose-envify': '^1.1.0',
-          },
-          devDependencies: {
-            typescript: '^4.0.0',
-          },
-          _id: 'react@18.2.0',
-          _nodeVersion: '16.14.0',
-          _npmVersion: '8.5.0',
-          dist: {
-            integrity: 'sha512-xxx',
-            shasum: 'abc123',
-            tarball: 'https://registry.npmjs.org/react/-/react-18.2.0.tgz',
-            fileCount: 10,
-            unpackedSize: 1024,
-          },
-          _npmUser: {
-            name: 'testuser',
-            email: 'test@example.com',
-          },
-          maintainers: [
-            {
-              name: 'testuser',
-              email: 'test@example.com',
-            },
-          ],
-          _hasShrinkwrap: false,
-        },
-      },
-      time: {
-        created: '2011-05-27T00:00:00.000Z',
-        modified: '2023-01-01T00:00:00.000Z',
-        '18.2.0': '2022-06-14T20:00:00.000Z',
-      },
-      maintainers: [
-        {
-          name: 'testuser',
-          email: 'test@example.com',
-        },
-      ],
-      description:
-        'React is a JavaScript library for building user interfaces.',
-      homepage: 'https://reactjs.org',
-      keywords: ['react', 'javascript', 'ui'],
-      repository: {
-        type: 'git',
-        url: 'git+https://github.com/facebook/react.git',
-      },
-      author: 'Meta Platforms, Inc. and affiliates.',
-      license: 'MIT',
-      readme:
-        'This is a very long README content that should be truncated if it exceeds the limit...',
-      readmeFilename: 'README.md',
-    };
-
     it('should successfully fetch and transform package data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -586,6 +585,146 @@ describe('NPMClient', () => {
 
       // Still only 2 calls total
       expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('cache TTL configuration', () => {
+    it('should use default 5-minute TTL when no options provided', async () => {
+      const defaultClient = new NPMClient();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockPackageResponse,
+      });
+
+      await defaultClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Second call should use cache (within 5 minutes)
+      await defaultClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use custom TTL when provided in options', async () => {
+      const customTTL = 10 * 60 * 1000; // 10 minutes
+      const customClient = new NPMClient({ cacheTTL: customTTL });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockPackageResponse,
+      });
+
+      await customClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Second call should use cache
+      await customClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should apply custom TTL to both package and search caches', async () => {
+      const customTTL = 1000; // 1 second for testing
+      const customClient = new NPMClient({ cacheTTL: customTTL });
+
+      // Test package cache
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockPackageResponse,
+      });
+
+      await customClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Test search cache
+      const mockSearchResponse: NPMSearchResponse = {
+        objects: [],
+        total: 0,
+        time: 'Wed Jan 01 2025 00:00:00 GMT+0000 (UTC)',
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockSearchResponse,
+      });
+
+      await customClient.searchPackages('react');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      // Both should use cache for immediate calls
+      await customClient.getPackage('react');
+      await customClient.searchPackages('react');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      // Wait for cache to expire
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+
+      // Mock new responses for expired cache
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockPackageResponse,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockSearchResponse,
+      });
+
+      // After expiration, should make new calls
+      await customClient.getPackage('react');
+      await customClient.searchPackages('react');
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
+
+    it('should handle very short TTL as near-immediate cache expiration', async () => {
+      const shortTTLClient = new NPMClient({ cacheTTL: 1 }); // 1ms TTL
+
+      // Mock different responses to verify each call is made
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => mockPackageResponse,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => mockPackageResponse,
+        });
+
+      // With 1ms TTL, cache should expire very quickly
+      await shortTTLClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Wait for cache to expire
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      await shortTTLClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle very large TTL values', async () => {
+      const largeTTL = 24 * 60 * 60 * 1000; // 24 hours
+      const largeClient = new NPMClient({ cacheTTL: largeTTL });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockPackageResponse,
+      });
+
+      await largeClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Should still use cache for subsequent calls
+      await largeClient.getPackage('react');
+      await largeClient.getPackage('react');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 });

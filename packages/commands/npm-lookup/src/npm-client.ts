@@ -10,6 +10,14 @@ import type {
 import { MAX_SEARCH_RESULTS } from './types.js';
 
 /**
+ * Configuration options for NPMClient
+ */
+interface NPMClientOptions {
+  /** Cache TTL in milliseconds (default: 5 minutes) */
+  cacheTTL?: number;
+}
+
+/**
  * Error thrown when an NPM package is not found
  */
 export class PackageNotFoundError extends Error {
@@ -38,8 +46,14 @@ export class NPMRegistryError extends Error {
 export class NPMClient {
   private readonly baseUrl = 'https://registry.npmjs.org';
   private readonly searchUrl = 'https://registry.npmjs.org/-/v1/search';
-  private readonly packageCache = new SimpleCache<PackageInfo>(5 * 60 * 1000); // 5 minutes
-  private readonly searchCache = new SimpleCache<SearchResults>(5 * 60 * 1000); // 5 minutes
+  private readonly packageCache: SimpleCache<PackageInfo>;
+  private readonly searchCache: SimpleCache<SearchResults>;
+
+  constructor(options: NPMClientOptions = {}) {
+    const ttl = options.cacheTTL || 5 * 60 * 1000; // Default 5 minutes
+    this.packageCache = new SimpleCache<PackageInfo>(ttl);
+    this.searchCache = new SimpleCache<SearchResults>(ttl);
+  }
 
   /**
    * Lookup a package by name
