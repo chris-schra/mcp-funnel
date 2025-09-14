@@ -1,4 +1,9 @@
 /**
+ * Maximum number of search results that can be requested
+ */
+export const MAX_SEARCH_RESULTS = 50;
+
+/**
  * NPM package information as returned by our client
  */
 export interface PackageInfo {
@@ -65,15 +70,19 @@ export interface NPMPackageResponse {
     type: string;
     url: string;
   };
-  author?: string | {
-    name: string;
-    email?: string;
-    url?: string;
-  };
-  license?: string | {
-    type: string;
-    url?: string;
-  };
+  author?:
+    | string
+    | {
+        name: string;
+        email?: string;
+        url?: string;
+      };
+  license?:
+    | string
+    | {
+        type: string;
+        url?: string;
+      };
   readme?: string;
   readmeFilename?: string;
 }
@@ -92,15 +101,19 @@ export interface NPMVersionInfo {
     url: string;
   };
   keywords?: string[];
-  author?: string | {
-    name: string;
-    email?: string;
-    url?: string;
-  };
-  license?: string | {
-    type: string;
-    url?: string;
-  };
+  author?:
+    | string
+    | {
+        name: string;
+        email?: string;
+        url?: string;
+      };
+  license?:
+    | string
+    | {
+        type: string;
+        url?: string;
+      };
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;

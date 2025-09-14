@@ -411,7 +411,7 @@ describe('NPMClient', () => {
       );
     });
 
-    it('should clamp limit to maximum of 250', async () => {
+    it('should clamp limit to maximum of 50', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -421,7 +421,7 @@ describe('NPMClient', () => {
       await client.searchPackages('react', 300);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://registry.npmjs.org/-/v1/search?text=react&size=250',
+        'https://registry.npmjs.org/-/v1/search?text=react&size=50',
       );
     });
 

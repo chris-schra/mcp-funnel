@@ -4,6 +4,7 @@ import {
   PackageNotFoundError,
   NPMRegistryError,
 } from './npm-client.js';
+import { MAX_SEARCH_RESULTS } from './types.js';
 
 export class NPMCommand implements ICommand {
   readonly name = 'npm';
@@ -46,7 +47,7 @@ export class NPMCommand implements ICommand {
             },
             limit: {
               type: 'number',
-              description: 'Max results (default: 10, max: 50)',
+              description: `Max results (default: 10, max: ${MAX_SEARCH_RESULTS})`,
             },
           },
           required: ['query'],
@@ -101,13 +102,15 @@ export class NPMCommand implements ICommand {
           const limit = args.limit as number | undefined;
           if (
             limit !== undefined &&
-            (typeof limit !== 'number' || limit < 1 || limit > 50)
+            (typeof limit !== 'number' ||
+              limit < 1 ||
+              limit > MAX_SEARCH_RESULTS)
           ) {
             return {
               content: [
                 {
                   type: 'text',
-                  text: 'Error: limit must be a number between 1 and 50',
+                  text: `Error: limit must be a number between 1 and ${MAX_SEARCH_RESULTS}`,
                 },
               ],
               isError: true,
@@ -199,7 +202,7 @@ export class NPMCommand implements ICommand {
         if (limitIndex !== -1 && limitIndex < rest.length - 1) {
           const limitValue = parseInt(rest[limitIndex + 1], 10);
           if (!isNaN(limitValue)) {
-            limit = Math.min(Math.max(1, limitValue), 50);
+            limit = Math.min(Math.max(1, limitValue), MAX_SEARCH_RESULTS);
           }
           // Remove --limit and its value from the query
           rest.splice(limitIndex, 2);
