@@ -352,13 +352,17 @@ Examples:
 
 ### MCP Tool Registration
 
-Multi-tool commands expose tools with the pattern `cmd__commandname__toolname`:
+Dev commands expose tools with compact names:
 
 ```typescript
 // For a command named 'npm' with tools 'lookup' and 'search'
 // Tools are exposed as:
-// - cmd__npm__lookup
-// - cmd__npm__search
+// - npm_lookup
+// - npm_search
+
+// For a single-tool command named 'ts-validate'
+// Tool is exposed as:
+// - ts-validate
 ```
 
 ### Configuration
@@ -372,11 +376,11 @@ Control which tools are exposed:
     "list": ["npm"]
   },
   "exposeTools": [
-    "cmd__npm__lookup", // Include specific tools
-    "cmd__npm__search"
+    "development-commands__npm_lookup", // Include specific tools
+    "development-commands__npm_search"
   ],
   "hideTools": [
-    "cmd__npm__search" // Or hide specific tools
+    "development-commands__npm_search" // Or hide specific tools
   ]
 }
 ```
@@ -392,8 +396,8 @@ npx mcp-funnel run npm search "test framework"
 npx mcp-funnel run npm --help
 
 # MCP tools exposed
-cmd__npm__lookup    # Package lookup
-cmd__npm__search    # Package search
+npm_lookup    # Package lookup
+npm_search    # Package search
 ```
 
 **Benefits:**

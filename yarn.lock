@@ -874,6 +874,7 @@ __metadata:
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
     "@types/node": "npm:^24.3.1"
     esbuild: "npm:^0.25.9"
+    mcp-funnel: "workspace:^"
     tsx: "npm:^4.20.5"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -886,11 +887,13 @@ __metadata:
     "@mcp-funnel/commands-core": "workspace:^"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
     "@types/node": "npm:^24.3.1"
+    "@types/semver": "npm:^7.7.1"
     chalk: "npm:^5.3.0"
     esbuild: "npm:^0.25.9"
     eslint: "npm:^9.10.0"
     globby: "npm:^14.0.0"
     prettier: "npm:^3.1.0"
+    semver: "npm:^7.6.3"
     tsx: "npm:^4.20.5"
     typescript: "npm:^5.9.2"
     vitest: "npm:^3.2.4"
@@ -1453,6 +1456,13 @@ __metadata:
     "@types/prop-types": "npm:*"
     csstype: "npm:^3.0.2"
   checksum: 10c0/9e188fa8e50f172cf647fc48fea2e04d88602afff47190b697de281a8ac88df9ee059864757a2a438ff599eaf9276d9a9e0e60585e88f7d57f01a2e4877d37ec
+  languageName: node
+  linkType: hard
+
+"@types/semver@npm:^7.7.1":
+  version: 7.7.1
+  resolution: "@types/semver@npm:7.7.1"
+  checksum: 10c0/c938aef3bf79a73f0f3f6037c16e2e759ff40c54122ddf0b2583703393d8d3127130823facb880e694caa324eb6845628186aac1997ee8b31dc2d18fafe26268
   languageName: node
   linkType: hard
 
@@ -3799,7 +3809,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"mcp-funnel@workspace:*, mcp-funnel@workspace:packages/mcp":
+"mcp-funnel@workspace:*, mcp-funnel@workspace:^, mcp-funnel@workspace:packages/mcp":
   version: 0.0.0-use.local
   resolution: "mcp-funnel@workspace:packages/mcp"
   dependencies:
@@ -4898,7 +4908,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.5.3, semver@npm:^7.6.0":
+"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.5.3, semver@npm:^7.6.0, semver@npm:^7.6.3":
   version: 7.7.2
   resolution: "semver@npm:7.7.2"
   bin:

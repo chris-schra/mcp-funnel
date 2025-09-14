@@ -90,7 +90,9 @@ With the new interface, tools are exposed in MCP with the naming convention:
 - Single-tool command: `cmd__[commandName]__[toolName]`
 - Multiple-tool command: `cmd__[commandName]__[tool1Name]`, `cmd__[commandName]__[tool2Name]`, etc.
 
-For single-tool commands where the command name and tool name are the same (like ts-validate), the MCP tool name becomes `cmd__ts-validate__ts-validate`.
+For single-tool commands where the command name and tool name are the same (like ts-validate), the MCP tool name becomes `ts-validate`. Legacy aliases `cmd__ts-validate` and `cmd__ts-validate__ts-validate` are still accepted for calls but are no longer listed.
+
+For multi-tool commands, the MCP tools are compacted to `<command>_<tool>` (e.g., `npm_lookup`, `npm_search`). Legacy aliases `cmd__<command>__<tool>` are still accepted for calls but are no longer listed.
 
 ## Example: ts-validate Migration
 

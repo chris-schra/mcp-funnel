@@ -180,21 +180,19 @@ MCP Funnel includes several built-in commands that provide useful functionality:
 The NPM command provides package lookup and search capabilities using the NPM registry API.
 
 **Tools exposed:**
-- `cmd__npm__lookup` - Get detailed information about a specific NPM package
-- `cmd__npm__search` - Search for packages matching a query
+- `npm_lookup` - Get detailed information about a specific NPM package
+- `npm_search` - Search for packages matching a query
 
 **Configuration:**
 ```json
 {
   "commands": {
-    "npm": {
-      "enabled": true,
-      "tools": ["lookup", "search"]
-    }
+    "enabled": true,
+    "list": ["npm"]
   },
   "exposeTools": [
-    "cmd__npm__lookup",
-    "cmd__npm__search"
+    "development-commands__npm_lookup",
+    "development-commands__npm_search"
   ]
 }
 ```

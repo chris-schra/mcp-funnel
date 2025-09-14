@@ -351,10 +351,21 @@ export class MCPProxy {
             enabledCommands.includes(command.name))
         ) {
           const mcpDefs = command.getMCPDefinitions();
+          const isSingle = mcpDefs.length === 1;
+          const singleMatchesCommand =
+            isSingle && mcpDefs[0]?.name === command.name;
 
           // Register each tool from this command
           for (const mcpDef of mcpDefs) {
-            const prefixedName = `cmd__${command.name}__${mcpDef.name}`;
+            // Prefer compact name for single-tool commands where tool name equals command name
+            const useCompact =
+              singleMatchesCommand && mcpDef.name === command.name;
+            // New display naming:
+            // - Single-tool command (tool name == command name): `ts-validate`
+            // - Multi-tool command: `<command>_<tool>` e.g., `npm_lookup`
+            const displayName = useCompact
+              ? `${command.name}`
+              : `${command.name}_${mcpDef.name}`;
 
             // Add to command cache with prefix
             // Commands must have descriptions per their MCP definition
@@ -363,23 +374,41 @@ export class MCPProxy {
                 `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
               );
             }
-            this._toolDescriptionCache.set(prefixedName, {
+            this._toolDescriptionCache.set(displayName, {
               serverName: 'development-commands',
               description: mcpDef.description,
             });
 
-            this._toolDefinitionCache.set(prefixedName, {
+            this._toolDefinitionCache.set(displayName, {
               serverName: 'development-commands',
-              tool: { ...mcpDef, name: prefixedName },
+              tool: { ...mcpDef, name: displayName },
             });
 
-            // Store mapping for execution
-            this._toolMapping.set(prefixedName, {
+            // Store mapping for execution (canonical name)
+            this._toolMapping.set(displayName, {
               client: null, // Development commands don't use a client
               originalName: mcpDef.name,
               toolName: mcpDef.name, // Store the specific tool name
               command, // Store the actual command instance
             });
+
+            // Backward-compatible legacy aliases (old cmd__* names)
+            const legacyLong = `cmd__${command.name}__${mcpDef.name}`;
+            this._toolMapping.set(legacyLong, {
+              client: null,
+              originalName: mcpDef.name,
+              toolName: mcpDef.name,
+              command,
+            });
+            if (useCompact) {
+              const legacyShort = `cmd__${command.name}`;
+              this._toolMapping.set(legacyShort, {
+                client: null,
+                originalName: mcpDef.name,
+                toolName: mcpDef.name,
+                command,
+              });
+            }
           }
         }
       }
@@ -591,19 +620,11 @@ export class MCPProxy {
         }
       }
 
-      // Add development commands from cache
+      // Add development command tools from cache
       for (const [toolName, definition] of this._toolDefinitionCache) {
-        if (
-          toolName.startsWith('cmd__') &&
-          definition.serverName === 'development-commands'
-        ) {
+        if (definition.serverName === 'development-commands') {
           // Check if command should be exposed based on configuration
-          if (
-            this.shouldExposeTool(
-              'development-commands',
-              toolName.replace('cmd__', ''),
-            )
-          ) {
+          if (this.shouldExposeTool('development-commands', toolName)) {
             allTools.push(definition.tool);
           }
         }
@@ -616,8 +637,8 @@ export class MCPProxy {
     this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
 
-      // Check if this is a development command
-      if (toolName.startsWith('cmd__')) {
+      // Development command invocation based on mapping
+      {
         const mapping = this._toolMapping.get(toolName);
         if (mapping && mapping.command) {
           try {

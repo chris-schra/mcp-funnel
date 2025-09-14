@@ -76,7 +76,7 @@ Create or update `.mcp-funnel.json`:
 Claude, please run TypeScript validation on the packages/mcp directory and fix any issues.
 ```
 
-Claude will see the command as `cmd__validate` and can call it with:
+Claude will see the tool as `ts-validate` and can call it with:
 
 ```json
 {
@@ -160,6 +160,16 @@ Returns a JSON result with:
       "action": "prettier-fix",
       "description": "Run prettier --write on this file"
     }
+  ],
+  "toolStatuses": [
+    {
+      "tool": "prettier",
+      "status": "ok" | "skipped" | "failed",
+      "origin": "local" | "bundled",          // present when available
+      "version": "3.2.0",                       // present when available (local)
+      "reason": "no-eslint-config" | "no-tsconfig" | "no-ts-files", // when skipped
+      "error": "<message>"                      // when failed
+    }
   ]
 }
 ```
@@ -234,10 +244,23 @@ The command respects your project's configuration files:
 - `.prettierignore` - Files to ignore for Prettier
 - `.eslintignore` - Files to ignore for ESLint
 
+## Toolchain Resolution and Compatibility
+
+- Local-first resolution is used for toolchains:
+  - Prettier and ESLint are resolved from the current working directory (project-local) when available and compatible.
+  - TypeScript is resolved per tsconfig.json group from the tsconfig's directory when available and compatible; otherwise the bundled TypeScript is used.
+- Compatibility policy for local toolchains (same-major preference):
+  - Prettier: >= 3.0.0 < 4.0.0
+  - ESLint:   >= 9.0.0 < 10.0.0
+  - TypeScript: >= 5.0.0 < 6.0.0
+- If no compatible local version is found, the bundled dependency included with this command is used.
+- The JSON summary includes `toolStatuses` entries with `origin` (local|bundled) and `version` when available, plus `reason` when a tool is skipped (e.g., `no-eslint-config`, `no-tsconfig`, `no-ts-files`).
+
 ## Exit Codes
 
-- `0` - All validations passed
-- `1` - Validation errors found
+- `0` - All validations passed and no tool failures
+- `1` - Validation errors found (from Prettier/ESLint/TypeScript)
+- `2` - No file errors, but at least one tool failed to run (infrastructure issue)
 
 ## Performance
 

@@ -9,7 +9,7 @@ The NPM command exposes two primary tools:
 - **lookup**: Get detailed information about a specific package
 - **search**: Find packages matching a search query
 
-When exposed via MCP, these tools are prefixed as `cmd__npm__lookup` and `cmd__npm__search`.
+When exposed via MCP, these tools appear as `npm_lookup` and `npm_search`.
 
 ## Features
 
@@ -76,7 +76,7 @@ npx mcp-funnel run npm search --help
 
 When used via MCP (Model Context Protocol), the NPM command exposes these tools:
 
-### `cmd__npm__lookup`
+### `npm_lookup`
 
 Retrieves detailed information about a specific NPM package.
 
@@ -100,14 +100,14 @@ Retrieves detailed information about a specific NPM package.
 ```javascript
 // Via MCP client
 {
-  "tool": "cmd__npm__lookup",
+  "tool": "npm_lookup",
   "arguments": {
     "packageName": "express"
   }
 }
 ```
 
-### `cmd__npm__search`
+### `npm_search`
 
 Searches for NPM packages matching a query string.
 
@@ -137,7 +137,7 @@ Searches for NPM packages matching a query string.
 ```javascript
 // Via MCP client
 {
-  "tool": "cmd__npm__search",
+  "tool": "npm_search",
   "arguments": {
     "query": "typescript testing framework",
     "limit": 10
@@ -155,7 +155,10 @@ To use the NPM command with MCP Funnel, add it to your `.mcp-funnel.json`:
     "enabled": true,
     "list": ["npm"]
   },
-  "exposeTools": ["cmd__npm__lookup", "cmd__npm__search"]
+  "exposeTools": [
+    "development-commands__npm_lookup",
+    "development-commands__npm_search"
+  ]
 }
 ```
 
@@ -170,9 +173,9 @@ The `commands.list` array specifies which commands to enable. To use multiple co
     "list": ["npm", "ts-validate"]
   },
   "exposeTools": [
-    "cmd__npm__lookup",
-    "cmd__npm__search",
-    "cmd__ts-validate__ts-validate"
+    "development-commands__npm_lookup",
+    "development-commands__npm_search",
+    "development-commands__ts-validate"
   ]
 }
 ```
@@ -186,7 +189,7 @@ To hide specific NPM tools you don't need:
     "list": ["npm"]
   },
   "hideTools": [
-    "cmd__npm__search" // Hide search, keep only lookup
+    "development-commands__npm_search" // Hide search, keep only lookup
   ]
 }
 ```

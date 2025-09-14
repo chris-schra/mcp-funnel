@@ -96,16 +96,42 @@ ${chalk.bold('Examples:')}
         // Human-readable output
         if (Object.keys(summary.fileResults).length === 0) {
           console.info(chalk.green('✨ No files to validate'));
-          process.exit(0);
+          // Still report tool statuses if any were skipped/failed
+          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          if (failed.length > 0 || skipped.length > 0) {
+            console.info(chalk.blue.bold('\n🛠 Tool Status:'));
+            for (const s of [...failed, ...skipped]) {
+              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
+              const reason = s.reason ? ` (${s.reason})` : '';
+              const err = s.error ? `: ${s.error}` : '';
+              console.info(`  - ${s.tool}: ${label}${reason}${err}`);
+            }
+          }
+          const exitCode = failed.length > 0 ? 2 : 0;
+          process.exit(exitCode);
         }
 
         const hasIssues = Object.values(summary.fileResults).some(
           (r) => r.length > 0,
         );
 
+        const anyFailed = summary.toolStatuses?.some((s) => s.status === 'failed');
         if (!hasIssues) {
           console.info(chalk.green('✅ All files passed validation!'));
-          process.exit(0);
+          // Report tool statuses if any skipped/failed
+          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          if (failed.length > 0 || skipped.length > 0) {
+            console.info(chalk.blue.bold('\n🛠 Tool Status:'));
+            for (const s of [...failed, ...skipped]) {
+              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
+              const reason = s.reason ? ` (${s.reason})` : '';
+              const err = s.error ? `: ${s.error}` : '';
+              console.info(`  - ${s.tool}: ${label}${reason}${err}`);
+            }
+          }
+          process.exit(anyFailed ? 2 : 0);
         }
 
         console.info(chalk.blue.bold('\nValidation Results:\n'));
@@ -182,7 +208,7 @@ ${chalk.bold('Examples:')}
         }
 
         // Exit code
-        process.exit(summary.filesWithErrors > 0 ? 1 : 0);
+        process.exit(summary.filesWithErrors > 0 ? 1 : anyFailed ? 2 : 0);
       }
     } catch (error: Error | unknown) {
       console.error(
