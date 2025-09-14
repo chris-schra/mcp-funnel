@@ -6,15 +6,28 @@ import {
 } from './npm-client.js';
 import { MAX_SEARCH_RESULTS } from './types.js';
 
+/**
+ * NPM command implementation for MCP Funnel
+ * @description Provides package lookup and search functionality via NPM Registry API
+ * @implements {ICommand}
+ */
 export class NPMCommand implements ICommand {
   readonly name = 'npm';
   readonly description = 'NPM package lookup and search';
   private client: NPMClient;
 
+  /**
+   * Create NPM command instance
+   * @param client - Optional NPMClient instance for dependency injection
+   */
   constructor(client?: NPMClient) {
     this.client = client || new NPMClient();
   }
 
+  /**
+   * Get MCP tool definitions for this command
+   * @returns Array of tool definitions for lookup and search operations
+   */
   getMCPDefinitions(): Tool[] {
     return [
       {
@@ -23,7 +36,7 @@ export class NPMCommand implements ICommand {
         inputSchema: {
           type: 'object',
           properties: {
-            package: {
+            packageName: {
               type: 'string',
               description: 'Package name',
             },
@@ -32,7 +45,7 @@ export class NPMCommand implements ICommand {
               description: 'Specific version (optional)',
             },
           },
-          required: ['package'],
+          required: ['packageName'],
         },
       },
       {
@@ -56,6 +69,12 @@ export class NPMCommand implements ICommand {
     ];
   }
 
+  /**
+   * Execute a tool via MCP protocol
+   * @param toolName - Name of the tool to execute ('lookup' or 'search')
+   * @param args - Tool arguments containing packageName, query, limit, etc.
+   * @returns Tool execution result with package data or error information
+   */
   async executeToolViaMCP(
     toolName: string,
     args: Record<string, unknown>,
@@ -63,19 +82,19 @@ export class NPMCommand implements ICommand {
     try {
       switch (toolName) {
         case 'lookup': {
-          if (typeof args.package !== 'string') {
+          if (typeof args.packageName !== 'string') {
             return {
               content: [
                 {
                   type: 'text',
-                  text: 'Error: package parameter must be a string',
+                  text: 'Error: packageName parameter must be a string',
                 },
               ],
               isError: true,
             };
           }
 
-          const packageInfo = await this.client.getPackage(args.package);
+          const packageInfo = await this.client.getPackage(args.packageName);
           return {
             content: [
               {
@@ -176,6 +195,10 @@ export class NPMCommand implements ICommand {
     }
   }
 
+  /**
+   * Execute command via CLI interface
+   * @param args - Command line arguments array
+   */
   async executeViaCLI(args: string[]): Promise<void> {
     try {
       // Parse subcommand: npm lookup <package> or npm search <query>

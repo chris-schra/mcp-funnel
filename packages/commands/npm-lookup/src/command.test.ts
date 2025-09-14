@@ -60,8 +60,8 @@ describe('NPMCommand', () => {
       const lookupTool = definitions.find((tool) => tool.name === 'lookup');
 
       expect(lookupTool).toBeDefined();
-      expect(lookupTool?.inputSchema.properties).toHaveProperty('package');
-      expect(lookupTool?.inputSchema.required).toContain('package');
+      expect(lookupTool?.inputSchema.properties).toHaveProperty('packageName');
+      expect(lookupTool?.inputSchema.required).toContain('packageName');
     });
 
     it('should have correct schema for search tool', () => {
@@ -101,7 +101,7 @@ describe('NPMCommand', () => {
         mockClient.getPackage.mockResolvedValueOnce(mockPackageInfo);
 
         const result = await command.executeToolViaMCP('lookup', {
-          package: 'lodash',
+          packageName: 'lodash',
         });
 
         expect(mockClient.getPackage).toHaveBeenCalledWith('lodash');
@@ -109,23 +109,23 @@ describe('NPMCommand', () => {
         expect(result.isError).toBeUndefined();
       });
 
-      it('should return error for missing package parameter', async () => {
+      it('should return error for missing packageName parameter', async () => {
         const result = await command.executeToolViaMCP('lookup', {});
 
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain(
-          'package parameter must be a string',
+          'packageName parameter must be a string',
         );
       });
 
-      it('should return error for invalid package parameter type', async () => {
+      it('should return error for invalid packageName parameter type', async () => {
         const result = await command.executeToolViaMCP('lookup', {
-          package: 123,
+          packageName: 123,
         });
 
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain(
-          'package parameter must be a string',
+          'packageName parameter must be a string',
         );
       });
     });
