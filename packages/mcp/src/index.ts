@@ -921,9 +921,21 @@ export class MCPProxy {
   get server() {
     return this._server;
   }
+
+  get overrideManager() {
+    return this._overrideManager;
+  }
+
+  set overrideManager(manager: OverrideManager | undefined) {
+    this._overrideManager = manager;
+  }
 }
 
 // Export for library usage
 export { ProxyConfigSchema, normalizeServers } from './config.js';
 export type { ProxyConfig, ServersRecord } from './config.js';
-export { OverrideManager, OverrideValidator } from './overrides/index.js';
+export {
+  OverrideManager,
+  OverrideValidator,
+  DynamicOverrideManager,
+} from './overrides/index.js';
