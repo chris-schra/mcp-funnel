@@ -1,11 +1,14 @@
-import { ToolOverride } from '../config.js';
+import { ToolOverride, ProxyConfig } from '../config.js';
 import { OverrideManager } from './override-manager.js';
+import { OverrideValidator } from './override-validator.js';
 
 /**
  * Interface for objects that have an override manager and need cache refreshing
  */
 export interface MCPProxy {
   _overrideManager?: OverrideManager;
+  _overrideValidator?: OverrideValidator;
+  _config: ProxyConfig;
   populateToolCaches(): Promise<void>;
   _server: {
     sendToolListChanged(): void;
@@ -27,6 +30,52 @@ export class DynamicOverrideManager {
   async updateOverrides(
     overrides: Record<string, ToolOverride>,
   ): Promise<void> {
+    // Check if applyToDynamic is enabled and validation should be performed
+    const applyToDynamic = this.proxy._config.overrideSettings?.applyToDynamic;
+    const validateOverrides =
+      this.proxy._config.overrideSettings?.validateOverrides;
+
+    if (applyToDynamic && validateOverrides && this.proxy._overrideValidator) {
+      // Validate each override against a dummy tool to check for obvious issues
+      for (const [toolName, override] of Object.entries(overrides)) {
+        // Create a minimal dummy tool for validation
+        const dummyTool = {
+          name: toolName,
+          description: 'Dynamic override validation dummy',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {},
+          },
+        };
+
+        // Apply the override to the dummy tool
+        const tempManager = new OverrideManager({ [toolName]: override });
+        const overriddenTool = tempManager.applyOverrides(dummyTool, toolName);
+
+        // Validate the result
+        const validation = this.proxy._overrideValidator.validateOverride(
+          dummyTool,
+          overriddenTool,
+        );
+
+        if (!validation.valid) {
+          console.error(
+            `[DynamicOverrideManager] Invalid dynamic override for ${toolName}:`,
+            validation.errors,
+          );
+          // Skip this override
+          continue;
+        }
+
+        if (validation.warnings.length > 0) {
+          console.warn(
+            `[DynamicOverrideManager] Dynamic override warnings for ${toolName}:`,
+            validation.warnings,
+          );
+        }
+      }
+    }
+
     // Update our tracked state
     this.currentOverrides = { ...this.currentOverrides, ...overrides };
 
@@ -48,6 +97,50 @@ export class DynamicOverrideManager {
    * @param override - The override configuration
    */
   async setOverride(toolName: string, override: ToolOverride): Promise<void> {
+    // Check if applyToDynamic is enabled and validation should be performed
+    const applyToDynamic = this.proxy._config.overrideSettings?.applyToDynamic;
+    const validateOverrides =
+      this.proxy._config.overrideSettings?.validateOverrides;
+
+    if (applyToDynamic && validateOverrides && this.proxy._overrideValidator) {
+      // Create a minimal dummy tool for validation
+      const dummyTool = {
+        name: toolName,
+        description: 'Dynamic override validation dummy',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {},
+        },
+      };
+
+      // Apply the override to the dummy tool
+      const tempManager = new OverrideManager({ [toolName]: override });
+      const overriddenTool = tempManager.applyOverrides(dummyTool, toolName);
+
+      // Validate the result
+      const validation = this.proxy._overrideValidator.validateOverride(
+        dummyTool,
+        overriddenTool,
+      );
+
+      if (!validation.valid) {
+        console.error(
+          `[DynamicOverrideManager] Invalid dynamic override for ${toolName}:`,
+          validation.errors,
+        );
+        throw new Error(
+          `Invalid override for ${toolName}: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      if (validation.warnings.length > 0) {
+        console.warn(
+          `[DynamicOverrideManager] Dynamic override warnings for ${toolName}:`,
+          validation.warnings,
+        );
+      }
+    }
+
     await this.updateOverrides({ [toolName]: override });
   }
 

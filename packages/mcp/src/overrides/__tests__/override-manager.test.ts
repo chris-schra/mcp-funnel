@@ -149,7 +149,7 @@ describe('OverrideManager', () => {
             },
           },
         },
-      } as any, // Bypass type checking to test the deep merge functionality
+      } as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- Bypass type checking to test the deep merge functionality
     });
 
     const tool: Tool = {
@@ -251,12 +251,12 @@ describe('OverrideManager', () => {
                   properties: {
                     value: { type: 'string' },
                   },
-                } as Record<string, unknown>,
+                },
               },
-            } as Record<string, unknown>,
+            },
           },
         },
-      },
+      } as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- Bypass type checking for this test
     });
 
     // Create circular reference in the original tool

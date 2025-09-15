@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { DynamicOverrideManager, MCPProxy } from '../dynamic-overrides.js';
 import { OverrideManager } from '../override-manager.js';
-import { ToolOverride } from '../../config.js';
+import { ToolOverride, ProxyConfig } from '../../config.js';
 
 // Mock the OverrideManager
 vi.mock('../override-manager.js', () => ({
@@ -29,6 +29,16 @@ describe('DynamicOverrideManager', () => {
 
     mockProxy = {
       _overrideManager: undefined,
+      _overrideValidator: undefined,
+      _config: {
+        servers: [],
+        overrideSettings: {
+          allowPreRegistration: false,
+          warnOnMissingTools: true,
+          applyToDynamic: true,
+          validateOverrides: true,
+        },
+      } as ProxyConfig,
       populateToolCaches: vi.fn().mockResolvedValue(undefined),
       _server: {
         sendToolListChanged: vi.fn(),
