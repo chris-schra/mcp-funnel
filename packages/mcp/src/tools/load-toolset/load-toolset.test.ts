@@ -47,7 +47,6 @@ describe('LoadToolset', () => {
       dynamicallyEnabledTools: new Set<string>(),
       config: {
         servers: [],
-        hackyDiscovery: true,
         toolsets: {
           reviewer: ['github__*_pull_request*', 'github__update_issue'],
           coder: ['github__create_pull_request'],

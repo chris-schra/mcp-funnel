@@ -30,8 +30,7 @@ function loadConfigTest(configPath: string): {
       >;
   hideTools?: string[];
   exposeTools?: string[];
-  enableDynamicDiscovery?: boolean;
-  hackyDiscovery?: boolean;
+  exposeCoreTools?: string[];
 } {
   if (existsSync(configPath)) {
     const txt = readFileSync(configPath, 'utf-8');
@@ -94,7 +93,7 @@ describe('Dev Loader - Record Format Integration', () => {
           },
         },
         hideTools: ['debug_*'],
-        enableDynamicDiscovery: false,
+        exposeCoreTools: [],
       };
 
       writeFileSync(testConfigPath, JSON.stringify(config, null, 2));
@@ -108,7 +107,7 @@ describe('Dev Loader - Record Format Integration', () => {
       // The loaded config should have the original structure (before normalization)
       expect(loadedConfig.servers).toEqual(config.servers);
       expect(loadedConfig.hideTools).toEqual(['debug_*']);
-      expect(loadedConfig.enableDynamicDiscovery).toBe(false);
+      expect(loadedConfig.exposeCoreTools).toEqual([]);
     });
 
     it('should load multiple servers record format correctly', () => {
@@ -131,8 +130,7 @@ describe('Dev Loader - Record Format Integration', () => {
         },
         hideTools: ['debug_*', 'test_*'],
         exposeTools: ['github__*', 'memory__store'],
-        enableDynamicDiscovery: true,
-        hackyDiscovery: false,
+        exposeCoreTools: ['discover_tools_by_words', 'bridge_tool_request'],
       };
 
       writeFileSync(testConfigPath, JSON.stringify(config, null, 2));
@@ -142,8 +140,10 @@ describe('Dev Loader - Record Format Integration', () => {
       expect(loadedConfig.servers).toEqual(config.servers);
       expect(loadedConfig.hideTools).toEqual(['debug_*', 'test_*']);
       expect(loadedConfig.exposeTools).toEqual(['github__*', 'memory__store']);
-      expect(loadedConfig.enableDynamicDiscovery).toBe(true);
-      expect(loadedConfig.hackyDiscovery).toBe(false);
+      expect(loadedConfig.exposeCoreTools).toEqual([
+        'discover_tools_by_words',
+        'bridge_tool_request',
+      ]);
     });
 
     it('should handle mixed array format (legacy) correctly', () => {
@@ -163,7 +163,7 @@ describe('Dev Loader - Record Format Integration', () => {
         ],
         hideTools: [],
         exposeTools: [],
-        enableDynamicDiscovery: false,
+        exposeCoreTools: [],
       };
 
       writeFileSync(testConfigPath, JSON.stringify(config, null, 2));
@@ -232,7 +232,7 @@ describe('Dev Loader - Record Format Integration', () => {
     it('should return empty servers for missing servers field', () => {
       const config = {
         hideTools: ['test_*'],
-        enableDynamicDiscovery: true,
+        exposeCoreTools: ['discover_tools_by_words'],
       };
 
       writeFileSync(testConfigPath, JSON.stringify(config));
@@ -300,8 +300,12 @@ describe('Dev Loader - Record Format Integration', () => {
         },
         hideTools: ['debug_*', 'internal_*'],
         exposeTools: ['full-server__*'],
-        enableDynamicDiscovery: true,
-        hackyDiscovery: true,
+        exposeCoreTools: [
+          'discover_tools_by_words',
+          'bridge_tool_request',
+          'load_toolset',
+          'get_tool_schema',
+        ],
       };
 
       writeFileSync(testConfigPath, JSON.stringify(config));
@@ -311,8 +315,12 @@ describe('Dev Loader - Record Format Integration', () => {
       expect(loadedConfig.servers).toEqual(config.servers);
       expect(loadedConfig.hideTools).toEqual(['debug_*', 'internal_*']);
       expect(loadedConfig.exposeTools).toEqual(['full-server__*']);
-      expect(loadedConfig.enableDynamicDiscovery).toBe(true);
-      expect(loadedConfig.hackyDiscovery).toBe(true);
+      expect(loadedConfig.exposeCoreTools).toEqual([
+        'discover_tools_by_words',
+        'bridge_tool_request',
+        'load_toolset',
+        'get_tool_schema',
+      ]);
     });
 
     it('should handle record format with complex server names', () => {

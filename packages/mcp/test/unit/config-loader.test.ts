@@ -103,13 +103,13 @@ describe('config-loader two-level merge', () => {
       '../../src/config-loader'
     );
     const userBasePath = join(fakeHome, '.mcp-funnel', '.mcp-funnel.json');
-    writeJson(userBasePath, { servers: {}, enableDynamicDiscovery: true });
+    writeJson(userBasePath, { servers: {}, alwaysVisibleTools: ['tool1'] });
     const projectConfigPath = join(projectDir, '.mcp-funnel.json');
-    writeJson(projectConfigPath, { servers: {}, hackyDiscovery: true });
+    writeJson(projectConfigPath, { servers: {}, exposeTools: ['tool2'] });
 
     const { config } = resolveMergedProxyConfig(projectConfigPath);
-    expect(config.enableDynamicDiscovery).toBe(true);
-    expect(config.hackyDiscovery).toBe(true);
+    expect(config.alwaysVisibleTools).toEqual(['tool1']);
+    expect(config.exposeTools).toEqual(['tool2']);
   });
 
   it('project servers override user servers when both provided', async () => {

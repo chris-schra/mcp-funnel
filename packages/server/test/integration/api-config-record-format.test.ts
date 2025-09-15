@@ -34,8 +34,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
           ],
           hideTools: [],
           exposeTools: [],
-          enableDynamicDiscovery: false,
-          hackyDiscovery: false,
+          exposeCoreTools: [],
         },
       } as MCPProxy;
     });
@@ -88,8 +87,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
           ],
           hideTools: ['debug_*'],
           exposeTools: ['github__*', 'memory__store'],
-          enableDynamicDiscovery: true,
-          hackyDiscovery: false,
+          exposeCoreTools: [],
         },
       } as MCPProxy;
     });
@@ -139,8 +137,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
 
       expect(data.config.hideTools).toEqual(['debug_*']);
       expect(data.config.exposeTools).toEqual(['github__*', 'memory__store']);
-      expect(data.config.enableDynamicDiscovery).toBe(true);
-      expect(data.config.hackyDiscovery).toBe(false);
+      expect(data.config.exposeCoreTools).toEqual([]);
     });
   });
 
@@ -162,8 +159,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
       expect(data.config.servers).toEqual([]);
       expect(data.config.hideTools).toEqual([]);
       expect(data.config.exposeTools).toEqual([]);
-      expect(data.config.enableDynamicDiscovery).toBe(false);
-      expect(data.config.hackyDiscovery).toBe(false);
+      expect(data.config.exposeCoreTools).toEqual([]);
     });
   });
 
@@ -180,8 +176,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
           ],
           hideTools: [],
           exposeTools: [],
-          enableDynamicDiscovery: false,
-          hackyDiscovery: false,
+          exposeCoreTools: [],
         },
         server: {
           sendToolListChanged: vi.fn(),
@@ -193,8 +188,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
       const updateData = {
         hideTools: ['test_*'],
         exposeTools: ['github__create_issue'],
-        enableDynamicDiscovery: true,
-        hackyDiscovery: true,
+        exposeCoreTools: [],
       };
 
       const req = new Request('http://localhost/config', {
@@ -210,8 +204,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
       expect(data.success).toBe(true);
       expect(data.config.hideTools).toEqual(['test_*']);
       expect(data.config.exposeTools).toEqual(['github__create_issue']);
-      expect(data.config.enableDynamicDiscovery).toBe(true);
-      expect(data.config.hackyDiscovery).toBe(true);
+      expect(data.config.exposeCoreTools).toEqual([]);
 
       expect(mockMCPProxy.server.sendToolListChanged).toHaveBeenCalled();
     });
@@ -233,7 +226,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
       expect(res.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.config.hideTools).toEqual(['debug_*']);
-      expect(data.config.enableDynamicDiscovery).toBe(false); // Unchanged
+      expect(data.config.exposeCoreTools).toEqual([]); // Unchanged
     });
   });
 
@@ -249,8 +242,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
           ],
           hideTools: [],
           exposeTools: [],
-          enableDynamicDiscovery: false,
-          hackyDiscovery: false,
+          exposeCoreTools: [],
         },
         server: {
           sendToolListChanged: vi.fn(),

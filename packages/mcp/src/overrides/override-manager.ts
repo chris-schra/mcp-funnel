@@ -122,9 +122,18 @@ export class OverrideManager {
 
     const result = { ...tool };
 
+    // Helper function to interpolate template strings
+    const interpolate = (template: string): string => {
+      return template
+        .replace(/\$\{originalName\}/g, tool.name || '')
+        .replace(/\$\{originalTitle\}/g, tool.title || tool.name || '')
+        .replace(/\$\{originalDescription\}/g, tool.description || '');
+    };
+
     if (override.name) result.name = override.name;
-    if (override.title) result.title = override.title;
-    if (override.description) result.description = override.description;
+    if (override.title) result.title = interpolate(override.title);
+    if (override.description)
+      result.description = interpolate(override.description);
 
     if (override.inputSchema) {
       result.inputSchema = this.mergeInputSchema(

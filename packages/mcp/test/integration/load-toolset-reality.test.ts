@@ -11,7 +11,12 @@ describe('LoadToolset - Reality Check', () => {
 
     config = {
       servers: [],
-      hackyDiscovery: true,
+      exposeCoreTools: [
+        'discover_tools_by_words',
+        'bridge_tool_request',
+        'load_toolset',
+        'get_tool_schema',
+      ],
       toolsets: {
         reviewer: ['github__*_pull_request*', 'github__update_issue'],
         coder: ['github__create_pull_request'],
@@ -299,7 +304,6 @@ describe('LoadToolset - Reality Check', () => {
       // Need to enable discover tool for this test
       proxy = new MCPProxy({
         ...config,
-        enableDynamicDiscovery: true,
       });
       await proxy.initialize();
 

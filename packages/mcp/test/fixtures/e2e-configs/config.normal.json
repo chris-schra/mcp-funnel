@@ -1,6 +1,4 @@
 {
   "servers": [],
-  "hackyDiscovery": false,
-  "enableDynamicDiscovery": false,
   "exposeCoreTools": []
 }

@@ -276,16 +276,6 @@ export class MCPProxy {
     this._config = config;
     this._normalizedServers = normalizeServers(config.servers);
 
-    // Deprecation warning for legacy flags
-    if (
-      config.enableDynamicDiscovery !== undefined ||
-      config.hackyDiscovery !== undefined
-    ) {
-      console.warn(
-        '[proxy] enableDynamicDiscovery and hackyDiscovery are deprecated. Use exposeCoreTools instead.',
-      );
-    }
-
     this._server = new Server(
       {
         name: 'mcp-funnel',

@@ -124,8 +124,8 @@ describe('MCPProxy', () => {
     });
   });
 
-  describe('hackyDiscovery mode', () => {
-    it('should register only core tools when hackyDiscovery is enabled', async () => {
+  describe('exposeCoreTools mode', () => {
+    it('should register only core tools when exposeCoreTools is configured', async () => {
       const config: ProxyConfig = {
         servers: [
           {
@@ -133,7 +133,12 @@ describe('MCPProxy', () => {
             command: 'echo',
           },
         ],
-        hackyDiscovery: true,
+        exposeCoreTools: [
+          'discover_tools_by_words',
+          'bridge_tool_request',
+          'load_toolset',
+          'get_tool_schema',
+        ],
       };
 
       const proxy = new MCPProxy(config);
@@ -166,12 +171,12 @@ describe('MCPProxy', () => {
 
       // Check tool names
       const toolNames = result?.tools?.map((t: Tool) => t.name) ?? [];
-      // discover_tools_by_words might not be enabled without enableDynamicDiscovery
+      // discover_tools_by_words is enabled via exposeCoreTools
       expect(toolNames).toContain('get_tool_schema');
       expect(toolNames).toContain('bridge_tool_request');
     });
 
-    it('should populate tool caches even in hackyDiscovery mode', async () => {
+    it('should populate tool caches even in exposeCoreTools mode', async () => {
       const config: ProxyConfig = {
         servers: [
           {
@@ -179,7 +184,12 @@ describe('MCPProxy', () => {
             command: 'echo',
           },
         ],
-        hackyDiscovery: true,
+        exposeCoreTools: [
+          'discover_tools_by_words',
+          'bridge_tool_request',
+          'load_toolset',
+          'get_tool_schema',
+        ],
       };
 
       mockClient.listTools.mockResolvedValue({
@@ -256,7 +266,7 @@ describe('MCPProxy', () => {
   });
 
   describe('alwaysVisibleTools', () => {
-    it('should work correctly without enableDynamicDiscovery', async () => {
+    it('should work correctly with standard filtering', async () => {
       const config: ProxyConfig = {
         servers: [
           {
@@ -266,7 +276,7 @@ describe('MCPProxy', () => {
         ],
         alwaysVisibleTools: ['test__super_tool'],
         exposeTools: ['test__normal_*'],
-        // enableDynamicDiscovery is false/undefined - normal filtering applies
+        // Standard filtering applies
       };
 
       const mockTestClient = {

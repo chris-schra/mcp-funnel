@@ -9,11 +9,9 @@ describe('Core Tools Configuration', () => {
     vi.clearAllMocks();
   });
 
-  it('exposes core tools by default (legacy flags are ignored)', async () => {
+  it('exposes core tools by default', async () => {
     const config: ProxyConfig = {
       servers: [],
-      hackyDiscovery: true, // Legacy flag - ignored but doesn't break
-      enableDynamicDiscovery: true, // Legacy flag - ignored but doesn't break
     };
 
     const proxy = new MCPProxy(config);
@@ -55,8 +53,6 @@ describe('Core Tools Configuration', () => {
   it('allows dynamic discovery and execution through bridge', async () => {
     const config: ProxyConfig = {
       servers: [],
-      hackyDiscovery: true,
-      enableDynamicDiscovery: true,
     };
 
     const proxy = new MCPProxy(config);

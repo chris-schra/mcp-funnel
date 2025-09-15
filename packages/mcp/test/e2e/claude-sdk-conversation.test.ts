@@ -484,7 +484,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
       });
 
       describe.concurrent(`Normal Mode (Run ${i})`, () => {
-        test('should NOT expose discovery tools when hackyDiscovery is false', async () => {
+        test('should NOT expose discovery tools when exposeCoreTools is empty', async () => {
           const conversation = await startConversation('config.normal.json');
 
           const response = await conversation.sendMessage(

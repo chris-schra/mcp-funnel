@@ -585,7 +585,7 @@ Add `toolOverrides` to your configuration to modify tools:
 }
 ```
 
-**Deep-Merge Strategy**: Recursively merges nested schema properties with circular reference protection
+**Deep-Merge Strategy**: Recursively merges nested schema properties using the battle-tested `deepmerge-ts` library
 
 ```json
 "tool_name": {
@@ -630,6 +630,26 @@ Use wildcards to apply overrides to multiple tools:
         "deprecated": false,
         "deprecationMessage": "Use with extreme caution"
       }
+    }
+  }
+}
+```
+
+### Template Placeholders
+
+You can use template placeholders in `title` and `description` fields to reference the original tool values:
+
+- `${originalName}` - The original tool name
+- `${originalTitle}` - The original title (falls back to name if no title)
+- `${originalDescription}` - The original description
+
+Example:
+```json
+{
+  "toolOverrides": {
+    "*__delete_*": {
+      "title": "⚠️ ${originalTitle}",
+      "description": "DANGER: ${originalDescription}. This cannot be undone!"
     }
   }
 }

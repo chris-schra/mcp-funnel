@@ -595,4 +595,52 @@ describe('OverrideManager', () => {
     // Verify required array is preserved
     expect(result.inputSchema?.required).toEqual(['app']);
   });
+
+  it('should support template placeholders in title and description', () => {
+    const tool: Tool = {
+      name: 'delete_file',
+      title: 'Delete File',
+      description: 'Permanently deletes a file from the system',
+      inputSchema: { type: 'object' },
+    };
+
+    const overrides = {
+      github__delete_file: {
+        title: '⚠️ ${originalTitle}',
+        description:
+          'WARNING: ${originalDescription}. This action cannot be undone!',
+      },
+    };
+
+    const manager = new OverrideManager(overrides);
+    const result = manager.applyOverrides(tool, 'github__delete_file');
+
+    expect(result.title).toBe('⚠️ Delete File');
+    expect(result.description).toBe(
+      'WARNING: Permanently deletes a file from the system. This action cannot be undone!',
+    );
+  });
+
+  it('should handle missing original values in template placeholders', () => {
+    const tool: Tool = {
+      name: 'some_tool',
+      // No title
+      description: 'A tool',
+      inputSchema: { type: 'object' },
+    };
+
+    const overrides = {
+      github__some_tool: {
+        title: 'New: ${originalTitle}',
+        description: 'Enhanced: ${originalDescription}',
+      },
+    };
+
+    const manager = new OverrideManager(overrides);
+    const result = manager.applyOverrides(tool, 'github__some_tool');
+
+    // originalTitle should fallback to name when title is missing
+    expect(result.title).toBe('New: some_tool');
+    expect(result.description).toBe('Enhanced: A tool');
+  });
 });

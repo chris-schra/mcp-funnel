@@ -32,7 +32,12 @@ describe('BridgeToolRequest', () => {
       dynamicallyEnabledTools: new Set(),
       config: {
         servers: [],
-        hackyDiscovery: true,
+        exposeCoreTools: [
+          'discover_tools_by_words',
+          'bridge_tool_request',
+          'load_toolset',
+          'get_tool_schema',
+        ],
       },
       enableTools: () => {},
     };

@@ -74,8 +74,6 @@ export const ProxyConfigSchema = z.object({
   exposeTools: z.array(z.string()).optional(),
   hideTools: z.array(z.string()).optional(),
   exposeCoreTools: z.array(z.string()).optional(),
-  enableDynamicDiscovery: z.boolean().optional(),
-  hackyDiscovery: z.boolean().optional(),
   toolsets: z.record(z.string(), z.array(z.string())).optional(),
   // If true, bridge_tool_request may resolve unprefixed tool names to a unique
   // fully-prefixed match (e.g., "echo" -> "mockserver__echo"). Defaults to false.

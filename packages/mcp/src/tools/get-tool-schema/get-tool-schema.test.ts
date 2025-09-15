@@ -37,7 +37,6 @@ describe('GetToolSchema', () => {
       dynamicallyEnabledTools: new Set(),
       config: {
         servers: [],
-        hackyDiscovery: true,
       },
       enableTools: () => {},
     };

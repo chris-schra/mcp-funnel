@@ -119,8 +119,6 @@ async function main() {
       name: s.name,
       cmd: s.command,
     })),
-    hackyDiscovery: config.hackyDiscovery === true,
-    enableDynamicDiscovery: config.enableDynamicDiscovery === true,
   });
 
   const proxy = new MCPProxy(config);

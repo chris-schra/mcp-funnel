@@ -169,9 +169,7 @@ export class WebSocketManager {
         description: tool.description,
         inputSchema: tool.inputSchema,
         serverName,
-        enabled:
-          this.mcpProxy.dynamicallyEnabledTools.has(fullName) ||
-          !this.mcpProxy.config.enableDynamicDiscovery,
+        enabled: this.mcpProxy.dynamicallyEnabledTools.has(fullName) || true,
       });
     }
 

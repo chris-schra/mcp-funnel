@@ -54,7 +54,6 @@ describe('MCPProxy', () => {
           },
         ],
         hideTools: ['test_*'],
-        enableDynamicDiscovery: false,
       };
 
       expect(() => ProxyConfigSchema.parse(validConfig)).not.toThrow();
@@ -95,7 +94,6 @@ describe('MCPProxy', () => {
       expect(servers[0].env).toBeUndefined();
       expect(parsed.hideTools).toBeUndefined();
       expect(parsed.exposeTools).toBeUndefined();
-      expect(parsed.enableDynamicDiscovery).toBeUndefined();
     });
   });
 
@@ -349,15 +347,15 @@ describe('MCPProxy', () => {
   });
 
   describe('Dynamic Discovery', () => {
-    it('should register discovery tool when enabled', async () => {
+    it('should register discovery tool when in exposeCoreTools', async () => {
       const config = {
         servers: [],
-        enableDynamicDiscovery: true,
+        exposeCoreTools: ['discover_tools_by_words'],
       };
 
       const coreTools = [];
 
-      if (config.enableDynamicDiscovery) {
+      if (config.exposeCoreTools?.includes('discover_tools_by_words')) {
         coreTools.push({
           name: 'discover_tools_by_words',
           description: 'Search for tools by keywords in their descriptions',
@@ -368,15 +366,15 @@ describe('MCPProxy', () => {
       expect(coreTools[0].name).toBe('discover_tools_by_words');
     });
 
-    it('should not register discovery tool when disabled', async () => {
+    it('should not register discovery tool when not in exposeCoreTools', async () => {
       const config = {
         servers: [],
-        enableDynamicDiscovery: false,
+        exposeCoreTools: [] as string[],
       };
 
       const coreTools = [];
 
-      if (config.enableDynamicDiscovery) {
+      if (config.exposeCoreTools?.includes('discover_tools_by_words')) {
         coreTools.push({
           name: 'discover_tools_by_words',
           description: 'Search for tools by keywords',

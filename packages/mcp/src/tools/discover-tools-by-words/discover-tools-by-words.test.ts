@@ -42,7 +42,6 @@ describe('DiscoverToolsByWords', () => {
       dynamicallyEnabledTools: new Set(),
       config: {
         servers: [],
-        enableDynamicDiscovery: true,
       },
       enableTools: (tools: string[]) => {
         enabledTools.push(...tools);

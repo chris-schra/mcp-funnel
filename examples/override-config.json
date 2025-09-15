@@ -45,7 +45,7 @@
       }
     },
 
-    "// Note: deep-merge performs shallow merge of nested objects, not true deep recursion": "See override-manager.ts",
+    "// Note: deep-merge performs true deep recursive merge using deepmerge-ts library": "Properly merges nested objects at all levels",
     "memory__store_memory": {
       "description": "Store information with enhanced categorization and search capabilities",
       "inputSchema": {
@@ -100,7 +100,7 @@
       }
     },
 
-    "// Advanced schema override strategies": "Replace, merge, deep-merge (shallow merge of nested objects)",
+    "// Advanced schema override strategies": "Replace, merge, deep-merge (true recursive merge)",
 
     "github__update_pull_request": {
       "inputSchema": {
