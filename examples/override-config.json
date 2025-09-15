@@ -45,6 +45,7 @@
       }
     },
 
+    "// Note: deep-merge performs shallow merge of nested objects, not true deep recursion": "See override-manager.ts",
     "memory__store_memory": {
       "description": "Store information with enhanced categorization and search capabilities",
       "inputSchema": {
@@ -99,7 +100,7 @@
       }
     },
 
-    "// Advanced schema override strategies": "Replace, merge, deep-merge",
+    "// Advanced schema override strategies": "Replace, merge, deep-merge (shallow merge of nested objects)",
 
     "github__update_pull_request": {
       "inputSchema": {
@@ -154,23 +155,11 @@
     }
   },
 
-  "// Global override settings": "Apply to all tools matching patterns",
+  "// Global override settings": "Control how overrides are applied",
   "overrideSettings": {
-    "applyGlobalAnnotations": true,
-    "globalAnnotations": {
-      "category": "mcp-funnel-managed",
-      "tags": ["proxied"]
-    },
-    "preserveOriginalMetadata": true,
-    "enableSchemaValidation": true
-  },
-
-  "// Additional configuration": "Other settings not related to overrides",
-  "toolFilters": {
-    "hidden": ["*__debug_*", "*__internal_*"],
-    "visible": ["*"]
-  },
-
-  "logLevel": "info",
-  "enableMetrics": true
+    "allowPreRegistration": false,
+    "warnOnMissingTools": true,
+    "applyToDynamic": true,
+    "validateOverrides": true
+  }
 }
