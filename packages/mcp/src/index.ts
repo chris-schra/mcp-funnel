@@ -725,7 +725,12 @@ export class MCPProxy {
 
             // Always register in toolMapping for call handling (even for hidden tools)
             // This allows bridge_tool_request to work if a tool name is known
-            this._toolMapping.set(fullToolName, {
+            // Use the renamed name as mapping key when applicable
+            const mappingKey =
+              processedTool.name !== tool.name
+                ? processedTool.name
+                : fullToolName;
+            this._toolMapping.set(mappingKey, {
               client,
               originalName: tool.name,
             });
@@ -874,7 +879,12 @@ export class MCPProxy {
 
           // Always register in toolMapping for call handling (even for hidden tools)
           // This allows bridge_tool_request to work if a tool name is known
-          this._toolMapping.set(fullToolName, {
+          // Use the renamed name as mapping key when applicable
+          const mappingKey =
+            processedTool.name !== tool.name
+              ? processedTool.name
+              : fullToolName;
+          this._toolMapping.set(mappingKey, {
             client,
             originalName: tool.name,
           });

@@ -16,6 +16,8 @@ export interface MCPProxy {
  * Dynamic override manager that allows runtime modification of tool overrides
  */
 export class DynamicOverrideManager {
+  private currentOverrides: Record<string, ToolOverride> = {};
+
   constructor(private proxy: MCPProxy) {}
 
   /**
@@ -25,14 +27,15 @@ export class DynamicOverrideManager {
   async updateOverrides(
     overrides: Record<string, ToolOverride>,
   ): Promise<void> {
+    // Update our tracked state
+    this.currentOverrides = { ...this.currentOverrides, ...overrides };
+
     if (!this.proxy._overrideManager) {
       // Create a new override manager if none exists
-      this.proxy._overrideManager = new OverrideManager(overrides);
+      this.proxy._overrideManager = new OverrideManager(this.currentOverrides);
     } else {
       // Update the existing override manager with new overrides
-      const existingOverrides = this.getExistingOverrides();
-      const mergedOverrides = { ...existingOverrides, ...overrides };
-      this.proxy._overrideManager = new OverrideManager(mergedOverrides);
+      this.proxy._overrideManager = new OverrideManager(this.currentOverrides);
     }
 
     // Refresh caches and notify of changes
@@ -81,16 +84,10 @@ export class DynamicOverrideManager {
 
   /**
    * Extract existing overrides from the current override manager
-   * This is a helper method since OverrideManager doesn't expose its internal state
+   * Returns the tracked overrides state
    */
   private getExistingOverrides(): Record<string, ToolOverride> {
-    // Since OverrideManager doesn't expose its internal state,
-    // we'll maintain our own record. This is a limitation of the current design.
-    // In a real implementation, we might want to modify OverrideManager to expose this.
-
-    // For now, we'll return an empty object and rely on the fact that
-    // new overrides will be added through this manager
-    return {};
+    return { ...this.currentOverrides };
   }
 
   /**
