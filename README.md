@@ -24,7 +24,7 @@ MCP Funnel enables you to:
 - **Custom Transports**: Supports stdio-based MCP servers (Docker, NPX, local binaries)
 - **Server Log Prefixing**: Clear identification of which server is logging what
 - **Dynamic Tool Discovery**: Experimental feature for reducing initial context usage (see limitations)
-- **Hacky Discovery Mode**: Ultra-minimal context mode exposing only 3 tools with dynamic bridging (95%+ context reduction)
+- **Core Tools Mode**: Ultra-minimal context mode exposing only selected MCP Funnel tools with dynamic bridging (95%+ context reduction)
 
 ## 📋 Prerequisites
 
@@ -117,7 +117,6 @@ Create a `.mcp-funnel.json` file in your project directory:
 - **exposeTools**: Include patterns for external tools to expose (optional)
 - **hideTools**: Exclude patterns for external tools to hide (optional)
 - **exposeCoreTools**: Include patterns for internal MCP Funnel tools (optional, defaults to all enabled)
-- **hackyDiscovery**: Enable minimal context mode with dynamic tool bridging (default: false)
 
 ### alwaysVisibleTools vs exposeTools
 
@@ -412,9 +411,9 @@ Notes:
 - Dev commands can remain visible by allowlisting `commands__npm_*` and `commands__ts-validate` in `exposeTools`, or they can be loaded dynamically like any other tool.
 - The proxy now caches tool descriptions regardless of visibility, so discovery works even when `exposeTools` is empty. Dynamically enabled tools become visible immediately and persist for the session.
 
-## 🚀 Hacky Discovery Mode (Ultra-Low Context)
+## 🚀 Core Tools Mode (Ultra-Low Context)
 
-Hacky Discovery is a workaround for Claude Code's lack of dynamic tool updates. When enabled (`hackyDiscovery: true`), MCP Funnel exposes only **3 tools** instead of 100+:
+Core Tools Mode allows you to expose only MCP Funnel's internal tools for dynamic discovery. When you set `exposeCoreTools` to a minimal set, MCP Funnel can expose as few as **3 tools** instead of 100+:
 
 1. **discover_tools_by_words**: Search for tools by keywords
 2. **get_tool_schema**: Get input schema for any tool
@@ -431,7 +430,11 @@ Hacky Discovery is a workaround for Claude Code's lack of dynamic tool updates. 
       "env": { "GITHUB_TOKEN": "your-token" }
     }
   },
-  "hackyDiscovery": true
+  "exposeCoreTools": [
+    "discover_tools_by_words",
+    "get_tool_schema",
+    "bridge_tool_request"
+  ]
 }
 ```
 
@@ -582,12 +585,22 @@ Add `toolOverrides` to your configuration to modify tools:
 }
 ```
 
-**Deep-Merge Strategy**: Recursively merge nested objects
+**Deep-Merge Strategy**: Recursively merges nested schema properties with circular reference protection
 
 ```json
 "tool_name": {
   "inputSchema": {
     "strategy": "deep-merge",
+    "properties": {
+      "existingNestedField": {
+        "type": "object",
+        "properties": {
+          "nestedProperty": {
+            "description": "This will be merged with existing nested properties"
+          }
+        }
+      }
+    },
     "propertyOverrides": {
       "existingField": {
         "description": "Enhanced description",
@@ -636,6 +649,32 @@ Enhance tools with metadata for better organization:
   }
 }
 ```
+
+### Override Settings
+
+You can configure tool override behavior using the `overrideSettings` field:
+
+```json
+{
+  "servers": [...],
+  "overrideSettings": {
+    "allowPreRegistration": false,
+    "warnOnMissingTools": true,
+    "applyToDynamic": true,
+    "validateOverrides": true
+  },
+  "toolOverrides": {
+    "github__create_issue": {...}
+  }
+}
+```
+
+**Override Settings Options:**
+
+- **allowPreRegistration**: Allow overrides for tools that don't exist yet (default: false)
+- **warnOnMissingTools**: Warn when override targets non-existent tool (default: true)
+- **applyToDynamic**: Apply validation to dynamic override updates (default: true)
+- **validateOverrides**: Validate overrides for type safety (default: true)
 
 For comprehensive examples, see [examples/override-config.json](examples/override-config.json).
 
