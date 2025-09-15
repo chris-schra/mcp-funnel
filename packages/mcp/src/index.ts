@@ -657,6 +657,100 @@ export class MCPProxy {
     return true;
   }
 
+  private applyOverridesToTool(tool: Tool, fullToolName: string): Tool {
+    let processedTool = tool;
+
+    if (this._overrideManager) {
+      const overriddenTool = this._overrideManager.applyOverrides(
+        tool,
+        fullToolName,
+      );
+
+      // Validate override if validator is enabled
+      if (
+        this._overrideValidator &&
+        this._config.overrideSettings?.validateOverrides
+      ) {
+        const validation = this._overrideValidator.validateOverride(
+          tool,
+          overriddenTool,
+        );
+
+        if (!validation.valid) {
+          console.error(
+            `[proxy] Invalid override for ${fullToolName}:`,
+            validation.errors,
+          );
+          processedTool = tool;
+        } else {
+          if (validation.warnings.length > 0) {
+            console.warn(
+              `[proxy] Override warnings for ${fullToolName}:`,
+              validation.warnings,
+            );
+          }
+          processedTool = overriddenTool;
+        }
+      } else {
+        processedTool = overriddenTool;
+      }
+    }
+
+    return processedTool;
+  }
+
+  private validateOverrideTargets(): void {
+    if (!this._overrideManager || !this._config.toolOverrides) {
+      return;
+    }
+
+    const overrideSettings = this._config.overrideSettings;
+    if (!overrideSettings) {
+      return;
+    }
+
+    const { warnOnMissingTools, allowPreRegistration } = overrideSettings;
+
+    // Get all configured override target patterns
+    const configuredOverrides = Object.keys(this._config.toolOverrides);
+    const missingTools: string[] = [];
+
+    for (const overrideTarget of configuredOverrides) {
+      // Check if this override target has a wildcard pattern
+      if (overrideTarget.includes('*')) {
+        // For wildcard patterns, we can't easily validate if they have matches
+        // without iterating through all tools, so we skip validation
+        continue;
+      }
+
+      // Check if this exact tool name exists in our caches
+      const toolExists =
+        this._toolDescriptionCache.has(overrideTarget) ||
+        this._toolDefinitionCache.has(overrideTarget) ||
+        this._toolMapping.has(overrideTarget);
+
+      if (!toolExists) {
+        missingTools.push(overrideTarget);
+      }
+    }
+
+    if (missingTools.length > 0) {
+      if (warnOnMissingTools) {
+        console.warn(
+          `[proxy] Override configuration targets non-existent tools: ${missingTools.join(', ')}`,
+        );
+      }
+
+      if (!allowPreRegistration) {
+        console.warn(
+          `[proxy] allowPreRegistration is false, but overrides exist for non-existent tools. Consider enabling allowPreRegistration or removing unused overrides.`,
+        );
+        // Note: We don't actually remove the overrides here as they might be needed
+        // for tools that get discovered later through dynamic discovery
+      }
+    }
+  }
+
   private setupRequestHandlers() {
     this._server.setRequestHandler(ListToolsRequestSchema, async () => {
       const allTools: Tool[] = [];
@@ -674,44 +768,7 @@ export class MCPProxy {
             const fullToolName = `${serverName}__${tool.name}`;
 
             // Apply overrides if configured
-            let processedTool = tool;
-            if (this._overrideManager) {
-              const overriddenTool = this._overrideManager.applyOverrides(
-                tool,
-                fullToolName,
-              );
-
-              // Validate override if validator is enabled
-              if (
-                this._overrideValidator &&
-                this._config.overrideSettings?.validateOverrides
-              ) {
-                const validation = this._overrideValidator.validateOverride(
-                  tool,
-                  overriddenTool,
-                );
-
-                if (!validation.valid) {
-                  console.error(
-                    `[proxy] Invalid override for ${fullToolName}:`,
-                    validation.errors,
-                  );
-                  processedTool = tool;
-                } else {
-                  if (validation.warnings.length > 0) {
-                    console.warn(
-                      `[proxy] Override warnings for ${fullToolName}:`,
-                      validation.warnings,
-                    );
-                  }
-                  processedTool = overriddenTool;
-                }
-              } else {
-                processedTool = overriddenTool;
-              }
-            } else {
-              processedTool = tool;
-            }
+            const processedTool = this.applyOverridesToTool(tool, fullToolName);
 
             // Cache the processed tool
             this._toolDescriptionCache.set(fullToolName, {
@@ -859,13 +916,7 @@ export class MCPProxy {
           const fullToolName = `${serverName}__${tool.name}`;
 
           // Apply overrides if configured
-          let processedTool = tool;
-          if (this._overrideManager) {
-            processedTool = this._overrideManager.applyOverrides(
-              tool,
-              fullToolName,
-            );
-          }
+          const processedTool = this.applyOverridesToTool(tool, fullToolName);
 
           // Cache tool descriptions and definitions for discovery
           this._toolDescriptionCache.set(fullToolName, {
@@ -896,6 +947,9 @@ export class MCPProxy {
         );
       }
     }
+
+    // Check for overrides targeting non-existent tools
+    this.validateOverrideTargets();
   }
 
   async start() {

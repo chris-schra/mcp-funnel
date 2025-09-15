@@ -47,6 +47,32 @@ export class OverrideManager {
         this.overrides.set(key, override);
       }
     }
+
+    // Check for overlapping patterns
+    const conflicts: string[] = [];
+    for (let i = 0; i < this.patterns.length; i++) {
+      for (let j = i + 1; j < this.patterns.length; j++) {
+        // Check if patterns could match the same tool
+        // For simplicity, warn if two patterns both contain wildcards
+        if (
+          this.patterns[i].pattern.includes('*') &&
+          this.patterns[j].pattern.includes('*')
+        ) {
+          const exampleTool = 'github__example_tool';
+          if (
+            this.patterns[i].compiledPattern.test(exampleTool) &&
+            this.patterns[j].compiledPattern.test(exampleTool)
+          ) {
+            conflicts.push(
+              `Patterns '${this.patterns[i].pattern}' and '${this.patterns[j].pattern}' may conflict`,
+            );
+          }
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      console.warn('[OverrideManager] Pattern conflicts detected:', conflicts);
+    }
   }
 
   applyOverrides(tool: Tool, fullToolName: string): Tool {
@@ -212,7 +238,9 @@ export class OverrideManager {
         typeof original[key] === 'object' &&
         typeof value === 'object' &&
         original[key] !== null &&
-        value !== null
+        value !== null &&
+        !Array.isArray(original[key]) &&
+        !Array.isArray(value)
       ) {
         // Check for circular references
         if (visited.has(original[key]) || visited.has(value)) {
@@ -221,9 +249,14 @@ export class OverrideManager {
           );
           result[key] = { ...original[key], ...value };
         } else {
+          // Recursive deep merge
           visited.add(original[key]);
           visited.add(value);
-          result[key] = { ...original[key], ...value };
+          result[key] = this.deepMergeProperties(
+            original[key] as Record<string, JSONSchema>,
+            value as Record<string, JSONSchema>,
+            visited,
+          );
         }
       } else {
         result[key] = value;
