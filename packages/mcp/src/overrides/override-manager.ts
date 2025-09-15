@@ -1,5 +1,6 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ToolOverride } from '../config.js';
+import { deepmerge } from 'deepmerge-ts';
 
 interface JSONSchema {
   type?: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'null';
@@ -228,42 +229,9 @@ export class OverrideManager {
   private deepMergeProperties(
     original: Record<string, JSONSchema>,
     override: Record<string, JSONSchema>,
-    visited: WeakSet<object> = new WeakSet(),
   ): Record<string, JSONSchema> {
-    const result: Record<string, JSONSchema> = { ...original };
-
-    for (const [key, value] of Object.entries(override)) {
-      if (
-        key in original &&
-        typeof original[key] === 'object' &&
-        typeof value === 'object' &&
-        original[key] !== null &&
-        value !== null &&
-        !Array.isArray(original[key]) &&
-        !Array.isArray(value)
-      ) {
-        // Check for circular references
-        if (visited.has(original[key]) || visited.has(value)) {
-          console.warn(
-            `Circular reference detected in property '${key}', using shallow merge`,
-          );
-          result[key] = { ...original[key], ...value };
-        } else {
-          // Recursive deep merge
-          visited.add(original[key]);
-          visited.add(value);
-          result[key] = this.deepMergeProperties(
-            original[key] as Record<string, JSONSchema>,
-            value as Record<string, JSONSchema>,
-            visited,
-          );
-        }
-      } else {
-        result[key] = value;
-      }
-    }
-
-    return result;
+    // Use deepmerge-ts for proper deep merging
+    return deepmerge(original, override) as Record<string, JSONSchema>;
   }
 
   private applyPropertyOverrides(

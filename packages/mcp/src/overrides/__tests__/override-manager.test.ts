@@ -335,4 +335,264 @@ describe('OverrideManager', () => {
     // Restore the original console.warn
     consoleSpy.mockRestore();
   });
+
+  it('should handle very deep nested merging (4 levels) with deepmerge-ts', () => {
+    const manager = new OverrideManager({
+      test__very_deep_merge: {
+        inputSchema: {
+          strategy: 'deep-merge',
+          properties: {
+            app: {
+              type: 'object',
+              properties: {
+                config: {
+                  type: 'object',
+                  properties: {
+                    database: {
+                      type: 'object',
+                      properties: {
+                        connection: {
+                          type: 'object',
+                          properties: {
+                            pool: {
+                              type: 'object',
+                              properties: {
+                                max: { type: 'number', default: 20 },
+                                min: { type: 'number', default: 5 },
+                                acquireTimeoutMillis: {
+                                  type: 'number',
+                                  default: 60000,
+                                },
+                              },
+                            },
+                            ssl: {
+                              type: 'object',
+                              properties: {
+                                rejectUnauthorized: {
+                                  type: 'boolean',
+                                  default: true,
+                                },
+                                ca: {
+                                  type: 'string',
+                                  description: 'CA certificate',
+                                },
+                              },
+                            },
+                          },
+                        },
+                        migrations: {
+                          type: 'object',
+                          properties: {
+                            directory: {
+                              type: 'string',
+                              default: './migrations',
+                            },
+                          },
+                        },
+                      },
+                    },
+                    cache: {
+                      type: 'object',
+                      properties: {
+                        redis: {
+                          type: 'object',
+                          properties: {
+                            cluster: {
+                              type: 'object',
+                              properties: {
+                                nodes: {
+                                  type: 'array',
+                                  items: { type: 'string' },
+                                },
+                                options: {
+                                  type: 'object',
+                                  properties: {
+                                    enableReadyCheck: {
+                                      type: 'boolean',
+                                      default: false,
+                                    },
+                                    redisOptions: {
+                                      type: 'object',
+                                      properties: {
+                                        password: {
+                                          type: 'string',
+                                          description: 'Redis password',
+                                        },
+                                      },
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      } as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- Bypass type checking for deep nested test
+    });
+
+    const tool: Tool = {
+      name: 'very_deep_merge',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          app: {
+            type: 'object',
+            properties: {
+              config: {
+                type: 'object',
+                properties: {
+                  database: {
+                    type: 'object',
+                    properties: {
+                      connection: {
+                        type: 'object',
+                        properties: {
+                          host: { type: 'string', default: 'localhost' },
+                          port: { type: 'number', default: 5432 },
+                          pool: {
+                            type: 'object',
+                            properties: {
+                              max: { type: 'number', default: 10 }, // Will be overridden
+                              idle: { type: 'number', default: 30000 }, // Should be preserved
+                            },
+                          },
+                          ssl: {
+                            type: 'object',
+                            properties: {
+                              rejectUnauthorized: {
+                                type: 'boolean',
+                                default: false,
+                              }, // Will be overridden
+                              cert: {
+                                type: 'string',
+                                description: 'Client certificate',
+                              }, // Should be preserved
+                            },
+                          },
+                        },
+                      },
+                      logging: {
+                        type: 'object',
+                        properties: {
+                          level: { type: 'string', default: 'info' },
+                        },
+                      },
+                    },
+                  },
+                  cache: {
+                    type: 'object',
+                    properties: {
+                      redis: {
+                        type: 'object',
+                        properties: {
+                          host: { type: 'string', default: 'localhost' },
+                          port: { type: 'number', default: 6379 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              version: { type: 'string', default: '1.0.0' },
+            },
+          },
+        },
+        required: ['app'],
+      },
+    };
+
+    const result = manager.applyOverrides(tool, 'test__very_deep_merge');
+    const resultProps = result.inputSchema?.properties;
+
+    if (!resultProps) {
+      throw new Error('Result properties should be defined');
+    }
+
+    // Navigate to deep nested properties to verify merging
+    const app = resultProps.app as Record<string, unknown>;
+    const appProps = app.properties as Record<string, unknown>;
+    const config = appProps.config as Record<string, unknown>;
+    const configProps = config.properties as Record<string, unknown>;
+    const database = configProps.database as Record<string, unknown>;
+    const databaseProps = database.properties as Record<string, unknown>;
+    const connection = databaseProps.connection as Record<string, unknown>;
+    const connectionProps = connection.properties as Record<string, unknown>;
+
+    // Verify 4th level deep merging - pool properties
+    const pool = connectionProps.pool as Record<string, unknown>;
+    const poolProps = pool.properties as Record<string, unknown>;
+    expect(poolProps).toHaveProperty('max');
+    expect(poolProps).toHaveProperty('min'); // From override
+    expect(poolProps).toHaveProperty('acquireTimeoutMillis'); // From override
+    expect(poolProps).toHaveProperty('idle'); // From original, should be preserved
+
+    const max = poolProps.max as Record<string, unknown>;
+    const min = poolProps.min as Record<string, unknown>;
+    const idle = poolProps.idle as Record<string, unknown>;
+    expect(max.default).toBe(20); // Override value
+    expect(min.default).toBe(5); // New from override
+    expect(idle.default).toBe(30000); // Original value preserved
+
+    // Verify 4th level deep merging - ssl properties
+    const ssl = connectionProps.ssl as Record<string, unknown>;
+    const sslProps = ssl.properties as Record<string, unknown>;
+    expect(sslProps).toHaveProperty('rejectUnauthorized');
+    expect(sslProps).toHaveProperty('ca'); // From override
+    expect(sslProps).toHaveProperty('cert'); // From original, should be preserved
+
+    const rejectUnauthorized = sslProps.rejectUnauthorized as Record<
+      string,
+      unknown
+    >;
+    const ca = sslProps.ca as Record<string, unknown>;
+    const cert = sslProps.cert as Record<string, unknown>;
+    expect(rejectUnauthorized.default).toBe(true); // Override value
+    expect(ca.description).toBe('CA certificate'); // New from override
+    expect(cert.description).toBe('Client certificate'); // Original value preserved
+
+    // Verify original properties at various levels are preserved
+    expect(connectionProps).toHaveProperty('host'); // Original level 3
+    expect(connectionProps).toHaveProperty('port'); // Original level 3
+    expect(databaseProps).toHaveProperty('logging'); // Original level 2
+    expect(databaseProps).toHaveProperty('migrations'); // New from override level 2
+    expect(appProps).toHaveProperty('version'); // Original level 1
+
+    // Verify complex nested structure from override is added
+    const cache = configProps.cache as Record<string, unknown>;
+    const cacheProps = cache.properties as Record<string, unknown>;
+    const redis = cacheProps.redis as Record<string, unknown>;
+    const redisProps = redis.properties as Record<string, unknown>;
+
+    // Original redis properties should be preserved
+    expect(redisProps).toHaveProperty('host');
+    expect(redisProps).toHaveProperty('port');
+
+    // New complex nested structure from override should be added
+    expect(redisProps).toHaveProperty('cluster');
+    const cluster = redisProps.cluster as Record<string, unknown>;
+    const clusterProps = cluster.properties as Record<string, unknown>;
+    expect(clusterProps).toHaveProperty('nodes');
+    expect(clusterProps).toHaveProperty('options');
+
+    const options = clusterProps.options as Record<string, unknown>;
+    const optionsProps = options.properties as Record<string, unknown>;
+    expect(optionsProps).toHaveProperty('redisOptions');
+
+    const redisOptions = optionsProps.redisOptions as Record<string, unknown>;
+    const redisOptionsProps = redisOptions.properties as Record<
+      string,
+      unknown
+    >;
+    expect(redisOptionsProps).toHaveProperty('password');
+
+    // Verify required array is preserved
+    expect(result.inputSchema?.required).toEqual(['app']);
+  });
 });
