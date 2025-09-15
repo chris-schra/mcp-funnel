@@ -56,14 +56,15 @@ export class DynamicOverrideManager {
    * @param toolName - The full tool name to remove override for
    */
   async removeOverride(toolName: string): Promise<void> {
-    if (!this.proxy._overrideManager) {
-      return; // No overrides to remove
+    if (!(toolName in this.currentOverrides)) {
+      return; // No override exists for this tool
     }
 
-    const existingOverrides = this.getExistingOverrides();
-    delete existingOverrides[toolName];
+    // Update our tracked state
+    delete this.currentOverrides[toolName];
 
-    this.proxy._overrideManager = new OverrideManager(existingOverrides);
+    // Update or clear the override manager
+    this.proxy._overrideManager = new OverrideManager(this.currentOverrides);
     await this.refreshCachesAndNotify();
   }
 
@@ -78,6 +79,9 @@ export class DynamicOverrideManager {
    * Clear all overrides
    */
   async clearAllOverrides(): Promise<void> {
+    // Clear our tracked state
+    this.currentOverrides = {};
+
     this.proxy._overrideManager = new OverrideManager({});
     await this.refreshCachesAndNotify();
   }
