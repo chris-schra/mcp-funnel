@@ -411,4 +411,127 @@ describe('Override Integration', () => {
     );
     expect(originalTool).toBeUndefined();
   });
+
+  it('should allow calling renamed tools', async () => {
+    // Configure the mock client to return a test tool that will be renamed
+    mockClient.listTools.mockResolvedValue({
+      tools: [
+        {
+          name: 'create_issue',
+          description: 'Create a GitHub issue',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              title: { type: 'string', description: 'Issue title' },
+              body: { type: 'string', description: 'Issue body' },
+            },
+            required: ['title'],
+          },
+        },
+      ],
+    });
+
+    // Mock the callTool response
+    mockClient.callTool.mockResolvedValue({
+      content: [{ type: 'text', text: 'Issue created successfully' }],
+    });
+
+    // Create proxy config with tool renaming override
+    const config: ProxyConfig = {
+      servers: [
+        {
+          name: 'github',
+          command: 'github-command',
+        },
+      ],
+      toolOverrides: {
+        github__create_issue: {
+          name: 'github__new_issue',
+          description: 'Create a new GitHub issue (renamed)',
+        },
+      },
+    };
+
+    // Create the proxy
+    proxy = new MCPProxy(config);
+
+    // Mock the internal client mapping
+    // @ts-expect-error - accessing private property for test
+    proxy._clients = new Map([['github', mockClient]]);
+    // @ts-expect-error - accessing private property for test
+    proxy._toolMapping = new Map([
+      [
+        'github__create_issue',
+        {
+          client: mockClient,
+          originalName: 'create_issue',
+          toolName: 'create_issue',
+        },
+      ],
+    ]);
+
+    // Initialize the proxy (this sets up the handlers)
+    await proxy.initialize();
+
+    // Get the CallTool handler - it should be the second handler registered (index 1)
+    const allCalls = mockServer.setRequestHandler.mock.calls;
+    expect(allCalls.length).toBeGreaterThanOrEqual(2);
+
+    const callToolCall = allCalls[1]; // Second handler should be CallTool
+    expect(callToolCall).toBeDefined();
+    const callToolHandler = callToolCall?.[1];
+
+    // Test calling the tool with the new name (should work)
+    const newNameRequest = {
+      method: 'tools/call',
+      params: {
+        name: 'github__new_issue',
+        arguments: {
+          title: 'Test Issue',
+          body: 'This is a test issue',
+        },
+      },
+    };
+
+    // Update the tool mapping to include the new name
+    // @ts-expect-error - accessing private property for test
+    proxy._toolMapping.set('github__new_issue', {
+      client: mockClient,
+      originalName: 'create_issue',
+      toolName: 'create_issue',
+    });
+
+    const newNameResult = await callToolHandler?.(newNameRequest, {});
+    expect(newNameResult).toBeDefined();
+    expect(newNameResult.content).toEqual([
+      { type: 'text', text: 'Issue created successfully' },
+    ]);
+
+    // Verify that the underlying client was called with the original tool name
+    expect(mockClient.callTool).toHaveBeenCalledWith({
+      name: 'create_issue',
+      arguments: {
+        title: 'Test Issue',
+        body: 'This is a test issue',
+      },
+    });
+
+    // Test calling the tool with the old name (should fail)
+    const oldNameRequest = {
+      method: 'tools/call',
+      params: {
+        name: 'github__create_issue',
+        arguments: {
+          title: 'Test Issue',
+          body: 'This is a test issue',
+        },
+      },
+    };
+
+    // Remove the old name from the tool mapping to simulate the renaming
+    // @ts-expect-error - accessing private property for test
+    proxy._toolMapping.delete('github__create_issue');
+
+    await expect(callToolHandler?.(oldNameRequest, {})).rejects.toThrow();
+  });
 });
