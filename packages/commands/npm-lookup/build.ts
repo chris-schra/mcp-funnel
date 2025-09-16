@@ -9,7 +9,7 @@ const sharedOptions: BuildOptions = {
   bundle: true,
   platform: 'node',
   packages: 'external',
-  target: 'node18',
+  target: 'node22',
 };
 
 async function buildAll() {
