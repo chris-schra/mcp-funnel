@@ -18,12 +18,15 @@
     "prettier": "prettier -c \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint --ext .ts,.tsx",
     "validate": "tsx packages/mcp/src/cli.ts run ts-validate --fix",
-    "test": "vitest run",
-    "test:e2e": "TEST_E2E=true vitest run",
+    "test": "CI=true vitest run",
+    "test:e2e": "CI=true TEST_E2E=true vitest run",
+    "test:full": "CI=true TEST_E2E=true RUN_INTEGRATION_TESTS=true vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev:npm-lookup": "tsx packages/mcp/src/cli.ts run npm lookup \"vitest\""
+    "dev:npm-lookup": "tsx packages/mcp/src/cli.ts run npm lookup \"vitest\"",
+    "dev:mcp": "tsx packages/mcp/src/cli.ts",
+    "debug": "npx @modelcontextprotocol/inspector tsx packages/mcp/src/cli.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",

@@ -5,7 +5,6 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
   type Tool,
-  type CallToolResult,
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
@@ -17,14 +16,14 @@ import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
-import { matchesPattern } from './utils/pattern-matcher.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
-import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
+import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError, getServerStreamLogPath } from './logger.js';
-import { OverrideManager } from './overrides/override-manager.js';
-import { OverrideValidator } from './overrides/override-validator.js';
+import { ToolVisibilityManager } from './tool-visibility-manager.js';
+import { ToolCollector } from './tool-collector.js';
+import { ToolExecutor } from './tool-executor.js';
 
 import Package from '../package.json';
 export {
@@ -269,22 +268,35 @@ export class MCPProxy {
     { serverName: string; tool: Tool }
   > = new Map();
   private coreTools: Map<string, ICoreTool> = new Map();
-  private _overrideManager?: OverrideManager;
-  private _overrideValidator?: OverrideValidator;
+
+  private toolCollector: ToolCollector;
+  private toolExecutor: ToolExecutor;
+
+  private connectedServers = new Map<string, TargetServer>();
+  private disconnectedServers = new Map<
+    string,
+    TargetServer & { error?: string }
+  >();
 
   constructor(config: ProxyConfig) {
     this._config = config;
     this._normalizedServers = normalizeServers(config.servers);
 
-    // Deprecation warning for legacy flags
-    if (
-      config.enableDynamicDiscovery !== undefined ||
-      config.hackyDiscovery !== undefined
-    ) {
-      console.warn(
-        '[proxy] enableDynamicDiscovery and hackyDiscovery are deprecated. Use exposeCoreTools instead.',
-      );
-    }
+    this._normalizedServers.forEach((server) => {
+      this.disconnectedServers.set(server.name, server);
+    });
+
+    this.toolCollector = new ToolCollector(
+      this._config,
+      this.coreTools,
+      this._clients,
+      this._dynamicallyEnabledTools,
+    );
+    this.toolExecutor = new ToolExecutor(
+      this.coreTools,
+      this._toolMapping,
+      this.createToolContext(),
+    );
 
     this._server = new Server(
       {
@@ -299,21 +311,20 @@ export class MCPProxy {
         },
       },
     );
-
-    // Initialize override system if configured
-    if (config.toolOverrides) {
-      this._overrideManager = new OverrideManager(config.toolOverrides);
-      this._overrideValidator = new OverrideValidator();
-    }
   }
 
   async initialize() {
     this.registerCoreTools();
-    await this.connectToTargetServers();
-    await this.loadDevelopmentCommands();
+
+    await Promise.all([
+      this.connectToTargetServers(),
+      this.loadDevelopmentCommands(),
+    ]);
+
     // Pre-populate caches so discovery/load operations work before first tools/list
+    // This uses ToolCollector which respects hideTools configuration
     try {
-      await this.populateToolCaches();
+      await this.toolCollector.collectVisibleTools();
     } catch (error) {
       console.error('[proxy] Initial cache population failed:', error);
       logError('initial-cache-populate', error);
@@ -378,6 +389,24 @@ export class MCPProxy {
                   `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
                 );
               }
+              // Use the tool collector to register the command tool
+              const caches = this.toolCollector.getCaches();
+              caches.toolDescriptionCache.set(displayName, {
+                serverName: 'commands',
+                description: mcpDef.description,
+              });
+              caches.toolDefinitionCache.set(displayName, {
+                serverName: 'commands',
+                tool: { ...mcpDef, name: displayName },
+              });
+              caches.toolMapping.set(displayName, {
+                client: null,
+                originalName: mcpDef.name,
+                toolName: mcpDef.name,
+                command,
+              });
+
+              // Also update the instance caches for backward compatibility
               this._toolDescriptionCache.set(displayName, {
                 serverName: 'commands',
                 description: mcpDef.description,
@@ -392,22 +421,6 @@ export class MCPProxy {
                 toolName: mcpDef.name,
                 command,
               });
-              const legacyLong = `cmd__${command.name}__${mcpDef.name}`;
-              this._toolMapping.set(legacyLong, {
-                client: null,
-                originalName: mcpDef.name,
-                toolName: mcpDef.name,
-                command,
-              });
-              if (useCompact) {
-                const legacyShort = `cmd__${command.name}`;
-                this._toolMapping.set(legacyShort, {
-                  client: null,
-                  originalName: mcpDef.name,
-                  toolName: mcpDef.name,
-                  command,
-                });
-              }
             }
           }
         }
@@ -432,13 +445,13 @@ export class MCPProxy {
           const entries = readdirSync(scopeDir, { withFileTypes: true });
           const packageDirs = entries
             .filter(
-              (e: any) => e.isDirectory?.() && e.name.startsWith('command-'),
+              (e: Dirent) => e.isDirectory() && e.name.startsWith('command-'),
             )
-            .map((e: any) => join(scopeDir, e.name));
+            .map((e: Dirent) => join(scopeDir, e.name));
 
           const isValidCommand = (obj: unknown): obj is ICommand => {
             if (!obj || typeof obj !== 'object') return false;
-            const c = obj as any;
+            const c = obj as Record<string, unknown>;
             return (
               typeof c.name === 'string' &&
               typeof c.description === 'string' &&
@@ -453,16 +466,18 @@ export class MCPProxy {
               const pkgJsonPath = join(pkgDir, 'package.json');
               if (!existsSync(pkgJsonPath)) continue;
               const { readFile } = await import('fs/promises');
-              const pkg = JSON.parse(
-                await readFile(pkgJsonPath, 'utf-8'),
-              ) as any;
+              const pkg = JSON.parse(await readFile(pkgJsonPath, 'utf-8')) as {
+                module?: string;
+                main?: string;
+              };
               const entry = pkg.module || pkg.main;
               if (!entry) continue;
               const mod = await import(join(pkgDir, entry));
-              const candidate = (mod as any).default || (mod as any).command;
+              const modObj = mod as Record<string, unknown>;
+              const candidate = modObj.default || modObj.command;
               const chosen = isValidCommand(candidate)
                 ? candidate
-                : (Object.values(mod as any).find(isValidCommand) as
+                : (Object.values(modObj).find(isValidCommand) as
                     | ICommand
                     | undefined);
               if (
@@ -591,6 +606,10 @@ export class MCPProxy {
           );
 
           await client.connect(transport);
+
+          // TODO: handle disconnects
+          this.connectedServers.set(targetServer.name, targetServer);
+
           this._clients.set(targetServer.name, client);
           console.error(`[proxy] Connected to: ${targetServer.name}`);
           logEvent('info', 'server:connect_success', {
@@ -621,266 +640,32 @@ export class MCPProxy {
     logEvent('info', 'server:connect_summary', { summary });
   }
 
-  private isAlwaysVisible(serverName: string, toolName: string): boolean {
-    if (!this._config.alwaysVisibleTools) {
-      return false;
-    }
-    const fullToolName = `${serverName}__${toolName}`;
-    return this._config.alwaysVisibleTools.some((pattern) =>
-      matchesPattern(fullToolName, pattern),
-    );
-  }
-
-  private shouldExposeTool(serverName: string, toolName: string): boolean {
-    // Create the full tool name with server prefix
-    const fullToolName = `${serverName}__${toolName}`;
-
-    // Check if dynamically enabled
-    if (this._dynamicallyEnabledTools.has(fullToolName)) {
-      return true;
-    }
-
-    if (this._config.exposeTools) {
-      // Check if tool matches any expose pattern (only checking prefixed name)
-      return this._config.exposeTools.some((pattern) =>
-        matchesPattern(fullToolName, pattern),
-      );
-    }
-    if (this._config.hideTools) {
-      // Check if tool matches any hide pattern (only checking prefixed name)
-      return !this._config.hideTools.some((pattern) =>
-        matchesPattern(fullToolName, pattern),
-      );
-    }
-    return true;
+  getTargetServers() {
+    return {
+      connected: Array.from(this.connectedServers),
+      disconnected: Array.from(this.disconnectedServers),
+    };
   }
 
   private setupRequestHandlers() {
+    // Sync the caches from toolCollector after initialization
+    const caches = this.toolCollector.getCaches();
+    this._toolDescriptionCache = caches.toolDescriptionCache;
+    this._toolDefinitionCache = caches.toolDefinitionCache;
+    this._toolMapping = caches.toolMapping;
+
     this._server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const allTools: Tool[] = [];
-
-      // Add core tools
-      for (const coreTool of this.coreTools.values()) {
-        allTools.push(coreTool.tool);
-      }
-
-      for (const [serverName, client] of this._clients) {
-        try {
-          const response = await client.listTools();
-
-          for (const tool of response.tools) {
-            const fullToolName = `${serverName}__${tool.name}`;
-
-            // Apply overrides if configured
-            let processedTool = tool;
-            if (this._overrideManager) {
-              const overriddenTool = this._overrideManager.applyOverrides(
-                tool,
-                fullToolName,
-              );
-
-              // Validate override if validator is enabled
-              if (
-                this._overrideValidator &&
-                this._config.overrideSettings?.validateOverrides
-              ) {
-                const validation = this._overrideValidator.validateOverride(
-                  tool,
-                  overriddenTool,
-                );
-
-                if (!validation.valid) {
-                  console.error(
-                    `[proxy] Invalid override for ${fullToolName}:`,
-                    validation.errors,
-                  );
-                  processedTool = tool;
-                } else {
-                  if (validation.warnings.length > 0) {
-                    console.warn(
-                      `[proxy] Override warnings for ${fullToolName}:`,
-                      validation.warnings,
-                    );
-                  }
-                  processedTool = overriddenTool;
-                }
-              } else {
-                processedTool = overriddenTool;
-              }
-            } else {
-              processedTool = tool;
-            }
-
-            // Cache the processed tool
-            this._toolDescriptionCache.set(fullToolName, {
-              serverName,
-              description: processedTool.description || '',
-            });
-            this._toolDefinitionCache.set(fullToolName, {
-              serverName,
-              tool: processedTool,
-            });
-
-            // Always register in toolMapping for call handling (even for hidden tools)
-            // This allows bridge_tool_request to work if a tool name is known
-            this._toolMapping.set(fullToolName, {
-              client,
-              originalName: tool.name,
-            });
-
-            // Check flags for visibility
-            const isAlwaysVisible = this.isAlwaysVisible(serverName, tool.name);
-
-            const shouldExposeByConfig = this.shouldExposeTool(
-              serverName,
-              tool.name,
-            );
-
-            const isDynamicallyEnabled =
-              this._dynamicallyEnabledTools.has(fullToolName);
-
-            // Show when:
-            // 1) Dynamically enabled at runtime
-            // 2) Always visible
-            // 3) Exposed by static config
-            if (
-              isDynamicallyEnabled ||
-              isAlwaysVisible ||
-              shouldExposeByConfig
-            ) {
-              allTools.push({
-                ...tool,
-                name: fullToolName,
-                description: `[${serverName}] ${tool.description || ''}`,
-              });
-            }
-          }
-        } catch (error) {
-          console.error(
-            `[proxy] Failed to list tools from ${serverName}:`,
-            error,
-          );
-          logError('tools:list_failed', error, { server: serverName });
-        }
-      }
-
-      // Add command tools from cache
-      for (const [toolName, definition] of this._toolDefinitionCache) {
-        if (definition.serverName === 'commands') {
-          // Check if command should be exposed based on configuration
-          if (this.shouldExposeTool('commands', toolName)) {
-            allTools.push(definition.tool);
-          }
-        }
-      }
-
-      logEvent('debug', 'tools:list_complete', { total: allTools.length });
-      return { tools: allTools };
+      // Simply delegate to the tool collector
+      const tools = await this.toolCollector.collectVisibleTools();
+      return { tools };
     });
 
     this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
 
-      // Command invocation based on mapping
-      {
-        const mapping = this._toolMapping.get(toolName);
-        if (mapping && mapping.command) {
-          try {
-            logEvent('info', 'tool:call_dev', { name: toolName });
-            const result = await mapping.command.executeToolViaMCP(
-              mapping.toolName || mapping.originalName,
-              toolArgs || {},
-            );
-            return result;
-          } catch (error) {
-            logError('tool:dev_execution_failed', error, { name: toolName });
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Command execution failed: ${error instanceof Error ? error.message : String(error)}`,
-                },
-              ],
-            };
-          }
-        }
-      }
-
-      // Handle core tools
-      const coreTool = this.coreTools.get(toolName);
-      if (coreTool) {
-        logEvent('info', 'tool:call_core', { name: toolName });
-        return coreTool.handle(toolArgs ?? {}, this.createToolContext());
-      }
-
-      const mapping = this._toolMapping.get(toolName);
-      if (!mapping) {
-        throw new Error(`Tool not found: ${toolName}`);
-      }
-
-      if ('client' in mapping) {
-        try {
-          logEvent('info', 'tool:call_bridge', { name: toolName });
-          if (!mapping.client) {
-            throw new Error(`Tool ${toolName} has no client connection`);
-          }
-          const result = await mapping.client.callTool({
-            name: mapping.originalName,
-            arguments: toolArgs,
-          });
-          logEvent('debug', 'tool:result', { name: toolName });
-          return result as CallToolResult;
-        } catch (error) {
-          console.error(`[proxy] Failed to call tool ${toolName}:`, error);
-          logError('tool:call_failed', error, { name: toolName });
-          throw error;
-        }
-      } else {
-        throw new Error(`Invalid tool mapping for: ${toolName}`);
-      }
+      // Simply delegate to the tool executor
+      return this.toolExecutor.executeTool(toolName, toolArgs);
     });
-  }
-
-  private async populateToolCaches() {
-    for (const [serverName, client] of this._clients) {
-      try {
-        const response = await client.listTools();
-        for (const tool of response.tools) {
-          const fullToolName = `${serverName}__${tool.name}`;
-
-          // Apply overrides if configured
-          let processedTool = tool;
-          if (this._overrideManager) {
-            processedTool = this._overrideManager.applyOverrides(
-              tool,
-              fullToolName,
-            );
-          }
-
-          // Cache tool descriptions and definitions for discovery
-          this._toolDescriptionCache.set(fullToolName, {
-            serverName,
-            description: processedTool.description || '',
-          });
-          this._toolDefinitionCache.set(fullToolName, {
-            serverName,
-            tool: processedTool,
-          });
-
-          // Always register in toolMapping for call handling (even for hidden tools)
-          // This allows bridge_tool_request to work if a tool name is known
-          this._toolMapping.set(fullToolName, {
-            client,
-            originalName: tool.name,
-          });
-        }
-      } catch (error) {
-        console.error(
-          `[proxy] Failed to cache tools from ${serverName}:`,
-          error,
-        );
-      }
-    }
   }
 
   async start() {
@@ -924,4 +709,3 @@ export class MCPProxy {
 // Export for library usage
 export { ProxyConfigSchema, normalizeServers } from './config.js';
 export type { ProxyConfig, ServersRecord } from './config.js';
-export { OverrideManager, OverrideValidator } from './overrides/index.js';

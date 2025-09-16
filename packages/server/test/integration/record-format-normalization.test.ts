@@ -190,7 +190,7 @@ describe('Record Format Normalization Integration', () => {
         },
         hideTools: ['debug_*'],
         exposeTools: ['github__*'],
-        enableDynamicDiscovery: true,
+        exposeCoreTools: true,
       };
 
       // This represents what would happen in MCPProxy initialization
@@ -211,8 +211,8 @@ describe('Record Format Normalization Integration', () => {
           })),
           hideTools: rawConfig.hideTools,
           exposeTools: rawConfig.exposeTools,
-          enableDynamicDiscovery: rawConfig.enableDynamicDiscovery,
-          hackyDiscovery: false,
+          exposeCoreTools: rawConfig.exposeCoreTools,
+          exposeCoreTools: false,
         },
       };
 

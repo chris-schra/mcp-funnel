@@ -20,6 +20,7 @@
     "zod": "^4.1.8"
   },
   "devDependencies": {
+    "@hono/vite-dev-server": "^0.21.0",
     "@types/node": "^24.3.2",
     "@types/ws": "^8.18.1",
     "esbuild": "^0.25.9",

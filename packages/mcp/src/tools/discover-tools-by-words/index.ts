@@ -112,6 +112,9 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     };
   }
 
+  constructor() {
+    super();
+  }
   async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
@@ -130,7 +133,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
       typedArgs.words,
       context.toolDescriptionCache,
     );
-
+    await context.sendNotification?.('tools/list_changed');
     if (typedArgs.enable && matches.length > 0) {
       // Enable the discovered tools
       const toolNames = matches.map((m) => m.name);

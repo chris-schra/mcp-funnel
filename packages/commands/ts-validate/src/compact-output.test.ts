@@ -33,7 +33,8 @@ describe('MCP output compact option', () => {
       fix: false,
       cache: true,
     });
-    const txt = (res.content?.[0] as any).text as string;
+    expect(res.content).toBeDefined();
+    const txt = res.content![0].text as string;
     const payload = JSON.parse(txt);
     expect(payload.fileResults).toBeDefined();
     expect(Object.keys(payload.fileResults).length).toBe(0);
@@ -52,7 +53,8 @@ describe('MCP output compact option', () => {
       cache: true,
       compact: false,
     });
-    const txt = (res.content?.[0] as any).text as string;
+    expect(res.content).toBeDefined();
+    const txt = res.content![0].text as string;
     const payload = JSON.parse(txt);
     expect(payload.fileResults).toBeDefined();
     expect(Object.keys(payload.fileResults)).toContain(file);

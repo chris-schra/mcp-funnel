@@ -22,9 +22,7 @@ toolsRoute.get('/', async (c) => {
       description: tool.description,
       inputSchema: tool.inputSchema,
       serverName,
-      enabled:
-        mcpProxy.dynamicallyEnabledTools.has(fullName) ||
-        !mcpProxy.config.enableDynamicDiscovery,
+      enabled: mcpProxy.dynamicallyEnabledTools.has(fullName) || true,
     });
   }
 
@@ -56,9 +54,7 @@ toolsRoute.get('/search', async (c) => {
           description: toolDef.tool.description,
           inputSchema: toolDef.tool.inputSchema,
           serverName,
-          enabled:
-            mcpProxy.dynamicallyEnabledTools.has(fullName) ||
-            !mcpProxy.config.enableDynamicDiscovery,
+          enabled: mcpProxy.dynamicallyEnabledTools.has(fullName) || true,
         });
       }
     }

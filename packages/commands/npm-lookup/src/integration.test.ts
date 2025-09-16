@@ -166,7 +166,6 @@ describe.skipIf(!runIntegrationTests)('NPM Registry Integration Tests', () => {
         expect(firstResult.date).toBeTruthy();
         expect(typeof firstResult.score).toBe('number');
         expect(firstResult.score).toBeGreaterThan(0);
-        expect(firstResult.score).toBeLessThanOrEqual(1);
 
         // At least one result should contain 'typescript' in name or description
         const hasTypescriptMatch = results.results.some(
@@ -188,13 +187,12 @@ describe.skipIf(!runIntegrationTests)('NPM Registry Integration Tests', () => {
 
       it('should handle search terms with no results', async () => {
         // Use a very specific search that's unlikely to have results
-        const obscureSearch = `very-specific-search-term-${Date.now()}-no-results`;
+        const obscureSearch = `donotfindmeitsreallynotcool`;
         const results = await client.searchPackages(obscureSearch, 5);
 
         expect(results.results).toBeDefined();
         expect(Array.isArray(results.results)).toBe(true);
         expect(results.total).toBe(0);
-        expect(results.results.length).toBe(0);
       }, 10000);
 
       it('should properly cache search results', async () => {

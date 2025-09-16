@@ -7,6 +7,5 @@
     }
   ],
   "alwaysVisibleTools": ["mockserver__super_tool", "mockserver__critical_*"],
-  "exposeTools": ["mockserver__*"],
-  "enableDynamicDiscovery": true
+  "exposeTools": ["mockserver__*"]
 }

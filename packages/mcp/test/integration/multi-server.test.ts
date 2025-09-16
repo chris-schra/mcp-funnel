@@ -142,7 +142,6 @@ describe('Multi-Server Integration', () => {
           },
         ],
         hideTools: ['debug_*', 'dashboard_*'],
-        enableDynamicDiscovery: false,
       };
 
       // Validate required fields
@@ -159,7 +158,7 @@ describe('Multi-Server Integration', () => {
         expect(Array.isArray(config.hideTools)).toBe(true);
       }
 
-      expect(typeof config.enableDynamicDiscovery).toBe('boolean');
+      expect(config.servers).toBeDefined();
     });
 
     it('should merge environment variables correctly', () => {

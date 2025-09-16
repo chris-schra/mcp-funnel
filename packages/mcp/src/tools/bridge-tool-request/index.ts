@@ -3,6 +3,7 @@ import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
 import { resolveToolName } from '../../utils/tool-resolver.js';
 import type { ICommand } from '@mcp-funnel/commands-core';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 export interface BridgeToolRequestParams {
   tool: string;
@@ -79,7 +80,7 @@ export class BridgeToolRequest extends BaseCoreTool {
     const toolName = resolution.toolName!;
     const mapping = context.toolMapping.get(toolName) as
       | {
-          client: any;
+          client: Client | null;
           originalName: string;
           command?: ICommand;
           toolName?: string;

@@ -205,9 +205,8 @@ describe('Real STDIO/JSONL Communication', () => {
 
       await waitForServersConnected();
 
-      // Now populate the tool caches which will also populate toolMapping
-      // Access private methods for testing
-      await (proxy['populateToolCaches'] as () => Promise<void>)();
+      // Tool caches are now populated automatically during initialize()
+      // which respects hideTools configuration
 
       // Wait for tool listing to complete
       const waitForToolsListed = async () => {
@@ -714,9 +713,8 @@ describe('Real STDIO/JSONL Communication', () => {
 
       await waitForServerConnected();
 
-      // Now populate the tool caches which will also populate toolMapping
-      // Access private methods for testing
-      await (proxy['populateToolCaches'] as () => Promise<void>)();
+      // Tool caches are now populated automatically during initialize()
+      // which respects hideTools configuration
 
       // Wait for tool listing to complete
       const waitForToolsListed = async () => {

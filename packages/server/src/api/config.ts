@@ -31,8 +31,7 @@ configRoute.get('/', async (c) => {
       })),
       hideTools: mcpProxy.config.hideTools || [],
       exposeTools: mcpProxy.config.exposeTools || [],
-      enableDynamicDiscovery: mcpProxy.config.enableDynamicDiscovery || false,
-      hackyDiscovery: mcpProxy.config.hackyDiscovery || false,
+      exposeCoreTools: mcpProxy.config.exposeCoreTools || [],
     },
   });
 });
@@ -48,11 +47,8 @@ configRoute.patch('/', zValidator('json', ConfigUpdateSchema), async (c) => {
   if (updates.exposeTools !== undefined) {
     mcpProxy.config.exposeTools = updates.exposeTools;
   }
-  if (updates.enableDynamicDiscovery !== undefined) {
-    mcpProxy.config.enableDynamicDiscovery = updates.enableDynamicDiscovery;
-  }
-  if (updates.hackyDiscovery !== undefined) {
-    mcpProxy.config.hackyDiscovery = updates.hackyDiscovery;
+  if (updates.exposeCoreTools !== undefined) {
+    mcpProxy.config.exposeCoreTools = updates.exposeCoreTools;
   }
 
   // Notify about configuration change
@@ -63,8 +59,7 @@ configRoute.patch('/', zValidator('json', ConfigUpdateSchema), async (c) => {
     config: {
       hideTools: mcpProxy.config.hideTools,
       exposeTools: mcpProxy.config.exposeTools,
-      enableDynamicDiscovery: mcpProxy.config.enableDynamicDiscovery,
-      hackyDiscovery: mcpProxy.config.hackyDiscovery,
+      exposeCoreTools: mcpProxy.config.exposeCoreTools,
     },
   });
 });

@@ -2,11 +2,11 @@
   "servers": {
     "github": {
       "command": "tsx",
-      "args": ["../../e2e/mock-server-runner.ts", "github"]
+      "args": ["packages/mcp/e2e/mock-server-runner.ts", "github"]
     },
     "filesystem": {
       "command": "tsx",
-      "args": ["../../e2e/mock-server-runner.ts", "filesystem"]
+      "args": ["packages/mcp/e2e/mock-server-runner.ts", "filesystem"]
     }
   },
   "exposeCoreTools": [

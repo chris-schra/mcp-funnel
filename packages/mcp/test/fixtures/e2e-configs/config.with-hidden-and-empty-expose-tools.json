@@ -6,5 +6,6 @@
       "args": ["packages/mcp/test/e2e/mock-server-runner.ts", "test"]
     }
   ],
-  "hideTools": ["mockserver__hidden_tool", "mockserver__*_issue"]
+  "hideTools": ["mockserver__hidden_tool", "mockserver__*_issue"],
+  "exposeTools": []
 }

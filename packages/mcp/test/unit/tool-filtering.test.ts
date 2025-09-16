@@ -137,5 +137,44 @@ describe('Tool Filtering', () => {
       expect(shouldExposeTool('store_memory', config)).toBe(true);
       expect(shouldExposeTool('retrieve_memory', config)).toBe(true);
     });
+
+    it('should reproduce the e2e test scenario - hideTools with prefixed names', () => {
+      // This matches config.with-hidden-tools.json
+      const config = {
+        hideTools: ['mockserver__hidden_tool', 'mockserver__*_issue'],
+      };
+
+      // The mockserver__hidden_tool should be hidden
+      expect(shouldExposeTool('mockserver__hidden_tool', config)).toBe(false);
+      expect(shouldExposeTool('mockserver__create_issue', config)).toBe(false);
+      expect(shouldExposeTool('mockserver__list_issue', config)).toBe(false);
+
+      // Other mockserver tools should be visible
+      expect(shouldExposeTool('mockserver__echo', config)).toBe(true);
+      expect(shouldExposeTool('mockserver__exposed_tool', config)).toBe(true);
+      expect(shouldExposeTool('mockserver__other_tool', config)).toBe(true);
+    });
+
+    it('should handle empty exposeTools array (dynamic discovery mode)', () => {
+      // When exposeTools is an empty array, no tools should be exposed
+      const config = { exposeTools: [] };
+
+      expect(shouldExposeTool('any_tool', config)).toBe(false);
+      expect(shouldExposeTool('mockserver__hidden_tool', config)).toBe(false);
+      expect(shouldExposeTool('mockserver__echo', config)).toBe(false);
+    });
+
+    it('should handle exposeTools empty array with hideTools', () => {
+      // This matches the updated config.with-hidden-tools.json
+      const config = {
+        exposeTools: [],
+        hideTools: ['mockserver__hidden_tool', 'mockserver__*_issue'],
+      };
+
+      // With empty exposeTools, ALL tools should be hidden (dynamic discovery mode)
+      expect(shouldExposeTool('mockserver__hidden_tool', config)).toBe(false);
+      expect(shouldExposeTool('mockserver__echo', config)).toBe(false);
+      expect(shouldExposeTool('mockserver__exposed_tool', config)).toBe(false);
+    });
   });
 });

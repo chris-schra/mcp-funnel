@@ -9,6 +9,7 @@ import { toolsRoute } from './api/tools.js';
 import { configRoute } from './api/config.js';
 import { WebSocketManager } from './ws/manager.js';
 import type { MCPProxy } from 'mcp-funnel';
+import { appRoute } from './app';
 
 export interface ServerOptions {
   port?: number;
@@ -42,6 +43,8 @@ export async function startWebServer(
   app.route('/api/servers', serversRoute);
   app.route('/api/tools', toolsRoute);
   app.route('/api/config', configRoute);
+
+  app.route('/app', appRoute);
 
   // Health check
   app.get('/api/health', (c) => {

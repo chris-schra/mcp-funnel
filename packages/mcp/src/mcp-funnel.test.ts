@@ -124,8 +124,8 @@ describe('MCPProxy', () => {
     });
   });
 
-  describe('hackyDiscovery mode', () => {
-    it('should register only core tools when hackyDiscovery is enabled', async () => {
+  describe('exposeCoreTools mode', () => {
+    it('should register only core tools when exposeCoreTools is configured', async () => {
       const config: ProxyConfig = {
         servers: [
           {
@@ -133,7 +133,12 @@ describe('MCPProxy', () => {
             command: 'echo',
           },
         ],
-        hackyDiscovery: true,
+        exposeCoreTools: [
+          'discover_tools_by_words',
+          'bridge_tool_request',
+          'load_toolset',
+          'get_tool_schema',
+        ],
       };
 
       const proxy = new MCPProxy(config);
@@ -166,12 +171,12 @@ describe('MCPProxy', () => {
 
       // Check tool names
       const toolNames = result?.tools?.map((t: Tool) => t.name) ?? [];
-      // discover_tools_by_words might not be enabled without enableDynamicDiscovery
+      // discover_tools_by_words is enabled via exposeCoreTools
       expect(toolNames).toContain('get_tool_schema');
       expect(toolNames).toContain('bridge_tool_request');
     });
 
-    it('should populate tool caches even in hackyDiscovery mode', async () => {
+    it('should populate tool caches even in exposeCoreTools mode', async () => {
       const config: ProxyConfig = {
         servers: [
           {
@@ -179,7 +184,12 @@ describe('MCPProxy', () => {
             command: 'echo',
           },
         ],
-        hackyDiscovery: true,
+        exposeCoreTools: [
+          'discover_tools_by_words',
+          'bridge_tool_request',
+          'load_toolset',
+          'get_tool_schema',
+        ],
       };
 
       mockClient.listTools.mockResolvedValue({
@@ -256,132 +266,7 @@ describe('MCPProxy', () => {
   });
 
   describe('alwaysVisibleTools', () => {
-    it('should always expose tools matching alwaysVisibleTools patterns with enableDynamicDiscovery', async () => {
-      const config: ProxyConfig = {
-        servers: [
-          {
-            name: 'test',
-            command: 'echo',
-          },
-        ],
-        alwaysVisibleTools: ['test__super_tool', 'test__critical_*'],
-        exposeTools: ['test__*'], // Allow all test server tools to be discovered
-        enableDynamicDiscovery: true, // Tools hidden by default except alwaysVisibleTools
-      };
-
-      // Setup mock client to return various tools
-      const mockTestClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({
-          tools: [
-            { name: 'super_tool', description: 'Always visible' },
-            {
-              name: 'critical_command',
-              description: 'Matches critical_* pattern',
-            },
-            {
-              name: 'normal_tool',
-              description: 'Should be hidden until discovered',
-            },
-            { name: 'other_tool', description: 'Also hidden initially' },
-          ],
-        }),
-        callTool: vi.fn(),
-      } as unknown as MockClient;
-
-      (Client as ReturnType<typeof vi.fn>).mockImplementation(
-        () => mockTestClient,
-      );
-
-      const proxy = new MCPProxy(config);
-      await proxy.initialize();
-
-      // Get the list tools handler
-      const listToolsCall = mockServer.setRequestHandler.mock.calls.find(
-        (call) => {
-          const schema = call[0] as { parse?: (data: unknown) => unknown };
-          try {
-            return schema.parse && schema.parse({ method: 'tools/list' });
-          } catch {
-            return false;
-          }
-        },
-      );
-
-      const handler = listToolsCall?.[1];
-      const result = await handler?.({}, {});
-
-      const toolNames = result?.tools?.map((t: Tool) => t.name) ?? [];
-
-      // alwaysVisibleTools should be exposed immediately
-      expect(toolNames).toContain('test__super_tool');
-      expect(toolNames).toContain('test__critical_command');
-
-      // Other tools should NOT be exposed (enableDynamicDiscovery hides them)
-      expect(toolNames).not.toContain('test__normal_tool');
-      expect(toolNames).not.toContain('test__other_tool');
-    });
-
-    it('should expose alwaysVisibleTools regardless of exposeTools filter', async () => {
-      const config: ProxyConfig = {
-        servers: [
-          {
-            name: 'test',
-            command: 'echo',
-          },
-        ],
-        alwaysVisibleTools: ['test__super_tool'],
-        exposeTools: ['test__normal_*'], // Only allow normal_* tools
-        enableDynamicDiscovery: true,
-      };
-
-      // Setup mock client
-      const mockTestClient = {
-        connect: vi.fn(),
-        listTools: vi.fn().mockResolvedValue({
-          tools: [
-            { name: 'super_tool', description: 'Always visible' },
-            { name: 'normal_tool', description: 'Matches exposeTools' },
-            { name: 'other_tool', description: 'Not allowed' },
-          ],
-        }),
-        callTool: vi.fn(),
-      } as unknown as MockClient;
-
-      (Client as ReturnType<typeof vi.fn>).mockImplementation(
-        () => mockTestClient,
-      );
-
-      const proxy = new MCPProxy(config);
-      await proxy.initialize();
-
-      const listToolsCall = mockServer.setRequestHandler.mock.calls.find(
-        (call) => {
-          const schema = call[0] as { parse?: (data: unknown) => unknown };
-          try {
-            return schema.parse && schema.parse({ method: 'tools/list' });
-          } catch {
-            return false;
-          }
-        },
-      );
-
-      const handler = listToolsCall?.[1];
-      const result = await handler?.({}, {});
-
-      const toolNames = result?.tools?.map((t: Tool) => t.name) ?? [];
-
-      // super_tool should be visible even though it doesn't match exposeTools
-      expect(toolNames).toContain('test__super_tool');
-
-      // normal_tool is in exposeTools but hidden by enableDynamicDiscovery
-      expect(toolNames).not.toContain('test__normal_tool');
-
-      // other_tool is neither in alwaysVisibleTools nor exposeTools
-      expect(toolNames).not.toContain('test__other_tool');
-    });
-
-    it('should work correctly without enableDynamicDiscovery', async () => {
+    it('should work correctly with standard filtering', async () => {
       const config: ProxyConfig = {
         servers: [
           {
@@ -391,7 +276,7 @@ describe('MCPProxy', () => {
         ],
         alwaysVisibleTools: ['test__super_tool'],
         exposeTools: ['test__normal_*'],
-        // enableDynamicDiscovery is false/undefined - normal filtering applies
+        // Standard filtering applies
       };
 
       const mockTestClient = {

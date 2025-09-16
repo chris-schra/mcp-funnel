@@ -640,12 +640,42 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@hono/node-server@npm:^1.14.2":
+  version: 1.19.3
+  resolution: "@hono/node-server@npm:1.19.3"
+  peerDependencies:
+    hono: ^4
+  checksum: 10c0/72a6f52feb9d9e5112b70077c6fc84184f484f2d6818622c480edcacd6d888e1a14d45dc1ab5112324bfcbd7c42ff647e71fecba6d372dc511a820c858085ad9
+  languageName: node
+  linkType: hard
+
 "@hono/node-server@npm:^1.19.2":
   version: 1.19.2
   resolution: "@hono/node-server@npm:1.19.2"
   peerDependencies:
     hono: ^4
   checksum: 10c0/36a191740ca65780ef5b9da21e5ea7ac34e77c64ecbd4449b03eb0b4430bf9e27d9f51266b9898e53e266e4d7505caa735d1a3ef543585ceeefb10684e253aa5
+  languageName: node
+  linkType: hard
+
+"@hono/vite-dev-server@npm:^0.21.0":
+  version: 0.21.0
+  resolution: "@hono/vite-dev-server@npm:0.21.0"
+  dependencies:
+    "@hono/node-server": "npm:^1.14.2"
+    minimatch: "npm:^9.0.3"
+  peerDependencies:
+    hono: "*"
+    miniflare: "*"
+    wrangler: "*"
+  peerDependenciesMeta:
+    hono:
+      optional: false
+    miniflare:
+      optional: true
+    wrangler:
+      optional: true
+  checksum: 10c0/d7c6c55964e55ec2771f655db616f3b48de45ef92f4d7bfb8c72b1b4c2e6ba72894d102ee13cd771146dd3a16437a21f566cf28b9c9411a5d1d02fd67113619c
   languageName: node
   linkType: hard
 
@@ -919,6 +949,7 @@ __metadata:
   resolution: "@mcp-funnel/server@workspace:packages/server"
   dependencies:
     "@hono/node-server": "npm:^1.19.2"
+    "@hono/vite-dev-server": "npm:^0.21.0"
     "@hono/zod-validator": "npm:^0.7.2"
     "@types/node": "npm:^24.3.2"
     "@types/ws": "npm:^8.18.1"
@@ -3933,7 +3964,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^9.0.4":
+"minimatch@npm:^9.0.3, minimatch@npm:^9.0.4":
   version: 9.0.5
   resolution: "minimatch@npm:9.0.5"
   dependencies:

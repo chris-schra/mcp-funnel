@@ -34,7 +34,7 @@
   "scripts": {
     "build": "tsx build.ts",
     "build:watch": "tsx build.ts --watch",
-    "test": "vitest",
+    "test": "echo 'ERROR: Tests must be run via `yarn test` from repository root!' && exit 1",
     "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {

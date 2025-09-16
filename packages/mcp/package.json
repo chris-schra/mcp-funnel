@@ -26,6 +26,10 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.cjs"
+    },
+    "./overrides": {
+      "import": "./dist/overrides/index.js",
+      "types": "./dist/types/overrides/index.d.ts"
     }
   },
   "files": [
@@ -33,9 +37,10 @@
     "!dist/**/*.map"
   ],
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/cli.ts",
     "build": "tsx build.ts",
     "build:watch": "tsx build.ts --watch",
+    "test": "echo 'ERROR: Tests must be run via `yarn test` from repository root!' && exit 1",
     "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {

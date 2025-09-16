@@ -29,8 +29,7 @@ export const ExecuteToolSchema = z.object({
 export const ConfigUpdateSchema = z.object({
   hideTools: z.array(z.string()).optional(),
   exposeTools: z.array(z.string()).optional(),
-  enableDynamicDiscovery: z.boolean().optional(),
-  hackyDiscovery: z.boolean().optional(),
+  exposeCoreTools: z.array(z.string()).optional(),
 });
 
 export const WSMessageSchema = z.discriminatedUnion('type', [
