@@ -254,13 +254,12 @@ describe('Real STDIO/JSONL Communication', () => {
       expect(toolNames).toContain('server2__beta_tool1');
       expect(toolNames).toContain('server2__beta_tool2');
 
-      // Error tools are in toolMapping but should be filtered during actual tool listing
-      // The toolMapping contains ALL tools, filtering happens when they're exposed to clients
-      // So we verify they exist in mapping but would be filtered
-      expect(toolNames).toContain('server1__alpha_error');
-      expect(toolNames).toContain('server2__beta_error');
+      // Error tools are completely blocked by hideTools (firewall behavior)
+      // They should NOT be in toolMapping at all
+      expect(toolNames).not.toContain('server1__alpha_error');
+      expect(toolNames).not.toContain('server2__beta_error');
 
-      // But they would be hidden from clients due to hideTools config
+      // Verify that hideTools pattern would match these tools
       const shouldBeHidden = config.hideTools?.some((pattern) => {
         const regex = new RegExp('^' + pattern.replace('*', '.*') + '$');
         return regex.test('server1__alpha_error');

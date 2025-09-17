@@ -61,6 +61,17 @@ export class ToolRegistry {
 
   // Discovery phase - tools found but not necessarily enabled
   registerDiscoveredTool(params: RegisterToolParams): void {
+    // Check if tool is hidden - if so, don't register it at all (unless alwaysVisible)
+    if (this.matchesPatterns(params.fullName, this.config.hideTools)) {
+      // But alwaysVisibleTools overrides hideTools
+      if (
+        !this.matchesPatterns(params.fullName, this.config.alwaysVisibleTools)
+      ) {
+        // Tool is hidden and not alwaysVisible, act as a firewall - don't register it
+        return;
+      }
+    }
+
     const existing = this.tools.get(params.fullName);
 
     this.tools.set(params.fullName, {

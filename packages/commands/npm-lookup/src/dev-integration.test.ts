@@ -224,10 +224,10 @@ describe('Command Integration', () => {
       const proxyWithHide = new MCPProxy(_configWithHide);
       await proxyWithHide.initialize();
 
-      // Check tool definition cache - both should be registered for discovery
+      // Check tool definition cache - hidden tools should NOT be in cache (firewall behavior)
       const toolDefinitionCacheHide = proxyWithHide.toolDefinitionCache;
       expect(toolDefinitionCacheHide.has('npm_lookup')).toBe(true);
-      expect(toolDefinitionCacheHide.has('npm_search')).toBe(true);
+      expect(toolDefinitionCacheHide.has('npm_search')).toBe(false); // Hidden tools are firewalled
     });
 
     it('should not expose commands when disabled', async () => {
