@@ -12,7 +12,32 @@ MCP Funnel enables you to:
 - **Fine-grained tool filtering**: Hide specific tools that you don't need
 - **Pattern-based filtering**: Use wildcards to hide entire categories of tools
 - **Reduce context usage**: Significantly decrease token consumption by exposing only necessary tools
-- Avoid tool name conflicts through automatic prefixing
+
+## 🏗️ Architecture
+
+```
+┌────────────────────────┐
+│ CLI (e.g. Claude Code) │
+└──────┬─────────────────┘
+       │ MCP Protocol via stdio
+┌──────▼──────┐
+│  MCP Funnel │ ← Filtering and dynamic discovery happens here
+└──────┬──────┘
+       │
+   ┌───┴──────┬─────────┬─────────┐
+   │          │         │         │
+┌──▼────┐ ┌───▼───┐ ┌───▼───┐ ┌───▼───┐
+│GitHub │ │Memory │ │FS     │ │ ...   │ ← Each exposes all tools
+└───────┘ └───────┘ └───────┘ └───────┘
+```
+
+MCP Funnel:
+
+1. Connects to multiple MCP servers as a client
+2. Receives all tools from each server
+3. Applies your filtering rules
+4. Exposes only the filtered tools to clients
+5. Routes tool calls to the appropriate backend server
 
 ## 🚀 Features
 
@@ -26,6 +51,113 @@ MCP Funnel enables you to:
 - **Dynamic Tool Discovery**: Experimental feature for reducing initial context usage (see limitations)
 - **Core Tools Mode**: Ultra-minimal context mode exposing only selected MCP Funnel tools with dynamic bridging (95%+ context reduction)
 
+
+## 💡 Why Use MCP Funnel?
+
+### The Context Problem
+
+A typical MCP setup might expose:
+
+- GitHub MCP: ~70 tools
+- Memory MCP: ~30 tools
+- Filesystem MCP: ~15 tools
+- **Total: 115+ tools consuming 40k tokens**
+
+Many of these tools are rarely used:
+
+- Workflow management tools
+- Team/organization tools
+- Debug and diagnostic tools
+- Dashboard interfaces
+- Advanced embedding operations
+
+Or to "speak" with chat:
+
+### Before
+
+<details>
+    <summary>For this `.mcp.json` config</summary>
+    {<br/>
+    &nbsp;&nbsp;"mcpServers": {<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;"memory": {<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": "uv",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"args": ["--directory", "/Users/d635861/WorkBench/_mcp/mcp-memory-service", "run", "memory", "server"]<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;},<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;"context7": {<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": "npx",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"args": ["-y", "@upstash/context7-mcp", "--api-key", "API_KEY"]<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;},<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;"code-reasoning": {<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": "npx",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"args": ["-y", "@mettamatt/code-reasoning"]<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;},<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;"filesystem": {<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": "npx",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"args": [<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"-y",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"@modelcontextprotocol/server-filesystem",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"allowed/file/path"<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;},<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;"github": {<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": "docker",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"args": [<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"run",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"--env-file",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".env",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"-i",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"--rm",<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"ghcr.io/github/github-mcp-server"<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;}<br/>
+    &nbsp;&nbsp;}<br/>
+    }<br/>
+```
+</details>
+
+```
+> /context 
+  ⎿  ⛁ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-opus-4-1-20250805 • 42k/200k tokens (21%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ MCP tools: 25.4k tokens (12.7%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Messages: 96 tokens (0.0%)
+```
+
+### After
+
+```
+> /context
+⎿  ⛁ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛀   Context Usage
+⛀ ⛀ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   claude-opus-4-1-20250805 • 18k/200k tokens (9%)
+⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ MCP tools: 2.4k tokens (1.2%)
+⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Messages: 96 tokens (0.0%)
+```
+
+**Then use it:**
+
+```
+> discover tool for code reasoning
+
+⏺ I'll help you discover the code reasoning tool.
+
+⏺ mcp-funnel - discover_tools_by_words (MCP)(words: "reasoning", enable: false)
+  ⎿  Found 1 tools:                                                                                                                                                                                                                                                                                           
+     ○ code-reasoning__code-reasoning: 🧠 A detailed tool for dynamic and reflective problem-solving through sequential thinking.
+     … +29 lines (ctrl+o to expand)
+
+⏺ Found it! The code-reasoning__code-reasoning tool is available for detailed code analysis and reasoning. Let me enable it:
+
+⏺ mcp-funnel - load_toolset (MCP)(tools: ["code-reasoning__code-reasoning"])
+  ⎿  Loaded 1 tools matching specified patterns                                                                                                                                                                                                                                                               
+⏺ The code reasoning tool is now enabled. It provides:
+  - Dynamic problem-solving through sequential thinking
+  - Ability to branch and explore alternatives
+  - Revision capabilities to correct earlier thinking
+  - Flexible thought progression that adapts as understanding deepens
+
+  You can now use this tool for analyzing code logic, understanding complex implementations, and working through programming challenges step-by-step.
+```
+
 ## 📋 Prerequisites
 
 - Node.js 18+ and npm/yarn
@@ -34,18 +166,7 @@ MCP Funnel enables you to:
 
 ## 🔧 Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/mcp-funnel.git
-cd mcp-funnel
 
-# Install dependencies
-yarn install
-
-# Create your configuration
-cp .mcp-funnel.example.json .mcp-funnel.json
-# Edit .mcp-funnel.json with your servers
-```
 
 ## ⚙️ Configuration
 
@@ -172,101 +293,6 @@ Available core tools:
 - `load_toolset` - Load predefined tool patterns
 
 If `exposeCoreTools` is not specified, all core tools are enabled by default.
-
-## 📦 Built-in Commands
-
-MCP Funnel includes several built-in commands that provide useful functionality:
-
-### NPM Command
-
-The NPM command provides package lookup and search capabilities using the NPM registry API.
-
-**Tools exposed:**
-
-- `npm_lookup` - Get detailed information about a specific NPM package
-- `npm_search` - Search for packages matching a query
-
-**Configuration:**
-
-```json
-{
-  "commands": {
-    "enabled": true,
-    "list": ["npm"]
-  },
-  "exposeTools": ["commands__npm_lookup", "commands__npm_search"]
-}
-```
-
-**Example usage:**
-
-```bash
-# CLI usage
-npx mcp-funnel run npm lookup express
-npx mcp-funnel run npm search "test framework"
-
-# MCP usage (via Claude or other clients)
-# "Look up the express package for me"
-# "Search for TypeScript testing frameworks"
-```
-
-**Features:**
-
-- Comprehensive package metadata including dependencies and statistics
-- Smart search with relevance scoring
-- Built-in caching (5 minutes) for improved performance
-- Error handling for missing packages and network issues
-
-For detailed documentation, see [NPM Command README](packages/commands/npm-lookup/README.md).
-
-## ➕ Adding Command Packages (Zero‑Config)
-
-MCP Funnel can load command packages installed in your project automatically.
-
-- Install a command package in your project (dev dependency is fine):
-
-```bash
-yarn add -D @mcp-funnel/command-npm-lookup
-```
-
-- Ensure commands are enabled in `.mcp-funnel.json`:
-
-```json
-{
-  "commands": {
-    "enabled": true,
-    "list": ["npm", "ts-validate"]
-  }
-}
-```
-
-What happens next:
-
-- On startup, MCP Funnel auto‑scans `node_modules/@mcp-funnel/command-*` and loads matching packages.
-- The `commands.list` array (if present) filters by command name (e.g. `"npm"`) before tools are exposed.
-- Tools follow the compact naming:
-  - Single‑tool commands: `ts-validate`
-  - Multi‑tool commands: `<command>_<tool>` (e.g., `npm_lookup`, `npm_search`)
-
-Notes:
-
-- No extra config is required beyond enabling `commands.enabled`.
-- To limit which commands load, specify `commands.list`. If omitted, all discovered commands are exposed.
-- Existing `exposeTools`/`hideTools` still apply (e.g., `commands__npm_*`).
-
-### Multi-Tool Commands
-
-Commands can expose multiple tools, as demonstrated by the NPM command. This pattern allows:
-
-- **Logical grouping**: Related functionality under one command
-- **Shared resources**: Common caching, configuration, and error handling
-- **Flexible filtering**: Enable/disable individual tools within a command
-
-When creating custom commands, consider the multi-tool pattern for:
-
-- API clients (list, get, create, update operations)
-- File operations (read, write, search, validate)
-- Development tools (lint, test, build, deploy)
 
 ## 🚀 Usage
 
@@ -406,10 +432,6 @@ Runtime flow:
 - Enable: `load_toolset` with explicit tool names or patterns (e.g., ["context7__resolve_library_id", "context7__get-library-docs"]).
 - Call: Use the enabled tools normally.
 
-Notes:
-
-- Dev commands can remain visible by allowlisting `commands__npm_*` and `commands__ts-validate` in `exposeTools`, or they can be loaded dynamically like any other tool.
-- The proxy now caches tool descriptions regardless of visibility, so discovery works even when `exposeTools` is empty. Dynamically enabled tools become visible immediately and persist for the session.
 
 ## 🚀 Core Tools Mode (Ultra-Low Context)
 
@@ -494,265 +516,6 @@ We're eagerly waiting for these issues to be resolved:
 
 Once these features land, dynamic discovery will significantly reduce initial context usage by loading only the tools you need on-demand.
 
-### Future Vision
-
-When dynamic updates are supported, you'll be able to:
-
-```
-User: "I need to work with GitHub issues"
-Assistant: *discovers and enables only GitHub issue tools*
-User: "Now let's store some information"
-Assistant: *discovers and enables only memory storage tools*
-```
-
-This will dramatically reduce context usage compared to loading 100+ tools upfront.
-
-## 💡 Why Use MCP Funnel?
-
-### The Context Problem
-
-A typical MCP setup might expose:
-
-- GitHub MCP: ~130 tools
-- Memory MCP: ~30 tools
-- Filesystem MCP: ~15 tools
-- **Total: 175+ tools consuming 60-70k tokens**
-
-Many of these tools are rarely used:
-
-- Workflow management tools
-- Team/organization tools
-- Debug and diagnostic tools
-- Dashboard interfaces
-- Advanced embedding operations
-
-## 🎛️ Tool Overrides
-
-MCP Funnel provides powerful tool override capabilities that allow you to customize tool metadata, input schemas, and behavior without modifying the original MCP servers.
-
-### Basic Usage
-
-Add `toolOverrides` to your configuration to modify tools:
-
-```json
-{
-  "servers": [...],
-  "toolOverrides": {
-    "github__create_issue": {
-      "title": "Create GitHub Issue (Enhanced)",
-      "description": "Create a new GitHub issue with enhanced validation",
-      "inputSchema": {
-        "strategy": "merge",
-        "properties": {
-          "priority": {
-            "type": "string",
-            "enum": ["low", "medium", "high", "critical"],
-            "default": "medium"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### Advanced Schema Override Strategies
-
-**Replace Strategy**: Completely replace the original input schema
-
-```json
-"tool_name": {
-  "inputSchema": {
-    "strategy": "replace",
-    "properties": {
-      "newField": {"type": "string"}
-    },
-    "required": ["newField"]
-  }
-}
-```
-
-**Merge Strategy** (default): Shallow merge properties
-
-```json
-"tool_name": {
-  "inputSchema": {
-    "strategy": "merge",
-    "properties": {
-      "additionalField": {"type": "string"}
-    }
-  }
-}
-```
-
-**Deep-Merge Strategy**: Recursively merges nested schema properties using the battle-tested `deepmerge-ts` library
-
-```json
-"tool_name": {
-  "inputSchema": {
-    "strategy": "deep-merge",
-    "properties": {
-      "existingNestedField": {
-        "type": "object",
-        "properties": {
-          "nestedProperty": {
-            "description": "This will be merged with existing nested properties"
-          }
-        }
-      }
-    },
-    "propertyOverrides": {
-      "existingField": {
-        "description": "Enhanced description",
-        "default": "new default value"
-      }
-    }
-  }
-}
-```
-
-### Pattern-Based Overrides
-
-Use wildcards to apply overrides to multiple tools:
-
-```json
-{
-  "toolOverrides": {
-    "github__*": {
-      "annotations": {
-        "category": "github-operations",
-        "tags": ["github", "version-control"]
-      }
-    },
-    "*__delete_*": {
-      "title": "⚠️ ${originalTitle}",
-      "annotations": {
-        "deprecated": false,
-        "deprecationMessage": "Use with extreme caution"
-      }
-    }
-  }
-}
-```
-
-### Template Placeholders
-
-You can use template placeholders in `title` and `description` fields to reference the original tool values:
-
-- `${originalName}` - The original tool name
-- `${originalTitle}` - The original title (falls back to name if no title)
-- `${originalDescription}` - The original description
-
-Example:
-
-```json
-{
-  "toolOverrides": {
-    "*__delete_*": {
-      "title": "⚠️ ${originalTitle}",
-      "description": "DANGER: ${originalDescription}. This cannot be undone!"
-    }
-  }
-}
-```
-
-### Tool Annotations
-
-Enhance tools with metadata for better organization:
-
-```json
-"tool_name": {
-  "annotations": {
-    "category": "data-management",
-    "tags": ["memory", "persistence"],
-    "deprecated": true,
-    "deprecationMessage": "Use tool_name_v2 instead"
-  }
-}
-```
-
-### Override Settings
-
-You can configure tool override behavior using the `overrideSettings` field:
-
-```json
-{
-  "servers": [...],
-  "overrideSettings": {
-    "allowPreRegistration": false,
-    "warnOnMissingTools": true,
-    "applyToDynamic": true,
-    "validateOverrides": true
-  },
-  "toolOverrides": {
-    "github__create_issue": {...}
-  }
-}
-```
-
-**Override Settings Options:**
-
-- **allowPreRegistration**: Allow overrides for tools that don't exist yet (default: false)
-- **warnOnMissingTools**: Warn when override targets non-existent tool (default: true)
-- **applyToDynamic**: Apply validation to dynamic override updates (default: true)
-- **validateOverrides**: Validate overrides for type safety (default: true)
-
-For comprehensive examples, see [examples/override-config.json](examples/override-config.json).
-
-### The MCP Funnel Solution
-
-With MCP Funnel, you can:
-
-1. **Connect multiple servers**: Use GitHub + Memory + Filesystem simultaneously
-2. **Filter out noise**: Hide tools you never use
-3. **Save context**: Reduce tool context from 70k to 30-40k tokens
-4. **Maintain control**: Unlike server-side filtering (which most don't support), you control exactly what's exposed
-
-## 🏗️ Architecture
-
-```
-┌────────────────────────┐
-│ CLI (e.g. Claude Code) │
-└──────┬─────────────────┘
-       │ MCP Protocol via stdio
-┌──────▼──────┐
-│  MCP Funnel │ ← Filtering happens here
-└──────┬──────┘
-       │
-   ┌───┴──────┬─────────┬─────────┐
-   │          │         │         │
-┌──▼────┐ ┌───▼───┐ ┌───▼───┐ ┌───▼───┐
-│GitHub │ │Memory │ │FS     │ │ ...   │ ← Each exposes all tools
-└───────┘ └───────┘ └───────┘ └───────┘
-```
-
-MCP Funnel:
-
-1. Connects to multiple MCP servers as a client
-2. Receives all tools from each server
-3. Applies your filtering rules
-4. Exposes only the filtered tools to Claude
-5. Routes tool calls to the appropriate backend server
-
-## 🐛 Troubleshooting
-
-### Server Connection Issues
-
-MCP Funnel prefixes each server's stderr output for debugging:
-
-```
-[github] Connecting to GitHub API...
-[memory] Database initialized at ~/.mcp-memory
-[filesystem] Watching directory: /Users/example
-```
-
-### Common Issues
-
-1. **Tool not found**: Check that the tool isn't filtered by `hideTools` patterns
-2. **Server fails to start**: Check the command and args in your config
-3. **Permission denied**: Ensure MCP Funnel has permission to execute server commands
-4. **Environment variables**: Use the `env` field in server config for API keys
-
 ## 🔒 Security Considerations
 
 - **Never commit API keys**: Use environment variables or `.env` files (git-ignored)
@@ -762,9 +525,9 @@ MCP Funnel prefixes each server's stderr output for debugging:
 
 ## 🗺️ Roadmap
 
-- [ ] Connection retry logic for resilient server management
+- [x] Connection retry logic for resilient server management
 - [ ] Health monitoring and status reporting
-- [ ] Graceful degradation when servers fail
+- [x] Graceful degradation when servers fail
 - [ ] Structured logging with configurable levels
 - [ ] Metrics and performance monitoring
 - [ ] WebSocket transport support
@@ -787,9 +550,8 @@ The project includes comprehensive e2e tests simulating Claude SDK conversations
 Contributions are welcome! Key areas needing work:
 
 1. **Error handling**: Make MCP Funnel resilient to server failures
-2. **Testing**: Add comprehensive test coverage
+2. **Testing**: Add comprehensive test coverage for other clients than Claude Code
 3. **Logging**: Implement structured logging
-4. **Build pipeline**: Set up proper TypeScript compilation and packaging
 
 ## 📄 License
 
