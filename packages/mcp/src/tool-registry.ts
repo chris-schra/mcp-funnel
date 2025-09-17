@@ -21,13 +21,14 @@ export interface ToolState {
 
   // Visibility state (computed)
   exposed: boolean; // Tool is visible to clients
-  exposureReason?: 'always' | 'enabled' | 'allowlist' | 'default';
+  exposureReason?: 'always' | 'enabled' | 'allowlist' | 'default' | 'core';
 
   // Tool data
   definition?: Tool;
   description?: string;
   client?: Client;
   command?: ICommand;
+  isCoreTool?: boolean; // Core tools bypass exposeTools filtering
 
   // Metadata
   tags?: string[];
@@ -41,6 +42,7 @@ export interface RegisterToolParams {
   definition: Tool;
   client?: Client;
   command?: ICommand;
+  isCoreTool?: boolean; // Mark tools as core tools to bypass exposeTools filtering
 }
 
 export interface RegistryStats {
@@ -61,14 +63,17 @@ export class ToolRegistry {
 
   // Discovery phase - tools found but not necessarily enabled
   registerDiscoveredTool(params: RegisterToolParams): void {
-    // Check if tool is hidden - if so, don't register it at all (unless alwaysVisible)
-    if (this.matchesPatterns(params.fullName, this.config.hideTools)) {
-      // But alwaysVisibleTools overrides hideTools
-      if (
-        !this.matchesPatterns(params.fullName, this.config.alwaysVisibleTools)
-      ) {
-        // Tool is hidden and not alwaysVisible, act as a firewall - don't register it
-        return;
+    // Core tools bypass hideTools filtering
+    if (!params.isCoreTool) {
+      // Check if tool is hidden - if so, don't register it at all (unless alwaysVisible)
+      if (this.matchesPatterns(params.fullName, this.config.hideTools)) {
+        // But alwaysVisibleTools overrides hideTools
+        if (
+          !this.matchesPatterns(params.fullName, this.config.alwaysVisibleTools)
+        ) {
+          // Tool is hidden and not alwaysVisible, act as a firewall - don't register it
+          return;
+        }
       }
     }
 
@@ -129,30 +134,35 @@ export class ToolRegistry {
     tool: ToolState,
   ): {
     exposed: boolean;
-    reason?: 'always' | 'enabled' | 'allowlist' | 'default';
+    reason?: 'always' | 'enabled' | 'allowlist' | 'default' | 'core';
   } {
-    // 1. Always visible (highest priority)
+    // 1. Core tools - only controlled by their own registration, not by exposeTools
+    if (tool.isCoreTool) {
+      return { exposed: true, reason: 'core' };
+    }
+
+    // 2. Always visible (highest priority for regular tools)
     if (this.matchesPatterns(name, this.config.alwaysVisibleTools)) {
       return { exposed: true, reason: 'always' };
     }
 
-    // 2. Dynamically enabled
+    // 3. Dynamically enabled
     if (tool.enabled && tool.enabledBy) {
       return { exposed: true, reason: 'enabled' };
     }
 
-    // 3. ExposeTools allowlist mode
+    // 4. ExposeTools allowlist mode
     if (this.config.exposeTools !== undefined) {
       const matches = this.matchesPatterns(name, this.config.exposeTools);
       return { exposed: matches, reason: matches ? 'allowlist' : undefined };
     }
 
-    // 4. HideTools denylist
+    // 5. HideTools denylist
     if (this.matchesPatterns(name, this.config.hideTools)) {
       return { exposed: false };
     }
 
-    // 5. Default visible
+    // 6. Default visible
     return { exposed: true, reason: 'default' };
   }
 
