@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.chris-schra/mcp-funnel",
+  "description": "MCP proxy that aggregates multiple servers with tool filtering and customization",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/chris-schra/mcp-funnel",
+    "source": "github"
+  },
+  "version": "0.0.6",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "registry_base_url": "https://registry.npmjs.org",
+      "identifier": "mcp-funnel",
+      "version": "0.0.6",
+      "transport": {
+        "type": "stdio"
+      },
+      "environment_variables": []
+    }
+  ]
+}

@@ -8,6 +8,7 @@
     "type": "git",
     "url": "git+https://github.com/chris-schra/mcp-funnel.git"
   },
+  "mcpName": "io.github.chris-schra/mcp-funnel",
   "keywords": [
     "mcp",
     "model-context-protocol",
