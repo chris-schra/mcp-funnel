@@ -5,19 +5,45 @@
   "status": "active",
   "repository": {
     "url": "https://github.com/chris-schra/mcp-funnel",
-    "source": "github"
+    "source": "github",
+    "id": "1055597409",
+    "subfolder": "packages/mcp"
   },
-  "version": "0.0.6",
+  "version": "0.0.7",
+  "website_url": "https://github.com/chris-schra/mcp-funnel#readme",
   "packages": [
     {
       "registry_type": "npm",
       "registry_base_url": "https://registry.npmjs.org",
       "identifier": "mcp-funnel",
       "version": "0.0.6",
+      "runtime_hint": "npx",
+      "runtime_arguments": [
+        {
+          "type": "positional",
+          "value": "-y"
+        }
+      ],
       "transport": {
         "type": "stdio"
       },
-      "environment_variables": []
+      "package_arguments": [
+        {
+          "type": "positional",
+          "value_hint": "config_path",
+          "description": "Optional path to .mcp-funnel.json config file",
+          "is_required": false,
+          "format": "filepath"
+        }
+      ],
+      "environment_variables": [
+        {
+          "name": "MCP_FUNNEL_CONFIG",
+          "description": "Alternative way to specify config file path",
+          "is_required": false,
+          "format": "filepath"
+        }
+      ]
     }
   ]
 }

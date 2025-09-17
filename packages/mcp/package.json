@@ -1,6 +1,6 @@
 {
   "name": "mcp-funnel",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "MCP proxy that aggregates multiple servers with tool filtering - stop carrying 70k tokens of tools you'll never use",
   "author": "Christoph Schramm",
   "license": "MIT",
