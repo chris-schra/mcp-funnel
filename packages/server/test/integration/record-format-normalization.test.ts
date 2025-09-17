@@ -212,7 +212,6 @@ describe('Record Format Normalization Integration', () => {
           hideTools: rawConfig.hideTools,
           exposeTools: rawConfig.exposeTools,
           exposeCoreTools: rawConfig.exposeCoreTools,
-          exposeCoreTools: false,
         },
       };
 

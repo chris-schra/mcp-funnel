@@ -11,17 +11,3 @@ const viteDevServer = await import('vite').then((vite) =>
     server: { middlewareMode: true },
   }),
 );
-
-appRoute.use(async (ctx, next) => {
-  debugger;
-  return viteDevServer.middlewares(ctx.req.raw, ctx.res, (...args) => {
-    const c = ctx;
-
-    debugger;
-  });
-});
-
-appRoute.get('/', async (c) => {
-  const v = viteDevServer;
-  return c.json('OK');
-});

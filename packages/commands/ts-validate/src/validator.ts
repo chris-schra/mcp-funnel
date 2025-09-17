@@ -606,8 +606,15 @@ export class MonorepoValidator {
               this.tsNs = (await import(
                 localTs.modulePath
               )) as unknown as typeof import('typescript');
-            } catch (_e) {
+            } catch (e) {
+              const _e = e as Error;
               // Ignore import errors, fall back to bundled
+              console.debug(
+                'Could not import local TypeScript from ' +
+                  localTs.modulePath +
+                  ': ' +
+                  (_e && _e.message ? _e.message : _e),
+              );
             }
           }
           if (!this.tsNs) {

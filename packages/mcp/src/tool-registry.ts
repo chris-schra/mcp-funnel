@@ -168,7 +168,7 @@ export class ToolRegistry {
 
   private isAutoEnabled(name: string): boolean {
     // Tools that should be enabled on discovery
-    return this.matchesPatterns(name, this.config.alwaysVisibleTools) ?? false;
+    return this.matchesPatterns(name, this.config.alwaysVisibleTools);
   }
 
   // Query methods
