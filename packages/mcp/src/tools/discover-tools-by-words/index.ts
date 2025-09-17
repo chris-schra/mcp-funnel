@@ -97,11 +97,20 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     }
 
     if (matches.length === 0) {
+      // Check if registries are configured to suggest registry search
+      const hasRegistries =
+        context.config.registries && context.config.registries.length > 0;
+
+      let message = `No local tools found matching keywords: ${typedArgs.words}`;
+      if (hasRegistries) {
+        message += `\n\nTip: Try searching MCP registries for additional tools:\nsearch_registry_tools "${typedArgs.words}"`;
+      }
+
       return {
         content: [
           {
             type: 'text',
-            text: `No tools found matching keywords: ${typedArgs.words}`,
+            text: message,
           },
         ],
       };

@@ -11,6 +11,11 @@
   everything is clear, small enough, and that the implementation is correct and well-aligned.
 - Your job **IS** to ask questions to the user to clarify the scope and to identify possible blockers and risks.
 
+## CRITICAL:
+
+- **NEVER** touch tsconfig.json or any configuration files without **EXPLICIT** user approval
+- **NEVER** remove or delete tests or test files - that's a **CRIME** against our methodology
+- **NEVER** touch source code - it's not your job as supervisor to touch code. **You have subagent workers for that.**
 
 ## Before starting
 
@@ -39,15 +44,18 @@ Phase 1: Interfaces & Types
   - if types or interfaces have more than 5 lines, they need dedicated files, and those need to be exported via packages/mcp/src/registry/index.ts
 
 **DO NOT** proceed to next phase until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
 Phase 2: Tests with test.skip
+
+You **MUST** tick the checklist boxes for previous phase before continuing.
 
 - Write comprehensive tests that define expected behavior
 - Tests for cache operations (no-op in MVP)
@@ -58,15 +66,18 @@ Phase 2: Tests with test.skip
 - All tests initially skipped but validate against types
 
 **DO NOT** proceed to next phase until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
 Phase 3: Implementation
+
+You **MUST** tick the checklist boxes for previous phase before continuing.
 
 - No-op implementations for extension points:
     - NoOpCache (always returns null)
@@ -79,15 +90,18 @@ Phase 3: Implementation
     - Config generation logic for npm/pypi/oci/remotes
 
 **DO NOT** proceed to next phase until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
 Phase 4: Unskip & Run Tests
+
+You **MUST** tick the checklist boxes for previous phase before continuing.
 
 - Enable tests progressively
 - Validate implementation matches expected behavior
@@ -101,6 +115,7 @@ Key Implementation Details:
 - MVP focus: No actual spawning, no config writes, just discovery and guidance
 
 **DO NOT** proceed to next phase until:
+- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
