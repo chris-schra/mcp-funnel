@@ -133,6 +133,7 @@ describe('MCPProxy', () => {
             command: 'echo',
           },
         ],
+        exposeTools: [], // Empty array means no server tools exposed
         exposeCoreTools: [
           'discover_tools_by_words',
           'bridge_tool_request',
@@ -165,15 +166,20 @@ describe('MCPProxy', () => {
       const handler = listToolsCall?.[1];
       const result = await handler?.({}, {});
 
-      // Should only return core tools (2-3 tools depending on config)
+      // Should only return core tools (4 tools as specified in config)
       expect(result?.tools).toBeDefined();
-      expect(result?.tools?.length).toBeGreaterThanOrEqual(2);
 
-      // Check tool names
+      // Check tool names to see what we actually have
       const toolNames = result?.tools?.map((t: Tool) => t.name) ?? [];
-      // discover_tools_by_words is enabled via exposeCoreTools
+      console.log('Returned tools:', toolNames);
+
+      // All 4 core tools should be present
+      expect(toolNames).toContain('discover_tools_by_words');
       expect(toolNames).toContain('get_tool_schema');
       expect(toolNames).toContain('bridge_tool_request');
+      expect(toolNames).toContain('load_toolset');
+
+      expect(result?.tools?.length).toBe(4);
     });
 
     it('should populate tool caches even in exposeCoreTools mode', async () => {
@@ -555,7 +561,7 @@ describe('MCPProxy', () => {
       });
     });
 
-    it('should throw error for unknown tool', async () => {
+    it('should return error for unknown tool', async () => {
       const config: ProxyConfig = {
         servers: [],
       };
@@ -567,17 +573,20 @@ describe('MCPProxy', () => {
       const callToolCall = mockServer.setRequestHandler.mock.calls[1];
 
       const handler = callToolCall?.[1];
-      await expect(
-        handler?.(
-          {
-            params: {
-              name: 'unknown__tool',
-              arguments: {},
-            },
+      const result = await handler?.(
+        {
+          params: {
+            name: 'unknown__tool',
+            arguments: {},
           },
-          {},
-        ),
-      ).rejects.toThrow('Tool not found: unknown__tool');
+        },
+        {},
+      );
+
+      expect(result).toEqual({
+        content: [{ type: 'text', text: 'Tool not found: unknown__tool' }],
+        isError: true,
+      });
     });
   });
 });

@@ -644,6 +644,7 @@ You can use template placeholders in `title` and `description` fields to referen
 - `${originalDescription}` - The original description
 
 Example:
+
 ```json
 {
   "toolOverrides": {

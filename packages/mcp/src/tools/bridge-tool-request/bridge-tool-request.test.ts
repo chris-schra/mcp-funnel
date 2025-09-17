@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, MockedFunction } from 'vitest';
 import { BridgeToolRequest } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { ToolRegistry, ToolState } from '../../tool-registry.js';
 
 describe('BridgeToolRequest', () => {
   let tool: BridgeToolRequest;
@@ -26,7 +27,33 @@ describe('BridgeToolRequest', () => {
       originalName: 'read_file',
     });
 
+    const mockRegistry: Partial<ToolRegistry> = {
+      getToolForExecution: vi.fn((name: string) => {
+        const mapping = mockToolMapping.get(name);
+        if (mapping) {
+          const toolState: Partial<ToolState> = {
+            fullName: name,
+            originalName: mapping.originalName,
+            serverName: name.split('__')[0],
+            client: mapping.client,
+            discovered: true,
+            enabled: true,
+            exposed: true,
+          };
+          return toolState as ToolState;
+        }
+        return undefined;
+      }),
+      enableTools: vi.fn(),
+      searchTools: vi.fn(),
+      getToolState: vi.fn(),
+      getAllTools: vi.fn(() => []),
+      getToolDescriptions: vi.fn(() => new Map()),
+      getToolDefinitions: vi.fn(() => new Map()),
+    };
+
     mockContext = {
+      toolRegistry: mockRegistry as ToolRegistry,
       toolDescriptionCache: new Map(),
       toolMapping: mockToolMapping,
       dynamicallyEnabledTools: new Set(),
@@ -163,7 +190,9 @@ describe('BridgeToolRequest', () => {
       const content = result.content[0];
       expect(content.type).toBe('text');
       const textContent = content as { type: string; text: string };
-      expect(textContent.text).toContain('Tool not found: nonexistent__tool');
+      expect(textContent.text).toContain(
+        'Tool not found or not exposed: nonexistent__tool',
+      );
       expect(result.isError).toBe(true);
     });
 
@@ -210,12 +239,18 @@ describe('BridgeToolRequest', () => {
       );
     });
 
-    it('should throw error when toolMapping is not available', async () => {
+    it('should handle missing toolMapping gracefully', async () => {
       const contextWithoutMapping = { ...mockContext, toolMapping: undefined };
 
-      await expect(
-        tool.handle({ tool: 'any__tool' }, contextWithoutMapping),
-      ).rejects.toThrow('Tool mapping not available in context');
+      const result = await tool.handle(
+        { tool: 'any__tool' },
+        contextWithoutMapping,
+      );
+
+      expect(result.content).toHaveLength(1);
+      const textContent = result.content[0] as { type: string; text: string };
+      expect(textContent.text).toContain('Tool not found or not exposed');
+      expect(result.isError).toBe(true);
     });
   });
 });

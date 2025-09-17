@@ -25,8 +25,8 @@ describe('ProxyServer Tool Filtering', () => {
 
       try {
         // Get the list of tools from the proxy server
-        // We need to access the tool collector to get visible tools
-        const tools = await proxyServer['toolCollector'].collectVisibleTools();
+        // We need to access the registry to get exposed tools
+        const tools = proxyServer.registry.getExposedTools();
 
         // Check that mockserver__hidden_tool is not in the list
         const hiddenTool = tools.find(
@@ -65,7 +65,7 @@ describe('ProxyServer Tool Filtering', () => {
       await proxyServer.start();
 
       try {
-        const tools = await proxyServer['toolCollector'].collectVisibleTools();
+        const tools = proxyServer.registry.getExposedTools();
 
         // With empty exposeTools, no server tools should be visible
         const serverTools = tools.filter((t) =>
@@ -100,7 +100,7 @@ describe('ProxyServer Tool Filtering', () => {
       await proxyServer.start();
 
       try {
-        const tools = await proxyServer['toolCollector'].collectVisibleTools();
+        const tools = proxyServer.registry.getExposedTools();
 
         // Without exposeTools defined, all tools except hidden ones should be visible
         const hiddenTool = tools.find(

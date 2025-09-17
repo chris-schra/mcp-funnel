@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GetToolSchema } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { ToolRegistry, ToolState } from '../../tool-registry.js';
 
 describe('GetToolSchema', () => {
   let tool: GetToolSchema;
@@ -31,7 +32,34 @@ describe('GetToolSchema', () => {
       },
     });
 
+    const mockRegistry: Partial<ToolRegistry> = {
+      getToolState: vi.fn((name: string) => {
+        const def = mockToolDefinitionCache.get(name);
+        if (def) {
+          const toolState: ToolState = {
+            fullName: name,
+            originalName: def.tool.name,
+            serverName: def.serverName,
+            discovered: true,
+            enabled: true,
+            exposed: true,
+            definition: def.tool,
+            description: def.tool.description,
+          };
+          return toolState;
+        }
+        return undefined;
+      }),
+      searchTools: vi.fn(),
+      enableTools: vi.fn(),
+      getToolForExecution: vi.fn(),
+      getAllTools: vi.fn(() => []),
+      getToolDescriptions: vi.fn(() => new Map()),
+      getToolDefinitions: vi.fn(() => mockToolDefinitionCache),
+    };
+
     mockContext = {
+      toolRegistry: mockRegistry as ToolRegistry,
       toolDescriptionCache: new Map(),
       toolDefinitionCache: mockToolDefinitionCache,
       dynamicallyEnabledTools: new Set(),

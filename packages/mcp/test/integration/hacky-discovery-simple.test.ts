@@ -61,15 +61,12 @@ describe('Core Tools Configuration', () => {
 
     const context = proxy['createToolContext']();
 
-    // Manually add a tool to the cache to simulate discovery
-    context.toolDescriptionCache.set('test__example', {
+    // Register a tool in the registry to simulate discovery
+    proxy.registry.registerDiscoveredTool({
+      fullName: 'test__example',
+      originalName: 'example',
       serverName: 'test',
-      description: 'Example tool for testing',
-    });
-
-    context.toolDefinitionCache?.set('test__example', {
-      serverName: 'test',
-      tool: {
+      definition: {
         name: 'example',
         description: 'Example tool for testing',
         inputSchema: { type: 'object' },

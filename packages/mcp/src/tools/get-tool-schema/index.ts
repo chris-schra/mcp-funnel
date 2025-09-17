@@ -37,54 +37,83 @@ export class GetToolSchema extends BaseCoreTool {
       throw new Error('Missing or invalid "tool" parameter');
     }
 
-    // First check if we have tool mapping for short name resolution
-    let toolName = args.tool;
+    // Get tool from registry
+    const toolState = context.toolRegistry.getToolState(args.tool);
 
-    if (context.toolMapping) {
-      // Use the shared resolver for consistent short name support
-      const resolution = resolveToolName(
-        args.tool,
-        context.toolMapping,
-        context.config,
-      );
+    if (!toolState || !toolState.definition) {
+      // Try short name resolution if enabled
+      if (context.config.allowShortToolNames && context.toolMapping) {
+        const resolution = resolveToolName(
+          args.tool,
+          context.toolMapping,
+          context.config,
+        );
 
-      if (!resolution.resolved) {
+        if (!resolution.resolved) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  resolution.error?.message ||
+                  `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
+              },
+            ],
+          };
+        }
+
+        const resolvedTool = context.toolRegistry.getToolState(
+          resolution.toolName!,
+        );
+        if (!resolvedTool || !resolvedTool.definition) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
+              },
+            ],
+          };
+        }
+
+        const response = {
+          tool: resolution.toolName!,
+          inputSchema: resolvedTool.definition.inputSchema || {
+            type: 'object',
+            properties: {},
+          },
+          description: resolvedTool.definition.description || '',
+          usage: `To call this tool, use bridge_tool_request with:\n{\n  "tool": "${resolution.toolName}",\n  "arguments": <object matching inputSchema>\n}`,
+        };
+
         return {
           content: [
             {
               type: 'text',
-              text:
-                resolution.error?.message ||
-                `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
+              text: JSON.stringify(response, null, 2),
             },
           ],
         };
       }
 
-      toolName = resolution.toolName!;
-    }
-
-    const toolDefinition = context.toolDefinitionCache?.get(toolName);
-
-    if (!toolDefinition) {
       return {
         content: [
           {
             type: 'text',
-            text: `Tool not found: ${toolName}. Use discover_tools_by_words to find available tools.`,
+            text: `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
           },
         ],
       };
     }
 
     const response = {
-      tool: toolName,
-      inputSchema: toolDefinition.tool.inputSchema || {
+      tool: args.tool,
+      inputSchema: toolState.definition.inputSchema || {
         type: 'object',
         properties: {},
       },
-      description: toolDefinition.tool.description || '',
-      usage: `To call this tool, use bridge_tool_request with:\n{\n  "tool": "${toolName}",\n  "arguments": <object matching inputSchema>\n}`,
+      description: toolState.definition.description || '',
+      usage: `To call this tool, use bridge_tool_request with:\n{\n  "tool": "${args.tool}",\n  "arguments": <object matching inputSchema>\n}`,
     };
 
     return {

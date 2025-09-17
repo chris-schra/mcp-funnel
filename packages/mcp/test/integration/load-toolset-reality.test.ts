@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MCPProxy } from '../../src';
 import { ProxyConfig } from '../../src/config.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 describe('LoadToolset - Reality Check', () => {
   let proxy: MCPProxy;
@@ -31,23 +32,31 @@ describe('LoadToolset - Reality Check', () => {
 
       const context = proxy['createToolContext']();
 
-      // Mock enableTools to avoid server connection issues
+      // Mock enableTools to avoid server connection issues but still use registry
       context.enableTools = (tools: string[]) => {
-        for (const tool of tools) {
-          context.dynamicallyEnabledTools.add(tool);
-          console.error(`[test] Mocked enabling tool: ${tool}`);
-        }
+        // Use the registry to enable tools
+        proxy.registry.enableTools(tools, 'toolset');
+        // Update the context's dynamicallyEnabledTools from registry
+        context.dynamicallyEnabledTools = new Set(
+          proxy.registry
+            .getAllTools()
+            .filter((t) => t.enabled && t.enabledBy)
+            .map((t) => t.fullName),
+        );
       };
 
-      // Populate tool caches as if servers were connected
-      context.toolDescriptionCache.set('github__create_pull_request', {
-        serverName: 'github',
-        description: 'Create a pull request',
-      });
+      // Register tools in the registry as if servers were connected
+      const mockClient = {
+        callTool: vi.fn().mockResolvedValue({
+          content: [{ type: 'text', text: 'PR created' }],
+        }),
+      };
 
-      context.toolDefinitionCache?.set('github__create_pull_request', {
+      proxy.registry.registerDiscoveredTool({
+        fullName: 'github__create_pull_request',
+        originalName: 'create_pull_request',
         serverName: 'github',
-        tool: {
+        definition: {
           name: 'create_pull_request',
           description: 'Create a pull request',
           inputSchema: {
@@ -58,20 +67,7 @@ describe('LoadToolset - Reality Check', () => {
             },
           },
         },
-      });
-
-      // Mock a client for the tool
-      const mockClient = {
-        callTool: vi.fn().mockResolvedValue({
-          content: [{ type: 'text', text: 'PR created' }],
-        }),
-      };
-
-      context.toolMapping?.set('github__create_pull_request', {
-        client: mockClient as unknown as Parameters<
-          typeof context.toolMapping.set
-        >[1]['client'],
-        originalName: 'create_pull_request',
+        client: mockClient as unknown as Client,
       });
 
       // Load the toolset
@@ -106,9 +102,13 @@ describe('LoadToolset - Reality Check', () => {
       expect(coreToolNames).not.toContain('github__create_pull_request');
 
       // The tool is in dynamicallyEnabledTools but that doesn't make it callable
-      expect(
-        context.dynamicallyEnabledTools.has('github__create_pull_request'),
-      ).toBe(true);
+      // After loading the toolset, we need to check the current state from the registry
+      const enabledTools = proxy.registry
+        .getAllTools()
+        .filter((t) => t.enabled && t.enabledBy)
+        .map((t) => t.fullName);
+
+      expect(enabledTools).toContain('github__create_pull_request');
 
       // So you STILL need to use bridge_tool_request
       const bridgeTool = proxy['coreTools'].get('bridge_tool_request');
@@ -130,12 +130,17 @@ describe('LoadToolset - Reality Check', () => {
 
       const context = proxy['createToolContext']();
 
-      // Mock enableTools to avoid server connection issues
+      // Mock enableTools to avoid server connection issues but still use registry
       context.enableTools = (tools: string[]) => {
-        for (const tool of tools) {
-          context.dynamicallyEnabledTools.add(tool);
-          console.error(`[test] Mocked enabling tool: ${tool}`);
-        }
+        // Use the registry to enable tools
+        proxy.registry.enableTools(tools, 'toolset');
+        // Update the context's dynamicallyEnabledTools from registry
+        context.dynamicallyEnabledTools = new Set(
+          proxy.registry
+            .getAllTools()
+            .filter((t) => t.enabled && t.enabledBy)
+            .map((t) => t.fullName),
+        );
       };
 
       // Add multiple tools to cache
@@ -148,9 +153,15 @@ describe('LoadToolset - Reality Check', () => {
       ];
 
       for (const tool of tools) {
-        context.toolDescriptionCache.set(tool, {
+        proxy.registry.registerDiscoveredTool({
+          fullName: tool,
+          originalName: tool.split('__')[1] || tool,
           serverName: 'github',
-          description: `Description for ${tool}`,
+          definition: {
+            name: tool.split('__')[1] || tool,
+            description: `Description for ${tool}`,
+            inputSchema: { type: 'object' },
+          },
         });
       }
 
@@ -196,9 +207,15 @@ describe('LoadToolset - Reality Check', () => {
       };
 
       // Add a tool and enable it
-      context.toolDescriptionCache.set('github__create_issue', {
+      proxy.registry.registerDiscoveredTool({
+        fullName: 'github__create_issue',
+        originalName: 'create_issue',
         serverName: 'github',
-        description: 'Create an issue',
+        definition: {
+          name: 'create_issue',
+          description: 'Create an issue',
+          inputSchema: { type: 'object' },
+        },
       });
 
       // Enable the tool
@@ -237,15 +254,12 @@ describe('LoadToolset - Reality Check', () => {
 
       const stepsRequired: string[] = [];
 
-      // Add tool to cache
-      context.toolDescriptionCache.set('github__create_pr', {
+      // Add tool to registry
+      proxy.registry.registerDiscoveredTool({
+        fullName: 'github__create_pr',
+        originalName: 'create_pr',
         serverName: 'github',
-        description: 'Create a PR',
-      });
-
-      context.toolDefinitionCache?.set('github__create_pr', {
-        serverName: 'github',
-        tool: {
+        definition: {
           name: 'create_pr',
           description: 'Create a PR',
           inputSchema: {
@@ -311,11 +325,17 @@ describe('LoadToolset - Reality Check', () => {
       const newContext = proxy['createToolContext']();
       newContext.enableTools = context.enableTools;
 
-      // Copy tool caches
+      // Register PR tools in registry
       for (const tool of pullRequestTools) {
-        newContext.toolDescriptionCache.set(tool, {
+        proxy.registry.registerDiscoveredTool({
+          fullName: tool,
+          originalName: tool.split('__')[1] || tool,
           serverName: 'github',
-          description: `Pull request operation: ${tool}`,
+          definition: {
+            name: tool.split('__')[1] || tool,
+            description: `Pull request operation: ${tool}`,
+            inputSchema: { type: 'object' },
+          },
         });
       }
 

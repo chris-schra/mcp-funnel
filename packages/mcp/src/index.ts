@@ -4,7 +4,6 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
-  type Tool,
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
@@ -21,9 +20,7 @@ import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError, getServerStreamLogPath } from './logger.js';
-import { ToolVisibilityManager } from './tool-visibility-manager.js';
-import { ToolCollector } from './tool-collector.js';
-import { ToolExecutor } from './tool-executor.js';
+import { ToolRegistry } from './tool-registry.js';
 
 import Package from '../package.json';
 export {
@@ -249,28 +246,8 @@ export class MCPProxy {
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
   private _normalizedServers: TargetServer[];
-  private _toolMapping: Map<
-    string,
-    {
-      client: Client | null;
-      originalName: string;
-      toolName?: string;
-      command?: ICommand;
-    }
-  > = new Map();
-  private _dynamicallyEnabledTools: Set<string> = new Set();
-  private _toolDescriptionCache: Map<
-    string,
-    { serverName: string; description: string }
-  > = new Map();
-  private _toolDefinitionCache: Map<
-    string,
-    { serverName: string; tool: Tool }
-  > = new Map();
+  private toolRegistry: ToolRegistry;
   private coreTools: Map<string, ICoreTool> = new Map();
-
-  private toolCollector: ToolCollector;
-  private toolExecutor: ToolExecutor;
 
   private connectedServers = new Map<string, TargetServer>();
   private disconnectedServers = new Map<
@@ -281,22 +258,11 @@ export class MCPProxy {
   constructor(config: ProxyConfig) {
     this._config = config;
     this._normalizedServers = normalizeServers(config.servers);
+    this.toolRegistry = new ToolRegistry(config);
 
     this._normalizedServers.forEach((server) => {
       this.disconnectedServers.set(server.name, server);
     });
-
-    this.toolCollector = new ToolCollector(
-      this._config,
-      this.coreTools,
-      this._clients,
-      this._dynamicallyEnabledTools,
-    );
-    this.toolExecutor = new ToolExecutor(
-      this.coreTools,
-      this._toolMapping,
-      this.createToolContext(),
-    );
 
     this._server = new Server(
       {
@@ -321,13 +287,12 @@ export class MCPProxy {
       this.loadDevelopmentCommands(),
     ]);
 
-    // Pre-populate caches so discovery/load operations work before first tools/list
-    // This uses ToolCollector which respects hideTools configuration
+    // Pre-populate registry with discovered tools
     try {
-      await this.toolCollector.collectVisibleTools();
+      await this.discoverAllTools();
     } catch (error) {
-      console.error('[proxy] Initial cache population failed:', error);
-      logError('initial-cache-populate', error);
+      console.error('[proxy] Initial tool discovery failed:', error);
+      logError('initial-tool-discovery', error);
     }
     this.setupRequestHandlers();
   }
@@ -389,36 +354,12 @@ export class MCPProxy {
                   `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
                 );
               }
-              // Use the tool collector to register the command tool
-              const caches = this.toolCollector.getCaches();
-              caches.toolDescriptionCache.set(displayName, {
-                serverName: 'commands',
-                description: mcpDef.description,
-              });
-              caches.toolDefinitionCache.set(displayName, {
-                serverName: 'commands',
-                tool: { ...mcpDef, name: displayName },
-              });
-              caches.toolMapping.set(displayName, {
-                client: null,
+              // Register command tool in the registry
+              this.toolRegistry.registerDiscoveredTool({
+                fullName: displayName,
                 originalName: mcpDef.name,
-                toolName: mcpDef.name,
-                command,
-              });
-
-              // Also update the instance caches for backward compatibility
-              this._toolDescriptionCache.set(displayName, {
                 serverName: 'commands',
-                description: mcpDef.description,
-              });
-              this._toolDefinitionCache.set(displayName, {
-                serverName: 'commands',
-                tool: { ...mcpDef, name: displayName },
-              });
-              this._toolMapping.set(displayName, {
-                client: null,
-                originalName: mcpDef.name,
-                toolName: mcpDef.name,
+                definition: { ...mcpDef, name: displayName },
                 command,
               });
             }
@@ -501,36 +442,14 @@ export class MCPProxy {
                       `Tool ${mcpDef.name} from command ${chosen.name} is missing a description`,
                     );
                   }
-                  this._toolDescriptionCache.set(displayName, {
-                    serverName: 'commands',
-                    description: mcpDef.description,
-                  });
-                  this._toolDefinitionCache.set(displayName, {
-                    serverName: 'commands',
-                    tool: { ...mcpDef, name: displayName },
-                  });
-                  this._toolMapping.set(displayName, {
-                    client: null,
+                  // Register command tool in the registry
+                  this.toolRegistry.registerDiscoveredTool({
+                    fullName: displayName,
                     originalName: mcpDef.name,
-                    toolName: mcpDef.name,
+                    serverName: 'commands',
+                    definition: { ...mcpDef, name: displayName },
                     command: chosen,
                   });
-                  const legacyLong = `cmd__${chosen.name}__${mcpDef.name}`;
-                  this._toolMapping.set(legacyLong, {
-                    client: null,
-                    originalName: mcpDef.name,
-                    toolName: mcpDef.name,
-                    command: chosen,
-                  });
-                  if (useCompact) {
-                    const legacyShort = `cmd__${chosen.name}`;
-                    this._toolMapping.set(legacyShort, {
-                      client: null,
-                      originalName: mcpDef.name,
-                      toolName: mcpDef.name,
-                      command: chosen,
-                    });
-                  }
                 }
               }
             } catch (_err) {
@@ -549,14 +468,20 @@ export class MCPProxy {
 
   private createToolContext(): CoreToolContext {
     return {
-      toolDescriptionCache: this._toolDescriptionCache,
-      toolDefinitionCache: this._toolDefinitionCache,
-      toolMapping: this._toolMapping,
-      dynamicallyEnabledTools: this._dynamicallyEnabledTools,
+      toolRegistry: this.toolRegistry,
+      // Backward compatibility - provide the caches from registry
+      toolDescriptionCache: this.toolRegistry.getToolDescriptions(),
+      toolDefinitionCache: this.toolRegistry.getToolDefinitions(),
+      dynamicallyEnabledTools: new Set(
+        this.toolRegistry
+          .getAllTools()
+          .filter((t) => t.enabled && t.enabledBy)
+          .map((t) => t.fullName),
+      ),
       config: this._config,
       enableTools: (toolNames: string[]) => {
+        this.toolRegistry.enableTools(toolNames, 'discovery');
         for (const toolName of toolNames) {
-          this._dynamicallyEnabledTools.add(toolName);
           console.error(`[proxy] Dynamically enabled tool: ${toolName}`);
         }
         // Send notification that the tool list has changed
@@ -647,24 +572,83 @@ export class MCPProxy {
     };
   }
 
-  private setupRequestHandlers() {
-    // Sync the caches from toolCollector after initialization
-    const caches = this.toolCollector.getCaches();
-    this._toolDescriptionCache = caches.toolDescriptionCache;
-    this._toolDefinitionCache = caches.toolDefinitionCache;
-    this._toolMapping = caches.toolMapping;
+  private async discoverAllTools() {
+    // Discover from servers
+    for (const [serverName, client] of this._clients) {
+      try {
+        const response = await client.listTools();
+        for (const tool of response.tools) {
+          this.toolRegistry.registerDiscoveredTool({
+            fullName: `${serverName}__${tool.name}`,
+            originalName: tool.name,
+            serverName,
+            definition: tool,
+            client,
+          });
+        }
+      } catch (error) {
+        console.error(
+          `[proxy] Failed to discover tools from ${serverName}:`,
+          error,
+        );
+        logError('tools:discovery_failed', error, { server: serverName });
+      }
+    }
+  }
 
+  private setupRequestHandlers() {
     this._server.setRequestHandler(ListToolsRequestSchema, async () => {
-      // Simply delegate to the tool collector
-      const tools = await this.toolCollector.collectVisibleTools();
+      // Get exposed tools from registry
+      const registryTools = this.toolRegistry.getExposedTools();
+
+      // Add core tools that are enabled
+      const coreToolsList = Array.from(this.coreTools.values()).map(
+        (tool) => tool.tool,
+      );
+
+      // Combine both sets of tools
+      const tools = [...coreToolsList, ...registryTools];
       return { tools };
     });
 
     this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
 
-      // Simply delegate to the tool executor
-      return this.toolExecutor.executeTool(toolName, toolArgs);
+      // Check core tools first
+      const coreTool = this.coreTools.get(toolName);
+      if (coreTool) {
+        return coreTool.handle(toolArgs || {}, this.createToolContext());
+      }
+
+      // Get tool from registry
+      const tool = this.toolRegistry.getToolForExecution(toolName);
+      if (!tool) {
+        return {
+          content: [{ type: 'text', text: `Tool not found: ${toolName}` }],
+          isError: true,
+        };
+      }
+
+      // Execute based on type
+      if (tool.command) {
+        return tool.command.executeToolViaMCP(
+          tool.originalName,
+          toolArgs || {},
+        );
+      }
+
+      if (tool.client) {
+        const result = await tool.client.callTool({
+          name: tool.originalName,
+          arguments: toolArgs || {},
+        });
+        return result;
+      }
+
+      return {
+        content: [{ type: 'text', text: `Tool ${toolName} has no executor` }],
+        isError: true,
+      };
     });
   }
 
@@ -686,23 +670,44 @@ export class MCPProxy {
   }
 
   get toolMapping() {
-    return this._toolMapping;
+    // Provide backward compatibility
+    const mapping = new Map();
+    for (const tool of this.toolRegistry.getAllTools()) {
+      if (tool.discovered) {
+        mapping.set(tool.fullName, {
+          client: tool.client || null,
+          originalName: tool.originalName,
+          toolName: tool.originalName,
+          command: tool.command,
+        });
+      }
+    }
+    return mapping;
   }
 
   get dynamicallyEnabledTools() {
-    return this._dynamicallyEnabledTools;
+    return new Set(
+      this.toolRegistry
+        .getAllTools()
+        .filter((t) => t.enabled && t.enabledBy)
+        .map((t) => t.fullName),
+    );
   }
 
   get toolDescriptionCache() {
-    return this._toolDescriptionCache;
+    return this.toolRegistry.getToolDescriptions();
   }
 
   get toolDefinitionCache() {
-    return this._toolDefinitionCache;
+    return this.toolRegistry.getToolDefinitions();
   }
 
   get server() {
     return this._server;
+  }
+
+  get registry() {
+    return this.toolRegistry;
   }
 }
 

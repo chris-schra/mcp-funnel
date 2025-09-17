@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DiscoverToolsByWords } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
+import { ToolRegistry, ToolState } from '../../tool-registry.js';
 
 describe('DiscoverToolsByWords', () => {
   let tool: DiscoverToolsByWords;
@@ -37,7 +38,45 @@ describe('DiscoverToolsByWords', () => {
       description: 'Store data in memory for later retrieval',
     });
 
+    const mockRegistry: Partial<ToolRegistry> = {
+      searchTools: vi.fn((keywords: string[]) => {
+        // Simple mock implementation that mimics the real search
+        const allTools: ToolState[] = [];
+        for (const [
+          name,
+          { serverName, description },
+        ] of toolDescriptionCache) {
+          const searchText =
+            `${name} ${description} ${serverName}`.toLowerCase();
+          if (keywords.length === 0) continue;
+          if (keywords.every((kw) => searchText.includes(kw.toLowerCase()))) {
+            const toolState: ToolState = {
+              fullName: name,
+              originalName: name.split('__')[1] || name,
+              serverName,
+              description,
+              discovered: true,
+              enabled: false,
+              exposed: false,
+            };
+            allTools.push(toolState);
+          }
+        }
+        return allTools;
+      }),
+      enableTools: vi.fn((tools: string[]) => {
+        enabledTools.push(...tools);
+        tools.forEach((t) => mockContext.dynamicallyEnabledTools.add(t));
+      }),
+      getToolForExecution: vi.fn(),
+      getToolState: vi.fn(),
+      getAllTools: vi.fn(() => []),
+      getToolDescriptions: vi.fn(() => toolDescriptionCache),
+      getToolDefinitions: vi.fn(() => new Map()),
+    };
+
     mockContext = {
+      toolRegistry: mockRegistry as ToolRegistry,
       toolDescriptionCache,
       dynamicallyEnabledTools: new Set(),
       config: {
@@ -121,18 +160,18 @@ describe('DiscoverToolsByWords', () => {
 
       expect(result.content).toHaveLength(1);
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain('Found 3 matching tools');
+      expect(textContent.text).toContain('Found 3 tools');
       expect(textContent.text).toContain('github__create_issue');
       expect(textContent.text).toContain('github__list_issues');
       expect(textContent.text).toContain('github__close_issue');
-      expect(textContent.text).toContain('Review these results carefully');
+      expect(textContent.text).toContain('Legend:');
     });
 
     it('should find tools with partial keyword matches', async () => {
       const result = await tool.handle({ words: 'file' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain('Found 2 matching tools');
+      expect(textContent.text).toContain('Found 2 tools');
       expect(textContent.text).toContain('filesystem__read_file');
       expect(textContent.text).toContain('filesystem__write_file');
     });
@@ -242,7 +281,7 @@ describe('DiscoverToolsByWords', () => {
       // Should treat non-boolean as false
       expect(enabledTools).toHaveLength(0);
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain('Review these results carefully');
+      expect(textContent.text).toContain('Legend:');
     });
 
     it('should sort results by score and then alphabetically', async () => {

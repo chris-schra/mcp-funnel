@@ -27,14 +27,16 @@ function isLoadByPatterns(
 
 function findMatchingTools(
   patterns: string[],
-  toolDescriptions: Map<string, { serverName: string; description: string }>,
+  toolRegistry: import('../../tool-registry.js').ToolRegistry,
 ): string[] {
   const matchedTools: string[] = [];
+  const allTools = toolRegistry.getAllTools();
 
-  for (const [toolName] of toolDescriptions) {
+  for (const tool of allTools) {
+    if (!tool.discovered) continue;
     for (const pattern of patterns) {
-      if (matchesPattern(toolName, pattern)) {
-        matchedTools.push(toolName);
+      if (matchesPattern(tool.fullName, pattern)) {
+        matchedTools.push(tool.fullName);
         break; // Tool matched, no need to check other patterns
       }
     }
@@ -164,10 +166,7 @@ export class LoadToolset extends BaseCoreTool {
     }
 
     // Find all matching tools
-    const matchingTools = findMatchingTools(
-      patterns,
-      context.toolDescriptionCache,
-    );
+    const matchingTools = findMatchingTools(patterns, context.toolRegistry);
 
     if (matchingTools.length === 0) {
       const patternList = patterns.join(', ');
@@ -182,7 +181,8 @@ export class LoadToolset extends BaseCoreTool {
     }
 
     // Enable the matching tools
-    context.enableTools(matchingTools);
+    context.toolRegistry.enableTools(matchingTools, 'toolset');
+    await context.sendNotification?.('tools/list_changed');
 
     // Create response message
     const responseText = toolsetName

@@ -48,71 +48,77 @@ export class BridgeToolRequest extends BaseCoreTool {
 
     const toolArguments = args.arguments as Record<string, unknown> | undefined;
 
-    if (!context.toolMapping) {
-      throw new Error('Tool mapping not available in context');
+    // Try to get tool from registry first
+    let toolState = context.toolRegistry.getToolForExecution(args.tool);
+    let resolvedToolName = args.tool;
+
+    // If not found directly, try short name resolution if enabled
+    if (
+      !toolState &&
+      context.config.allowShortToolNames &&
+      context.toolMapping
+    ) {
+      const resolution = resolveToolName(
+        args.tool,
+        context.toolMapping,
+        context.config,
+      );
+
+      if (!resolution.resolved) {
+        const message =
+          resolution.error?.message || `Tool not found: ${args.tool}`;
+        const fullMessage = resolution.error?.isAmbiguous
+          ? message
+          : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: fullMessage,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      resolvedToolName = resolution.toolName!;
+      toolState = context.toolRegistry.getToolForExecution(resolvedToolName);
     }
 
-    // Use the shared resolver
-    const resolution = resolveToolName(
-      args.tool,
-      context.toolMapping,
-      context.config,
-    );
-
-    if (!resolution.resolved) {
-      const message =
-        resolution.error?.message || `Tool not found: ${args.tool}`;
-      const fullMessage = resolution.error?.isAmbiguous
-        ? message
-        : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
-
+    if (!toolState) {
       return {
         content: [
           {
             type: 'text',
-            text: fullMessage,
+            text: `Tool not found or not exposed: ${args.tool}. Use discover_tools_by_words to find and enable tools.`,
           },
         ],
         isError: true,
       };
     }
 
-    const toolName = resolution.toolName!;
-    const mapping = context.toolMapping.get(toolName) as
-      | {
-          client: Client | null;
-          originalName: string;
-          command?: ICommand;
-          toolName?: string;
-        }
-      | undefined;
-    if (!mapping) {
-      throw new Error(
-        `Internal error: resolved tool ${toolName} not found in mapping`,
-      );
-    }
-
     try {
       // Command path: execute via command interface when present
-      if (mapping.command) {
-        const result = await mapping.command.executeToolViaMCP(
-          mapping.toolName || mapping.originalName,
+      if (toolState.command) {
+        const result = await toolState.command.executeToolViaMCP(
+          toolState.originalName,
           toolArguments || {},
         );
         return result as CallToolResult;
       }
 
       // Server bridge path
-      if (mapping.client) {
-        const result = await mapping.client.callTool({
-          name: mapping.originalName,
+      if (toolState.client) {
+        const result = await toolState.client.callTool({
+          name: toolState.originalName,
           arguments: toolArguments,
         });
         return result as CallToolResult;
       }
 
       // Neither server client nor command is available
-      throw new Error(`Tool ${toolName} has no client connection`);
+      throw new Error(`Tool ${resolvedToolName} has no executor`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -120,7 +126,7 @@ export class BridgeToolRequest extends BaseCoreTool {
         content: [
           {
             type: 'text',
-            text: `Failed to execute tool ${toolName}: ${errorMessage}`,
+            text: `Failed to execute tool ${resolvedToolName}: ${errorMessage}`,
           },
         ],
         isError: true,
