@@ -1,14 +1,18 @@
+<!-- markdown-link-check-disable -->
+
 # MCP Registry Integration - MVP Design
 
 ## User Experience Flow
 
 **Current flow:**
+
 ```
 User: "discover tool code-reasoning"
 Claude: *searches locally loaded servers* → "No tools found"
 ```
 
 **Enhanced flow with registries:**
+
 ```
 User: "discover tool code-reasoning"
 Claude: *searches locally* → "No local tools found"
@@ -16,20 +20,48 @@ Claude: *automatically searches registries* → "Found code-reasoning in MCP reg
 Claude: "Use get_server_install_info to see how to add it to your config"
 ```
 
+## Real API Endpoints
+
+The official MCP Registry is live with the following endpoints:
+
+- **Production base URL**: `https://registry.modelcontextprotocol.io`
+- **API version**: `/v0`
+- **Search endpoint**: `/v0/servers?search={keywords}`
+
+### Example Search URLs
+
+- `https://registry.modelcontextprotocol.io/v0/servers?search=test`
+- `https://registry.modelcontextprotocol.io/v0/servers?search=mcp-funnel`
+- `https://registry.modelcontextprotocol.io/v0/servers?search=github`
+
+### API Documentation References
+
+- **Full API docs**: https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md
+- **Live API docs**: https://registry.modelcontextprotocol.io/docs
+- **OpenAPI spec**: https://registry.modelcontextprotocol.io/openapi.yaml
+
+### Key API Findings
+
+- The API uses `/v0/servers?search={keywords}` for searching
+- Response format includes `servers` array and `metadata` with count and pagination
+- No individual server endpoint - all data comes from search
+- Supports pagination with `cursor` and `limit` parameters
+- Multiple registries can be configured in the config
+
 ## Configuration
 
-```json
+```jsonc
 {
   "servers": [
     // Your existing static servers
   ],
   "registries": [
-    "https://registry.modelcontextprotocol.io/v0",
-    "https://company.internal/mcp-registry/v0"
+    "https://registry.modelcontextprotocol.io",
+    "https://company.internal/mcp-registry",
   ],
   "registrySettings": {
-    "autoSearch": true  // Auto-search registries when local search fails
-  }
+    "autoSearch": true, // Auto-search registries when local search fails
+  },
 }
 ```
 
@@ -50,14 +82,15 @@ export class SearchRegistryTools extends BaseCoreTool {
     properties: {
       keywords: {
         type: 'string',
-        description: 'Space-separated keywords to search for'
+        description: 'Space-separated keywords to search for',
       },
       registry: {
         type: 'string',
-        description: 'Specific registry URL (optional, searches all by default)'
-      }
+        description:
+          'Specific registry URL (optional, searches all by default)',
+      },
     },
-    required: ['keywords']
+    required: ['keywords'],
   };
 
   async execute(input: { keywords: string; registry?: string }) {
@@ -66,21 +99,21 @@ export class SearchRegistryTools extends BaseCoreTool {
     if (matches.length === 0) {
       return {
         found: false,
-        message: `No servers matching "${input.keywords}" found in registries`
+        message: `No servers matching "${input.keywords}" found in registries`,
       };
     }
 
     // Minimal output to avoid token bloat
     return {
       found: true,
-      servers: matches.map(server => ({
+      servers: matches.map((server) => ({
         name: server.name,
         description: server.description,
         registryId: server.id,
         isRemote: !!server.remotes?.length,
-        registryType: server.registry_type  // npm, pypi, oci, github
+        registryType: server.registry_type, // npm, pypi, oci, github
       })),
-      message: `Found ${matches.length} servers. Use get_server_install_info for installation details.`
+      message: `Found ${matches.length} servers. Use get_server_install_info for installation details.`,
     };
   }
 }
@@ -94,17 +127,18 @@ Get detailed installation instructions for a specific server.
 export class GetServerInstallInfo extends BaseCoreTool {
   name = 'get_server_install_info';
 
-  description = 'Get installation instructions and config for a specific registry server';
+  description =
+    'Get installation instructions and config for a specific registry server';
 
   inputSchema = {
     type: 'object',
     properties: {
       registryId: {
         type: 'string',
-        description: 'Registry ID of the server'
-      }
+        description: 'Registry ID of the server',
+      },
     },
-    required: ['registryId']
+    required: ['registryId'],
   };
 
   async execute(input: { registryId: string }) {
@@ -117,9 +151,9 @@ export class GetServerInstallInfo extends BaseCoreTool {
     return {
       name: server.name,
       description: server.description,
-      configSnippet,  // Ready to paste into .mcp-funnel.json
+      configSnippet, // Ready to paste into .mcp-funnel.json
       installInstructions: instructions,
-      tools: server.tools || []  // If available in metadata
+      tools: server.tools || [], // If available in metadata
     };
   }
 }
@@ -130,49 +164,72 @@ export class GetServerInstallInfo extends BaseCoreTool {
 Update `discover_tools_by_words` to suggest registry search:
 
 ```typescript
-async execute(input: { words: string }) {
-  const results = this.searchLocalTools(input.words);
+class DiscoverToolsByWords {
+  async execute(input: { words: string }) {
+    const results = this.searchLocalTools(input.words);
 
-  if (results.length === 0 && this.context.hasRegistries()) {
-    return {
-      tools: [],
-      message: 'No local tools found',
-      suggestion: `Try searching registries: search_registry_tools "${input.words}"`
-    };
+    if (results.length === 0 && this.context.hasRegistries()) {
+      return {
+        tools: [],
+        message: 'No local tools found',
+        suggestion: `Try searching registries: search_registry_tools "${input.words}"`,
+      };
+    }
+
+    return { tools: results };
   }
-
-  return { tools: results };
 }
 ```
 
 ## Registry Client Implementation
 
-Simple client without caching for MVP:
+Simple client without caching for MVP, using the real API endpoints:
 
 ```typescript
 export class MCPRegistryClient {
   private readonly baseUrl: string;
 
   constructor(registryUrl: string) {
-    this.baseUrl = registryUrl;
+    // Remove trailing slash and ensure no /v0 suffix since we'll add it
+    this.baseUrl = registryUrl.replace(/\/+$/, '');
   }
 
-  async searchServers(keywords: string): Promise<ServerDetail[]> {
-    const response = await fetch(`${this.baseUrl}/search?q=${encodeURIComponent(keywords)}`);
+  async searchServers(
+    keywords: string,
+    cursor?: string,
+    limit?: number,
+  ): Promise<RegistrySearchResponse> {
+    const params = new URLSearchParams({ search: keywords });
+    if (cursor) params.set('cursor', cursor);
+    if (limit) params.set('limit', limit.toString());
+
+    const response = await fetch(`${this.baseUrl}/v0/servers?${params}`);
     if (!response.ok) {
       throw new Error(`Registry error: ${response.status}`);
     }
-    const data = await response.json();
-    return data.servers; // Returns array of ServerDetail objects
-  }
-
-  async getServer(id: string): Promise<ServerDetail> {
-    const response = await fetch(`${this.baseUrl}/servers/${id}`);
-    if (!response.ok) {
-      throw new Error(`Server not found: ${id}`);
-    }
     return response.json();
   }
+
+  // Note: No individual server endpoint exists in the real API
+  // All server data comes from the search endpoint
+  async getServer(id: string): Promise<ServerDetail | null> {
+    // Search for the specific server by ID or name
+    const results = await this.searchServers(id);
+    return (
+      results.servers.find(
+        (server) => server.id === id || server.name === id,
+      ) || null
+    );
+  }
+}
+
+interface RegistrySearchResponse {
+  servers: ServerDetail[];
+  metadata: {
+    count: number;
+    cursor?: string;
+    has_more?: boolean;
+  };
 }
 ```
 
@@ -186,12 +243,15 @@ interface RegistryConfigEntry {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
-  _registry_metadata?: RegistryServer;
+  transport?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  _registry_metadata?: ServerDetail;
 }
 
-generateConfigSnippet(server: ServerDetail): RegistryConfigEntry {
+function generateConfigSnippet(server: ServerDetail): RegistryConfigEntry {
   const entry: RegistryConfigEntry = {
-    name: server.name
+    name: server.name,
   };
 
   // Handle remote servers (cloud-based)
@@ -211,17 +271,17 @@ generateConfigSnippet(server: ServerDetail): RegistryConfigEntry {
 
     switch (pkg.registry_type) {
       case 'npm':
-        entry.command = pkg.runtime_hint || "npx";
-        entry.args = ["-y", pkg.identifier, ...(pkg.package_arguments || [])];
+        entry.command = pkg.runtime_hint || 'npx';
+        entry.args = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
         break;
 
       case 'oci':
-        entry.command = pkg.runtime_hint || "docker";
-        entry.args = ["run", "-i", "--rm", pkg.identifier];
+        entry.command = pkg.runtime_hint || 'docker';
+        entry.args = ['run', '-i', '--rm', pkg.identifier];
         break;
 
       case 'pypi':
-        entry.command = pkg.runtime_hint || "uvx";
+        entry.command = pkg.runtime_hint || 'uvx';
         entry.args = [pkg.identifier, ...(pkg.package_arguments || [])];
         break;
 
@@ -229,7 +289,7 @@ generateConfigSnippet(server: ServerDetail): RegistryConfigEntry {
         // Return raw metadata if we can't determine command
         return {
           name: server.name,
-          _registry_metadata: server  // Let user figure it out
+          _registry_metadata: server, // Let user figure it out
         };
     }
 
@@ -237,7 +297,7 @@ generateConfigSnippet(server: ServerDetail): RegistryConfigEntry {
     if (pkg.environment_variables) {
       entry.env = {};
       for (const envVar of pkg.environment_variables) {
-        entry.env[envVar.name] = envVar.value || "";
+        entry.env[envVar.name] = envVar.value || '';
       }
     }
   }
@@ -249,6 +309,7 @@ generateConfigSnippet(server: ServerDetail): RegistryConfigEntry {
 ## User Experience Examples
 
 **Scenario 1: Discover and install**
+
 ```
 User: "I need SQL tools"
 Claude: search_registry_tools("sql")
@@ -262,6 +323,7 @@ User: [Manually adds to .mcp-funnel.json and restarts]
 ```
 
 **Scenario 2: Guided discovery**
+
 ```
 User: "discover tool python formatter"
 Claude: discover_tools_by_words("python formatter")
@@ -289,4 +351,4 @@ Claude: "Would you like installation details for any of these?"
 4. Update `discover_tools_by_words` to suggest registry
 5. Config generation logic
 
-See [registry_phase2.md](docs/todo/registry/registry_phase2.md) for future enhancements including temporary servers, caching, and server management.
+See [registry_phase2.md](./registry_phase2.md) for future enhancements including temporary servers, caching, and server management.

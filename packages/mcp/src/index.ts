@@ -15,6 +15,8 @@ import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
+import { SearchRegistryTools } from './tools/search-registry-tools/index.js';
+import { GetServerInstallInfo } from './tools/get-server-install-info/index.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
 import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
@@ -303,6 +305,8 @@ export class MCPProxy {
       new GetToolSchema(),
       new BridgeToolRequest(),
       new LoadToolset(),
+      new SearchRegistryTools(),
+      new GetServerInstallInfo(),
     ];
 
     for (const tool of tools) {
