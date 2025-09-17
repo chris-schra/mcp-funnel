@@ -308,6 +308,14 @@ export class MCPProxy {
     for (const tool of tools) {
       if (tool.isEnabled(this._config)) {
         this.coreTools.set(tool.name, tool);
+        // Register core tools with the registry (they bypass exposeTools filtering)
+        this.toolRegistry.registerDiscoveredTool({
+          fullName: tool.name,
+          originalName: tool.name,
+          serverName: 'mcp-funnel',
+          definition: tool.tool,
+          isCoreTool: true,
+        });
         if (tool.onInit) {
           tool.onInit(this.createToolContext());
         }
@@ -492,14 +500,21 @@ export class MCPProxy {
         method: string,
         params?: Record<string, unknown>,
       ) => {
-        // Create a properly typed notification object that conforms to the Notification interface
-        const notification: Notification = {
-          method,
-          ...(params !== undefined && { params }),
-        };
-        // Type assertion is required because the Server class restricts notifications to specific types,
-        // but this function needs to support arbitrary custom notifications
-        this._server.notification(notification as Notification);
+        try {
+          // Create a properly typed notification object that conforms to the Notification interface
+          const notification: Notification = {
+            method,
+            ...(params !== undefined && { params }),
+          };
+          // Type assertion is required because the Server class restricts notifications to specific types,
+          // but this function needs to support arbitrary custom notifications
+          // Await the notification to properly catch async errors
+          await this._server.notification(notification as Notification);
+        } catch (error) {
+          // Server might not be connected in tests - log but don't throw
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`[proxy] Failed to send ${method} notification: ${errorMessage}`);
+        }
       },
     };
   }
@@ -598,16 +613,8 @@ export class MCPProxy {
 
   private setupRequestHandlers() {
     this._server.setRequestHandler(ListToolsRequestSchema, async () => {
-      // Get exposed tools from registry
-      const registryTools = this.toolRegistry.getExposedTools();
-
-      // Add core tools that are enabled
-      const coreToolsList = Array.from(this.coreTools.values()).map(
-        (tool) => tool.tool,
-      );
-
-      // Combine both sets of tools
-      const tools = [...coreToolsList, ...registryTools];
+      // Get all exposed tools from registry (including core tools)
+      const tools = this.toolRegistry.getExposedTools();
       return { tools };
     });
 
