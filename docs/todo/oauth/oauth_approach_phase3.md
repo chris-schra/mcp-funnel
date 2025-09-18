@@ -1,4 +1,4 @@
-# OAuth & SSE Transport Implementation - Phase 3: Test Completion & Verification
+# OAuth & SSE Transport Implementation - Phase 3: DRY Refactoring & Test Completion
 
 ## Your responsibility
 **BEFORE** creating tasks, keep in mind:
@@ -31,235 +31,311 @@ in parallel that have dependencies that are not implemented or will be worked on
 
 To start parallel subagent workers, you **MUST** send a single message with multiple Task tool calls.
 
-## Critical Gap Identified
+## Critical Gaps Identified
 
-The OAuth implementation has a significant testing gap that prevents us from claiming feature completion:
-- **SSE Transport has 40 placeholder tests** - all contain only `expect(true).toBe(true)`
-- **No end-to-end OAuth flow verification** - authentication with real servers untested
-- **Primary transport untested** - SSE is the main OAuth transport but completely unverified
+### Test Redundancy (60-70% duplication)
+- Both SSE and WebSocket tests duplicate base class functionality testing
+- 78 SSE placeholder tests would create massive redundancy if implemented as-is
+- Base transport functionality tested multiple times instead of once
 
-As the reviewer correctly noted: *"It's like building an engine and the chassis of a car but never testing if the engine can actually make the wheels turn."*
+### Code DRY Violations
+1. **Environment Variable Resolution**
+   - Duplicated in `oauth2-client-credentials.ts` and `oauth2-authorization-code.ts`
+   - `resolveEnvironmentVariables()` function repeated (~40 lines each)
+
+2. **OAuth2 Types and Constants**
+   - `OAuth2TokenResponse` and `OAuth2ErrorResponse` interfaces duplicated
+   - Constants duplicated: `DEFAULT_EXPIRY_SECONDS`, `MAX_RETRIES`, `RETRY_DELAY_MS`
+
+3. **HTTP Request Logic**
+   - `SSEClientTransport::sendHttpRequest()` contains 100+ lines (lines 219-315)
+   - Auth headers, 401 handling, retry logic should be in base class
+   - WebSocket could reuse this for HTTP-based operations
+
+4. **OAuth Provider Methods**
+   - Identical implementations across OAuth providers:
+     - `getHeaders()`, `isValid()`, `refresh()`, `ensureValidToken()`
+   - Error handling and retry patterns duplicated
+
+## Existing Infrastructure Analysis
+
+### Available Testing Infrastructure
+**Testing Framework:**
+- **Vitest v3.2.4** with built-in mocking (`vi.fn()`, `vi.mock()`)
+- **Coverage**: @vitest/coverage-v8 for code coverage
+- **Node environment** with 10-second test timeouts
+
+**Key Dependencies Already Available:**
+- **eventsource v4.0.0** - EventSource implementation (already in use)
+- **express v5.1.0** - For building mock SSE servers
+- **UUID v13.0.0** - Request correlation IDs
+- **ws v8.18.3** - WebSocket reference implementation
+
+**Existing Mock Patterns:**
+- **OAuth Provider Tests**: Complete fetch mocking, token storage patterns
+- **WebSocket Transport**: 320+ line MockWebSocket class as template
+- **Mock MCP Servers**: Stdio-based servers in test/fixtures/
+
+### What We Have vs What We Need
+
+✅ **Ready to Use:**
+- Vitest mocking infrastructure
+- Express for mock SSE servers
+- EventSource package already installed
+- OAuth mocking patterns from provider tests
+- WebSocket test patterns as template
+
+⚠️ **Needs Implementation:**
+- Mock SSE server using Express
+- Enhanced EventSource mock
+- Integration test harness for SSE+OAuth flow
+
+❌ **NOT Needed:**
+- No new npm packages required
+- No new testing frameworks needed
+- No additional mocking libraries required
 
 ## Phase 3 Objectives
 
 ### Primary Goal
-**Replace all SSE transport placeholder tests with functional tests that verify OAuth integration works in practice.**
+**Eliminate DRY violations in both implementation and tests while completing SSE transport testing.**
 
 ### Success Criteria
-- [ ] All 40 SSE transport placeholder tests replaced with real tests
-- [ ] SSE transport test coverage matches WebSocket transport (≥90%)
+- [ ] All code DRY violations eliminated (extracted to shared utilities)
+- [ ] Base transport tests created for shared functionality
+- [ ] SSE-specific tests implemented (15-20 tests only)
+- [ ] WebSocket tests refactored to remove base functionality tests
 - [ ] End-to-end OAuth flow tested with mock servers
-- [ ] Integration tests verify token refresh, retries, and error handling
-- [ ] Documentation updated to reflect actual completion status
-- [ ] No skipped tests remaining in OAuth implementation
+- [ ] Zero test redundancy between transports
+- [ ] 90%+ coverage maintained with 50% fewer tests
 
 ## Implementation Plan
 
-### Task 1: SSE Transport Core Tests
+### Task 1: Extract Shared OAuth Utilities
 **Priority: CRITICAL**
-**Size: Large (8-12 hours)**
+**Size: Medium (4-5 hours)**
+**Files to create:**
+- `packages/mcp/src/auth/utils/oauth-utils.ts`
+- `packages/mcp/src/auth/utils/oauth-types.ts`
 
-Replace placeholder tests with real implementations for:
-- [ ] Connection establishment with EventSource
-- [ ] OAuth token in query parameter (browser limitation workaround)
-- [ ] Message event handling and parsing
-- [ ] Error event handling and recovery
-- [ ] Connection state management
-- [ ] Proper cleanup on disconnect
+**Extract from OAuth providers:**
+- [ ] Move OAuth2TokenResponse and OAuth2ErrorResponse to oauth-types.ts
+- [ ] Extract resolveEnvironmentVariables() to oauth-utils.ts
+- [ ] Move shared constants (DEFAULT_EXPIRY_SECONDS, MAX_RETRIES, RETRY_DELAY_MS)
+- [ ] Create shared error handling patterns
+- [ ] Update both OAuth providers to import from utils
 
+**Files to modify:**
+- `packages/mcp/src/auth/implementations/oauth2-client-credentials.ts`
+- `packages/mcp/src/auth/implementations/oauth2-authorization-code.ts`
+
+### Task 2: Create Base OAuth Provider
+**Priority: HIGH**
+**Size: Medium (4-5 hours)**
+**Files to create:**
+- `packages/mcp/src/auth/implementations/base-oauth-provider.ts`
+
+**Extract shared methods:**
+- [ ] getHeaders() implementation
+- [ ] isValid() implementation
+- [ ] refresh() base implementation
+- [ ] ensureValidToken() implementation
+- [ ] Token storage integration
+- [ ] Error handling and retry logic
+
+**Update providers to extend base:**
+- [ ] OAuth2ClientCredentialsProvider extends BaseOAuthProvider
+- [ ] OAuth2AuthCodeProvider extends BaseOAuthProvider
+
+### Task 3: Extract HTTP Utilities to Base Transport
+**Priority: CRITICAL**
+**Size: Large (6-8 hours)**
+**Files to modify:**
+- `packages/mcp/src/transports/implementations/base-client-transport.ts`
+- `packages/mcp/src/transports/implementations/sse-client-transport.ts`
+
+**Move to base class:**
+- [ ] sendHttpRequest() method (100+ lines from SSE)
+- [ ] Auth header injection logic
+- [ ] 401 response handling with token refresh
+- [ ] Retry logic implementation
+- [ ] Request timeout handling
+- [ ] Error mapping utilities
+
+**SSE transport updates:**
+- [ ] Remove sendHttpRequest() implementation
+- [ ] Call super.sendHttpRequest() from base class
+- [ ] Keep only SSE-specific logic (EventSource, query params)
+
+### Task 4: Create Base Transport Test Suite
+**Priority: CRITICAL**
+**Size: Medium (5-6 hours)**
+**Files to create:**
+- `packages/mcp/test/unit/base-client-transport.test.ts`
+- `packages/mcp/test/unit/transport-utils.test.ts`
+
+**Test categories for base transport:**
+- [ ] Configuration management and validation
+- [ ] Authentication provider integration
+- [ ] Message correlation (pending requests)
+- [ ] Reconnection manager integration
+- [ ] Data sanitization utilities
+- [ ] Lifecycle management (start/close)
+- [ ] HTTP request handling (new shared method)
+
+**Test categories for transport utils:**
+- [ ] ReconnectionManager behavior
+- [ ] Exponential backoff calculations
+- [ ] Utility function testing
+
+### Task 5: Refactor WebSocket Transport Tests
+**Priority: HIGH**
+**Size: Medium (3-4 hours)**
+**Files to modify:**
+- `packages/mcp/test/unit/websocket-client-transport.test.ts`
+
+**Remove tests for base functionality:**
+- [ ] Configuration validation tests
+- [ ] Basic auth integration tests
+- [ ] Message correlation tests
+- [ ] Reconnection logic tests
+- [ ] Data sanitization tests
+
+**Keep only WebSocket-specific tests:**
+- [ ] WebSocket connection establishment
+- [ ] Bidirectional messaging
+- [ ] Ping/pong heartbeat
+- [ ] WebSocket close codes
+- [ ] Auth headers in handshake
+
+### Task 6: Implement SSE-Specific Tests Only
+**Priority: CRITICAL**
+**Size: Medium (5-6 hours)**
 **Files to modify:**
 - `packages/mcp/test/unit/sse-client-transport.test.ts`
 
-**Reference implementation:**
-- Use `packages/mcp/test/unit/websocket-client-transport.test.ts` as template
-- Adapt WebSocket patterns to SSE/EventSource specifics
+**Replace placeholders with SSE-specific tests only:**
+- [ ] EventSource connection establishment
+- [ ] SSE message event handling
+- [ ] HTTP POST for client→server messages
+- [ ] Auth token as query parameter (browser limitation)
+- [ ] EventSource error states and recovery
+- [ ] SSE-specific reconnection behavior
+- [ ] EventSource cleanup
 
-### Task 2: SSE OAuth Integration Tests
-**Priority: CRITICAL**
-**Size: Medium (4-6 hours)**
+**Expected test count: ~15-20 tests (not 78)**
 
-Test OAuth-specific functionality:
-- [ ] Auth header injection in HTTP POST requests
-- [ ] Auth token as query parameter in EventSource URL
-- [ ] 401 response handling with token refresh
-- [ ] Retry logic with refreshed tokens
-- [ ] Token expiry during active connection
-- [ ] Multiple auth provider types (bearer, oauth2-client)
-
-**New test file needed:**
-- `packages/mcp/test/integration/sse-oauth-flow.test.ts`
-
-### Task 3: SSE Message Correlation Tests
-**Priority: HIGH**
-**Size: Medium (3-4 hours)**
-
-Test request/response correlation:
-- [ ] UUID generation for request tracking
-- [ ] Response matching via correlation IDs
-- [ ] Pending request timeout handling
-- [ ] Concurrent request management
-- [ ] Out-of-order response handling
-- [ ] Orphaned response handling
-
-### Task 4: SSE Reconnection Tests
-**Priority: HIGH**
-**Size: Medium (3-4 hours)**
-
-Test reconnection with exponential backoff:
-- [ ] Automatic reconnection on connection loss
-- [ ] Exponential backoff timing (1s, 2s, 4s, 8s, 16s)
-- [ ] Max retry limit enforcement
-- [ ] Connection state during reconnection
-- [ ] Pending requests during reconnection
-- [ ] Clean reconnection with fresh auth
-
-### Task 5: End-to-End Integration Tests
-**Priority: CRITICAL**
-**Size: Large (6-8 hours)**
-
-Create comprehensive integration tests:
-- [ ] Full OAuth2 client credentials flow with mock OAuth server
-- [ ] Token acquisition → SSE connection → authenticated requests
-- [ ] Token refresh flow during long-running connections
-- [ ] Server-initiated disconnects with re-authentication
-- [ ] Multiple concurrent SSE connections with different auth
-- [ ] Error scenarios (invalid tokens, expired tokens, revoked tokens)
-
-**New test file needed:**
-- `packages/mcp/test/e2e/oauth-sse-integration.test.ts`
-
-### Task 6: Mock Server Infrastructure
+### Task 7: Create SSE Mock Infrastructure
 **Priority: HIGH**
 **Size: Medium (4-5 hours)**
+**Files to create:**
+- `packages/mcp/test/mocks/mock-eventsource.ts`
+- `packages/mcp/test/mocks/mock-sse-server.ts`
 
-Build test infrastructure:
-- [ ] Mock OAuth2 authorization server
-- [ ] Mock SSE server with auth validation
-- [ ] Controllable token expiry for testing
-- [ ] Event injection for SSE testing
-- [ ] Network failure simulation
-- [ ] Response delay simulation
+**MockEventSource (similar to MockWebSocket):**
+- [ ] Controllable readyState
+- [ ] Event emission simulation
+- [ ] Error injection
+- [ ] Connection lifecycle
 
-**New utilities needed:**
-- `packages/mcp/test/mocks/oauth-server.ts`
-- `packages/mcp/test/mocks/sse-server.ts`
+**MockSSEServer (using Express):**
+- [ ] SSE endpoint with event streaming
+- [ ] POST endpoint for messages
+- [ ] Auth validation
+- [ ] Error simulation
 
-### Task 7: Performance & Load Tests
+### Task 8: End-to-End OAuth Flow Tests
+**Priority: HIGH**
+**Size: Medium (4-5 hours)**
+**Files to create:**
+- `packages/mcp/test/e2e/oauth-sse-integration.test.ts`
+
+**Integration scenarios:**
+- [ ] Complete OAuth2 flow with mock server
+- [ ] Token refresh during active connection
+- [ ] 401 handling and retry
+- [ ] Connection recovery with auth
+- [ ] Multiple concurrent authenticated connections
+
+### Task 9: Create OAuth Utility Tests
 **Priority: MEDIUM**
 **Size: Small (2-3 hours)**
+**Files to create:**
+- `packages/mcp/test/unit/oauth-utils.test.ts`
+- `packages/mcp/test/unit/base-oauth-provider.test.ts`
 
-Verify performance characteristics:
-- [ ] Connection establishment time with OAuth
-- [ ] Message throughput with auth overhead
-- [ ] Token refresh impact on latency
-- [ ] Memory usage with multiple connections
-- [ ] Connection pool limits
-- [ ] Graceful degradation under load
-
-### Task 8: Security Tests
-**Priority: HIGH**
-**Size: Small (2-3 hours)**
-
-Verify security properties:
-- [ ] No token leakage in logs
-- [ ] No token exposure in error messages
-- [ ] Query parameter sanitization in URLs
-- [ ] Secure token storage in memory
-- [ ] Token cleanup on disconnect
-- [ ] No token replay vulnerabilities
-
-### Task 9: Documentation Update
-**Priority: HIGH**
-**Size: Small (1-2 hours)**
-
-Update all documentation:
-- [ ] Mark SSE transport as fully tested
-- [ ] Update test coverage metrics
-- [ ] Document OAuth flow end-to-end
-- [ ] Add troubleshooting guide
-- [ ] Update implementation status
-- [ ] Remove "partial completion" notes
+**Test coverage for extracted utilities:**
+- [ ] Environment variable resolution
+- [ ] Token response parsing
+- [ ] Error response handling
+- [ ] Shared constants validation
+- [ ] Base provider methods
 
 ## Execution Strategy
 
-### Parallel Work Opportunities
-Tasks that can be done in parallel by different workers:
-- **Group A**: Task 1 (SSE Core Tests) + Task 6 (Mock Infrastructure)
-- **Group B**: Task 3 (Message Correlation) + Task 4 (Reconnection)
-- **Group C**: Task 7 (Performance) + Task 8 (Security)
+### Parallel Work Groups
+
+**Group A: OAuth Refactoring (Tasks 1, 2, 9)**
+- Extract shared OAuth utilities
+- Create base OAuth provider
+- Test OAuth utilities
+- Can work independently
+
+**Group B: Transport Refactoring (Task 3)**
+- Extract HTTP utilities to base transport
+- Critical path item
+- Blocks Task 4
+
+**Group C: Mock Infrastructure (Task 7)**
+- Create EventSource and SSE server mocks
+- Can work independently
+- Needed for Task 6
 
 ### Sequential Dependencies
-1. Task 6 (Mock Infrastructure) → Task 5 (E2E Tests)
-2. Task 1 (Core Tests) → Task 2 (OAuth Integration)
-3. All testing tasks → Task 9 (Documentation)
+1. Task 3 (HTTP extraction) → Task 4 (Base transport tests)
+2. Task 4 (Base tests) → Task 5 (WebSocket refactor) & Task 6 (SSE tests)
+3. Task 7 (Mocks) → Task 6 (SSE tests)
+4. All tasks → Task 8 (E2E tests)
 
 ## Validation Checklist
 
 Before marking Phase 3 complete:
-- [ ] `yarn test packages/mcp` - ALL tests pass (no skips)
-- [ ] Test coverage report shows ≥90% for SSE transport
-- [ ] Manual testing with real OAuth provider succeeds
-- [ ] Performance benchmarks meet requirements
-- [ ] Security audit passes
-- [ ] Documentation review complete
-- [ ] Code review by team lead
+- [ ] `yarn test packages/mcp` - ALL tests pass
+- [ ] Zero code duplication (validated by lint tools)
+- [ ] Test count reduced by ~50% with same coverage
+- [ ] No placeholder tests remaining
+- [ ] Coverage report shows ≥90% for all transports
+- [ ] E2E OAuth flow validates with real requests
+- [ ] Code review confirms DRY principles followed
 
 ## Risk Mitigation
 
 ### Identified Risks
-1. **EventSource API limitations** - May need polyfill for full testing
-2. **OAuth server mocking complexity** - Consider using existing OAuth mock libraries
-3. **Timing-dependent tests** - Use controllable timers and avoid real delays
-4. **Browser vs Node.js differences** - Ensure tests work in both environments
+1. **Base class changes affect both transports** - Comprehensive testing required
+2. **OAuth provider refactoring** - Must maintain backward compatibility
+3. **Test reduction** - Must maintain coverage while reducing count
 
 ### Mitigation Strategies
-- Use proven libraries (eventsource polyfill, nock for HTTP mocking)
-- Implement deterministic time control for tests
-- Run tests in both Node.js and browser environments
-- Add retry logic to flaky tests with clear failure messages
+- Run full test suite after each refactoring step
+- Keep old code commented during transition
+- Use coverage reports to ensure no regression
+- Review each extraction with code-reasoning tool
 
 ## Success Metrics
 
 ### Quantitative
-- **Test Count**: 40+ real SSE tests (currently 0)
-- **Coverage**: ≥90% line coverage for SSE transport
-- **Performance**: Connection setup <100ms, message latency <10ms
-- **Reliability**: 0 flaky tests in CI/CD
-
-### Qualitative
-- Reviewer approval: "The engine makes the wheels turn"
-- Team confidence in OAuth implementation
-- No critical bugs in first production deployment
-- Clear documentation for troubleshooting
-
-## Timeline Estimate
-
-**Total Effort**: 35-50 hours
-**Recommended Team Size**: 2-3 developers
-**Calendar Time**: 1-2 weeks (with parallel execution)
-
-### Week 1
-- Day 1-2: Mock infrastructure + SSE core tests
-- Day 3-4: OAuth integration + Message correlation
-- Day 5: Reconnection tests + Initial E2E tests
-
-### Week 2
-- Day 1-2: Complete E2E tests
-- Day 3: Performance + Security tests
-- Day 4: Documentation + Code review
-- Day 5: Buffer for fixes and final validation
+- **Code Duplication**: 0% (down from current ~40%)
+- **Test Count**: ~65 total (down from 120+)
+- **Test Coverage**: ≥90% maintained
+- **DRY Violations**: 0 remaining
 
 ## Definition of Done
 
 Phase 3 is complete when:
-1. ✅ All 40 SSE placeholder tests replaced with functional tests
-2. ✅ End-to-end OAuth flow verified with integration tests
-3. ✅ No skipped tests in OAuth implementation
-4. ✅ Test coverage ≥90% for all transport implementations
-5. ✅ Documentation accurately reflects implementation status
-6. ✅ All validation checklist items passed
-7. ✅ Reviewer confirms: "The promise has been fulfilled"
-
----
-
-**Note**: This phase is CRITICAL for production readiness. The OAuth feature cannot be considered complete until these tests are implemented and passing.
+- [ ] Zero code duplication across OAuth providers
+- [ ] Zero code duplication across transports
+- [ ] Base transport tests eliminate test redundancy
+- [ ] SSE has ~20 specific tests, not 78 redundant ones
+- [ ] All tests passing with ≥90% coverage
+- [ ] E2E OAuth flow verified
+- [ ] Code review confirms DRY principles followed
