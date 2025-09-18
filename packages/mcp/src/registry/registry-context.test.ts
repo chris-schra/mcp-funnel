@@ -47,7 +47,10 @@ class MockRegistryContext {
     this.isInitialized = true;
   }
 
-  async searchServers(query: string): Promise<RegistrySearchResult> {
+  async searchServers(
+    query: string,
+    registry?: string,
+  ): Promise<RegistrySearchResult> {
     if (!this.isInitialized) {
       throw new Error('RegistryContext not initialized');
     }
@@ -60,11 +63,27 @@ class MockRegistryContext {
       };
     }
 
+    // Filter registries if specific registry requested
+    let registriesToSearch = this.registryUrls;
+    if (registry) {
+      registriesToSearch = this.registryUrls.filter((url) =>
+        url.toLowerCase().includes(registry.toLowerCase()),
+      );
+
+      if (registriesToSearch.length === 0) {
+        return {
+          found: false,
+          servers: [],
+          message: `No registry found matching: ${registry}`,
+        };
+      }
+    }
+
     // Mock aggregating results from multiple registries
     const allResults: RegistrySearchResult['servers'] = [];
     const errors: string[] = [];
 
-    for (const registryUrl of this.registryUrls) {
+    for (const registryUrl of registriesToSearch) {
       try {
         // Mock registry search call
         const mockResult = this.mockRegistrySearch(registryUrl, query);
@@ -151,7 +170,10 @@ class MockRegistryContext {
       throw new Error('Registry unavailable');
     }
 
-    if (query === 'filesystem') {
+    if (
+      query === 'filesystem' &&
+      registryUrl === 'https://registry.example.com/api'
+    ) {
       return {
         found: true,
         servers: [
@@ -224,24 +246,24 @@ describe('RegistryContext', () => {
   });
 
   describe('Singleton Pattern', () => {
-    it.skip('should return same instance on subsequent calls', () => {
+    it('should return same instance on subsequent calls', () => {
       const instance1 = MockRegistryContext.getInstance(mockConfig);
       const instance2 = MockRegistryContext.getInstance();
 
       expect(instance1).toBe(instance2);
     });
 
-    it.skip('should require config on first access', () => {
+    it('should require config on first access', () => {
       expect(() => MockRegistryContext.getInstance()).toThrow(
         'Config required for first getInstance() call',
       );
     });
 
-    it.skip('should throw error if no config provided on first access', () => {
+    it('should throw error if no config provided on first access', () => {
       expect(() => MockRegistryContext.getInstance()).toThrow();
     });
 
-    it.skip('should allow reset of singleton instance', () => {
+    it('should allow reset of singleton instance', () => {
       const instance1 = MockRegistryContext.getInstance(mockConfig);
       MockRegistryContext.reset();
 
@@ -254,7 +276,7 @@ describe('RegistryContext', () => {
       expect(instance1).not.toBe(instance2);
     });
 
-    it.skip('should not require config after first initialization', () => {
+    it('should not require config after first initialization', () => {
       MockRegistryContext.getInstance(mockConfig);
 
       // Should not throw on subsequent calls without config
@@ -263,7 +285,7 @@ describe('RegistryContext', () => {
   });
 
   describe('Registry Client Initialization', () => {
-    it.skip('should create clients for each registry URL in config', () => {
+    it('should create clients for each registry URL in config', () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       // In real implementation, this would verify registry clients are created
@@ -272,7 +294,7 @@ describe('RegistryContext', () => {
       expect(context['isInitialized']).toBe(true);
     });
 
-    it.skip('should handle empty registry list gracefully', () => {
+    it('should handle empty registry list gracefully', () => {
       const emptyConfig: ProxyConfig = { servers: [] };
       const context = MockRegistryContext.getInstance(emptyConfig);
 
@@ -280,7 +302,7 @@ describe('RegistryContext', () => {
       expect(context['registryUrls']).toBeDefined();
     });
 
-    it.skip('should initialize with multiple registry URLs', () => {
+    it('should initialize with multiple registry URLs', () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       // Verify multiple registries are configured
@@ -292,7 +314,7 @@ describe('RegistryContext', () => {
   });
 
   describe('searchServers() method', () => {
-    it.skip('should aggregate results from multiple registries', async () => {
+    it('should aggregate results from multiple registries', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       const result = await context.searchServers('filesystem');
@@ -303,7 +325,7 @@ describe('RegistryContext', () => {
       expect(result.message).toContain('Found 1 server');
     });
 
-    it.skip('should handle errors from individual registries gracefully', async () => {
+    it('should handle errors from individual registries gracefully', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       const result = await context.searchServers('error');
@@ -313,7 +335,7 @@ describe('RegistryContext', () => {
       expect(result.message).toContain('Registry unavailable');
     });
 
-    it.skip('should return empty array when no registries configured', async () => {
+    it('should return empty array when no registries configured', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
       context['registryUrls'] = [];
 
@@ -324,7 +346,7 @@ describe('RegistryContext', () => {
       expect(result.message).toBe('No registries configured');
     });
 
-    it.skip('should handle no results found across all registries', async () => {
+    it('should handle no results found across all registries', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       const result = await context.searchServers('nonexistent');
@@ -334,7 +356,7 @@ describe('RegistryContext', () => {
       expect(result.message).toBe('No servers found');
     });
 
-    it.skip('should throw if context not initialized', async () => {
+    it('should throw if context not initialized', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
       context['isInitialized'] = false;
 
@@ -342,10 +364,21 @@ describe('RegistryContext', () => {
         'RegistryContext not initialized',
       );
     });
+
+    it('should accept optional registry parameter', async () => {
+      const context = MockRegistryContext.getInstance(mockConfig);
+
+      const result = await context.searchServers('filesystem', 'example');
+
+      expect(result).toBeDefined();
+      expect(typeof result.found).toBe('boolean');
+      expect(Array.isArray(result.servers)).toBe(true);
+      expect(typeof result.message).toBe('string');
+    });
   });
 
   describe('getServerDetails() method', () => {
-    it.skip('should try each registry until server found', async () => {
+    it('should try each registry until server found', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       const details = await context.getServerDetails('fs-001');
@@ -356,7 +389,7 @@ describe('RegistryContext', () => {
       expect(details?.tools).toContain('read_file');
     });
 
-    it.skip('should return null if server not found in any registry', async () => {
+    it('should return null if server not found in any registry', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       const details = await context.getServerDetails('nonexistent-server');
@@ -364,7 +397,7 @@ describe('RegistryContext', () => {
       expect(details).toBeNull();
     });
 
-    it.skip('should continue to next registry on error', async () => {
+    it('should continue to next registry on error', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       const details = await context.getServerDetails('error-server');
@@ -372,7 +405,7 @@ describe('RegistryContext', () => {
       expect(details).toBeNull();
     });
 
-    it.skip('should throw if context not initialized', async () => {
+    it('should throw if context not initialized', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
       context['isInitialized'] = false;
 
@@ -384,7 +417,7 @@ describe('RegistryContext', () => {
 
   describe('Extension Points (Phase 2)', () => {
     describe('enableTemporary()', () => {
-      it.skip('should accept server config and return server ID', async () => {
+      it('should accept server config and return server ID', async () => {
         const context = MockRegistryContext.getInstance(mockConfig);
 
         const serverConfig: ServerConfig = {
@@ -399,7 +432,7 @@ describe('RegistryContext', () => {
         expect(context['temporaryServers'].has(serverId)).toBe(true);
       });
 
-      it.skip('should store server config in temporary registry', async () => {
+      it('should store server config in temporary registry', async () => {
         const context = MockRegistryContext.getInstance(mockConfig);
 
         const serverConfig: ServerConfig = {
@@ -417,7 +450,7 @@ describe('RegistryContext', () => {
     });
 
     describe('persistTemporary()', () => {
-      it.skip('should return config for saving to persistent storage', async () => {
+      it('should return config for saving to persistent storage', async () => {
         const context = MockRegistryContext.getInstance(mockConfig);
 
         const serverConfig: ServerConfig = {
@@ -432,7 +465,7 @@ describe('RegistryContext', () => {
         expect(persistedConfig).toEqual(serverConfig);
       });
 
-      it.skip('should return null for non-existent server ID', async () => {
+      it('should return null for non-existent server ID', async () => {
         const context = MockRegistryContext.getInstance(mockConfig);
 
         const result = await context.persistTemporary('nonexistent-id');
@@ -440,7 +473,7 @@ describe('RegistryContext', () => {
         expect(result).toBeNull();
       });
 
-      it.skip('should handle server ID that was already persisted', async () => {
+      it('should handle server ID that was already persisted', async () => {
         const context = MockRegistryContext.getInstance(mockConfig);
 
         const serverConfig: ServerConfig = {
@@ -462,7 +495,7 @@ describe('RegistryContext', () => {
   });
 
   describe('Shared Cache', () => {
-    it.skip('should maintain cache across operations', async () => {
+    it('should maintain cache across operations', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       const initialCacheStats = context.getCacheStats();
@@ -476,7 +509,7 @@ describe('RegistryContext', () => {
       expect(context.getCacheStats()).toBeDefined();
     });
 
-    it.skip('should allow cache clearing', () => {
+    it('should allow cache clearing', () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       // Add something to cache (in real implementation)
@@ -489,7 +522,7 @@ describe('RegistryContext', () => {
       expect(context.getCacheStats().size).toBe(0);
     });
 
-    it.skip('should share cache between different method calls', async () => {
+    it('should share cache between different method calls', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       // In real implementation, verify that search results are cached
@@ -506,7 +539,7 @@ describe('RegistryContext', () => {
       );
     });
 
-    it.skip('should provide cache statistics', () => {
+    it('should provide cache statistics', () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       context['cache'].set('key1', 'value1');
@@ -521,7 +554,7 @@ describe('RegistryContext', () => {
   });
 
   describe('Error Handling', () => {
-    it.skip('should handle network timeouts gracefully', async () => {
+    it('should handle network timeouts gracefully', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       // Mock network timeout scenario
@@ -539,7 +572,7 @@ describe('RegistryContext', () => {
       context['mockRegistrySearch'] = originalMethod;
     });
 
-    it.skip('should handle invalid registry responses', async () => {
+    it('should handle invalid registry responses', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       // Mock invalid response scenario
@@ -556,7 +589,7 @@ describe('RegistryContext', () => {
       context['mockGetServerDetails'] = originalMethod;
     });
 
-    it.skip('should handle concurrent requests safely', async () => {
+    it('should handle concurrent requests safely', async () => {
       const context = MockRegistryContext.getInstance(mockConfig);
 
       // Test concurrent access
@@ -578,7 +611,7 @@ describe('RegistryContext', () => {
   });
 
   describe('Configuration Edge Cases', () => {
-    it.skip('should handle malformed config gracefully', () => {
+    it('should handle malformed config gracefully', () => {
       const malformedConfig = {} as ProxyConfig;
 
       expect(() =>
@@ -586,7 +619,7 @@ describe('RegistryContext', () => {
       ).not.toThrow();
     });
 
-    it.skip('should handle config with no servers', () => {
+    it('should handle config with no servers', () => {
       const emptyConfig: ProxyConfig = { servers: [] };
 
       const context = MockRegistryContext.getInstance(emptyConfig);
@@ -594,7 +627,7 @@ describe('RegistryContext', () => {
       expect(context).toBeDefined();
     });
 
-    it.skip('should handle config with invalid registry URLs', () => {
+    it('should handle config with invalid registry URLs', () => {
       const invalidConfig: ProxyConfig = {
         servers: [
           {
