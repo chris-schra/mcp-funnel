@@ -15,6 +15,7 @@ import {
   type OAuth2AuthCodeConfigZod,
   type StdioTransportConfigZod,
   type SSETransportConfigZod,
+  type WebSocketTransportConfigZod,
 } from '../../src/config.js';
 
 describe('OAuth Configuration Schemas', () => {
@@ -737,10 +738,89 @@ describe('OAuth Configuration Schemas', () => {
       });
     });
 
+    describe('WebSocket transport configuration', () => {
+      it('should accept valid WebSocket configuration', () => {
+        const websocketConfig = {
+          type: 'websocket' as const,
+          url: 'ws://api.example.com/websocket',
+          timeout: 30000,
+          reconnect: {
+            maxAttempts: 5,
+            initialDelayMs: 1000,
+            maxDelayMs: 30000,
+            backoffMultiplier: 2,
+          },
+        };
+        expect(() =>
+          TransportConfigSchema.parse(websocketConfig),
+        ).not.toThrow();
+        const result = TransportConfigSchema.parse(websocketConfig);
+        expect(result.type).toBe('websocket');
+        if (result.type === 'websocket') {
+          const wsResult = result as WebSocketTransportConfigZod;
+          expect(wsResult.url).toBe('ws://api.example.com/websocket');
+          expect(wsResult.timeout).toBe(30000);
+          expect(wsResult.reconnect?.maxAttempts).toBe(5);
+        }
+      });
+
+      it('should accept minimal WebSocket configuration', () => {
+        const minimalConfig = {
+          type: 'websocket' as const,
+          url: 'wss://api.example.com/websocket',
+        };
+        expect(() => TransportConfigSchema.parse(minimalConfig)).not.toThrow();
+        const result = TransportConfigSchema.parse(minimalConfig);
+        expect(result.type).toBe('websocket');
+        if (result.type === 'websocket') {
+          const wsResult = result as WebSocketTransportConfigZod;
+          expect(wsResult.url).toBe('wss://api.example.com/websocket');
+          expect(wsResult.timeout).toBeUndefined();
+          expect(wsResult.reconnect).toBeUndefined();
+        }
+      });
+
+      it('should accept partial reconnect configuration', () => {
+        const partialReconnectConfig = {
+          type: 'websocket' as const,
+          url: 'ws://api.example.com/websocket',
+          reconnect: {
+            maxAttempts: 3,
+            // Other fields optional
+          },
+        };
+        expect(() =>
+          TransportConfigSchema.parse(partialReconnectConfig),
+        ).not.toThrow();
+        const result = TransportConfigSchema.parse(partialReconnectConfig);
+        if (result.type === 'websocket') {
+          const wsResult = result as WebSocketTransportConfigZod;
+          expect(wsResult.reconnect?.maxAttempts).toBe(3);
+          expect(wsResult.reconnect?.initialDelayMs).toBeUndefined();
+        }
+      });
+
+      it('should reject WebSocket config without URL', () => {
+        const invalidConfig = {
+          type: 'websocket' as const,
+          // Missing URL
+        };
+        expect(() => TransportConfigSchema.parse(invalidConfig)).toThrow();
+      });
+
+      it('should reject WebSocket config with invalid URL type', () => {
+        const invalidConfig = {
+          type: 'websocket' as const,
+          url: 123, // Should be string
+        };
+        expect(() => TransportConfigSchema.parse(invalidConfig)).toThrow();
+      });
+    });
+
     describe('Invalid transport type discrimination', () => {
       it('should reject unknown transport types', () => {
         const invalidTransportConfig = {
-          type: 'websocket',
+          type: 'unknown-transport',
           url: 'ws://example.com',
         };
 

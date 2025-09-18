@@ -124,9 +124,24 @@ export const SSETransportConfigSchema = z.object({
     .optional(),
 });
 
+export const WebSocketTransportConfigSchema = z.object({
+  type: z.literal('websocket'),
+  url: z.string(),
+  timeout: z.number().optional(),
+  reconnect: z
+    .object({
+      maxAttempts: z.number().optional(),
+      initialDelayMs: z.number().optional(),
+      maxDelayMs: z.number().optional(),
+      backoffMultiplier: z.number().optional(),
+    })
+    .optional(),
+});
+
 export const TransportConfigSchema = z.discriminatedUnion('type', [
   StdioTransportConfigSchema,
   SSETransportConfigSchema,
+  WebSocketTransportConfigSchema,
 ]);
 
 // Extended target server schema that includes auth and transport
@@ -232,6 +247,9 @@ export type StdioTransportConfigZod = z.infer<
   typeof StdioTransportConfigSchema
 >;
 export type SSETransportConfigZod = z.infer<typeof SSETransportConfigSchema>;
+export type WebSocketTransportConfigZod = z.infer<
+  typeof WebSocketTransportConfigSchema
+>;
 export type TransportConfigZod = z.infer<typeof TransportConfigSchema>;
 export type ExtendedTargetServerZod = z.infer<
   typeof ExtendedTargetServerSchema
@@ -250,6 +268,7 @@ export type {
   TransportConfig,
   StdioTransportConfig,
   SSETransportConfig,
+  WebSocketTransportConfig,
   ExtendedTargetServer,
   ExtendedTargetServerWithoutName,
 } from './types/index.js';

@@ -17,6 +17,8 @@ export type {
   TransportConfig,
   StdioTransportConfig,
   SSETransportConfig,
+  WebSocketTransportConfig,
+  ReconnectionConfig,
 } from './transport.types.js';
 
 // Server types
