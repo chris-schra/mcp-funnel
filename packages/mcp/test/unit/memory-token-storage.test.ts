@@ -3,6 +3,7 @@ import type {
   TokenData,
   ITokenStorage,
 } from '../../src/auth/interfaces/token-storage.interface.js';
+import { createMemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
 
 // Mock timer functions for testing expiry and refresh scheduling
 const mockSetTimeout = vi.fn();
@@ -25,7 +26,7 @@ function createTestToken(expiresInMs: number = 3600000): TokenData {
   };
 }
 
-describe.skip('MemoryTokenStorage', () => {
+describe('MemoryTokenStorage', () => {
   let storage: ITokenStorage;
   let originalSetTimeout: typeof setTimeout;
   let originalClearTimeout: typeof clearTimeout;
@@ -551,11 +552,3 @@ describe.skip('MemoryTokenStorage', () => {
     });
   });
 });
-
-// Helper function that would be implemented by the actual MemoryTokenStorage
-function createMemoryTokenStorage(): ITokenStorage {
-  // This would be the actual implementation
-  throw new Error(
-    'MemoryTokenStorage not implemented - this is a placeholder for tests',
-  );
-}

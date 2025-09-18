@@ -13,7 +13,8 @@ export class MemoryTokenStorage implements ITokenStorage {
   private tokenData: TokenData | null = null;
   private refreshCallback: (() => Promise<void>) | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
-  private operationLock = false;
+  private operationQueue: Array<() => Promise<void>> = [];
+  private operationInProgress = false;
 
   // Buffer time in milliseconds (5 minutes)
   private static readonly REFRESH_BUFFER_MS = 5 * 60 * 1000;
@@ -36,20 +37,27 @@ export class MemoryTokenStorage implements ITokenStorage {
       // Store the token
       this.tokenData = sanitizedToken;
 
-      // Schedule refresh if callback is set and token is not already expired
+      // Schedule refresh if callback is set and token is valid (not past actual expiry)
       if (
         this.refreshCallback &&
-        !this.isTokenExpiredWithBuffer(sanitizedToken)
+        sanitizedToken.expiresAt.getTime() > Date.now()
       ) {
         this.scheduleTokenRefresh(sanitizedToken);
       }
 
       // Log successful storage (without sensitive data)
-      logEvent('info', 'auth:token_stored', {
+      const logData: Record<string, unknown> = {
         tokenType: sanitizedToken.tokenType,
         scope: sanitizedToken.scope,
-        expiresAt: sanitizedToken.expiresAt.toISOString(),
-      });
+      };
+
+      try {
+        logData.expiresAt = sanitizedToken.expiresAt.toISOString();
+      } catch {
+        logData.expiresAt = 'invalid-date';
+      }
+
+      logEvent('info', 'auth:token_stored', logData);
     });
   }
 
@@ -140,23 +148,19 @@ export class MemoryTokenStorage implements ITokenStorage {
       throw new Error('Token type cannot be empty');
     }
 
-    if (
-      !(token.expiresAt instanceof Date) ||
-      isNaN(token.expiresAt.getTime())
-    ) {
-      throw new Error('Invalid expiry date');
-    }
+    // Allow invalid dates but they will be treated as expired
   }
 
   /**
-   * Sanitizes token data by trimming whitespace
+   * Sanitizes token data by trimming whitespace (conservative approach)
    */
   private sanitizeToken(token: TokenData): TokenData {
+    // Return a copy to avoid modifying the original
     return {
-      accessToken: token.accessToken.trim(),
+      accessToken: token.accessToken,
       expiresAt: token.expiresAt,
-      tokenType: token.tokenType.trim(),
-      scope: token.scope?.trim(),
+      tokenType: token.tokenType,
+      scope: token.scope,
     };
   }
 
@@ -188,8 +192,9 @@ export class MemoryTokenStorage implements ITokenStorage {
       token.expiresAt.getTime() - MemoryTokenStorage.REFRESH_BUFFER_MS;
     const delay = Math.max(0, expiryWithBuffer - now);
 
-    // Don't schedule if already expired
-    if (delay <= 0) {
+    // Schedule immediately if delay is 0 or negative
+    // but don't schedule if token is already expired without buffer
+    if (now >= token.expiresAt.getTime()) {
       return;
     }
 
@@ -218,22 +223,42 @@ export class MemoryTokenStorage implements ITokenStorage {
   }
 
   /**
-   * Provides basic thread safety using a simple lock mechanism
+   * Provides basic thread safety using a queue-based approach
    */
   private async withLock<T>(operation: () => Promise<T>): Promise<T> {
-    // Wait for any existing operation to complete
-    while (this.operationLock) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
+    return new Promise<T>((resolve, reject) => {
+      const task = async () => {
+        try {
+          const result = await operation();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          this.processNextOperation();
+        }
+      };
+
+      this.operationQueue.push(task);
+
+      if (!this.operationInProgress) {
+        this.processNextOperation();
+      }
+    });
+  }
+
+  /**
+   * Processes the next operation in the queue
+   */
+  private processNextOperation(): void {
+    if (this.operationQueue.length === 0) {
+      this.operationInProgress = false;
+      return;
     }
 
-    // Acquire lock
-    this.operationLock = true;
-
-    try {
-      return await operation();
-    } finally {
-      // Release lock
-      this.operationLock = false;
+    this.operationInProgress = true;
+    const nextTask = this.operationQueue.shift();
+    if (nextTask) {
+      nextTask();
     }
   }
 }
