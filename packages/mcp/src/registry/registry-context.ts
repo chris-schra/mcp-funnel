@@ -251,7 +251,11 @@ export class RegistryContext {
             server._meta?.['io.modelcontextprotocol.registry/official']?.id ||
             server.id,
           isRemote: !!(server.remotes && server.remotes.length > 0),
-          registryType: server.registry_type,
+          registryType:
+            server.packages?.[0]?.registry_type ||
+            (server.remotes && server.remotes.length > 0
+              ? 'remote'
+              : 'unknown'),
         }));
         allResults.push(...convertedResults);
       }
