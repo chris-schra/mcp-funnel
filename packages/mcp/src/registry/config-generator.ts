@@ -1,4 +1,4 @@
-import { RegistryServer } from './types/registry.types.js';
+import { RegistryServer, Package } from './types/registry.types.js';
 import { RegistryConfigEntry } from './types/config.types.js';
 
 /**
@@ -134,6 +134,42 @@ export function generateConfigSnippet(
 }
 
 /**
+ * Helper to generate command and args JSON lines for install instructions
+ * Eliminates redundancy across npm, pypi, and oci package types
+ */
+function generateCommandArgsLines(
+  pkg: Package,
+  defaultCommand: string,
+  defaultArgs: string[],
+): { lines: string[]; hasEnvVars: boolean } {
+  const lines: string[] = [];
+  const command = pkg.runtime_hint || defaultCommand;
+  lines.push(`  "command": "${command}",`);
+
+  let argsArray: string[];
+  if (pkg.runtime_hint) {
+    // Publisher has full control when hint is provided
+    argsArray = [
+      ...(pkg.runtime_arguments || []),
+      pkg.identifier,
+      ...(pkg.package_arguments || []),
+    ];
+  } else {
+    // Default behavior when no hint provided
+    argsArray = [...defaultArgs, ...(pkg.package_arguments || [])];
+  }
+
+  // Check if environment variables follow
+  const hasEnvVars =
+    pkg.environment_variables &&
+    pkg.environment_variables.some((env) => env.value !== undefined);
+  const argsComma = hasEnvVars ? ',' : '';
+  lines.push(`  "args": ["${argsArray.join('", "')}"]${argsComma}`);
+
+  return { lines, hasEnvVars: hasEnvVars || false };
+}
+
+/**
  * Generates human-readable installation instructions for a server
  */
 export function generateInstallInstructions(server: RegistryServer): string {
@@ -231,61 +267,26 @@ export function generateInstallInstructions(server: RegistryServer): string {
 
     switch (pkg.registry_type) {
       case 'npm': {
-        const command = pkg.runtime_hint || 'npx';
-        lines.push(`  "command": "${command}",`);
-        let argsArray: string[];
-        if (pkg.runtime_hint) {
-          // Publisher has full control when hint is provided
-          argsArray = [
-            ...(pkg.runtime_arguments || []),
-            pkg.identifier,
-            ...(pkg.package_arguments || []),
-          ];
-        } else {
-          // Default behavior when no hint provided
-          argsArray = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
-        }
-        lines.push(`  "args": ["${argsArray.join('", "')}"]`);
+        const result = generateCommandArgsLines(pkg, 'npx', [
+          '-y',
+          pkg.identifier,
+        ]);
+        lines.push(...result.lines);
         break;
       }
       case 'pypi': {
-        const command = pkg.runtime_hint || 'uvx';
-        lines.push(`  "command": "${command}",`);
-        let argsArray: string[];
-        if (pkg.runtime_hint) {
-          argsArray = [
-            ...(pkg.runtime_arguments || []),
-            pkg.identifier,
-            ...(pkg.package_arguments || []),
-          ];
-        } else {
-          // Default behavior
-          argsArray = [pkg.identifier, ...(pkg.package_arguments || [])];
-        }
-        lines.push(`  "args": ["${argsArray.join('", "')}"]`);
+        const result = generateCommandArgsLines(pkg, 'uvx', [pkg.identifier]);
+        lines.push(...result.lines);
         break;
       }
       case 'oci': {
-        const command = pkg.runtime_hint || 'docker';
-        lines.push(`  "command": "${command}",`);
-        let argsArray: string[];
-        if (pkg.runtime_hint) {
-          argsArray = [
-            ...(pkg.runtime_arguments || []),
-            pkg.identifier,
-            ...(pkg.package_arguments || []),
-          ];
-        } else {
-          // Default behavior
-          argsArray = [
-            'run',
-            '-i',
-            '--rm',
-            pkg.identifier,
-            ...(pkg.package_arguments || []),
-          ];
-        }
-        lines.push(`  "args": ["${argsArray.join('", "')}"]`);
+        const result = generateCommandArgsLines(pkg, 'docker', [
+          'run',
+          '-i',
+          '--rm',
+          pkg.identifier,
+        ]);
+        lines.push(...result.lines);
         break;
       }
       default:
@@ -305,7 +306,7 @@ export function generateInstallInstructions(server: RegistryServer): string {
         varsWithValues.forEach((envVar, index, arr) => {
           const comma = index < arr.length - 1 ? ',' : '';
           const value = envVar.value;
-          lines.push(`    "${envVar.name}": ${value}${comma}`);
+          lines.push(`    "${envVar.name}": ${JSON.stringify(value)}${comma}`);
         });
         lines.push('  }');
       }
