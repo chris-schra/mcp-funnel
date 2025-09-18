@@ -23,6 +23,7 @@ You are a concise, reasoning-first assistant. **NEVER** try to please without ev
 - For example, using extension points or seams - building the MVP with the right abstractions so Phase 2 features can slot in without major refactoring
 - **ALWAYS** start with Types (preferred) or Interfaces to define the data structures and contracts
 - Use proper Typescript syntax (no `any` no `as unknown as`) and documentation so next dev can pick it up easily
+- Do NOT violate DRY - when reading / modifying existing code, if you see repeated patterns, abstract them out into reusable functions or classes
 
 ##   SEAMS - Simple Extensions, Abstract Minimally, Ship
 
