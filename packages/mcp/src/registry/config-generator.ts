@@ -9,7 +9,7 @@ export function generateConfigSnippet(
 ): RegistryConfigEntry {
   const entry: RegistryConfigEntry = {
     name: server.name,
-    _registry_metadata: server as unknown as Record<string, unknown>,
+    _registry_metadata: { ...server },
   };
 
   // Handle remote servers first (they take precedence)
@@ -17,8 +17,11 @@ export function generateConfigSnippet(
     const remote = server.remotes[0];
     entry.transport = remote.type;
     entry.url = remote.url;
-    if (remote.headers) {
-      entry.headers = remote.headers;
+    if (remote.headers && remote.headers.length > 0) {
+      entry.headers = {};
+      for (const header of remote.headers) {
+        entry.headers[header.name] = header.value || '';
+      }
     }
     return entry;
   }
@@ -33,11 +36,11 @@ export function generateConfigSnippet(
         entry.args = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
         break;
       case 'pypi':
-        entry.command = 'uvx';
+        entry.command = pkg.runtime_hint || 'uvx';
         entry.args = [pkg.identifier, ...(pkg.package_arguments || [])];
         break;
       case 'oci':
-        entry.command = 'docker';
+        entry.command = pkg.runtime_hint || 'docker';
         entry.args = ['run', '-i', '--rm', pkg.identifier];
         break;
       case 'github':
@@ -87,11 +90,13 @@ export function generateInstallInstructions(server: RegistryServer): string {
     lines.push(`"${server.name}": {`);
     lines.push(`  "transport": "${remote.type}",`);
     lines.push(`  "url": "${remote.url}"`);
-    if (remote.headers) {
+    if (remote.headers && remote.headers.length > 0) {
+      lines.push(',');
       lines.push('  "headers": {');
-      Object.entries(remote.headers).forEach(([key, value], index, arr) => {
+      remote.headers.forEach((header, index, arr) => {
         const comma = index < arr.length - 1 ? ',' : '';
-        lines.push(`    "${key}": "${value}"${comma}`);
+        // Use header.name as key and header.value as value
+        lines.push(`    "${header.name}": "${header.value || ''}"${comma}`);
       });
       lines.push('  }');
     }
@@ -144,13 +149,13 @@ export function generateInstallInstructions(server: RegistryServer): string {
         );
         break;
       case 'pypi':
-        lines.push('  "command": "uvx",');
+        lines.push(`  "command": "${pkg.runtime_hint || 'uvx'}",`);
         lines.push(
           `  "args": ["${pkg.identifier}"${pkg.package_arguments ? ', "' + pkg.package_arguments.join('", "') + '"' : ''}]`,
         );
         break;
       case 'oci':
-        lines.push('  "command": "docker",');
+        lines.push(`  "command": "${pkg.runtime_hint || 'docker'}",`);
         lines.push(`  "args": ["run", "-i", "--rm", "${pkg.identifier}"]`);
         break;
       default:
@@ -173,13 +178,13 @@ export function generateInstallInstructions(server: RegistryServer): string {
 
     if (
       pkg.environment_variables &&
-      pkg.environment_variables.some((env) => env.required)
+      pkg.environment_variables.some((env) => env.is_required)
     ) {
       lines.push('');
       lines.push('## Required Environment Variables');
       lines.push('');
       pkg.environment_variables
-        .filter((env) => env.required)
+        .filter((env) => env.is_required)
         .forEach((env) => {
           lines.push(
             `- **${env.name}**: ${env.value ? `Default: ${env.value}` : 'Required - please set this value'}`,
