@@ -7,7 +7,7 @@
  * for environment-based secret resolution.
  */
 
-import type { ISecretProvider } from './types.js';
+import { BaseSecretProvider } from './base-provider.js';
 import type { ProcessEnvProviderConfig } from './provider-configs.js';
 
 /**
@@ -33,7 +33,7 @@ import type { ProcessEnvProviderConfig } from './provider-configs.js';
  * });
  * ```
  */
-export class ProcessEnvProvider implements ISecretProvider {
+export class ProcessEnvProvider extends BaseSecretProvider {
   private readonly config: ProcessEnvProviderConfig['config'];
 
   /**
@@ -42,6 +42,7 @@ export class ProcessEnvProvider implements ISecretProvider {
    * @param config - Configuration specifying filtering rules for environment variables
    */
   constructor(config: ProcessEnvProviderConfig) {
+    super('process');
     this.config = config.config;
   }
 
@@ -55,7 +56,7 @@ export class ProcessEnvProvider implements ISecretProvider {
    *
    * @returns A promise resolving to filtered environment variables as key-value pairs
    */
-  async resolveSecrets(): Promise<Record<string, string>> {
+  protected async doResolveSecrets(): Promise<Record<string, string>> {
     const secrets: Record<string, string> = {};
     const { prefix, allowlist, blocklist } = this.config;
 
@@ -96,14 +97,5 @@ export class ProcessEnvProvider implements ISecretProvider {
     }
 
     return secrets;
-  }
-
-  /**
-   * Returns the provider name identifier.
-   *
-   * @returns The string 'process' identifying this provider type
-   */
-  getName(): string {
-    return 'process';
   }
 }

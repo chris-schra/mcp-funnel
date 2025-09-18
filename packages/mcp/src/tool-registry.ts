@@ -118,6 +118,21 @@ export class ToolRegistry {
     }
   }
 
+  // Remove all tools from a specific server (useful when server disconnects)
+  removeServerTools(serverName: string): void {
+    const toolsToRemove: string[] = [];
+
+    for (const [name, tool] of this.tools) {
+      if (tool.serverName === serverName && !tool.isCoreTool) {
+        toolsToRemove.push(name);
+      }
+    }
+
+    for (const toolName of toolsToRemove) {
+      this.tools.delete(toolName);
+    }
+  }
+
   // Compute if tool should be exposed (visible to clients)
   private updateExposureState(toolName: string): void {
     const tool = this.tools.get(toolName);
