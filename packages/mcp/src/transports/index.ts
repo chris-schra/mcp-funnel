@@ -5,7 +5,7 @@ export * from './errors/transport-error.js';
 
 // Implementations
 export * from './implementations/stdio-client-transport.js';
-// export * from './implementations/sse-client-transport.js';
+export * from './implementations/sse-client-transport.js';
 
 // Factory
 // TODO: Add factory re-export when created

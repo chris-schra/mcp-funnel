@@ -28,7 +28,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   TransportError,
   // TODO: TransportErrorCode used for error mapping - Phase 3 requirement
-  TransportErrorCode,
+  TransportErrorCode as _TransportErrorCode,
 } from '../errors/transport-error.js';
 import { logEvent } from '../../logger.js';
 
@@ -131,7 +131,7 @@ export class SSEClientTransport implements Transport {
     this.config = {
       url: config.url,
       timeout: config.timeout ?? 30000,
-      authProvider: config.authProvider ?? undefined,
+      authProvider: config.authProvider,
       reconnect: {
         maxAttempts: config.reconnect?.maxAttempts ?? 5,
         initialDelayMs: config.reconnect?.initialDelayMs ?? 1000,

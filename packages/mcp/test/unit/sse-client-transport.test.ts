@@ -56,7 +56,7 @@ interface _SSETransportConfig {
   };
 }
 
-describe.skip('SSEClientTransport - Phase 3 Test Specifications', () => {
+describe('SSEClientTransport - Phase 3 Test Specifications', () => {
   // TODO: Mock objects for Phase 5 implementation testing
   let _mockEventSource: unknown;
   let _mockFetch: ReturnType<typeof vi.fn>;
