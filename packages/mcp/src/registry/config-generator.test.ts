@@ -36,7 +36,7 @@ describe('Config Generation', () => {
       expect(result).toEqual({
         name: 'NPM Example Server',
         command: 'node',
-        args: ['-y', '@mcp/example-server', '--config', 'production.json'],
+        args: ['@mcp/example-server', '--config', 'production.json'],
         env: {
           NODE_ENV: 'production',
         },
@@ -62,6 +62,77 @@ describe('Config Generation', () => {
         name: 'Simple NPM Server',
         command: 'npx',
         args: ['-y', 'simple-mcp-server'],
+      });
+    });
+
+    it('should generate npm package config with yarn runtime hint', () => {
+      const npmPackage: Package = {
+        identifier: '@test/server',
+        registry_type: 'npm',
+        runtime_hint: 'yarn',
+        package_arguments: ['--production'],
+      };
+
+      const server: RegistryServer = {
+        id: 'yarn-npm',
+        name: 'Yarn NPM Server',
+        description: 'NPM server using yarn runtime',
+        packages: [npmPackage],
+      };
+
+      const result = generateConfigSnippet(server);
+
+      expect(result).toEqual({
+        name: 'Yarn NPM Server',
+        command: 'yarn',
+        args: ['@test/server', '--production'],
+      });
+    });
+
+    it('should generate npm package config with pnpm runtime hint', () => {
+      const npmPackage: Package = {
+        identifier: '@test/server',
+        registry_type: 'npm',
+        runtime_hint: 'pnpm',
+      };
+
+      const server: RegistryServer = {
+        id: 'pnpm-npm',
+        name: 'PNPM NPM Server',
+        description: 'NPM server using pnpm runtime',
+        packages: [npmPackage],
+      };
+
+      const result = generateConfigSnippet(server);
+
+      expect(result).toEqual({
+        name: 'PNPM NPM Server',
+        command: 'pnpm',
+        args: ['@test/server'],
+      });
+    });
+
+    it('should generate npm package config with custom runtime hint', () => {
+      const npmPackage: Package = {
+        identifier: '@test/server',
+        registry_type: 'npm',
+        runtime_hint: 'bunx',
+        package_arguments: ['--env', 'production'],
+      };
+
+      const server: RegistryServer = {
+        id: 'bunx-npm',
+        name: 'Bunx NPM Server',
+        description: 'NPM server using bunx runtime',
+        packages: [npmPackage],
+      };
+
+      const result = generateConfigSnippet(server);
+
+      expect(result).toEqual({
+        name: 'Bunx NPM Server',
+        command: 'bunx',
+        args: ['@test/server', '--env', 'production'],
       });
     });
 
