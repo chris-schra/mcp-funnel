@@ -8,5 +8,4 @@ export * from './implementations/stdio-client-transport.js';
 export * from './implementations/sse-client-transport.js';
 
 // Factory
-// TODO: Add factory re-export when created
-// export * from './transport-factory.js';
+export * from './transport-factory.js';

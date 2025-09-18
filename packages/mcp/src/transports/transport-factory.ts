@@ -1,0 +1,469 @@
+/**
+ * Transport factory for creating appropriate transport instances based on configuration.
+ * Handles legacy detection, environment variable resolution, and dependency injection.
+ */
+
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type {
+  TransportConfig,
+  StdioTransportConfig,
+  SSETransportConfig,
+} from '../types/transport.types.js';
+import type { IAuthProvider } from '../auth/interfaces/auth-provider.interface.js';
+import type { ITokenStorage } from '../auth/interfaces/token-storage.interface.js';
+import {
+  TransportError,
+  TransportErrorCode,
+} from './errors/transport-error.js';
+
+/**
+ * Dependencies that can be injected into transports
+ */
+export interface TransportFactoryDependencies {
+  authProvider?: IAuthProvider;
+  tokenStorage?: ITokenStorage;
+}
+
+/**
+ * Extended transport interface that includes factory-specific properties
+ */
+export interface FactoryTransport extends Transport {
+  type: string;
+  config: TransportConfig;
+  authProvider?: IAuthProvider;
+  tokenStorage?: ITokenStorage;
+  dispose: () => Promise<void>;
+  isConnected: () => boolean;
+}
+
+/**
+ * Legacy config type for stdio transport detection
+ */
+interface LegacyConfig {
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  type?: string;
+  url?: string;
+  timeout?: number;
+  reconnect?: {
+    maxAttempts?: number;
+    initialDelayMs?: number;
+    maxDelayMs?: number;
+    backoffMultiplier?: number;
+  };
+}
+
+/**
+ * Config with resolved environment variables
+ */
+type ResolvedConfig = {
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  type?: string;
+  url?: string;
+  timeout?: number;
+  reconnect?: {
+    maxAttempts?: number;
+    initialDelayMs?: number;
+    maxDelayMs?: number;
+    backoffMultiplier?: number;
+  };
+};
+
+/**
+ * Transport instance cache for singleton behavior
+ */
+const transportCache = new Map<string, FactoryTransport>();
+
+/**
+ * Default values for SSE transport configuration
+ */
+const DEFAULT_SSE_CONFIG = {
+  timeout: 30000,
+  reconnect: {
+    maxAttempts: 3,
+    initialDelayMs: 1000,
+    maxDelayMs: 30000,
+    backoffMultiplier: 2,
+  },
+} as const;
+
+/**
+ * Creates a transport instance based on configuration.
+ * Supports environment variable resolution, legacy detection, and dependency injection.
+ *
+ * @param config - Transport configuration or legacy config
+ * @param dependencies - Optional auth provider and token storage
+ * @returns Promise resolving to transport instance
+ */
+export async function createTransport(
+  config: TransportConfig | LegacyConfig,
+  dependencies?: TransportFactoryDependencies,
+): Promise<FactoryTransport> {
+  try {
+    // Resolve environment variables in the config
+    const resolvedConfig = resolveEnvironmentVariables(config);
+
+    // Detect and normalize the configuration
+    const normalizedConfig = normalizeConfig(resolvedConfig);
+
+    // Validate the configuration
+    validateConfig(normalizedConfig);
+
+    // Apply defaults based on transport type
+    const configWithDefaults = applyDefaults(normalizedConfig);
+
+    // Generate cache key for singleton behavior
+    const cacheKey = generateCacheKey(configWithDefaults, dependencies);
+
+    // Check if we already have this transport instance
+    const cachedTransport = transportCache.get(cacheKey);
+    if (cachedTransport) {
+      return cachedTransport;
+    }
+
+    // Validate dependencies if auth provider or token storage is provided
+    if (dependencies?.authProvider) {
+      try {
+        await dependencies.authProvider.isValid();
+      } catch (error) {
+        throw new TransportError(
+          `Failed to initialize auth provider: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          TransportErrorCode.UNKNOWN_ERROR,
+          false,
+          error instanceof Error ? error : undefined,
+        );
+      }
+    }
+
+    if (dependencies?.tokenStorage) {
+      try {
+        await dependencies.tokenStorage.retrieve();
+      } catch (error) {
+        throw new TransportError(
+          `Failed to initialize token storage: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          TransportErrorCode.UNKNOWN_ERROR,
+          false,
+          error instanceof Error ? error : undefined,
+        );
+      }
+    }
+
+    // Create appropriate transport based on type
+    const transport = await createTransportImplementation(
+      configWithDefaults,
+      dependencies,
+    );
+
+    // Cache the transport for future requests
+    transportCache.set(cacheKey, transport);
+
+    return transport;
+  } catch (error) {
+    if (error instanceof TransportError) {
+      throw error;
+    }
+    throw new TransportError(
+      `Failed to create transport: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+      error instanceof Error ? error : undefined,
+    );
+  }
+}
+
+/**
+ * Resolves environment variables in configuration strings.
+ * Supports nested variable resolution and validates variable existence.
+ */
+function resolveEnvironmentVariables(
+  config: TransportConfig | LegacyConfig,
+): ResolvedConfig {
+  const resolved = { ...config };
+
+  // Helper function to resolve variables in a string
+  const resolveString = (value: string): string => {
+    let resolved = value;
+    const varPattern = /\$\{([^}]+)\}/g;
+    let match;
+
+    // Keep resolving until no more variables are found (handles nested variables)
+    let lastResolved = '';
+    while (resolved !== lastResolved) {
+      lastResolved = resolved;
+      varPattern.lastIndex = 0; // Reset regex state
+
+      while ((match = varPattern.exec(resolved)) !== null) {
+        const varName = match[1];
+        const envValue = process.env[varName];
+
+        if (envValue === undefined) {
+          throw new TransportError(
+            `Environment variable ${varName} is not defined`,
+            TransportErrorCode.UNKNOWN_ERROR,
+            false,
+          );
+        }
+
+        resolved = resolved.replace(match[0], envValue);
+      }
+    }
+
+    return resolved;
+  };
+
+  // Resolve variables in command
+  if ('command' in resolved && typeof resolved.command === 'string') {
+    resolved.command = resolveString(resolved.command);
+  }
+
+  // Resolve variables in args
+  if ('args' in resolved && Array.isArray(resolved.args)) {
+    resolved.args = resolved.args.map((arg: string) =>
+      typeof arg === 'string' ? resolveString(arg) : arg,
+    );
+  }
+
+  // Resolve variables in URL
+  if ('url' in resolved && typeof resolved.url === 'string') {
+    resolved.url = resolveString(resolved.url);
+  }
+
+  // Merge environment variables
+  if ('env' in resolved && resolved.env) {
+    const mergedEnv: Record<string, string> = {};
+    // Copy process.env, filtering out undefined values
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value !== undefined) {
+        mergedEnv[key] = value;
+      }
+    }
+    // Override with config env
+    Object.assign(mergedEnv, resolved.env);
+    resolved.env = mergedEnv;
+  }
+
+  return resolved;
+}
+
+/**
+ * Normalizes legacy configuration to modern transport configuration.
+ * Handles legacy stdio detection based on command field presence.
+ */
+function normalizeConfig(config: ResolvedConfig): TransportConfig {
+  // If type is explicitly set, use it
+  if (config.type) {
+    return config as TransportConfig;
+  }
+
+  // Legacy detection: command field indicates stdio transport
+  if ('command' in config && config.command) {
+    return {
+      type: 'stdio' as const,
+      command: config.command,
+      args: config.args,
+      env: config.env,
+    };
+  }
+
+  // If no type and no command, this is an invalid config
+  throw new TransportError(
+    'Invalid configuration: must specify either type or command field',
+    TransportErrorCode.UNKNOWN_ERROR,
+    false,
+  );
+}
+
+/**
+ * Validates transport configuration based on type.
+ */
+function validateConfig(config: TransportConfig): void {
+  switch (config.type) {
+    case 'stdio':
+      validateStdioConfig(config);
+      break;
+    case 'sse':
+      validateSSEConfig(config);
+      break;
+    default: {
+      // Use exhaustive check to handle unknown transport types
+      const _exhaustive: never = config;
+      throw new TransportError(
+        `Unsupported transport type: ${(_exhaustive as TransportConfig).type}`,
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+    }
+  }
+}
+
+/**
+ * Validates stdio transport configuration.
+ */
+function validateStdioConfig(config: StdioTransportConfig): void {
+  if (!config.command) {
+    throw new TransportError(
+      'Command is required for stdio transport',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+}
+
+/**
+ * Validates SSE transport configuration.
+ */
+function validateSSEConfig(config: SSETransportConfig): void {
+  if (!config.url) {
+    throw new TransportError(
+      'URL is required for SSE transport',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+
+  // Validate URL format
+  try {
+    new URL(config.url);
+  } catch (error) {
+    throw new TransportError(
+      'Invalid URL format',
+      TransportErrorCode.INVALID_URL,
+      false,
+      error instanceof Error ? error : undefined,
+    );
+  }
+
+  // Validate reconnect configuration
+  if (config.reconnect) {
+    const { maxAttempts, initialDelayMs, maxDelayMs, backoffMultiplier } =
+      config.reconnect;
+
+    if (
+      maxAttempts !== undefined &&
+      (maxAttempts < 0 || !Number.isInteger(maxAttempts))
+    ) {
+      throw new TransportError(
+        'maxAttempts must be a positive number',
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+    }
+
+    if (initialDelayMs !== undefined && initialDelayMs < 0) {
+      throw new TransportError(
+        'initialDelayMs must be a positive number',
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+    }
+
+    if (maxDelayMs !== undefined && maxDelayMs < 0) {
+      throw new TransportError(
+        'maxDelayMs must be a positive number',
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+    }
+
+    if (backoffMultiplier !== undefined && backoffMultiplier <= 1) {
+      throw new TransportError(
+        'backoffMultiplier must be greater than 1',
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+    }
+  }
+}
+
+/**
+ * Applies default values to configuration based on transport type.
+ */
+function applyDefaults(config: TransportConfig): TransportConfig {
+  switch (config.type) {
+    case 'stdio':
+      return {
+        ...config,
+        args: config.args || [],
+        env: config.env || {},
+      };
+    case 'sse':
+      return {
+        ...config,
+        timeout: config.timeout ?? DEFAULT_SSE_CONFIG.timeout,
+        reconnect: {
+          ...DEFAULT_SSE_CONFIG.reconnect,
+          ...config.reconnect,
+        },
+      };
+    default:
+      return config;
+  }
+}
+
+/**
+ * Generates a cache key for transport singleton behavior.
+ */
+function generateCacheKey(
+  config: TransportConfig,
+  dependencies?: TransportFactoryDependencies,
+): string {
+  const configKey = JSON.stringify(config);
+  const authKey = dependencies?.authProvider ? 'auth' : 'no-auth';
+  const storageKey = dependencies?.tokenStorage ? 'storage' : 'no-storage';
+  return `${configKey}:${authKey}:${storageKey}`;
+}
+
+/**
+ * Creates the actual transport implementation based on configuration.
+ * Currently throws placeholder errors until implementations are available.
+ */
+async function createTransportImplementation(
+  config: TransportConfig,
+  _dependencies?: TransportFactoryDependencies,
+): Promise<FactoryTransport> {
+  // TODO: Use dependencies when transport implementations are available
+  switch (config.type) {
+    case 'stdio':
+      // TODO: Replace with actual StdioClientTransport implementation
+      throw new TransportError(
+        'StdioClientTransport not implemented - this is a placeholder for Phase 5 implementation',
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+
+    case 'sse':
+      // TODO: Replace with actual SSEClientTransport implementation
+      throw new TransportError(
+        'SSEClientTransport not implemented - this is a placeholder for Phase 5 implementation',
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+
+    default: {
+      // Use exhaustive check to handle unknown transport types
+      const _exhaustive: never = config;
+      throw new TransportError(
+        `Unsupported transport type: ${(_exhaustive as TransportConfig).type}`,
+        TransportErrorCode.UNKNOWN_ERROR,
+        false,
+      );
+    }
+  }
+}
+
+/**
+ * Clears the transport cache. Useful for testing and cleanup.
+ */
+export function clearTransportCache(): void {
+  transportCache.clear();
+}
+
+/**
+ * Gets the current size of the transport cache.
+ */
+export function getTransportCacheSize(): number {
+  return transportCache.size;
+}
