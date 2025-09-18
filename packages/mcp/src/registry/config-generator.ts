@@ -30,37 +30,74 @@ export function generateConfigSnippet(
 
     switch (pkg.registry_type) {
       case 'npm':
-        entry.command = pkg.runtime_hint || 'npx';
-        // Only add -y flag for npx, not for other launchers
-        entry.args =
-          entry.command === 'npx'
-            ? ['-y', pkg.identifier, ...(pkg.package_arguments || [])]
-            : [pkg.identifier, ...(pkg.package_arguments || [])];
+        if (pkg.runtime_hint) {
+          // Publisher has full control when hint is provided
+          entry.command = pkg.runtime_hint;
+          entry.args = [
+            ...(pkg.runtime_arguments || []),
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        } else {
+          // Default behavior when no hint provided
+          entry.command = 'npx';
+          entry.args = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
+        }
         handled = true;
         break;
       case 'pypi':
-        entry.command = pkg.runtime_hint || 'uvx';
-        entry.args = [pkg.identifier, ...(pkg.package_arguments || [])];
+        if (pkg.runtime_hint) {
+          entry.command = pkg.runtime_hint;
+          entry.args = [
+            ...(pkg.runtime_arguments || []),
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        } else {
+          // Default behavior
+          entry.command = 'uvx';
+          entry.args = [pkg.identifier, ...(pkg.package_arguments || [])];
+        }
         handled = true;
         break;
       case 'oci':
-        entry.command = pkg.runtime_hint || 'docker';
-        entry.args = [
-          'run',
-          '-i',
-          '--rm',
-          pkg.identifier,
-          ...(pkg.package_arguments || []),
-        ];
+        if (pkg.runtime_hint) {
+          entry.command = pkg.runtime_hint;
+          entry.args = [
+            ...(pkg.runtime_arguments || []),
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        } else {
+          // Default behavior
+          entry.command = 'docker';
+          entry.args = [
+            'run',
+            '-i',
+            '--rm',
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        }
         handled = true;
         break;
       case 'github':
-        entry.command = 'npx';
-        entry.args = [
-          '-y',
-          `github:${pkg.identifier}`,
-          ...(pkg.package_arguments || []),
-        ];
+        if (pkg.runtime_hint) {
+          entry.command = pkg.runtime_hint;
+          entry.args = [
+            ...(pkg.runtime_arguments || []),
+            `github:${pkg.identifier}`,
+            ...(pkg.package_arguments || []),
+          ];
+        } else {
+          // Default behavior
+          entry.command = 'npx';
+          entry.args = [
+            '-y',
+            `github:${pkg.identifier}`,
+            ...(pkg.package_arguments || []),
+          ];
+        }
         handled = true;
         break;
     }
@@ -196,24 +233,61 @@ export function generateInstallInstructions(server: RegistryServer): string {
       case 'npm': {
         const command = pkg.runtime_hint || 'npx';
         lines.push(`  "command": "${command}",`);
-        // Only add -y flag for npx, not for other launchers
-        const argsArray =
-          command === 'npx'
-            ? ['-y', pkg.identifier, ...(pkg.package_arguments || [])]
-            : [pkg.identifier, ...(pkg.package_arguments || [])];
+        let argsArray: string[];
+        if (pkg.runtime_hint) {
+          // Publisher has full control when hint is provided
+          argsArray = [
+            ...(pkg.runtime_arguments || []),
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        } else {
+          // Default behavior when no hint provided
+          argsArray = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
+        }
         lines.push(`  "args": ["${argsArray.join('", "')}"]`);
         break;
       }
-      case 'pypi':
-        lines.push(`  "command": "${pkg.runtime_hint || 'uvx'}",`);
-        lines.push(
-          `  "args": ["${pkg.identifier}"${pkg.package_arguments ? ', "' + pkg.package_arguments.join('", "') + '"' : ''}]`,
-        );
+      case 'pypi': {
+        const command = pkg.runtime_hint || 'uvx';
+        lines.push(`  "command": "${command}",`);
+        let argsArray: string[];
+        if (pkg.runtime_hint) {
+          argsArray = [
+            ...(pkg.runtime_arguments || []),
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        } else {
+          // Default behavior
+          argsArray = [pkg.identifier, ...(pkg.package_arguments || [])];
+        }
+        lines.push(`  "args": ["${argsArray.join('", "')}"]`);
         break;
-      case 'oci':
-        lines.push(`  "command": "${pkg.runtime_hint || 'docker'}",`);
-        lines.push(`  "args": ["run", "-i", "--rm", "${pkg.identifier}"]`);
+      }
+      case 'oci': {
+        const command = pkg.runtime_hint || 'docker';
+        lines.push(`  "command": "${command}",`);
+        let argsArray: string[];
+        if (pkg.runtime_hint) {
+          argsArray = [
+            ...(pkg.runtime_arguments || []),
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        } else {
+          // Default behavior
+          argsArray = [
+            'run',
+            '-i',
+            '--rm',
+            pkg.identifier,
+            ...(pkg.package_arguments || []),
+          ];
+        }
+        lines.push(`  "args": ["${argsArray.join('", "')}"]`);
         break;
+      }
       default:
         lines.push(
           `  // Configuration depends on package type for ${pkg.identifier}`,
