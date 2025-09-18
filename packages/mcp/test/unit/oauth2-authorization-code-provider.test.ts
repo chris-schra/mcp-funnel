@@ -155,7 +155,7 @@ describe('OAuth2AuthCodeProvider', () => {
 
     beforeEach(() => {
       provider = new OAuth2AuthCodeProvider(mockConfig, mockStorage);
-      consoleSpy = vi.spyOn(console, 'log').mockImplementation();
+      consoleSpy = vi.spyOn(console, 'info').mockImplementation();
     });
 
     afterEach(() => {
@@ -299,7 +299,7 @@ describe('OAuth2AuthCodeProvider', () => {
   describe('PKCE security', () => {
     beforeEach(() => {
       provider = new OAuth2AuthCodeProvider(mockConfig, mockStorage);
-      vi.spyOn(console, 'log').mockImplementation();
+      vi.spyOn(console, 'info').mockImplementation();
     });
 
     it('should generate different PKCE verifier and challenge each time', async () => {
@@ -312,7 +312,7 @@ describe('OAuth2AuthCodeProvider', () => {
 
         await new Promise((resolve) => setTimeout(resolve, 50));
 
-        const consoleOutput = (console.log as any).mock.calls.flat().join(' ');
+        const consoleOutput = (console.info as any).mock.calls.flat().join(' ');
 
         const stateMatch = consoleOutput.match(/state=([^&\s]+)/);
         const challengeMatch = consoleOutput.match(/code_challenge=([^&\s]+)/);
@@ -329,7 +329,7 @@ describe('OAuth2AuthCodeProvider', () => {
         refreshPromise.catch(() => {});
 
         // Reset console spy
-        (console.log as any).mockClear();
+        (console.info as any).mockClear();
       }
 
       // Verify all states are unique
