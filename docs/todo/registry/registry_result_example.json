@@ -1,0 +1,71 @@
+{
+  "servers": [
+    {
+      "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+      "name": "io.github.chris-schra/mcp-funnel",
+      "description": "MCP proxy that aggregates multiple servers with tool filtering and customization",
+      "status": "active",
+      "repository": {
+        "url": "https://github.com/chris-schra/mcp-funnel",
+        "source": "github"
+      },
+      "version": "0.0.6",
+      "packages": [
+        {
+          "registry_type": "npm",
+          "registry_base_url": "https://registry.npmjs.org",
+          "identifier": "mcp-funnel",
+          "version": "0.0.6",
+          "transport": {
+            "type": "stdio"
+          }
+        }
+      ],
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "id": "a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d",
+          "published_at": "2025-09-17T18:33:35.912597Z",
+          "updated_at": "2025-09-17T18:55:31.893305521Z",
+          "is_latest": false
+        }
+      }
+    },
+    {
+      "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+      "name": "ai.smithery/BadRooBot-my_test_mcp",
+      "description": "Get current weather for any city and create images from your prompts. Streamline planning, reports…",
+      "status": "active",
+      "repository": {
+        "url": "https://github.com/BadRooBot/python_mcp",
+        "source": "github"
+      },
+      "version": "1.14.0",
+      "remotes": [
+        {
+          "type": "streamable-http",
+          "url": "https://server.smithery.ai/@BadRooBot/my_test_mcp/mcp",
+          "headers": [
+            {
+              "description": "Bearer token for Smithery authentication",
+              "is_required": true,
+              "value": "Bearer {smithery_api_key}",
+              "is_secret": true,
+              "name": "Authorization"
+            }
+          ]
+        }
+      ],
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "id": "62033d66-b83d-4f62-a294-a2c212cb06e6",
+          "published_at": "2025-09-14T14:25:46.09449626Z",
+          "updated_at": "2025-09-14T14:25:46.09449626Z",
+          "is_latest": true
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "count": 2
+  }
+}

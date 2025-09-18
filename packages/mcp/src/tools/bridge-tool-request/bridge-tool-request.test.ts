@@ -66,6 +66,7 @@ describe('BridgeToolRequest', () => {
           'get_tool_schema',
         ],
       },
+      configPath: './.mcp-funnel.json',
       enableTools: () => {},
     };
   });

@@ -96,7 +96,7 @@ describe('Command Integration', () => {
         commands: { enabled: true, list: ['npm'] },
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Check that command tools are in the tool definition cache
@@ -206,7 +206,10 @@ describe('Command Integration', () => {
         exposeTools: ['npm_lookup'], // Only expose lookup tool
       };
 
-      const proxyWithExpose = new MCPProxy(_configWithExpose);
+      const proxyWithExpose = new MCPProxy(
+        _configWithExpose,
+        './test-config.json',
+      );
       await proxyWithExpose.initialize();
 
       // Check tool definition cache - both should be registered for discovery
@@ -221,7 +224,7 @@ describe('Command Integration', () => {
         hideTools: ['npm_search'], // Hide search tool
       };
 
-      const proxyWithHide = new MCPProxy(_configWithHide);
+      const proxyWithHide = new MCPProxy(_configWithHide, './test-config.json');
       await proxyWithHide.initialize();
 
       // Check tool definition cache - hidden tools should NOT be in cache (firewall behavior)
@@ -236,7 +239,7 @@ describe('Command Integration', () => {
         commands: { enabled: false }, // Commands disabled
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Check that no command tools are registered
@@ -251,7 +254,7 @@ describe('Command Integration', () => {
         commands: { enabled: true, list: ['other-command'] }, // Not including 'npm'
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Check that npm tools are not registered when npm is not in the list

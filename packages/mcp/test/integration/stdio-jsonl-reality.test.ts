@@ -179,7 +179,7 @@ describe('Real STDIO/JSONL Communication', () => {
         originalError(...args);
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Wait for both servers to be connected
@@ -317,7 +317,7 @@ describe('Real STDIO/JSONL Communication', () => {
         ],
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Restore console.error
@@ -689,7 +689,7 @@ describe('Real STDIO/JSONL Communication', () => {
         originalError(...args);
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Wait for lifecycle server to be connected

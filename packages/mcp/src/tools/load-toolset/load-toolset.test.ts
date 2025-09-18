@@ -87,6 +87,7 @@ describe('LoadToolset', () => {
           memory: ['memory__*'],
         },
       },
+      configPath: './.mcp-funnel.json',
       enableTools: vi.fn((tools: string[]) => {
         enabledTools.push(...tools);
       }),

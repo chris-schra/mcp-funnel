@@ -82,6 +82,7 @@ describe('DiscoverToolsByWords', () => {
       config: {
         servers: [],
       },
+      configPath: './.mcp-funnel.json',
       enableTools: (tools: string[]) => {
         enabledTools.push(...tools);
         tools.forEach((t) => mockContext.dynamicallyEnabledTools.add(t));
@@ -194,7 +195,7 @@ describe('DiscoverToolsByWords', () => {
 
       const textContent = result.content[0] as { type: string; text: string };
       expect(textContent.text).toContain(
-        'No tools found matching keywords: nonexistent keyword',
+        'No local tools found matching keywords: nonexistent keyword',
       );
     });
 
@@ -250,14 +251,18 @@ describe('DiscoverToolsByWords', () => {
       const result = await tool.handle({ words: '' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain('No tools found matching keywords');
+      expect(textContent.text).toContain(
+        'No local tools found matching keywords',
+      );
     });
 
     it('should handle whitespace-only words parameter', async () => {
       const result = await tool.handle({ words: '   ' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain('No tools found matching keywords');
+      expect(textContent.text).toContain(
+        'No local tools found matching keywords',
+      );
     });
 
     it('should throw error for invalid words parameter', async () => {

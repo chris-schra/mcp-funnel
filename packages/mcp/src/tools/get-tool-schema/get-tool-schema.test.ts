@@ -66,6 +66,7 @@ describe('GetToolSchema', () => {
       config: {
         servers: [],
       },
+      configPath: './.mcp-funnel.json',
       enableTools: () => {},
     };
   });

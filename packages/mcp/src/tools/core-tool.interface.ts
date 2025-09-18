@@ -32,6 +32,9 @@ export interface CoreToolContext {
   /** Current proxy configuration */
   config: ProxyConfig;
 
+  /** Path to the configuration file being used */
+  configPath: string;
+
   /** Method to send notifications to connected clients (when implemented) */
   sendNotification?: (
     method: string,

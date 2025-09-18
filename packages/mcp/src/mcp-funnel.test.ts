@@ -106,7 +106,7 @@ describe('MCPProxy', () => {
         ],
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       expect(proxy).toBeDefined();
       expect(Server).toHaveBeenCalledWith(
         {
@@ -142,7 +142,7 @@ describe('MCPProxy', () => {
         ],
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       // Check that setRequestHandler was called for ListToolsRequestSchema
@@ -213,7 +213,7 @@ describe('MCPProxy', () => {
         ],
       });
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       // Get the list tools handler
@@ -245,7 +245,7 @@ describe('MCPProxy', () => {
         exposeCoreTools: ['nonexistent_tool'], // Only expose a non-existent tool, effectively disabling all
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       const listToolsCall = mockServer.setRequestHandler.mock.calls.find(
@@ -301,7 +301,7 @@ describe('MCPProxy', () => {
         () => mockTestClient,
       );
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       const listToolsCall = mockServer.setRequestHandler.mock.calls.find(
@@ -355,7 +355,7 @@ describe('MCPProxy', () => {
         ],
       });
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       const listToolsCall = mockServer.setRequestHandler.mock.calls.find(
@@ -418,7 +418,7 @@ describe('MCPProxy', () => {
         ],
       });
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       const listToolsCall = mockServer.setRequestHandler.mock.calls.find(
@@ -459,7 +459,7 @@ describe('MCPProxy', () => {
         ],
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       // Verify both servers are connected
@@ -481,7 +481,7 @@ describe('MCPProxy', () => {
         },
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       // Verify both servers are connected with correct names
@@ -502,7 +502,7 @@ describe('MCPProxy', () => {
         },
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       expect(proxy).toBeDefined();
 
       // The server name should be derived from the key
@@ -522,7 +522,7 @@ describe('MCPProxy', () => {
         ],
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       // Setup tool in cache by calling list tools
@@ -566,7 +566,7 @@ describe('MCPProxy', () => {
         servers: [],
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
       await proxy.initialize();
 
       // Get call tool handler - it's the second handler registered
