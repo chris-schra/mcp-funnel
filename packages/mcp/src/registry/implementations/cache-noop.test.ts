@@ -48,7 +48,7 @@ describe('NoOpCache', () => {
   });
 
   describe('get() method', () => {
-    it.skip('should always return null for any key', async () => {
+    it('should always return null for any key', async () => {
       // Test that get always returns null regardless of key
       expect(await cache.get('any-key')).toBeNull();
       expect(await cache.get('tool:github__create_issue')).toBeNull();
@@ -59,7 +59,7 @@ describe('NoOpCache', () => {
       ).toBeNull();
     });
 
-    it.skip('should return null even after setting values', async () => {
+    it('should return null even after setting values', async () => {
       // Verify that get returns null even after attempting to set values
       await cache.set('test-key', { data: 'value' });
       expect(await cache.get('test-key')).toBeNull();
@@ -70,7 +70,7 @@ describe('NoOpCache', () => {
   });
 
   describe('set() method', () => {
-    it.skip('should accept values without error', async () => {
+    it('should accept values without error', async () => {
       // Test that set operations complete without throwing
       await expect(cache.set('key1', 'string-value')).resolves.not.toThrow();
       await expect(
@@ -81,7 +81,7 @@ describe('NoOpCache', () => {
       await expect(cache.set('key5', undefined)).resolves.not.toThrow();
     });
 
-    it.skip('should accept TTL parameter but ignore it', async () => {
+    it('should accept TTL parameter but ignore it', async () => {
       // Test that TTL parameter is accepted but has no effect
       await expect(
         cache.set('key-with-ttl', 'value', 1000),
@@ -99,7 +99,7 @@ describe('NoOpCache', () => {
       expect(await cache.get('key-no-ttl')).toBeNull();
     });
 
-    it.skip('should not store values (verified through get)', async () => {
+    it('should not store values (verified through get)', async () => {
       // Double-check that set does not actually store anything
       const testData = { id: 1, name: 'test', tools: ['tool1', 'tool2'] };
       await cache.set('complex-object', testData);
@@ -111,7 +111,7 @@ describe('NoOpCache', () => {
   });
 
   describe('has() method', () => {
-    it.skip('should always return false for any key', async () => {
+    it('should always return false for any key', async () => {
       // Test that has always returns false regardless of key
       expect(await cache.has('any-key')).toBe(false);
       expect(await cache.has('tool:github__create_issue')).toBe(false);
@@ -119,7 +119,7 @@ describe('NoOpCache', () => {
       expect(await cache.has('')).toBe(false);
     });
 
-    it.skip('should return false even after setting values', async () => {
+    it('should return false even after setting values', async () => {
       // Verify that has returns false even after attempting to set values
       await cache.set('test-key', { data: 'value' });
       expect(await cache.has('test-key')).toBe(false);
@@ -130,7 +130,7 @@ describe('NoOpCache', () => {
   });
 
   describe('delete() method', () => {
-    it.skip('should not error when deleting non-existent keys', async () => {
+    it('should not error when deleting non-existent keys', async () => {
       // Test that delete operations complete without throwing for any key
       await expect(cache.delete('non-existent-key')).resolves.not.toThrow();
       await expect(
@@ -140,7 +140,7 @@ describe('NoOpCache', () => {
       await expect(cache.delete('some-random-key')).resolves.not.toThrow();
     });
 
-    it.skip('should not error when deleting after setting values', async () => {
+    it('should not error when deleting after setting values', async () => {
       // Even though values aren't stored, delete should still not error
       await cache.set('test-key', 'value');
       await expect(cache.delete('test-key')).resolves.not.toThrow();
@@ -152,12 +152,12 @@ describe('NoOpCache', () => {
   });
 
   describe('clear() method', () => {
-    it.skip('should not error when clearing empty cache', async () => {
+    it('should not error when clearing empty cache', async () => {
       // Test that clear operations complete without throwing
       await expect(cache.clear()).resolves.not.toThrow();
     });
 
-    it.skip('should not error when clearing after setting values', async () => {
+    it('should not error when clearing after setting values', async () => {
       // Even though values aren't stored, clear should still not error
       await cache.set('key1', 'value1');
       await cache.set('key2', 'value2');
@@ -168,7 +168,7 @@ describe('NoOpCache', () => {
       expect(await cache.has('key2')).toBe(false);
     });
 
-    it.skip('should be safe to call multiple times', async () => {
+    it('should be safe to call multiple times', async () => {
       // Test that multiple clear calls don't cause issues
       await expect(cache.clear()).resolves.not.toThrow();
       await expect(cache.clear()).resolves.not.toThrow();
@@ -177,7 +177,7 @@ describe('NoOpCache', () => {
   });
 
   describe('Type safety and generics', () => {
-    it.skip('should work with typed generic cache instances', async () => {
+    it('should work with typed generic cache instances', async () => {
       // Test type safety with specific generic types
       interface ToolData {
         name: string;
@@ -201,7 +201,7 @@ describe('NoOpCache', () => {
       expect(await typedCache.has('tool:github__create_issue')).toBe(false);
     });
 
-    it.skip('should work with primitive types', async () => {
+    it('should work with primitive types', async () => {
       // Test with string cache
       const stringCache: IRegistryCache<string> = new MockNoOpCache<string>();
       await stringCache.set('string-key', 'hello world');
@@ -219,7 +219,7 @@ describe('NoOpCache', () => {
       expect(await booleanCache.get('boolean-key')).toBeNull();
     });
 
-    it.skip('should work with union types', async () => {
+    it('should work with union types', async () => {
       // Test with union type cache
       type CacheValue = string | number | { id: number; name: string };
       const unionCache: IRegistryCache<CacheValue> =
@@ -236,7 +236,7 @@ describe('NoOpCache', () => {
   });
 
   describe('TTL behavior verification', () => {
-    it.skip('should accept various TTL values without error', async () => {
+    it('should accept various TTL values without error', async () => {
       // Test that different TTL values are accepted
       await expect(cache.set('ttl-1000', 'value', 1000)).resolves.not.toThrow();
       await expect(
@@ -251,7 +251,7 @@ describe('NoOpCache', () => {
       ).resolves.not.toThrow();
     });
 
-    it.skip('should ignore TTL and not store values regardless', async () => {
+    it('should ignore TTL and not store values regardless', async () => {
       // Verify that even with very long TTL, values are not stored
       await cache.set('long-ttl-key', 'value', 24 * 60 * 60 * 1000); // 24 hours
       expect(await cache.get('long-ttl-key')).toBeNull();
@@ -265,7 +265,7 @@ describe('NoOpCache', () => {
   });
 
   describe('Edge cases and error conditions', () => {
-    it.skip('should handle empty string keys gracefully', async () => {
+    it('should handle empty string keys gracefully', async () => {
       // Test operations with empty string keys
       await expect(cache.set('', 'value')).resolves.not.toThrow();
       expect(await cache.get('')).toBeNull();
@@ -273,7 +273,7 @@ describe('NoOpCache', () => {
       await expect(cache.delete('')).resolves.not.toThrow();
     });
 
-    it.skip('should handle very long keys gracefully', async () => {
+    it('should handle very long keys gracefully', async () => {
       // Test operations with very long keys
       const longKey = 'a'.repeat(1000);
       await expect(cache.set(longKey, 'value')).resolves.not.toThrow();
@@ -282,7 +282,7 @@ describe('NoOpCache', () => {
       await expect(cache.delete(longKey)).resolves.not.toThrow();
     });
 
-    it.skip('should handle special characters in keys gracefully', async () => {
+    it('should handle special characters in keys gracefully', async () => {
       // Test operations with keys containing special characters
       const specialKeys = [
         'key:with:colons',
@@ -305,7 +305,7 @@ describe('NoOpCache', () => {
       }
     });
 
-    it.skip('should handle concurrent operations gracefully', async () => {
+    it('should handle concurrent operations gracefully', async () => {
       // Test concurrent operations to ensure no race conditions
       const promises = [];
 
