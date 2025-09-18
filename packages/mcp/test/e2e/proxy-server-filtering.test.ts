@@ -18,7 +18,7 @@ describe('ProxyServer Tool Filtering', () => {
       const config = JSON.parse(configContent);
 
       // Create a proxy server with this config
-      const proxyServer = new MCPProxy(config);
+      const proxyServer = new MCPProxy(config, configPath);
 
       // Start the proxy server
       await proxyServer.start();
@@ -59,7 +59,7 @@ describe('ProxyServer Tool Filtering', () => {
       const config = JSON.parse(configContent);
 
       // Create a proxy server with this config
-      const proxyServer = new MCPProxy(config);
+      const proxyServer = new MCPProxy(config, configPath);
 
       // Start the proxy server
       await proxyServer.start();
@@ -94,7 +94,7 @@ describe('ProxyServer Tool Filtering', () => {
       const config = JSON.parse(configContent);
 
       // Create a proxy server with this config
-      const proxyServer = new MCPProxy(config);
+      const proxyServer = new MCPProxy(config, configPath);
 
       // Start the proxy server
       await proxyServer.start();

@@ -99,7 +99,9 @@ export class DiscoverToolsByWords extends BaseCoreTool {
 
     if (matches.length === 0) {
       // Check if registries are configured to suggest registry search
-      const registryContext = RegistryContext.getInstance(context.config);
+      const registryContext = RegistryContext.getInstance(context.config, {
+        configPath: context.configPath || './.mcp-funnel.json',
+      });
       const hasRegistries = registryContext.hasRegistries();
 
       let message = `No local tools found matching keywords: ${typedArgs.words}`;

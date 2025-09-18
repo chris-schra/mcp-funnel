@@ -14,7 +14,7 @@ export async function createTestFunnelServer(configPath: string) {
   const config: ProxyConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 
   // Create and start the proxy
-  const proxy = new MCPProxy(config);
+  const proxy = new MCPProxy(config, configPath);
   await proxy.start();
 }
 
