@@ -48,12 +48,16 @@
     "@mcp-funnel/commands-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.18.0",
     "deepmerge-ts": "^7.0.5",
+    "eventsource": "^4.0.0",
+    "uuid": "^13.0.0",
     "zod": "^4.1.8"
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^1.0.112",
     "@hono/zod-validator": "^0.7.2",
+    "@types/eventsource": "^3.0.0",
     "@types/node": "^24.3.1",
+    "@types/uuid": "^11.0.0",
     "esbuild": "^0.25.9",
     "globby": "^14.1.0",
     "tsx": "^4.20.5",

@@ -1439,6 +1439,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/eventsource@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@types/eventsource@npm:3.0.0"
+  dependencies:
+    eventsource: "npm:*"
+  checksum: 10c0/a6f41505cb6a5869c86f8959fd841db573d2b14e9183ffb03221d89bbc955c656b411a59873b953bad829d75dccd3033032ccd3791c27febe5b15da6a899c334
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:^7.0.15":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
@@ -1494,6 +1503,15 @@ __metadata:
   version: 7.7.1
   resolution: "@types/semver@npm:7.7.1"
   checksum: 10c0/c938aef3bf79a73f0f3f6037c16e2e759ff40c54122ddf0b2583703393d8d3127130823facb880e694caa324eb6845628186aac1997ee8b31dc2d18fafe26268
+  languageName: node
+  linkType: hard
+
+"@types/uuid@npm:^11.0.0":
+  version: 11.0.0
+  resolution: "@types/uuid@npm:11.0.0"
+  dependencies:
+    uuid: "npm:*"
+  checksum: 10c0/6ebf1448d8fdc78d348a8a84389b74083f2f58bed75a5a6cf3be8419d33dcf757735c8b2de746b066ff8ef07f4384d02549774dc84195ffa46b24745471e9d8e
   languageName: node
   linkType: hard
 
@@ -2826,6 +2844,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eventsource@npm:*, eventsource@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "eventsource@npm:4.0.0"
+  dependencies:
+    eventsource-parser: "npm:^3.0.1"
+  checksum: 10c0/908a3f64b60aadd053b9fd8ea8b6a896a4faf32dbbaf0150e91abbec179a9e2a3da261fb577ae296df8b744de91962d69a60b10e8d7092d7802e6e3e7a8b0f0e
+  languageName: node
+  linkType: hard
+
 "eventsource@npm:^3.0.2":
   version: 3.0.7
   resolution: "eventsource@npm:3.0.7"
@@ -3848,12 +3875,16 @@ __metadata:
     "@hono/zod-validator": "npm:^0.7.2"
     "@mcp-funnel/commands-core": "workspace:*"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/eventsource": "npm:^3.0.0"
     "@types/node": "npm:^24.3.1"
+    "@types/uuid": "npm:^11.0.0"
     deepmerge-ts: "npm:^7.0.5"
     esbuild: "npm:^0.25.9"
+    eventsource: "npm:^4.0.0"
     globby: "npm:^14.1.0"
     tsx: "npm:^4.20.5"
     typescript: "npm:^5.9.2"
+    uuid: "npm:^13.0.0"
     vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^3.2.4"
     zod: "npm:^4.1.8"
@@ -5670,6 +5701,15 @@ __metadata:
   version: 1.0.1
   resolution: "utils-merge@npm:1.0.1"
   checksum: 10c0/02ba649de1b7ca8854bfe20a82f1dfbdda3fb57a22ab4a8972a63a34553cf7aa51bc9081cf7e001b035b88186d23689d69e71b510e610a09a4c66f68aa95b672
+  languageName: node
+  linkType: hard
+
+"uuid@npm:*, uuid@npm:^13.0.0":
+  version: 13.0.0
+  resolution: "uuid@npm:13.0.0"
+  bin:
+    uuid: dist-node/bin/uuid
+  checksum: 10c0/950e4c18d57fef6c69675344f5700a08af21e26b9eff2bf2180427564297368c538ea11ac9fb2e6528b17fc3966a9fd2c5049361b0b63c7d654f3c550c9b3d67
   languageName: node
   linkType: hard
 
