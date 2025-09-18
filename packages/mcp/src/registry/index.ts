@@ -39,3 +39,14 @@ export * from './interfaces/config.interface.js';
 // Export all types
 export * from './types/registry.types.js';
 export * from './types/config.types.js';
+
+// Export implementations for external use
+export { MCPRegistryClient } from './registry-client.js';
+export { RegistryContext } from './registry-context.js';
+export { NoOpCache } from './implementations/cache-noop.js';
+export { TemporaryServerTracker } from './implementations/temp-server-tracker.js';
+export { ReadOnlyConfigManager } from './implementations/config-readonly.js';
+export {
+  generateConfigSnippet,
+  generateInstallInstructions,
+} from './config-generator.js';
