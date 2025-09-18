@@ -26,3 +26,9 @@ export type {
   ISecretProviderRegistry,
   SecretResolutionResult,
 } from './types.js';
+
+export { SecretManager } from './secret-manager.js';
+export type { SecretManagerOptions } from './secret-manager.js';
+export { SecretProviderRegistry } from './secret-provider-registry.js';
+export { ProcessEnvProvider } from './process-env-provider.js';
+export { InlineProvider } from './inline-provider.js';
