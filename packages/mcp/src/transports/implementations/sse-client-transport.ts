@@ -6,20 +6,20 @@
  * - EventSource for server→client messages (SSE stream)
  * - HTTP POST for client→server messages with auth headers
  * - UUID correlation between requests and responses
- * - Auth token as query parameter (EventSource browser limitation)
+ * - Secure auth token transmission via headers (eventsource package supports headers)
  * - Automatic reconnection with exponential backoff
  * - 401 response handling with token refresh retry
  * - Proper resource cleanup and timeout support
- * - Security: token sanitization in error messages
+ * - Security: token sanitization in error messages and no token exposure in URLs
  */
 
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import { EventSource } from 'eventsource';
 import {
-  TransportError,
-  // TODO: TransportErrorCode used for error mapping - Phase 3 requirement
-  TransportErrorCode as _TransportErrorCode,
-} from '../errors/transport-error.js';
+  EventSource,
+  EventSourceFetchInit,
+  FetchLikeResponse,
+} from 'eventsource';
+import { TransportError } from '../errors/transport-error.js';
 import { logEvent } from '../../logger.js';
 import {
   BaseClientTransport,
@@ -66,7 +66,7 @@ export class SSEClientTransport extends BaseClientTransport {
   }
 
   /**
-   * Create EventSource connection
+   * Create EventSource connection with secure header-based authentication
    */
   protected async connect(): Promise<void> {
     if (this.isClosed) {
@@ -74,11 +74,15 @@ export class SSEClientTransport extends BaseClientTransport {
     }
 
     try {
-      // Build URL with auth token as query parameter (EventSource limitation)
-      const url = await this.buildAuthenticatedUrl();
+      // Build clean URL and separate auth headers for security
+      const { url, headers } = await this.buildAuthenticatedConnection();
 
-      // Create EventSource
+      // Create EventSource with custom fetch that includes auth headers
+      // The eventsource package supports custom fetch functions
+      const customFetch = this.createAuthenticatedFetch(headers);
+
       this.eventSource = new EventSource(url, {
+        fetch: customFetch,
         withCredentials: false,
       });
 
@@ -118,22 +122,59 @@ export class SSEClientTransport extends BaseClientTransport {
   // Removed - this functionality is now in the connect() method
 
   /**
-   * Build URL with auth token as query parameter
+   * Build clean URL and auth headers for secure EventSource connection
+   *
+   * SECURITY: Auth tokens are passed via headers, NEVER in URLs to prevent:
+   * - Server log exposure
+   * - Browser history leakage
+   * - Network monitoring interception
+   * - Referrer header exposure
    */
-  private async buildAuthenticatedUrl(): Promise<string> {
+  private async buildAuthenticatedConnection(): Promise<{
+    url: string;
+    headers: Record<string, string>;
+  }> {
+    // Build clean URL without any auth parameters
     const url = new URL(this.config.url);
 
-    if (this.config.authProvider) {
-      const headers = await this.getAuthHeaders();
-      const authHeader = headers.Authorization || headers.authorization;
+    // Prepare headers object
+    const headers: Record<string, string> = {};
 
-      if (authHeader) {
-        // Add auth token as query param due to EventSource browser limitation
-        url.searchParams.set('auth', authHeader);
-      }
+    // Add auth headers if auth provider is configured
+    if (this.config.authProvider) {
+      const authHeaders = await this.getAuthHeaders();
+      Object.assign(headers, authHeaders);
     }
 
-    return url.toString();
+    return {
+      url: url.toString(),
+      headers,
+    };
+  }
+
+  /**
+   * Create a custom fetch function that includes auth headers
+   *
+   * This ensures that authentication tokens are sent securely via headers
+   * rather than being exposed in URLs.
+   */
+  private createAuthenticatedFetch(authHeaders: Record<string, string>) {
+    return async (
+      url: string | URL,
+      init: EventSourceFetchInit,
+    ): Promise<FetchLikeResponse> => {
+      // Merge auth headers with any existing headers
+      const mergedHeaders = {
+        ...init.headers,
+        ...authHeaders,
+      };
+
+      // Call fetch with merged headers
+      return fetch(url, {
+        ...init,
+        headers: mergedHeaders,
+      });
+    };
   }
 
   /**
