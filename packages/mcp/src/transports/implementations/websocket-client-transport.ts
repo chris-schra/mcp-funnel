@@ -13,63 +13,22 @@
  * - Connection state management and ping/pong handling
  */
 
-import {
-  Transport,
-  TransportSendOptions,
-} from '@modelcontextprotocol/sdk/shared/transport.js';
-import {
-  JSONRPCMessage,
-  JSONRPCRequest,
-  JSONRPCResponse,
-  MessageExtraInfo,
-} from '@modelcontextprotocol/sdk/types.js';
+import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import WebSocket from 'ws';
-import { v4 as uuidv4 } from 'uuid';
 import { TransportError } from '../errors/transport-error.js';
 import { logEvent } from '../../logger.js';
+import {
+  BaseClientTransport,
+  BaseClientTransportConfig,
+} from './base-client-transport.js';
 
 /**
  * Configuration for WebSocket client transport
  */
-export interface WebSocketClientTransportConfig {
-  /** The WebSocket endpoint URL */
-  url: string;
-  /** Request timeout in milliseconds (default: 30000) */
-  timeout?: number;
-  /** Auth provider for headers and token refresh */
-  authProvider?: {
-    /** Get current auth headers */
-    getAuthHeaders(): Promise<Record<string, string>>;
-    /** Refresh auth token (optional, for 401 recovery) */
-    refreshToken?(): Promise<void>;
-  };
-  /** Reconnection configuration */
-  reconnect?: {
-    /** Maximum reconnection attempts (default: 5) */
-    maxAttempts?: number;
-    /** Initial delay in ms (default: 1000) */
-    initialDelayMs?: number;
-    /** Backoff multiplier (default: 2) */
-    backoffMultiplier?: number;
-    /** Maximum delay cap in ms (default: 16000) */
-    maxDelayMs?: number;
-  };
+export interface WebSocketClientTransportConfig
+  extends BaseClientTransportConfig {
   /** Ping interval in milliseconds (default: 30000) */
   pingInterval?: number;
-}
-
-/**
- * Pending request state for message correlation
- */
-interface PendingRequest {
-  /** Promise resolve function */
-  resolve: (response: JSONRPCResponse) => void;
-  /** Promise reject function */
-  reject: (error: Error) => void;
-  /** Abort controller for timeout */
-  controller: AbortController;
-  /** Request timestamp for debugging */
-  timestamp: number;
 }
 
 /**
@@ -86,45 +45,32 @@ enum ConnectionState {
 /**
  * WebSocket client transport implementing MCP SDK Transport interface
  */
-export class WebSocketClientTransport implements Transport {
-  private readonly config: {
-    url: string;
-    timeout: number;
-    authProvider?: {
-      getAuthHeaders(): Promise<Record<string, string>>;
-      refreshToken?(): Promise<void>;
-    };
-    reconnect: {
-      maxAttempts: number;
-      initialDelayMs: number;
-      backoffMultiplier: number;
-      maxDelayMs: number;
-    };
+export class WebSocketClientTransport extends BaseClientTransport {
+  private readonly wsConfig: {
     pingInterval: number;
   };
   private ws: WebSocket | null = null;
   private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
-  private isStarted = false;
-  private isClosed = false;
-  private reconnectionAttempts = 0;
-  private reconnectionTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
   private lastPongTimestamp = 0;
 
-  /** Pending requests awaiting responses, keyed by request ID */
-  private readonly pendingRequests = new Map<string, PendingRequest>();
-
-  // Transport interface callbacks
-  public onclose?: () => void;
-  public onerror?: (error: Error) => void;
-  public onmessage?: (
-    message: JSONRPCMessage,
-    extra?: MessageExtraInfo,
-  ) => void;
-  public sessionId?: string;
-
   constructor(config: WebSocketClientTransportConfig) {
-    // Validate URL and convert HTTP(S) to WS(S)
+    super(config, 'transport:websocket');
+
+    // WebSocket-specific configuration
+    this.wsConfig = {
+      pingInterval: config.pingInterval ?? 30000,
+    };
+  }
+
+  // Implement abstract methods from BaseClientTransport
+
+  /**
+   * Validate and normalize URL for WebSocket
+   */
+  protected validateAndNormalizeUrl(
+    config: WebSocketClientTransportConfig,
+  ): void {
     try {
       const url = new URL(config.url);
 
@@ -150,114 +96,89 @@ export class WebSocketClientTransport implements Transport {
     } catch (error) {
       throw TransportError.invalidUrl(config.url, error as Error);
     }
-
-    // Apply default configuration values
-    this.config = {
-      url: config.url,
-      timeout: config.timeout ?? 30000,
-      authProvider: config.authProvider,
-      reconnect: {
-        maxAttempts: config.reconnect?.maxAttempts ?? 5,
-        initialDelayMs: config.reconnect?.initialDelayMs ?? 1000,
-        backoffMultiplier: config.reconnect?.backoffMultiplier ?? 2,
-        maxDelayMs: config.reconnect?.maxDelayMs ?? 16000,
-      },
-      pingInterval: config.pingInterval ?? 30000,
-    };
   }
 
   /**
-   * Start the WebSocket connection and message processing
+   * Create WebSocket connection
    */
-  public async start(): Promise<void> {
-    if (this.isStarted) {
+  protected async connect(): Promise<void> {
+    if (this.isClosed) {
       return;
     }
 
-    this.isStarted = true;
-    await this.connect();
+    if (this.connectionState === ConnectionState.CONNECTING) {
+      return;
+    }
+
+    this.connectionState = ConnectionState.CONNECTING;
+
+    try {
+      // Get auth headers for WebSocket handshake
+      const headers = await this.getAuthHeaders();
+
+      // Create WebSocket with auth headers
+      this.ws = new WebSocket(this.config.url, {
+        headers,
+        handshakeTimeout: this.config.timeout,
+      });
+
+      this.setupWebSocketListeners();
+
+      logEvent('info', 'transport:websocket:connecting', {
+        url: this.sanitizeUrl(this.config.url),
+        attempt: this.reconnectionManager.getAttemptCount() + 1,
+      });
+    } catch (error) {
+      this.connectionState = ConnectionState.DISCONNECTED;
+      this.handleConnectionError(error as Error);
+    }
   }
 
   /**
-   * Send a JSON-RPC message to the server via WebSocket
+   * Send WebSocket message
    */
-  public async send(
-    message: JSONRPCMessage,
-    // TODO: options will be used for resumption tokens in future iterations
-    _options?: TransportSendOptions,
-  ): Promise<void> {
-    if (this.isClosed) {
-      throw new Error('Transport is closed');
-    }
-
-    if (this.connectionState !== ConnectionState.CONNECTED || !this.ws) {
+  protected async sendMessage(message: JSONRPCMessage): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw TransportError.connectionFailed('WebSocket is not connected');
     }
 
-    // For requests, set up correlation for responses
-    if ('method' in message && message.method) {
-      const request = message as JSONRPCRequest;
+    if (this.connectionState !== ConnectionState.CONNECTED) {
+      throw TransportError.connectionFailed('WebSocket is not connected');
+    }
 
-      // Generate ID if not present
-      if (!request.id) {
-        request.id = uuidv4();
-      }
+    try {
+      const messageText = JSON.stringify(message);
+      this.ws.send(messageText);
 
-      // Set up pending request for response correlation
-      const controller = new AbortController();
-      const promise = new Promise<JSONRPCResponse>((resolve, reject) => {
-        const pending: PendingRequest = {
-          resolve,
-          reject,
-          controller,
-          timestamp: Date.now(),
-        };
-
-        this.pendingRequests.set(String(request.id), pending);
-
-        // Set up timeout
-        const timeoutId = setTimeout(() => {
-          this.pendingRequests.delete(String(request.id));
-          controller.abort();
-          reject(TransportError.requestTimeout(this.config.timeout));
-        }, this.config.timeout);
-
-        // Clear timeout when request completes
-        controller.signal.addEventListener('abort', () => {
-          clearTimeout(timeoutId);
-        });
+      logEvent('debug', 'transport:websocket:message-sent', {
+        method: 'method' in message ? message.method : 'response',
+        id: 'id' in message ? message.id : 'none',
       });
-
-      try {
-        await this.sendWebSocketMessage(request);
-        await promise; // Wait for response correlation
-      } catch (error) {
-        this.pendingRequests.delete(String(request.id));
-        throw error;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw TransportError.requestTimeout(this.config.timeout, error);
+        }
+        throw TransportError.connectionFailed(
+          `WebSocket send failed: ${error.message}`,
+          error,
+        );
       }
-    } else {
-      // For responses/notifications, just send directly
-      await this.sendWebSocketMessage(message);
+
+      throw TransportError.connectionFailed(
+        `WebSocket send failed: ${error}`,
+        error as Error,
+      );
     }
   }
 
   /**
-   * Close the transport and clean up resources
+   * Close WebSocket connection
    */
-  public async close(): Promise<void> {
-    if (this.isClosed) {
-      return;
-    }
-
-    this.isClosed = true;
-    this.isStarted = false;
+  protected async closeConnection(): Promise<void> {
     this.connectionState = ConnectionState.DISCONNECTING;
 
-    // Clear timers
-    if (this.reconnectionTimer) {
-      clearTimeout(this.reconnectionTimer);
-      this.reconnectionTimer = null;
-    }
+    // Clear ping timer
     if (this.pingTimer) {
       clearTimeout(this.pingTimer);
       this.pingTimer = null;
@@ -272,91 +193,7 @@ export class WebSocketClientTransport implements Transport {
       this.ws = null;
     }
 
-    // Abort all pending requests
-    for (const [_id, pending] of this.pendingRequests) {
-      pending.controller.abort();
-      pending.reject(new Error('Transport closed'));
-    }
-    this.pendingRequests.clear();
-
     this.connectionState = ConnectionState.DISCONNECTED;
-
-    // Trigger onclose callback
-    if (this.onclose) {
-      this.onclose();
-    }
-
-    logEvent('info', 'transport:websocket:closed', {
-      url: this.sanitizeUrl(this.config.url),
-    });
-  }
-
-  /**
-   * Set protocol version (MCP SDK requirement)
-   */
-  public setProtocolVersion?(version: string): void {
-    logEvent('debug', 'transport:websocket:protocol-version', { version });
-  }
-
-  /**
-   * Create WebSocket connection with auth headers and event listeners
-   */
-  private async connect(): Promise<void> {
-    if (this.isClosed) {
-      return;
-    }
-
-    if (this.connectionState === ConnectionState.CONNECTING) {
-      return;
-    }
-
-    this.connectionState = ConnectionState.CONNECTING;
-
-    try {
-      // Get auth headers for WebSocket handshake
-      const headers: Record<string, string> = {};
-      if (this.config.authProvider) {
-        const authHeaders = await this.config.authProvider.getAuthHeaders();
-        Object.assign(headers, authHeaders);
-      }
-
-      // Create WebSocket with auth headers
-      this.ws = new WebSocket(this.config.url, {
-        headers,
-        handshakeTimeout: this.config.timeout,
-      });
-
-      this.setupWebSocketListeners();
-
-      logEvent('info', 'transport:websocket:connecting', {
-        url: this.sanitizeUrl(this.config.url),
-        attempt: this.reconnectionAttempts + 1,
-      });
-    } catch (error) {
-      const transportError =
-        error instanceof TransportError
-          ? error
-          : TransportError.connectionFailed(
-              `Failed to create WebSocket: ${error}`,
-              error as Error,
-            );
-
-      this.connectionState = ConnectionState.DISCONNECTED;
-
-      logEvent('error', 'transport:websocket:connection-error', {
-        error: transportError.message,
-        code: transportError.code,
-      });
-
-      if (this.onerror) {
-        this.onerror(transportError);
-      }
-
-      // Attempt reconnection if retryable
-      if (transportError.isRetryable) {
-        this.scheduleReconnection();
-      }
-    }
   }
 
   /**
@@ -389,17 +226,10 @@ export class WebSocketClientTransport implements Transport {
    * Handle WebSocket open event
    */
   private handleWebSocketOpen(): void {
-    // Reset reconnection counter on successful connection
-    this.reconnectionAttempts = 0;
     this.connectionState = ConnectionState.CONNECTED;
 
-    logEvent('info', 'transport:websocket:connected', {
-      url: this.sanitizeUrl(this.config.url),
-      readyState: this.ws?.readyState,
-    });
-
-    // Generate session ID
-    this.sessionId = uuidv4();
+    // Call base class handler
+    this.handleConnectionOpen();
 
     // Start ping timer for connection health checks
     this.startPingTimer();
@@ -411,54 +241,10 @@ export class WebSocketClientTransport implements Transport {
   private handleWebSocketMessage(data: WebSocket.Data): void {
     try {
       const messageText = data.toString('utf8');
-      const message = JSON.parse(messageText) as JSONRPCMessage;
-
-      // Validate JSON-RPC format
-      if (!message.jsonrpc || message.jsonrpc !== '2.0') {
-        throw new Error(
-          'Invalid JSON-RPC format: missing or incorrect jsonrpc version',
-        );
-      }
-
-      logEvent('debug', 'transport:websocket:message-received', {
-        id: 'id' in message ? message.id : 'none',
-        method: 'method' in message ? message.method : 'none',
-      });
-
-      // Check for response correlation
-      if ('id' in message && message.id !== null && message.id !== undefined) {
-        const pending = this.pendingRequests.get(String(message.id));
-        if (pending) {
-          this.pendingRequests.delete(String(message.id));
-
-          if ('error' in message) {
-            pending.reject(
-              new Error(`JSON-RPC error: ${JSON.stringify(message.error)}`),
-            );
-          } else {
-            pending.resolve(message as JSONRPCResponse);
-          }
-          return;
-        }
-      }
-
-      // Forward to onmessage callback if not correlated
-      if (this.onmessage) {
-        this.onmessage(message);
-      }
-    } catch (error) {
-      const parseError = new Error(
-        `Failed to parse WebSocket message: ${error}`,
-      );
-
-      logEvent('error', 'transport:websocket:parse-error', {
-        error: parseError.message,
-        data: this.sanitizeLogData(data.toString()),
-      });
-
-      if (this.onerror) {
-        this.onerror(parseError);
-      }
+      const message = this.parseMessage(messageText);
+      this.handleMessage(message);
+    } catch (_error) {
+      // Error already logged by parseMessage
     }
   }
 
@@ -467,7 +253,6 @@ export class WebSocketClientTransport implements Transport {
    */
   private handleWebSocketClose(code: number, reason: Buffer): void {
     const reasonText = reason.toString();
-
     this.connectionState = ConnectionState.DISCONNECTED;
 
     // Stop ping timer
@@ -475,13 +260,6 @@ export class WebSocketClientTransport implements Transport {
       clearTimeout(this.pingTimer);
       this.pingTimer = null;
     }
-
-    logEvent('info', 'transport:websocket:connection-closed', {
-      code,
-      reason: reasonText,
-      url: this.sanitizeUrl(this.config.url),
-      reconnectionAttempts: this.reconnectionAttempts,
-    });
 
     // Handle different close codes
     let shouldReconnect = true;
@@ -514,36 +292,20 @@ export class WebSocketClientTransport implements Transport {
         );
     }
 
-    if (error && this.onerror) {
-      this.onerror(error);
-    }
-
-    // Schedule reconnection if appropriate and not manually closed
-    if (shouldReconnect && !this.isClosed) {
-      this.scheduleReconnection();
-    } else if (this.onclose && this.isClosed) {
-      this.onclose();
-    }
+    // Call base class handler
+    this.handleConnectionClose(reasonText, shouldReconnect, error || undefined);
   }
 
   /**
    * Handle WebSocket error event
    */
   private handleWebSocketError(error: Error): void {
-    logEvent('error', 'transport:websocket:error', {
-      error: error.message,
-      url: this.sanitizeUrl(this.config.url),
-    });
-
     const transportError = TransportError.connectionFailed(
       `WebSocket error: ${error.message}`,
       error,
     );
 
-    if (this.onerror) {
-      this.onerror(transportError);
-    }
-
+    this.handleConnectionError(transportError);
     // Connection will be closed, which will trigger reconnection logic
   }
 
@@ -572,117 +334,12 @@ export class WebSocketClientTransport implements Transport {
         this.ws.ping();
         this.startPingTimer(); // Schedule next ping
       }
-    }, this.config.pingInterval);
+    }, this.wsConfig.pingInterval);
   }
 
-  /**
-   * Schedule reconnection with exponential backoff
-   */
-  private scheduleReconnection(): void {
-    if (
-      this.isClosed ||
-      this.reconnectionAttempts >= this.config.reconnect.maxAttempts
-    ) {
-      if (this.reconnectionAttempts >= this.config.reconnect.maxAttempts) {
-        logEvent('error', 'transport:websocket:max-reconnection-attempts', {
-          maxAttempts: this.config.reconnect.maxAttempts,
-        });
+  // Removed - this functionality is now handled by the base class ReconnectionManager
 
-        if (this.onclose) {
-          this.onclose();
-        }
-      }
-      return;
-    }
+  // Removed - this functionality is now in the sendMessage() method
 
-    // Calculate exponential backoff delay
-    const baseDelay = this.config.reconnect.initialDelayMs;
-    const multiplier = Math.pow(
-      this.config.reconnect.backoffMultiplier,
-      this.reconnectionAttempts,
-    );
-    const delay = Math.min(
-      baseDelay * multiplier,
-      this.config.reconnect.maxDelayMs,
-    );
-
-    this.reconnectionAttempts++;
-    this.connectionState = ConnectionState.RECONNECTING;
-
-    logEvent('info', 'transport:websocket:reconnecting', {
-      attempt: this.reconnectionAttempts,
-      delay,
-      maxAttempts: this.config.reconnect.maxAttempts,
-    });
-
-    this.reconnectionTimer = setTimeout(() => {
-      this.reconnectionTimer = null;
-      if (!this.isClosed) {
-        this.connect();
-      }
-    }, delay);
-  }
-
-  /**
-   * Send WebSocket message with auth retry on 401
-   */
-  private async sendWebSocketMessage(message: JSONRPCMessage): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw TransportError.connectionFailed('WebSocket is not open');
-    }
-
-    try {
-      const messageText = JSON.stringify(message);
-      this.ws.send(messageText);
-
-      logEvent('debug', 'transport:websocket:message-sent', {
-        method:
-          'method' in message ? (message as JSONRPCRequest).method : 'response',
-        id: 'id' in message ? message.id : 'none',
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw TransportError.requestTimeout(this.config.timeout, error);
-        }
-        throw TransportError.connectionFailed(
-          `WebSocket send failed: ${error.message}`,
-          error,
-        );
-      }
-
-      throw TransportError.connectionFailed(
-        `WebSocket send failed: ${error}`,
-        error as Error,
-      );
-    }
-  }
-
-  /**
-   * Sanitize URL for logging (remove auth tokens)
-   */
-  private sanitizeUrl(url: string): string {
-    try {
-      const urlObj = new URL(url);
-      if (urlObj.searchParams.has('auth')) {
-        urlObj.searchParams.set('auth', '[REDACTED]');
-      }
-      return urlObj.toString();
-    } catch {
-      return '[INVALID_URL]';
-    }
-  }
-
-  /**
-   * Sanitize log data (remove tokens)
-   */
-  private sanitizeLogData(data: string): string {
-    if (typeof data !== 'string') return '[NON_STRING_DATA]';
-
-    // Replace potential tokens in JSON strings
-    return data
-      .replace(/"auth":\s*"[^"]+"/g, '"auth":"[REDACTED]"')
-      .replace(/Bearer\s+[^\s"]+/g, 'Bearer [REDACTED]')
-      .replace(/"Authorization":\s*"[^"]+"/g, '"Authorization":"[REDACTED]"');
-  }
+  // Removed - these utilities are now in the base class
 }

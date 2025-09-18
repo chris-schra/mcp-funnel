@@ -13,34 +13,18 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import type { JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
+import { WebSocketClientTransport } from '../../src/transports/implementations/websocket-client-transport.js';
+import { TransportError } from '../../src/transports/errors/transport-error.js';
+import type { WebSocketClientTransportConfig } from '../../src/transports/implementations/websocket-client-transport.js';
+import WebSocket from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-import type {
-  JSONRPCRequest,
-  JSONRPCResponse,
-  MessageExtraInfo,
-} from '@modelcontextprotocol/sdk/types.js';
-
-// Define CloseEvent for test environment
-global.CloseEvent = class CloseEvent extends Event {
-  public code: number;
-  public reason: string;
-  public wasClean: boolean;
-
-  constructor(type: string, options?: { code?: number; reason?: string; wasClean?: boolean }) {
-    super(type);
-    this.code = options?.code ?? 1000;
-    this.reason = options?.reason ?? '';
-    this.wasClean = options?.wasClean ?? false;
-  }
-} as any;
+import type { ClientOptions } from 'ws';
+import type { ClientRequestArgs } from 'http';
 
 // Mock WebSocket and uuid modules
 vi.mock('ws', () => {
   const mockWebSocket = vi.fn();
-  mockWebSocket.CONNECTING = 0;
-  mockWebSocket.OPEN = 1;
-  mockWebSocket.CLOSING = 2;
-  mockWebSocket.CLOSED = 3;
   return { default: mockWebSocket };
 });
 
@@ -53,12 +37,6 @@ vi.mock('../../src/logger.js', () => ({
   logEvent: vi.fn(),
 }));
 
-import { WebSocketClientTransport } from '../../src/transports/implementations/websocket-client-transport.js';
-import { TransportError } from '../../src/transports/errors/transport-error.js';
-import type { WebSocketClientTransportConfig } from '../../src/transports/implementations/websocket-client-transport.js';
-import WebSocket from 'ws';
-import { v4 as uuidv4 } from 'uuid';
-
 // Mock WebSocket implementation for testing
 class MockWebSocket {
   public static readonly CONNECTING = 0;
@@ -66,24 +44,37 @@ class MockWebSocket {
   public static readonly CLOSING = 2;
   public static readonly CLOSED = 3;
 
-  public readyState = MockWebSocket.CONNECTING;
-  public url: string;
-  public protocol?: string;
-  public onopen?: ((event: Event) => void) | null = null;
-  public onmessage?: ((event: MessageEvent) => void) | null = null;
-  public onerror?: ((event: Event) => void) | null = null;
-  public onclose?: ((event: CloseEvent) => void) | null = null;
+  // WebSocket required properties
+  public readonly CONNECTING = 0;
+  public readonly OPEN = 1;
+  public readonly CLOSING = 2;
+  public readonly CLOSED = 3;
+  public binaryType: 'nodebuffer' | 'arraybuffer' | 'fragments' = 'nodebuffer';
+  public readonly bufferedAmount = 0;
+  public readonly extensions = '';
+  public readonly isPaused = false;
+  public readonly protocol = '';
+  public readyState: 0 | 1 | 2 | 3 = MockWebSocket.CONNECTING;
+  public readonly url: string;
+  public onopen: ((event: WebSocket.Event) => void) | null = null;
+  public onmessage: ((event: WebSocket.MessageEvent) => void) | null = null;
+  public onerror: ((event: WebSocket.ErrorEvent) => void) | null = null;
+  public onclose: ((event: WebSocket.CloseEvent) => void) | null = null;
 
-  private listeners: Record<string, Function[]> = {};
+  private listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
 
-  constructor(url: string, _protocols?: string | string[], _options?: any) {
-    this.url = url;
+  constructor(
+    url: string | URL,
+    _protocols?: string | string[],
+    _options?: ClientOptions | ClientRequestArgs,
+  ) {
+    this.url = typeof url === 'string' ? url : url.toString();
     this.listeners = {};
 
     // Simulate async connection
     setTimeout(() => {
       this.readyState = MockWebSocket.OPEN;
-      this.emit('open', new Event('open'));
+      this.emit('open');
     }, 10);
   }
 
@@ -101,49 +92,130 @@ class MockWebSocket {
     this.readyState = MockWebSocket.CLOSING;
     setTimeout(() => {
       this.readyState = MockWebSocket.CLOSED;
-      const closeEvent = new CloseEvent('close', {
-        code: code || 1000,
-        reason: reason || '',
-      });
-      this.emit('close', closeEvent);
+      // Emit close event with Node.js ws format: (code, reason)
+      this.emit('close', code || 1000, reason || '');
     }, 10);
   }
 
-  ping(data?: any): void {
+  ping(_data?: Buffer, _mask?: boolean, _cb?: (err: Error) => void): void {
     // Simulate ping
   }
 
-  on(event: string, listener: Function): void {
+  pong(_data?: Buffer, _mask?: boolean, _cb?: (err: Error) => void): void {
+    // Simulate pong
+  }
+
+  terminate(): void {
+    this.readyState = MockWebSocket.CLOSED;
+  }
+
+  pause(): void {
+    // Mock implementation
+  }
+
+  resume(): void {
+    // Mock implementation
+  }
+
+  addEventListener<K extends keyof WebSocket.WebSocketEventMap>(
+    _type: K,
+    _listener:
+      | ((event: WebSocket.WebSocketEventMap[K]) => void)
+      | { handleEvent(event: WebSocket.WebSocketEventMap[K]): void },
+    _options?: WebSocket.EventListenerOptions,
+  ): void {
+    // Mock implementation
+  }
+
+  removeEventListener<K extends keyof WebSocket.WebSocketEventMap>(
+    _type: K,
+    _listener:
+      | ((event: WebSocket.WebSocketEventMap[K]) => void)
+      | { handleEvent(event: WebSocket.WebSocketEventMap[K]): void },
+  ): void {
+    // Mock implementation
+  }
+
+  on(event: string, listener: (...args: unknown[]) => void): this {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
     }
     this.listeners[event].push(listener);
+    return this;
   }
 
-  removeAllListeners(event?: string): void {
+  once(event: string, listener: (...args: unknown[]) => void): this {
+    const onceWrapper = (...args: unknown[]) => {
+      listener(...args);
+      this.removeListener(event, onceWrapper);
+    };
+    this.on(event, onceWrapper);
+    return this;
+  }
+
+  removeListener(event: string, listener: (...args: unknown[]) => void): this {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter(
+        (l) => l !== listener,
+      );
+    }
+    return this;
+  }
+
+  removeAllListeners(event?: string): this {
     if (event) {
       this.listeners[event] = [];
     } else {
       this.listeners = {};
     }
+    return this;
   }
 
-  emit(event: string, ...args: any[]): void {
+  off(event: string, listener: (...args: unknown[]) => void): this {
+    return this.removeListener(event, listener);
+  }
+
+  addListener(event: string, listener: (...args: unknown[]) => void): this {
+    return this.on(event, listener);
+  }
+
+  setMaxListeners(_n: number): this {
+    return this;
+  }
+
+  getMaxListeners(): number {
+    return 10;
+  }
+
+  listenerCount(_event: string): number {
+    return 0;
+  }
+
+  prependListener(event: string, listener: (...args: unknown[]) => void): this {
+    return this.on(event, listener);
+  }
+
+  prependOnceListener(
+    event: string,
+    listener: (...args: unknown[]) => void,
+  ): this {
+    return this.once(event, listener);
+  }
+
+  rawListeners(event: string): Array<(...args: unknown[]) => void> {
+    return this.listeners[event] || [];
+  }
+
+  eventNames(): (string | symbol)[] {
+    return Object.keys(this.listeners);
+  }
+
+  emit(event: string, ...args: unknown[]): boolean {
     const eventListeners = this.listeners[event];
     if (eventListeners) {
       eventListeners.forEach((listener) => listener(...args));
     }
-
-    // Also call the onXXX properties
-    if (event === 'open' && this.onopen) {
-      this.onopen(args[0]);
-    } else if (event === 'message' && this.onmessage) {
-      this.onmessage(args[0]);
-    } else if (event === 'error' && this.onerror) {
-      this.onerror(args[0]);
-    } else if (event === 'close' && this.onclose) {
-      this.onclose(args[0]);
-    }
+    return eventListeners ? eventListeners.length > 0 : false;
   }
 }
 
@@ -159,16 +231,24 @@ describe('WebSocketClientTransport', () => {
     vi.mocked(uuidv4).mockImplementation(() => `test-uuid-${++uuidCounter}`);
 
     // Setup WebSocket mock
-    vi.mocked(WebSocket).mockImplementation((url, _protocols, _options) => {
-      mockWs = new MockWebSocket(url, _protocols, _options);
-      return mockWs as any;
-    });
+    vi.mocked(WebSocket).mockImplementation(
+      (
+        url: string | URL,
+        protocols?: string | string[],
+        options?: ClientOptions | ClientRequestArgs,
+      ) => {
+        mockWs = new MockWebSocket(url, protocols, options);
+        return mockWs as unknown as WebSocket;
+      },
+    );
 
-    // Set static properties
-    (WebSocket as any).CONNECTING = MockWebSocket.CONNECTING;
-    (WebSocket as any).OPEN = MockWebSocket.OPEN;
-    (WebSocket as any).CLOSING = MockWebSocket.CLOSING;
-    (WebSocket as any).CLOSED = MockWebSocket.CLOSED;
+    // Set static properties using Object.assign to avoid readonly errors
+    Object.assign(WebSocket, {
+      CONNECTING: MockWebSocket.CONNECTING,
+      OPEN: MockWebSocket.OPEN,
+      CLOSING: MockWebSocket.CLOSING,
+      CLOSED: MockWebSocket.CLOSED,
+    });
   });
 
   afterEach(() => {
@@ -216,7 +296,7 @@ describe('WebSocketClientTransport', () => {
         new WebSocketClientTransport({
           url: 'ws://api.example.com/ws',
         });
-      }).toThrow(/WSS required in production environment/);
+      }).toThrow(TransportError);
 
       process.env.NODE_ENV = originalEnv;
     });
@@ -313,6 +393,11 @@ describe('WebSocketClientTransport', () => {
     it('should not close multiple times', async () => {
       await transport.start();
 
+      // Wait for connection to be established
+      await vi.waitFor(() => {
+        expect(mockWs.readyState).toBe(MockWebSocket.OPEN);
+      });
+
       const closeSpy = vi.spyOn(mockWs, 'close');
       await transport.close();
       await transport.close(); // Second call should be no-op
@@ -369,7 +454,7 @@ describe('WebSocketClientTransport', () => {
       await vi.waitFor(() => {
         expect(errorSpy).toHaveBeenCalledWith(
           expect.objectContaining({
-            message: expect.stringContaining('Failed to create WebSocket'),
+            message: expect.stringContaining('Authentication failed'),
           }),
         );
       });
@@ -398,14 +483,15 @@ describe('WebSocketClientTransport', () => {
     });
 
     it('should send JSON-RPC request and generate ID', async () => {
-      const request: JSONRPCRequest = {
-        jsonrpc: '2.0',
+      const request = {
+        jsonrpc: '2.0' as const,
         method: 'test/method',
         params: { key: 'value' },
+        // id will be auto-generated by transport
       };
 
-      // Send request in background and immediately send response
-      const sendPromise = transport.send(request);
+      // Send the request (this should complete without waiting for response)
+      await transport.send(request);
 
       // Wait for WebSocket send to be called
       await vi.waitFor(() => {
@@ -421,20 +507,6 @@ describe('WebSocketClientTransport', () => {
         params: { key: 'value' },
       });
       expect(sentMessage.id).toMatch(/^test-uuid-\d+$/);
-
-      // Simulate server response
-      const response: JSONRPCResponse = {
-        jsonrpc: '2.0',
-        id: sentMessage.id,
-        result: { success: true },
-      };
-
-      mockWs.emit(
-        'message',
-        new MessageEvent('message', { data: JSON.stringify(response) }),
-      );
-
-      await sendPromise;
     });
 
     it('should preserve existing request ID', async () => {
@@ -444,7 +516,7 @@ describe('WebSocketClientTransport', () => {
         id: 'existing-id',
       };
 
-      const sendPromise = transport.send(request);
+      await transport.send(request);
 
       // Wait for send to be called
       await vi.waitFor(() => {
@@ -454,42 +526,43 @@ describe('WebSocketClientTransport', () => {
       const sentMessage = JSON.parse(mockWs.lastSentData!);
 
       expect(sentMessage.id).toBe('existing-id');
-
-      // Send response to complete the request
-      const response: JSONRPCResponse = {
-        jsonrpc: '2.0',
-        id: 'existing-id',
-        result: { success: true },
-      };
-
-      mockWs.emit(
-        'message',
-        new MessageEvent('message', { data: JSON.stringify(response) }),
-      );
-
-      await sendPromise;
     });
 
-    it('should handle request timeout', async () => {
+    it('should send request without timeout (response correlation is separate)', async () => {
       const request: JSONRPCRequest = {
         jsonrpc: '2.0',
         method: 'test/method',
+        id: 'timeout-test-id',
       };
 
-      // Don't send a response, let it timeout
-      await expect(transport.send(request)).rejects.toThrow(
-        /Request timeout after 1000ms/,
-      );
+      // Send should complete immediately, not wait for response
+      await transport.send(request);
+
+      // Verify the message was sent
+      await vi.waitFor(() => {
+        expect(mockWs.lastSentData).toBeDefined();
+      });
+
+      const sentMessage = JSON.parse(mockWs.lastSentData!);
+      expect(sentMessage.id).toBe('timeout-test-id');
     });
 
-    it('should handle JSON-RPC error responses', async () => {
+    it('should handle JSON-RPC error responses via onmessage', async () => {
       const request: JSONRPCRequest = {
         jsonrpc: '2.0',
         method: 'test/method',
         id: 'test-id',
       };
 
-      const sendPromise = transport.send(request);
+      const onMessageSpy = vi.fn();
+      transport.onmessage = onMessageSpy;
+
+      await transport.send(request);
+
+      // Wait for request to be sent
+      await vi.waitFor(() => {
+        expect(mockWs.lastSentData).toBeDefined();
+      });
 
       // Send error response
       const errorResponse = {
@@ -498,17 +571,23 @@ describe('WebSocketClientTransport', () => {
         error: { code: -1, message: 'Test error' },
       };
 
-      mockWs.emit(
-        'message',
-        new MessageEvent('message', { data: JSON.stringify(errorResponse) }),
-      );
+      // Simulate error response - Node.js ws emits Buffer data
+      mockWs.emit('message', Buffer.from(JSON.stringify(errorResponse)));
 
-      await expect(sendPromise).rejects.toThrow(/JSON-RPC error/);
+      // Error responses are handled through onmessage callback, not as exceptions
+      await vi.waitFor(() => {
+        expect(onMessageSpy).toHaveBeenCalledWith(errorResponse);
+      });
     });
 
     it('should forward unmatched messages to onmessage', async () => {
       const onMessageSpy = vi.fn();
       transport.onmessage = onMessageSpy;
+
+      // Make sure connection is established first
+      await vi.waitFor(() => {
+        expect(mockWs.readyState).toBe(MockWebSocket.OPEN);
+      });
 
       const notification = {
         jsonrpc: '2.0',
@@ -516,11 +595,10 @@ describe('WebSocketClientTransport', () => {
         params: { data: 'test' },
       };
 
-      mockWs.emit(
-        'message',
-        new MessageEvent('message', { data: JSON.stringify(notification) }),
-      );
+      // Emit notification message directly - Node.js ws emits Buffer data
+      mockWs.emit('message', Buffer.from(JSON.stringify(notification)));
 
+      // Give it a moment for async message processing
       await vi.waitFor(() => {
         expect(onMessageSpy).toHaveBeenCalledWith(notification);
       });
@@ -530,15 +608,13 @@ describe('WebSocketClientTransport', () => {
       const onErrorSpy = vi.fn();
       transport.onerror = onErrorSpy;
 
-      mockWs.emit(
-        'message',
-        new MessageEvent('message', { data: 'invalid json' }),
-      );
+      // Send invalid JSON as Buffer (Node.js ws format)
+      mockWs.emit('message', Buffer.from('invalid json'));
 
       await vi.waitFor(() => {
         expect(onErrorSpy).toHaveBeenCalledWith(
           expect.objectContaining({
-            message: expect.stringContaining('Failed to parse WebSocket message'),
+            message: expect.stringContaining('Failed to parse message'),
           }),
         );
       });
@@ -550,6 +626,7 @@ describe('WebSocketClientTransport', () => {
       const request: JSONRPCRequest = {
         jsonrpc: '2.0',
         method: 'test/method',
+        id: 'closed-test-id',
       };
 
       await expect(transport.send(request)).rejects.toThrow(
@@ -601,11 +678,8 @@ describe('WebSocketClientTransport', () => {
         expect(mockWs.readyState).toBe(MockWebSocket.OPEN);
       });
 
-      // Close with normal close code
-      mockWs.emit(
-        'close',
-        new CloseEvent('close', { code: 1000, reason: 'Normal closure' }),
-      );
+      // Close with normal close code - use Node.js ws format: (code, reason)
+      mockWs.emit('close', 1000, Buffer.from('Normal closure'));
 
       // Normal close should not trigger onclose since it's expected
     });
@@ -630,11 +704,8 @@ describe('WebSocketClientTransport', () => {
 
       const initialCallCount = vi.mocked(WebSocket).mock.calls.length;
 
-      // Close with abnormal close code
-      mockWs.emit(
-        'close',
-        new CloseEvent('close', { code: 1006, reason: 'Abnormal closure' }),
-      );
+      // Close with abnormal close code - use Node.js ws format
+      mockWs.emit('close', 1006, Buffer.from('Abnormal closure'));
 
       // Wait for reconnection attempt
       await vi.waitFor(
@@ -654,45 +725,36 @@ describe('WebSocketClientTransport', () => {
         url: 'ws://localhost:8080/ws',
         reconnect: {
           maxAttempts: 1,
-          initialDelayMs: 50,
+          initialDelayMs: 10, // Very short delay for test speed
         },
       });
 
       transport.onclose = onCloseSpy;
 
-      // Mock WebSocket to fail connections after first one
+      // Mock WebSocket to fail all connections
       let connectionCount = 0;
       vi.mocked(WebSocket).mockImplementation((url, _protocols, _options) => {
         connectionCount++;
         const ws = new MockWebSocket(url, _protocols, _options);
 
-        if (connectionCount > 1) {
-          // Fail subsequent connections
-          setTimeout(() => {
-            ws.readyState = MockWebSocket.CLOSED;
-            ws.emit(
-              'close',
-              new CloseEvent('close', { code: 1006, reason: 'Connection failed' }),
-            );
-          }, 10);
-        } else {
-          // First connection succeeds then fails
+        if (connectionCount === 1) {
+          // First connection succeeds briefly then fails
           setTimeout(() => {
             ws.readyState = MockWebSocket.OPEN;
             ws.emit('open', new Event('open'));
 
-            // Then immediately fail
+            // Then fail to trigger first reconnection
             setTimeout(() => {
               ws.readyState = MockWebSocket.CLOSED;
-              ws.emit(
-                'close',
-                new CloseEvent('close', {
-                  code: 1006,
-                  reason: 'Connection lost',
-                }),
-              );
-            }, 10);
-          }, 10);
+              ws.emit('close', 1006, Buffer.from('Connection lost'));
+            }, 5);
+          }, 5);
+        } else {
+          // All subsequent connections fail immediately
+          setTimeout(() => {
+            ws.readyState = MockWebSocket.CLOSED;
+            ws.emit('close', 1006, Buffer.from('Connection failed'));
+          }, 1);
         }
 
         return ws;
@@ -700,14 +762,15 @@ describe('WebSocketClientTransport', () => {
 
       await transport.start();
 
-      // Wait for max attempts to be reached
+      // Wait for reconnection attempts to exhaust
       await vi.waitFor(
         () => {
           expect(onCloseSpy).toHaveBeenCalled();
         },
-        { timeout: 2000 },
+        { timeout: 500 }, // Short timeout since we're using short delays
       );
 
+      // Should have tried initial connection + maxAttempts retries
       expect(vi.mocked(WebSocket).mock.calls.length).toBe(2); // Initial + 1 retry
     });
   });
@@ -801,12 +864,9 @@ describe('WebSocketClientTransport', () => {
     });
 
     it('should trigger callbacks on connection events', async () => {
-      const onOpenSpy = vi.fn();
       const onCloseSpy = vi.fn();
       const onErrorSpy = vi.fn();
 
-      // Note: onopen is not part of Transport interface, but we test it anyway
-      // transport.onopen = onOpenSpy;
       transport.onclose = onCloseSpy;
       transport.onerror = onErrorSpy;
 
@@ -859,7 +919,7 @@ describe('WebSocketClientTransport', () => {
 
       // Send invalid JSON with potential token
       const invalidData = '{"auth":"Bearer secret-token", invalid}';
-      mockWs.emit('message', new MessageEvent('message', { data: invalidData }));
+      mockWs.emit('message', Buffer.from(invalidData));
 
       await vi.waitFor(() => {
         expect(onErrorSpy).toHaveBeenCalled();
