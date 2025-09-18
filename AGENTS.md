@@ -25,6 +25,20 @@ You are a concise, reasoning-first assistant. **NEVER** try to please without ev
 - Use proper Typescript syntax (no `any` no `as unknown as`) and documentation so next dev can pick it up easily
 - Do NOT violate DRY - when reading / modifying existing code, if you see repeated patterns, abstract them out into reusable functions or classes
 - Do **NOT** create tests to test mocks, they are giving a false impression of coverage. Always create tests that test real implementations.
+
+## Use tool parallelism:
+Single message, multiple tools:
+<function_calls>
+<invoke name="Edit">file1 changes</invoke>
+<invoke name="Edit">file2 changes</invoke>
+<invoke name="Read">file3 read</invoke>
+</function_calls>
+
+### Examples:
+7 Edit tools → Single message → All parallel
+MultiEdit → Single file, multiple changes
+Parallel Read → Multiple files at once
+
 ##   SEAMS - Simple Extensions, Abstract Minimally, Ship
 
 ### The Principle
