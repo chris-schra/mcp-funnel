@@ -190,7 +190,7 @@ You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
 
-### Task 3: Extract HTTP Utilities to Base Transport
+### Task 3: Extract HTTP Utilities to Base Transport (Streaming-Capable Design)
 **Priority: CRITICAL**
 **Size: Large (6-8 hours)**
 
@@ -205,15 +205,23 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/src/transports/implementations/base-client-transport.ts`
 - `packages/mcp/src/transports/implementations/sse-client-transport.ts`
 
-**Create flexible HTTP utility in base class:**
-- [ ] Create executeHttpRequest() method with options pattern
-- [ ] Add HttpRequestOptions interface (url, method, headers, body, signal, retryOn401)
+**Create streaming-capable HTTP utility in base class:**
+- [ ] Create executeHttpRequest() method with streaming support options
+- [ ] Add HttpRequestOptions interface with streaming?: boolean flag
+- [ ] Return type should support both Response and ReadableStream access
+- [ ] Add async generator helper for reading stream chunks
 - [ ] Implement automatic auth header injection
 - [ ] Implement 401 response handling with token refresh
-- [ ] Create sendJsonRequest() convenience method
+- [ ] Create sendJsonRequest() convenience method for non-streaming
 - [ ] Move retry logic implementation to base
 - [ ] Move request timeout handling to base
 - [ ] Move error mapping utilities to base
+
+**Design for future Streamable HTTP support:**
+- [ ] Response wrapper should expose bodyStream when available
+- [ ] Include readChunks() async generator for streaming responses
+- [ ] Support both text and binary stream decoding
+- [ ] Design pattern that works for SSE, Streamable HTTP, and future transports
 
 **SSE transport updates:**
 - [ ] Remove sendHttpRequest() implementation
@@ -511,9 +519,13 @@ Before marking Phase 3 complete:
 - Abstract acquireToken() method for subclass-specific logic
 
 ### Transport HTTP Utilities
-- Implement flexible executeHttpRequest() with options pattern
-- Provide convenience methods like sendJsonRequest()
+- Implement streaming-capable executeHttpRequest() with options pattern
+- Response type supports both regular and streaming responses
+- Provide async generators for reading stream chunks
+- Provide convenience methods like sendJsonRequest() for non-streaming
 - Allow transports to customize HTTP behavior while sharing auth/retry logic
+- Design with SEAMS for future Streamable HTTP support (SSE is deprecated in MCP specs)
+- HTTP utilities ready for SSE, Streamable HTTP, and future streaming transports
 
 ### Test Implementation
 - Replace all SSE placeholder tests with actual implementations
@@ -521,8 +533,9 @@ Before marking Phase 3 complete:
 - Base transport tests will cover shared functionality
 
 ### Breaking Changes
-- Internal API modifications allowed to improve architecture
-- Public APIs must remain stable
+- Internal AND public API modifications allowed to improve architecture
+- Tests can be changed as needed to match new implementations
+- No backward compatibility required for existing implementations
 
 ## Definition of Done
 
