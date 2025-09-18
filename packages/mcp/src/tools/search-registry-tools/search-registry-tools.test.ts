@@ -17,7 +17,7 @@ vi.mock('../../registry/index.js', () => ({
   },
 }));
 
-describe.skip('SearchRegistryTools', () => {
+describe('SearchRegistryTools', () => {
   let tool: SearchRegistryTools;
   let mockContext: CoreToolContext;
 
@@ -62,17 +62,17 @@ describe.skip('SearchRegistryTools', () => {
   });
 
   describe('Tool Definition', () => {
-    it.skip('should have correct name', () => {
+    it('should have correct name', () => {
       expect(tool.name).toBe('search_registry_tools');
     });
 
-    it.skip('should have proper description', () => {
+    it('should have proper description', () => {
       const toolDef = tool.tool;
       expect(toolDef.description).toContain('Search MCP registry');
       expect(toolDef.description).toContain('token efficiency');
     });
 
-    it.skip('should have valid input schema', () => {
+    it('should have valid input schema', () => {
       const toolDef = tool.tool;
       expect(toolDef.inputSchema.type).toBe('object');
       expect(toolDef.inputSchema.required).toEqual(['keywords']);
@@ -90,7 +90,7 @@ describe.skip('SearchRegistryTools', () => {
       expect(properties?.registry.optional).toBe(true);
     });
 
-    it.skip('should have required keywords parameter only', () => {
+    it('should have required keywords parameter only', () => {
       const toolDef = tool.tool;
       expect(toolDef.inputSchema.required).toEqual(['keywords']);
       expect(toolDef.inputSchema.required).not.toContain('registry');
@@ -98,15 +98,15 @@ describe.skip('SearchRegistryTools', () => {
   });
 
   describe('isEnabled', () => {
-    it.skip('should be enabled when exposeCoreTools is not specified', () => {
+    it('should be enabled when exposeCoreTools is not specified', () => {
       expect(tool.isEnabled({ servers: [] })).toBe(true);
     });
 
-    it.skip('should be disabled when exposeCoreTools is empty array', () => {
+    it('should be disabled when exposeCoreTools is empty array', () => {
       expect(tool.isEnabled({ servers: [], exposeCoreTools: [] })).toBe(false);
     });
 
-    it.skip('should be enabled when exposeCoreTools includes tool name', () => {
+    it('should be enabled when exposeCoreTools includes tool name', () => {
       expect(
         tool.isEnabled({
           servers: [],
@@ -115,19 +115,19 @@ describe.skip('SearchRegistryTools', () => {
       ).toBe(true);
     });
 
-    it.skip('should be enabled when exposeCoreTools has matching pattern', () => {
+    it('should be enabled when exposeCoreTools has matching pattern', () => {
       expect(
         tool.isEnabled({ servers: [], exposeCoreTools: ['search_*'] }),
       ).toBe(true);
     });
 
-    it.skip('should be enabled when exposeCoreTools is ["*"]', () => {
+    it('should be enabled when exposeCoreTools is ["*"]', () => {
       expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
         true,
       );
     });
 
-    it.skip('should be disabled when exposeCoreTools excludes the tool', () => {
+    it('should be disabled when exposeCoreTools excludes the tool', () => {
       expect(
         tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
       ).toBe(false);
@@ -154,7 +154,7 @@ describe.skip('SearchRegistryTools', () => {
       expect(textContent.text).toContain('get_server_install_info');
     });
 
-    it.skip('should include registry information in output', async () => {
+    it('should include registry information in output', async () => {
       const result = await tool.handle({ keywords: 'filesystem' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
@@ -184,9 +184,9 @@ describe.skip('SearchRegistryTools', () => {
 
       const textContent = result.content[0] as { type: string; text: string };
       // Should contain essential info but not excessive details
-      expect(textContent.text).toContain('name');
-      expect(textContent.text).toContain('description');
-      expect(textContent.text).toContain('registryId');
+      expect(textContent.text).toContain('GitHub MCP Server'); // server name
+      expect(textContent.text).toContain('Interact with GitHub'); // description
+      expect(textContent.text).toContain('github-mcp-server'); // registryId
       // Should NOT contain full server details, packages, etc.
       expect(textContent.text).not.toContain('packages');
       expect(textContent.text).not.toContain('environment_variables');
@@ -266,40 +266,34 @@ describe.skip('SearchRegistryTools', () => {
   });
 
   describe('Error Handling', () => {
-    it.skip('should throw error for missing keywords parameter', async () => {
+    it('should throw error for missing keywords parameter', async () => {
       await expect(tool.handle({}, mockContext)).rejects.toThrow(
         'Missing or invalid "keywords" parameter',
       );
     });
 
-    it.skip('should throw error for invalid keywords parameter type', async () => {
+    it('should throw error for invalid keywords parameter type', async () => {
       await expect(tool.handle({ keywords: 123 }, mockContext)).rejects.toThrow(
         'Missing or invalid "keywords" parameter',
       );
     });
 
-    it.skip('should throw error for null keywords parameter', async () => {
+    it('should throw error for null keywords parameter', async () => {
       await expect(
         tool.handle({ keywords: null }, mockContext),
       ).rejects.toThrow('Missing or invalid "keywords" parameter');
     });
 
-    it.skip('should throw error for invalid registry parameter type', async () => {
+    it('should throw error for invalid registry parameter type', async () => {
       await expect(
         tool.handle({ keywords: 'test', registry: 123 }, mockContext),
       ).rejects.toThrow('Invalid "registry" parameter - must be a string');
     });
 
-    it('should handle empty keywords gracefully', async () => {
-      mockRegistryContext.searchServers.mockResolvedValue({
-        found: false,
-        servers: [],
-        message: 'No servers found',
-      } satisfies RegistrySearchResult);
-
-      const result = await tool.handle({ keywords: '' }, mockContext);
-      const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain('No servers found');
+    it('should throw error for empty keywords', async () => {
+      await expect(tool.handle({ keywords: '' }, mockContext)).rejects.toThrow(
+        'Missing or invalid "keywords" parameter',
+      );
     });
 
     it('should handle whitespace-only keywords', async () => {
