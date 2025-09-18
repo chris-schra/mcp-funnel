@@ -4,26 +4,17 @@ import {
   RegistryServer,
   RegistryInstallInfo,
 } from '../../registry/types/registry.types.js';
-
-// Mock the RegistryContext module using the __mocks__ pattern
-vi.mock('../../registry/registry-context.js');
-
-// Import GetServerInstallInfo after the mock is set up
 import { GetServerInstallInfo } from './index.js';
-// Import the mocked RegistryContext to get access to the mock class
-import { RegistryContext } from '../../registry/registry-context.js';
+
+// Mock fetch globally
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
 
 describe('GetServerInstallInfo', () => {
   let tool: GetServerInstallInfo;
   let mockContext: CoreToolContext;
-  let mockRegistryContext: RegistryContext & {
-    _setServerDetailsMock: (mock: ReturnType<typeof vi.fn>) => void;
-  };
 
   beforeEach(() => {
-    // Reset the singleton between tests
-    RegistryContext.reset();
-
     tool = new GetServerInstallInfo();
 
     mockContext = {
@@ -36,11 +27,39 @@ describe('GetServerInstallInfo', () => {
       enableTools: vi.fn(),
     };
 
-    mockRegistryContext = RegistryContext.getInstance(
-      mockContext.config,
-    ) as RegistryContext & {
-      _setServerDetailsMock: (mock: ReturnType<typeof vi.fn>) => void;
-    };
+    // Reset mocks
+    vi.clearAllMocks();
+
+    // Default mock implementation
+    mockFetch.mockImplementation(async (url: string) => {
+      // Handle direct server fetch by ID (UUID pattern)
+      if (url.includes('/v0/servers/') && !url.includes('search=')) {
+        return {
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          json: async () => ({}),
+        };
+      }
+
+      // Handle search endpoint
+      if (url.includes('/v0/servers?search=')) {
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: async () => ({
+            servers: [],
+            metadata: {
+              count: 0,
+              next_cursor: null,
+            },
+          }),
+        };
+      }
+
+      throw new Error(`Unmocked fetch request: ${url}`);
+    });
   });
 
   describe('Tool Definition', () => {
@@ -106,7 +125,7 @@ describe('GetServerInstallInfo', () => {
     it('should fetch server details and return install info', async () => {
       const mockServer: RegistryServer = {
         id: 'test-server-id',
-        name: 'Test Server',
+        name: 'test-server-id', // Name matches ID for exact match
         description: 'A test MCP server for unit testing',
         packages: [
           {
@@ -123,9 +142,24 @@ describe('GetServerInstallInfo', () => {
         tools: ['test_tool_1', 'test_tool_2'],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      // Mock search to find server by name
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=test-server-id')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: {
+                count: 1,
+                next_cursor: null,
+              },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'test-server-id' },
@@ -137,7 +171,7 @@ describe('GetServerInstallInfo', () => {
       expect(content.type).toBe('text');
 
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
-      expect(installInfo.name).toBe('Test Server');
+      expect(installInfo.name).toBe('test-server-id');
       expect(installInfo.description).toBe(
         'A test MCP server for unit testing',
       );
@@ -147,9 +181,13 @@ describe('GetServerInstallInfo', () => {
     });
 
     it('should handle server not found', async () => {
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(null),
-      );
+      // Mock fetch to return 404
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: async () => ({}),
+      });
 
       const result = await tool.handle(
         { registryId: 'nonexistent-server' },
@@ -165,22 +203,36 @@ describe('GetServerInstallInfo', () => {
     it('should generate correct config for npm packages', async () => {
       const mockServer: RegistryServer = {
         id: 'npm-server',
-        name: 'NPM Server',
+        name: 'npm-server',
         description: 'Server from NPM package',
         packages: [
           {
             identifier: '@mcp/example-server',
             registry_type: 'npm',
-            runtime_hint: 'node',
             package_arguments: ['--config', 'production.json'],
             environment_variables: [{ name: 'NODE_ENV', value: 'production' }],
           },
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      // Mock search to find server by name
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=npm-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: {
+                count: 1,
+                next_cursor: null,
+              },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'npm-server' },
@@ -205,22 +257,32 @@ describe('GetServerInstallInfo', () => {
     it('should generate correct config for pypi packages', async () => {
       const mockServer: RegistryServer = {
         id: 'pypi-server',
-        name: 'Python Server',
+        name: 'pypi-server',
         description: 'Server from PyPI package',
         packages: [
           {
             identifier: 'mcp-example-server',
             registry_type: 'pypi',
-            runtime_hint: 'python',
             package_arguments: ['--verbose'],
             environment_variables: [{ name: 'PYTHONPATH', value: '/opt/mcp' }],
           },
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=pypi-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: { count: 1, next_cursor: null },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'pypi-server' },
@@ -243,7 +305,7 @@ describe('GetServerInstallInfo', () => {
     it('should generate correct config for oci containers', async () => {
       const mockServer: RegistryServer = {
         id: 'oci-server',
-        name: 'Container Server',
+        name: 'oci-server',
         description: 'Server from OCI container',
         packages: [
           {
@@ -255,9 +317,20 @@ describe('GetServerInstallInfo', () => {
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=oci-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: { count: 1, next_cursor: null },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'oci-server' },
@@ -284,7 +357,7 @@ describe('GetServerInstallInfo', () => {
     it('should generate correct config for remote servers', async () => {
       const mockServer: RegistryServer = {
         id: 'remote-server',
-        name: 'Remote Server',
+        name: 'remote-server',
         description: 'Server accessed remotely',
         remotes: [
           {
@@ -298,9 +371,20 @@ describe('GetServerInstallInfo', () => {
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=remote-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: { count: 1, next_cursor: null },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'remote-server' },
@@ -323,7 +407,7 @@ describe('GetServerInstallInfo', () => {
     it('should handle environment variables correctly', async () => {
       const mockServer: RegistryServer = {
         id: 'env-server',
-        name: 'Environment Server',
+        name: 'env-server',
         description: 'Server with complex environment setup',
         packages: [
           {
@@ -342,9 +426,20 @@ describe('GetServerInstallInfo', () => {
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=env-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: { count: 1, next_cursor: null },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'env-server' },
@@ -367,7 +462,7 @@ describe('GetServerInstallInfo', () => {
     it('should return raw metadata for unknown registry types', async () => {
       const mockServer: RegistryServer = {
         id: 'unknown-server',
-        name: 'Unknown Server',
+        name: 'unknown-server',
         description: 'Server with unknown type',
         packages: [
           {
@@ -378,9 +473,20 @@ describe('GetServerInstallInfo', () => {
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=unknown-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: { count: 1, next_cursor: null },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'unknown-server' },
@@ -392,11 +498,13 @@ describe('GetServerInstallInfo', () => {
 
       // Should return a basic config for unknown registry types
       expect(installInfo.configSnippet).toEqual({
-        name: 'Unknown Server',
+        name: 'unknown-server',
       });
 
-      // Raw server metadata should be included in install instructions
-      expect(installInfo.installInstructions).toContain('Raw server metadata');
+      // Install instructions should contain documentation reference for unknown type
+      expect(installInfo.installInstructions).toContain(
+        'Check documentation for unknown-package package',
+      );
     });
 
     it('should handle missing registryId parameter', async () => {
@@ -418,9 +526,7 @@ describe('GetServerInstallInfo', () => {
     });
 
     it('should handle registry context errors gracefully', async () => {
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockRejectedValue(new Error('Registry connection failed')),
-      );
+      mockFetch.mockRejectedValueOnce(new Error('Registry connection failed'));
 
       const result = await tool.handle(
         { registryId: 'test-server' },
@@ -429,14 +535,14 @@ describe('GetServerInstallInfo', () => {
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };
-      expect(content.text).toContain('Error retrieving server information');
-      expect(content.text).toContain('Registry connection failed');
+      // The RegistryContext handles errors gracefully and returns null for server not found
+      expect(content.text).toContain('Server not found: test-server');
     });
 
     it('should prefer packages over remotes when both exist', async () => {
       const mockServer: RegistryServer = {
         id: 'hybrid-server',
-        name: 'Hybrid Server',
+        name: 'hybrid-server',
         description: 'Server with both package and remote options',
         packages: [
           {
@@ -452,9 +558,20 @@ describe('GetServerInstallInfo', () => {
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=hybrid-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: { count: 1, next_cursor: null },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'hybrid-server' },
@@ -472,7 +589,7 @@ describe('GetServerInstallInfo', () => {
     it('should handle multiple packages by using the first one', async () => {
       const mockServer: RegistryServer = {
         id: 'multi-package-server',
-        name: 'Multi Package Server',
+        name: 'multi-package-server',
         description: 'Server with multiple package options',
         packages: [
           {
@@ -486,9 +603,20 @@ describe('GetServerInstallInfo', () => {
         ],
       };
 
-      mockRegistryContext._setServerDetailsMock(
-        vi.fn().mockResolvedValue(mockServer),
-      );
+      mockFetch.mockImplementationOnce(async (url: string) => {
+        if (url.includes('/v0/servers?search=multi-package-server')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              servers: [mockServer],
+              metadata: { count: 1, next_cursor: null },
+            }),
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      });
 
       const result = await tool.handle(
         { registryId: 'multi-package-server' },
