@@ -1,8 +1,7 @@
 // Transport domain re-exports - single entry point for transport functionality
 
 // Errors
-// TODO: Add error re-exports when created
-// export * from './errors/transport-error.js';
+export * from './errors/transport-error.js';
 
 // Implementations
 // TODO: Add implementation re-exports when created
