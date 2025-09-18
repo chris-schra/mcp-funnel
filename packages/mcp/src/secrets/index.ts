@@ -32,3 +32,10 @@ export type { SecretManagerOptions } from './secret-manager.js';
 export { SecretProviderRegistry } from './secret-provider-registry.js';
 export { ProcessEnvProvider } from './process-env-provider.js';
 export { InlineProvider } from './inline-provider.js';
+export { DotEnvProvider } from './dotenv-provider.js';
+export {
+  createSecretProvider,
+  createSecretProviders,
+  validateSecretProviderConfig,
+} from './provider-factory.js';
+export type { SecretProviderConfig } from './provider-configs.js';
