@@ -44,12 +44,12 @@ describe('GetServerInstallInfo', () => {
   });
 
   describe('Tool Definition', () => {
-    it.skip('should have correct name and schema', () => {
+    it('should have correct name and schema', () => {
       expect(tool.name).toBe('get_server_install_info');
 
       const toolDef = tool.tool;
       expect(toolDef.name).toBe('get_server_install_info');
-      expect(toolDef.description).toContain('Get installation information');
+      expect(toolDef.description).toContain('Get installation instructions');
       expect(toolDef.inputSchema.type).toBe('object');
       expect(toolDef.inputSchema.required).toEqual(['registryId']);
 
@@ -66,15 +66,15 @@ describe('GetServerInstallInfo', () => {
   });
 
   describe('isEnabled', () => {
-    it.skip('should be enabled when exposeCoreTools is not specified', () => {
+    it('should be enabled when exposeCoreTools is not specified', () => {
       expect(tool.isEnabled({ servers: [] })).toBe(true);
     });
 
-    it.skip('should be disabled when exposeCoreTools is empty array', () => {
+    it('should be disabled when exposeCoreTools is empty array', () => {
       expect(tool.isEnabled({ servers: [], exposeCoreTools: [] })).toBe(false);
     });
 
-    it.skip('should be enabled when exposeCoreTools includes tool name', () => {
+    it('should be enabled when exposeCoreTools includes tool name', () => {
       expect(
         tool.isEnabled({
           servers: [],
@@ -83,19 +83,19 @@ describe('GetServerInstallInfo', () => {
       ).toBe(true);
     });
 
-    it.skip('should be enabled when exposeCoreTools has matching pattern', () => {
+    it('should be enabled when exposeCoreTools has matching pattern', () => {
       expect(tool.isEnabled({ servers: [], exposeCoreTools: ['get_*'] })).toBe(
         true,
       );
     });
 
-    it.skip('should be enabled when exposeCoreTools is ["*"]', () => {
+    it('should be enabled when exposeCoreTools is ["*"]', () => {
       expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
         true,
       );
     });
 
-    it.skip('should be disabled when exposeCoreTools excludes the tool', () => {
+    it('should be disabled when exposeCoreTools excludes the tool', () => {
       expect(
         tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
       ).toBe(false);
@@ -103,7 +103,7 @@ describe('GetServerInstallInfo', () => {
   });
 
   describe('execute', () => {
-    it.skip('should fetch server details and return install info', async () => {
+    it('should fetch server details and return install info', async () => {
       const mockServer: RegistryServer = {
         id: 'test-server-id',
         name: 'Test Server',
@@ -146,7 +146,7 @@ describe('GetServerInstallInfo', () => {
       expect(installInfo.tools).toEqual(['test_tool_1', 'test_tool_2']);
     });
 
-    it.skip('should handle server not found', async () => {
+    it('should handle server not found', async () => {
       mockRegistryContext._setServerDetailsMock(
         vi.fn().mockResolvedValue(null),
       );
@@ -162,7 +162,7 @@ describe('GetServerInstallInfo', () => {
       expect(content.text).toContain('nonexistent-server');
     });
 
-    it.skip('should generate correct config for npm packages', async () => {
+    it('should generate correct config for npm packages', async () => {
       const mockServer: RegistryServer = {
         id: 'npm-server',
         name: 'NPM Server',
@@ -202,7 +202,7 @@ describe('GetServerInstallInfo', () => {
       });
     });
 
-    it.skip('should generate correct config for pypi packages', async () => {
+    it('should generate correct config for pypi packages', async () => {
       const mockServer: RegistryServer = {
         id: 'pypi-server',
         name: 'Python Server',
@@ -240,7 +240,7 @@ describe('GetServerInstallInfo', () => {
       });
     });
 
-    it.skip('should generate correct config for oci containers', async () => {
+    it('should generate correct config for oci containers', async () => {
       const mockServer: RegistryServer = {
         id: 'oci-server',
         name: 'Container Server',
@@ -281,7 +281,7 @@ describe('GetServerInstallInfo', () => {
       });
     });
 
-    it.skip('should generate correct config for remote servers', async () => {
+    it('should generate correct config for remote servers', async () => {
       const mockServer: RegistryServer = {
         id: 'remote-server',
         name: 'Remote Server',
@@ -320,7 +320,7 @@ describe('GetServerInstallInfo', () => {
       });
     });
 
-    it.skip('should handle environment variables correctly', async () => {
+    it('should handle environment variables correctly', async () => {
       const mockServer: RegistryServer = {
         id: 'env-server',
         name: 'Environment Server',
@@ -361,10 +361,10 @@ describe('GetServerInstallInfo', () => {
 
       // Install instructions should mention required variables
       expect(installInfo.installInstructions).toContain('REQUIRED_VAR');
-      expect(installInfo.installInstructions).toContain('required');
+      expect(installInfo.installInstructions).toContain('Required');
     });
 
-    it.skip('should return raw metadata for unknown registry types', async () => {
+    it('should return raw metadata for unknown registry types', async () => {
       const mockServer: RegistryServer = {
         id: 'unknown-server',
         name: 'Unknown Server',
@@ -390,32 +390,34 @@ describe('GetServerInstallInfo', () => {
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
 
-      // Should return the raw server data when unable to generate config
+      // Should return a basic config for unknown registry types
       expect(installInfo.configSnippet).toEqual({
         name: 'Unknown Server',
-        _raw_metadata: mockServer,
       });
+
+      // Raw server metadata should be included in install instructions
+      expect(installInfo.installInstructions).toContain('Raw server metadata');
     });
 
-    it.skip('should handle missing registryId parameter', async () => {
+    it('should handle missing registryId parameter', async () => {
       const result = await tool.handle({}, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };
-      expect(content.text).toContain('Missing required parameter');
+      expect(content.text).toContain('Missing or invalid');
       expect(content.text).toContain('registryId');
     });
 
-    it.skip('should handle invalid registryId parameter', async () => {
+    it('should handle invalid registryId parameter', async () => {
       const result = await tool.handle({ registryId: 123 }, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };
-      expect(content.text).toContain('Invalid parameter');
+      expect(content.text).toContain('Missing or invalid');
       expect(content.text).toContain('registryId');
     });
 
-    it.skip('should handle registry context errors gracefully', async () => {
+    it('should handle registry context errors gracefully', async () => {
       mockRegistryContext._setServerDetailsMock(
         vi.fn().mockRejectedValue(new Error('Registry connection failed')),
       );
@@ -427,11 +429,11 @@ describe('GetServerInstallInfo', () => {
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };
-      expect(content.text).toContain('Error fetching server details');
+      expect(content.text).toContain('Error retrieving server information');
       expect(content.text).toContain('Registry connection failed');
     });
 
-    it.skip('should prefer packages over remotes when both exist', async () => {
+    it('should prefer packages over remotes when both exist', async () => {
       const mockServer: RegistryServer = {
         id: 'hybrid-server',
         name: 'Hybrid Server',
@@ -467,7 +469,7 @@ describe('GetServerInstallInfo', () => {
       expect(installInfo.configSnippet.transport).toBeUndefined();
     });
 
-    it.skip('should handle multiple packages by using the first one', async () => {
+    it('should handle multiple packages by using the first one', async () => {
       const mockServer: RegistryServer = {
         id: 'multi-package-server',
         name: 'Multi Package Server',
