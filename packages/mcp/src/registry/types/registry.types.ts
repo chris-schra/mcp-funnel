@@ -15,7 +15,7 @@ export interface EnvironmentVariable {
   /** Optional default value for the environment variable */
   value?: string;
   /** Whether this environment variable is required for the server to function */
-  required?: boolean;
+  is_required?: boolean;
 }
 
 /**
@@ -36,6 +36,23 @@ export interface Package {
 }
 
 /**
+ * Key-value input definition for configuration parameters.
+ * Used for headers, environment variables, and other configurable inputs.
+ */
+export interface KeyValueInput {
+  /** The name of the key */
+  name: string;
+  /** Optional value for the key */
+  value?: string;
+  /** Whether this input is required */
+  is_required?: boolean;
+  /** Whether this input contains sensitive information */
+  is_secret?: boolean;
+  /** Human-readable description of what this input is for */
+  description?: string;
+}
+
+/**
  * Remote server connection information.
  * Used for servers that are accessed over network protocols.
  */
@@ -45,7 +62,7 @@ export interface Remote {
   /** The URL or connection string for the remote server */
   url: string;
   /** Optional HTTP headers to include in requests to the remote server */
-  headers?: Record<string, string>;
+  headers?: KeyValueInput[];
 }
 
 /**
@@ -55,6 +72,14 @@ export interface Remote {
 export interface ServerDetail {
   /** Unique identifier for the server in the registry */
   id: string;
+  /** Registry metadata including publication and update information */
+  _meta?: {
+    'io.modelcontextprotocol.registry/official': {
+      id: string;
+      published_at: string;
+      updated_at: string;
+    };
+  };
   /** Human-readable name of the server */
   name: string;
   /** Description of what the server does and its capabilities */

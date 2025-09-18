@@ -20,7 +20,7 @@ describe('Config Generation', () => {
         package_arguments: ['--config', 'production.json'],
         environment_variables: [
           { name: 'NODE_ENV', value: 'production' },
-          { name: 'API_KEY', required: true },
+          { name: 'API_KEY', is_required: true },
         ],
       };
 
@@ -128,7 +128,7 @@ describe('Config Generation', () => {
         environment_variables: [
           { name: 'PORT', value: '3000' },
           { name: 'HOST', value: '0.0.0.0' },
-          { name: 'SECRET_KEY', required: true },
+          { name: 'SECRET_KEY', is_required: true },
         ],
       };
 
@@ -215,11 +215,11 @@ describe('Config Generation', () => {
       const remote: Remote = {
         type: 'sse',
         url: 'https://api.example.com/mcp/events',
-        headers: {
-          Authorization: 'Bearer ${API_TOKEN}',
-          'Content-Type': 'text/event-stream',
-          Accept: 'text/event-stream',
-        },
+        headers: [
+          { name: 'Authorization', value: 'Bearer ${API_TOKEN}' },
+          { name: 'Content-Type', value: 'text/event-stream' },
+          { name: 'Accept', value: 'text/event-stream' },
+        ],
       };
 
       const server: RegistryServer = {
@@ -235,11 +235,11 @@ describe('Config Generation', () => {
         name: 'Remote SSE Server',
         transport: 'sse',
         url: 'https://api.example.com/mcp/events',
-        headers: {
-          Authorization: 'Bearer ${API_TOKEN}',
-          'Content-Type': 'text/event-stream',
-          Accept: 'text/event-stream',
-        },
+        headers: [
+          { name: 'Authorization', value: 'Bearer ${API_TOKEN}' },
+          { name: 'Content-Type', value: 'text/event-stream' },
+          { name: 'Accept', value: 'text/event-stream' },
+        ],
       });
     });
 
@@ -247,10 +247,10 @@ describe('Config Generation', () => {
       const remote: Remote = {
         type: 'websocket',
         url: 'wss://websocket.example.com/mcp',
-        headers: {
-          Authorization: 'Bearer ${WS_TOKEN}',
-          'Sec-WebSocket-Protocol': 'mcp-v1',
-        },
+        headers: [
+          { name: 'Authorization', value: 'Bearer ${WS_TOKEN}' },
+          { name: 'Sec-WebSocket-Protocol', value: 'mcp-v1' },
+        ],
       };
 
       const server: RegistryServer = {
@@ -266,10 +266,10 @@ describe('Config Generation', () => {
         name: 'Remote WebSocket Server',
         transport: 'websocket',
         url: 'wss://websocket.example.com/mcp',
-        headers: {
-          Authorization: 'Bearer ${WS_TOKEN}',
-          'Sec-WebSocket-Protocol': 'mcp-v1',
-        },
+        headers: [
+          { name: 'Authorization', value: 'Bearer ${WS_TOKEN}' },
+          { name: 'Sec-WebSocket-Protocol', value: 'mcp-v1' },
+        ],
       });
     });
 
@@ -298,9 +298,9 @@ describe('Config Generation', () => {
     it.skip('should handle environment variables array to object conversion', () => {
       const envVars: EnvironmentVariable[] = [
         { name: 'VAR1', value: 'value1' },
-        { name: 'VAR2', value: 'value2', required: false },
-        { name: 'VAR3', required: true }, // No default value
-        { name: 'VAR4', value: '', required: false }, // Empty string value
+        { name: 'VAR2', value: 'value2', is_required: false },
+        { name: 'VAR3', is_required: true }, // No default value
+        { name: 'VAR4', value: '', is_required: false }, // Empty string value
         { name: 'VAR5' }, // No value, no required flag
       ];
 
@@ -456,7 +456,7 @@ describe('Config Generation', () => {
             identifier: '@example/mcp-server',
             registry_type: 'npm',
             environment_variables: [
-              { name: 'API_KEY', required: true },
+              { name: 'API_KEY', is_required: true },
               { name: 'DEBUG', value: 'false' },
             ],
           },
@@ -481,7 +481,7 @@ describe('Config Generation', () => {
           {
             identifier: 'mcp-python-server',
             registry_type: 'pypi',
-            environment_variables: [{ name: 'PYTHON_PATH', required: true }],
+            environment_variables: [{ name: 'PYTHON_PATH', is_required: true }],
           },
         ],
       };
@@ -525,9 +525,7 @@ describe('Config Generation', () => {
           {
             type: 'sse',
             url: 'https://api.example.com/mcp',
-            headers: {
-              Authorization: 'Bearer ${API_TOKEN}',
-            },
+            headers: [{ name: 'Authorization', value: 'Bearer ${API_TOKEN}' }],
           },
         ],
       };
@@ -591,8 +589,8 @@ describe('Config Generation', () => {
             identifier: 'env-server',
             registry_type: 'npm',
             environment_variables: [
-              { name: 'REQUIRED_VAR1', required: true },
-              { name: 'REQUIRED_VAR2', required: true },
+              { name: 'REQUIRED_VAR1', is_required: true },
+              { name: 'REQUIRED_VAR2', is_required: true },
               { name: 'OPTIONAL_VAR', value: 'default' },
             ],
           },
