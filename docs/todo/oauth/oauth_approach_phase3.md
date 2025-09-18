@@ -114,6 +114,14 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ### Task 1: Extract Shared OAuth Utilities
 **Priority: CRITICAL**
 **Size: Medium (4-5 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous phase
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** assess current OAuth provider implementations
+- You **MUST** identify all duplicated code patterns
+- You **MUST** ensure no other worker is modifying OAuth providers
+
 **Files to create:**
 - `packages/mcp/src/auth/utils/oauth-utils.ts`
 - `packages/mcp/src/auth/utils/oauth-types.ts`
@@ -129,9 +137,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - `packages/mcp/src/auth/implementations/oauth2-client-credentials.ts`
 - `packages/mcp/src/auth/implementations/oauth2-authorization-code.ts`
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 2: Create Base OAuth Provider
 **Priority: HIGH**
 **Size: Medium (4-5 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** ensure Task 1 is complete (utilities extracted)
+- You **MUST** verify OAuth utilities are properly exported
+- You **MUST** ensure no other worker is modifying OAuth providers
+
 **Files to create:**
 - `packages/mcp/src/auth/implementations/base-oauth-provider.ts`
 
@@ -147,9 +173,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] OAuth2ClientCredentialsProvider extends BaseOAuthProvider
 - [ ] OAuth2AuthCodeProvider extends BaseOAuthProvider
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 3: Extract HTTP Utilities to Base Transport
 **Priority: CRITICAL**
 **Size: Large (6-8 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** assess current transport implementations
+- You **MUST** identify HTTP logic that can be shared
+- You **MUST** ensure no other worker is modifying transports
+
 **Files to modify:**
 - `packages/mcp/src/transports/implementations/base-client-transport.ts`
 - `packages/mcp/src/transports/implementations/sse-client-transport.ts`
@@ -167,9 +211,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] Call super.sendHttpRequest() from base class
 - [ ] Keep only SSE-specific logic (EventSource, query params)
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 4: Create Base Transport Test Suite
 **Priority: CRITICAL**
 **Size: Medium (5-6 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** ensure Task 3 is complete (HTTP utilities extracted)
+- You **MUST** verify base transport has shared methods
+- You **MUST** review existing test patterns from WebSocket tests
+
 **Files to create:**
 - `packages/mcp/test/unit/base-client-transport.test.ts`
 - `packages/mcp/test/unit/transport-utils.test.ts`
@@ -188,9 +250,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] Exponential backoff calculations
 - [ ] Utility function testing
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 5: Refactor WebSocket Transport Tests
 **Priority: HIGH**
 **Size: Medium (3-4 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** ensure Task 4 is complete (base tests exist)
+- You **MUST** verify base transport tests cover shared functionality
+- You **MUST** ensure no other worker is modifying WebSocket tests
+
 **Files to modify:**
 - `packages/mcp/test/unit/websocket-client-transport.test.ts`
 
@@ -208,9 +288,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] WebSocket close codes
 - [ ] Auth headers in handshake
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 6: Implement SSE-Specific Tests Only
 **Priority: CRITICAL**
 **Size: Medium (5-6 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** ensure Task 4 is complete (base tests exist)
+- You **MUST** ensure Task 7 is complete (mock infrastructure)
+- You **MUST** verify SSE transport implementation is stable
+
 **Files to modify:**
 - `packages/mcp/test/unit/sse-client-transport.test.ts`
 
@@ -225,9 +323,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 
 **Expected test count: ~15-20 tests (not 78)**
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 7: Create SSE Mock Infrastructure
 **Priority: HIGH**
 **Size: Medium (4-5 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** review MockWebSocket implementation for patterns
+- You **MUST** verify Express is available as dependency
+- You **MUST** ensure test/mocks directory exists
+
 **Files to create:**
 - `packages/mcp/test/mocks/mock-eventsource.ts`
 - `packages/mcp/test/mocks/mock-sse-server.ts`
@@ -244,9 +360,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] Auth validation
 - [ ] Error simulation
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 8: End-to-End OAuth Flow Tests
 **Priority: HIGH**
 **Size: Medium (4-5 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** ensure ALL previous tasks are complete
+- You **MUST** verify mock infrastructure is working
+- You **MUST** ensure OAuth providers and transports are stable
+
 **Files to create:**
 - `packages/mcp/test/e2e/oauth-sse-integration.test.ts`
 
@@ -257,9 +391,27 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] Connection recovery with auth
 - [ ] Multiple concurrent authenticated connections
 
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
 ### Task 9: Create OAuth Utility Tests
 **Priority: MEDIUM**
 **Size: Small (2-3 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** make sure that all files modified by the workers and this file have been committed
+- You **MUST** ensure Task 1 and 2 are complete (utilities and base provider)
+- You **MUST** verify utilities are properly exported
+- You **MUST** review existing OAuth provider tests for patterns
+
 **Files to create:**
 - `packages/mcp/test/unit/oauth-utils.test.ts`
 - `packages/mcp/test/unit/base-oauth-provider.test.ts`
@@ -270,6 +422,16 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] Error response handling
 - [ ] Shared constants validation
 - [ ] Base provider methods
+
+**DO NOT** mark this task as complete until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+- [ ] All files modified by this task have been committed
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** marking as complete.
 
 ## Execution Strategy
 
