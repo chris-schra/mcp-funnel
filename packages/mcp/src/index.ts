@@ -548,13 +548,18 @@ export class MCPProxy {
   ): Promise<Record<string, string>> {
     let finalEnv: Record<string, string> = {};
 
-    // 1. Start with filtered process.env if defaultPassthroughEnv is set
-    if (this._config.defaultPassthroughEnv) {
-      finalEnv = filterEnvVars(process.env, this._config.defaultPassthroughEnv);
-    } else {
-      // Current behavior - include all process env vars
-      finalEnv = { ...process.env } as Record<string, string>;
-    }
+    // 1. Start with filtered process.env
+    // Use configured defaultPassthroughEnv or secure defaults if not specified
+    const passthroughEnv = this._config.defaultPassthroughEnv ?? [
+      'NODE_ENV',
+      'HOME',
+      'USER',
+      'PATH',  // Required for finding executables
+      'TERM',
+      'CI',
+      'DEBUG',
+    ];
+    finalEnv = filterEnvVars(process.env, passthroughEnv);
 
     // 2. Apply default secret providers if configured
     if (this._config.defaultSecretProviders) {
