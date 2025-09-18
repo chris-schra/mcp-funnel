@@ -13,6 +13,7 @@ import type {
   StdioTransportConfig,
   SSETransportConfig,
   WebSocketTransportConfig,
+  StreamableHTTPTransportConfig,
 } from '../types/transport.types.js';
 import type { IAuthProvider } from '../auth/interfaces/auth-provider.interface.js';
 import type { ITokenStorage } from '../auth/interfaces/token-storage.interface.js';
@@ -23,6 +24,7 @@ import {
 import { StdioClientTransport } from './implementations/stdio-client-transport.js';
 import { SSEClientTransport } from './implementations/sse-client-transport.js';
 import { WebSocketClientTransport } from './implementations/websocket-client-transport.js';
+import { StreamableHTTPClientTransport } from './implementations/streamable-http-client-transport.js';
 
 /**
  * Dependencies that can be injected into transports
@@ -394,6 +396,9 @@ function validateConfig(config: TransportConfig): void {
     case 'websocket':
       validateWebSocketConfig(config);
       break;
+    case 'streamable-http':
+      validateStreamableHTTPConfig(config);
+      break;
     default: {
       // Use exhaustive check to handle unknown transport types
       const _exhaustive: never = config;
@@ -497,7 +502,56 @@ function validateWebSocketConfig(config: WebSocketTransportConfig): void {
 }
 
 /**
- * Validates reconnection configuration (shared by SSE and WebSocket).
+ * Validates StreamableHTTP transport configuration.
+ */
+function validateStreamableHTTPConfig(
+  config: StreamableHTTPTransportConfig,
+): void {
+  if (!config.url) {
+    throw new TransportError(
+      'URL is required for StreamableHTTP transport',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+
+  // Validate URL format and protocol
+  try {
+    const url = new URL(config.url);
+    const validProtocols = ['http:', 'https:'];
+    if (!validProtocols.includes(url.protocol)) {
+      throw new TransportError(
+        'StreamableHTTP URL must use http: or https: protocol',
+        TransportErrorCode.INVALID_URL,
+        false,
+      );
+    }
+  } catch (error) {
+    throw new TransportError(
+      'Invalid URL format',
+      TransportErrorCode.INVALID_URL,
+      false,
+      error instanceof Error ? error : undefined,
+    );
+  }
+
+  // Validate reconnect configuration
+  if (config.reconnect) {
+    validateReconnectConfig(config.reconnect);
+  }
+
+  // Validate timeout
+  if (config.timeout !== undefined && config.timeout <= 0) {
+    throw new TransportError(
+      'timeout must be a positive number',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+}
+
+/**
+ * Validates reconnection configuration (shared by SSE, WebSocket, and StreamableHTTP).
  */
 function validateReconnectConfig(reconnect: {
   maxAttempts?: number;
@@ -572,6 +626,19 @@ function applyDefaults(config: TransportConfig): TransportConfig {
           ...DEFAULT_WEBSOCKET_CONFIG.reconnect,
           ...config.reconnect,
         },
+      };
+    case 'streamable-http':
+      return {
+        ...config,
+        timeout: config.timeout ?? 30000,
+        reconnect: config.reconnect
+          ? {
+              maxAttempts: config.reconnect.maxAttempts ?? 3,
+              initialDelayMs: config.reconnect.initialDelayMs ?? 1000,
+              maxDelayMs: config.reconnect.maxDelayMs ?? 30000,
+              backoffMultiplier: config.reconnect.backoffMultiplier ?? 1.5,
+            }
+          : undefined,
       };
     default:
       return config;
@@ -665,6 +732,32 @@ async function createTransportImplementation(
       return new TransportWrapper(
         wsTransport,
         'websocket',
+        config,
+        dependencies?.authProvider,
+        dependencies?.tokenStorage,
+      );
+    }
+
+    case 'streamable-http': {
+      // Create StreamableHTTP transport with OAuth configuration
+      const streamableHttpTransport = new StreamableHTTPClientTransport({
+        url: config.url,
+        timeout: config.timeout,
+        authProvider: dependencies?.authProvider
+          ? {
+              getAuthHeaders: () => dependencies.authProvider!.getHeaders(),
+              refreshToken: dependencies.authProvider.refresh
+                ? () => dependencies.authProvider!.refresh!()
+                : undefined,
+            }
+          : undefined,
+        reconnect: config.reconnect,
+        sessionId: config.sessionId,
+      });
+
+      return new TransportWrapper(
+        streamableHttpTransport,
+        'streamable-http',
         config,
         dependencies?.authProvider,
         dependencies?.tokenStorage,

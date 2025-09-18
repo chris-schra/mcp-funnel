@@ -57,6 +57,7 @@
     "@anthropic-ai/claude-code": "^1.0.112",
     "@hono/zod-validator": "^0.7.2",
     "@types/eventsource": "^3.0.0",
+    "@types/express": "^5.0.0",
     "@types/node": "^24.3.1",
     "@types/uuid": "^11.0.0",
     "@types/ws": "^8.18.1",

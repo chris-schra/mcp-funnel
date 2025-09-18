@@ -49,9 +49,21 @@ export interface WebSocketTransportConfig {
 }
 
 /**
+ * StreamableHTTP transport configuration
+ */
+export interface StreamableHTTPTransportConfig {
+  type: 'streamable-http';
+  url: string;
+  timeout?: number;
+  reconnect?: ReconnectionConfig;
+  sessionId?: string;
+}
+
+/**
  * Discriminated union of all transport configuration types
  */
 export type TransportConfig =
   | StdioTransportConfig
   | SSETransportConfig
-  | WebSocketTransportConfig;
+  | WebSocketTransportConfig
+  | StreamableHTTPTransportConfig;
