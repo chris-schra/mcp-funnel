@@ -50,6 +50,14 @@ export interface ICommand {
    * @returns Array of server dependencies, or undefined if no dependencies
    */
   getServerDependencies?(): ServerDependency[] | undefined;
+
+  /**
+   * Set the MCPProxy instance for server dependency support.
+   * Called by MCPProxy during command initialization.
+   *
+   * @param proxy - The MCPProxy instance
+   */
+  setProxy?(proxy: IMCPProxy): void;
 }
 
 /**

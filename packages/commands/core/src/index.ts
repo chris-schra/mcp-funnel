@@ -13,6 +13,7 @@ export type {
   ICommandOptions,
   ServerDependency,
   ServerRequirementResult,
+  IMCPProxy,
   Tool,
   CallToolResult,
 } from './interfaces.js';
