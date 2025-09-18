@@ -10,7 +10,20 @@ import {
   ProxyConfig,
   normalizeExtendedServers,
   TargetServer,
+  ExtendedTargetServerZod,
+  AuthConfigZod,
+  TransportConfigZod,
 } from './config.js';
+import { createTransport } from './transports/index.js';
+import {
+  MemoryTokenStorage,
+  OAuth2ClientCredentialsProvider,
+  BearerTokenAuthProvider,
+  NoAuthProvider,
+  AuthenticationError,
+  type IAuthProvider,
+  type ITokenStorage,
+} from './auth/index.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -36,6 +49,24 @@ export {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../.logs');
+
+/**
+ * Simple wrapper class for the transport factory function to provide dependency injection.
+ */
+class TransportFactory {
+  constructor(private tokenStorage: ITokenStorage) {}
+
+  async createTransport(
+    serverName: string,
+    transportConfig: TransportConfigZod,
+    authProvider: IAuthProvider,
+  ) {
+    return createTransport(transportConfig, {
+      authProvider,
+      tokenStorage: this.tokenStorage,
+    });
+  }
+}
 
 // Ensure log directory exists
 try {
@@ -249,22 +280,28 @@ export class MCPProxy {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
-  private _normalizedServers: TargetServer[];
+  private _normalizedServers: (TargetServer | ExtendedTargetServerZod)[];
   private toolRegistry: ToolRegistry;
   private coreTools: Map<string, ICoreTool> = new Map();
+  private transportFactory: TransportFactory;
 
-  private connectedServers = new Map<string, TargetServer>();
+  private connectedServers = new Map<
+    string,
+    TargetServer | ExtendedTargetServerZod
+  >();
   private disconnectedServers = new Map<
     string,
-    TargetServer & { error?: string }
+    (TargetServer | ExtendedTargetServerZod) & { error?: string }
   >();
 
   constructor(config: ProxyConfig) {
     this._config = config;
-    this._normalizedServers = normalizeExtendedServers(
-      config.servers,
-    ) as TargetServer[];
+    this._normalizedServers = normalizeExtendedServers(config.servers);
     this.toolRegistry = new ToolRegistry(config);
+
+    // Initialize TransportFactory with MemoryTokenStorage
+    const tokenStorage = new MemoryTokenStorage();
+    this.transportFactory = new TransportFactory(tokenStorage);
 
     this._normalizedServers.forEach((server) => {
       this.disconnectedServers.set(server.name, server);
@@ -528,6 +565,47 @@ export class MCPProxy {
     };
   }
 
+  /**
+   * Creates an appropriate auth provider based on the authentication configuration
+   */
+  private createAuthProvider(authConfig?: AuthConfigZod): IAuthProvider {
+    if (!authConfig || authConfig.type === 'none') {
+      return new NoAuthProvider();
+    }
+
+    switch (authConfig.type) {
+      case 'bearer': {
+        return new BearerTokenAuthProvider({ token: authConfig.token });
+      }
+      case 'oauth2-client': {
+        const tokenStorage = new MemoryTokenStorage();
+        return new OAuth2ClientCredentialsProvider(
+          {
+            type: 'oauth2-client',
+            clientId: authConfig.clientId,
+            clientSecret: authConfig.clientSecret,
+            tokenUrl: authConfig.tokenUrl,
+            scope: authConfig.scope,
+            audience: authConfig.audience,
+          },
+          tokenStorage,
+        );
+      }
+      case 'oauth2-code': {
+        throw new Error(
+          'OAuth2 Authorization Code flow is not yet implemented',
+        );
+      }
+      default: {
+        // TypeScript exhaustiveness check - this should never be reached
+        const _exhaustive: never = authConfig;
+        throw new Error(
+          `Unsupported auth type: ${JSON.stringify(_exhaustive)}`,
+        );
+      }
+    }
+  }
+
   private async connectToTargetServers() {
     const connectionPromises = this._normalizedServers.map(
       async (targetServer) => {
@@ -536,46 +614,92 @@ export class MCPProxy {
             name: targetServer.name,
             command: targetServer.command,
             args: targetServer.args,
+            hasAuth: !!(targetServer as ExtendedTargetServerZod).auth,
+            hasTransport: !!(targetServer as ExtendedTargetServerZod).transport,
           });
+
           const client = new Client({
             name: `proxy-client-${targetServer.name}`,
             version: '1.0.0',
           });
 
-          const transport = new PrefixedStdioClientTransport(
-            targetServer.name,
-            {
-              command: targetServer.command,
-              args: targetServer.args || [],
-              env: { ...process.env, ...targetServer.env } as Record<
+          let transport;
+          const extendedServer = targetServer as ExtendedTargetServerZod;
+
+          // Check if this is an extended server config with auth/transport
+          if (extendedServer.auth || extendedServer.transport) {
+            // Use TransportFactory for new OAuth-enabled configurations
+            const authProvider = this.createAuthProvider(extendedServer.auth);
+
+            // If transport is specified, use it; otherwise fall back to stdio from command
+            const transportConfig = extendedServer.transport || {
+              type: 'stdio' as const,
+              command: extendedServer.command!,
+              args: extendedServer.args,
+              env: extendedServer.env,
+            };
+
+            transport = await this.transportFactory.createTransport(
+              targetServer.name,
+              transportConfig,
+              authProvider,
+            );
+          } else {
+            // Legacy path: use PrefixedStdioClientTransport for backward compatibility
+            const legacyServer = targetServer as TargetServer;
+            if (!legacyServer.command) {
+              throw new Error(
+                `Server ${targetServer.name} missing command field`,
+              );
+            }
+
+            transport = new PrefixedStdioClientTransport(targetServer.name, {
+              command: legacyServer.command,
+              args: legacyServer.args || [],
+              env: { ...process.env, ...legacyServer.env } as Record<
                 string,
                 string
               >,
-            },
-          );
+            });
+          }
 
           await client.connect(transport);
 
           // TODO: handle disconnects
           this.connectedServers.set(targetServer.name, targetServer);
-
           this._clients.set(targetServer.name, client);
+
           console.error(`[proxy] Connected to: ${targetServer.name}`);
           logEvent('info', 'server:connect_success', {
             name: targetServer.name,
           });
           return { name: targetServer.name, status: 'connected' as const };
         } catch (error) {
-          console.error(
-            `[proxy] Failed to connect to ${targetServer.name}:`,
-            error,
-          );
-          legacyErrorLog(error, 'connection-failed', targetServer.name);
-          logError('connection-failed', error, {
-            name: targetServer.name,
-            command: targetServer.command,
-            args: targetServer.args,
-          });
+          // Enhanced error handling for authentication failures
+          if (error instanceof AuthenticationError) {
+            console.error(
+              `[proxy] Authentication failed for ${targetServer.name}: ${error.message}`,
+            );
+            legacyErrorLog(error, 'auth-failed', targetServer.name);
+            logError('auth-failed', error, {
+              name: targetServer.name,
+              // Security: Don't log sensitive auth details
+              hasAuth: !!(targetServer as ExtendedTargetServerZod).auth,
+              authType:
+                (targetServer as ExtendedTargetServerZod).auth?.type || 'none',
+            });
+          } else {
+            console.error(
+              `[proxy] Failed to connect to ${targetServer.name}:`,
+              error,
+            );
+            legacyErrorLog(error, 'connection-failed', targetServer.name);
+            logError('connection-failed', error, {
+              name: targetServer.name,
+              command: targetServer.command,
+              args: targetServer.args,
+            });
+          }
           // Do not throw; continue starting proxy with remaining servers
           return { name: targetServer.name, status: 'failed' as const, error };
         }
