@@ -39,6 +39,13 @@ export type SSEClientTransportConfig = BaseClientTransportConfig;
 export class SSEClientTransport extends BaseClientTransport {
   private eventSource: EventSource | null = null;
 
+  // Store bound handlers to ensure same reference for add/remove
+  private boundHandlers: {
+    message?: (e: MessageEvent) => void;
+    error?: (e: Event) => void;
+    open?: (e: Event) => void;
+  } = {};
+
   constructor(config: SSEClientTransportConfig) {
     super(config, 'transport:sse');
   }
@@ -117,6 +124,8 @@ export class SSEClientTransport extends BaseClientTransport {
       this.eventSource.close();
       this.eventSource = null;
     }
+    // Ensure handlers are cleared
+    this.boundHandlers = {};
   }
 
   // Removed - this functionality is now in the connect() method
@@ -183,38 +192,39 @@ export class SSEClientTransport extends BaseClientTransport {
   private setupEventSourceListeners(): void {
     if (!this.eventSource) return;
 
-    this.eventSource.addEventListener(
-      'open',
-      this.handleEventSourceOpen.bind(this),
-    );
-    this.eventSource.addEventListener(
-      'message',
-      this.handleEventSourceMessage.bind(this),
-    );
-    this.eventSource.addEventListener(
-      'error',
-      this.handleEventSourceError.bind(this),
-    );
+    // Create and store bound handlers ONCE to ensure same reference for add/remove
+    this.boundHandlers.open = this.handleEventSourceOpen.bind(this);
+    this.boundHandlers.message = this.handleEventSourceMessage.bind(this);
+    this.boundHandlers.error = this.handleEventSourceError.bind(this);
+
+    // Add listeners using stored references
+    this.eventSource.addEventListener('open', this.boundHandlers.open);
+    this.eventSource.addEventListener('message', this.boundHandlers.message);
+    this.eventSource.addEventListener('error', this.boundHandlers.error);
   }
 
   /**
    * Remove EventSource event listeners
    */
   private removeEventSourceListeners(): void {
-    if (!this.eventSource) return;
+    // Remove using SAME stored references (only if EventSource exists)
+    if (this.eventSource) {
+      if (this.boundHandlers.open) {
+        this.eventSource.removeEventListener('open', this.boundHandlers.open);
+      }
+      if (this.boundHandlers.message) {
+        this.eventSource.removeEventListener(
+          'message',
+          this.boundHandlers.message,
+        );
+      }
+      if (this.boundHandlers.error) {
+        this.eventSource.removeEventListener('error', this.boundHandlers.error);
+      }
+    }
 
-    this.eventSource.removeEventListener(
-      'open',
-      this.handleEventSourceOpen.bind(this),
-    );
-    this.eventSource.removeEventListener(
-      'message',
-      this.handleEventSourceMessage.bind(this),
-    );
-    this.eventSource.removeEventListener(
-      'error',
-      this.handleEventSourceError.bind(this),
-    );
+    // Always clear references to allow garbage collection
+    this.boundHandlers = {};
   }
 
   /**

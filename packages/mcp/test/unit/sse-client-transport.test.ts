@@ -42,6 +42,9 @@ vi.mock('../../src/logger.js', () => ({
   logEvent: vi.fn(),
 }));
 
+// Import the actual transport for integration tests
+import { SSEClientTransport } from '../../src/transports/implementations/sse-client-transport.js';
+
 describe('SSEClientTransport - SSE-Specific Tests', () => {
   let mockSSEServer: MockSSEServer;
   let serverUrl: string;
@@ -381,6 +384,77 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
       eventSource.close();
       expect(eventSource.readyState).toBe(MockEventSource.CLOSED);
     });
+
+    it('should use same bound function references for add and remove to prevent memory leaks', () => {
+      const eventSource = new MockEventSource('https://api.example.com/events');
+
+      // Create bound handlers
+      const openHandler = vi.fn();
+      const messageHandler = vi.fn();
+      const errorHandler = vi.fn();
+
+      // Add listeners
+      eventSource.addEventListener('open', openHandler);
+      eventSource.addEventListener('message', messageHandler);
+      eventSource.addEventListener('error', errorHandler);
+
+      expect(eventSource.listenerCount('open')).toBe(1);
+      expect(eventSource.listenerCount('message')).toBe(1);
+      expect(eventSource.listenerCount('error')).toBe(1);
+
+      // Remove using same references - should work
+      eventSource.removeEventListener('open', openHandler);
+      eventSource.removeEventListener('message', messageHandler);
+      eventSource.removeEventListener('error', errorHandler);
+
+      expect(eventSource.listenerCount('open')).toBe(0);
+      expect(eventSource.listenerCount('message')).toBe(0);
+      expect(eventSource.listenerCount('error')).toBe(0);
+    });
+
+    it('should fail to remove listeners when different bound functions are used (memory leak scenario)', () => {
+      const eventSource = new MockEventSource('https://api.example.com/events');
+
+      const originalHandler = () => console.log('test');
+
+      // Add listener with one bound function
+      eventSource.addEventListener('open', originalHandler.bind({}));
+      expect(eventSource.listenerCount('open')).toBe(1);
+
+      // Try to remove with different bound function - should fail
+      eventSource.removeEventListener('open', originalHandler.bind({}));
+      expect(eventSource.listenerCount('open')).toBe(1); // Still has listener - memory leak!
+    });
+
+    it('should verify memory leak prevention during multiple reconnections', () => {
+      const eventSource = new MockEventSource('https://api.example.com/events');
+
+      // Simulate multiple connection cycles
+      for (let i = 0; i < 5; i++) {
+        const openHandler = vi.fn();
+        const messageHandler = vi.fn();
+        const errorHandler = vi.fn();
+
+        // Add listeners
+        eventSource.addEventListener('open', openHandler);
+        eventSource.addEventListener('message', messageHandler);
+        eventSource.addEventListener('error', errorHandler);
+
+        expect(eventSource.listenerCount('open')).toBe(1);
+        expect(eventSource.listenerCount('message')).toBe(1);
+        expect(eventSource.listenerCount('error')).toBe(1);
+
+        // Remove using same references
+        eventSource.removeEventListener('open', openHandler);
+        eventSource.removeEventListener('message', messageHandler);
+        eventSource.removeEventListener('error', errorHandler);
+
+        // Verify all listeners are removed
+        expect(eventSource.listenerCount('open')).toBe(0);
+        expect(eventSource.listenerCount('message')).toBe(0);
+        expect(eventSource.listenerCount('error')).toBe(0);
+      }
+    });
   });
 
   describe('Browser-Specific SSE Features', () => {
@@ -462,6 +536,154 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
           data: JSON.stringify(testMessage),
         }),
       );
+    });
+  });
+
+  describe('SSEClientTransport Memory Leak Prevention', () => {
+    it('should prevent memory leaks by using same bound function references', async () => {
+      const transport = new SSEClientTransport({
+        url: serverUrl,
+        timeout: 5000,
+      });
+
+      // Access private methods for testing (using any cast for testing purposes)
+      const transportAny = transport as any;
+
+      // Create a mock EventSource to test bound handlers
+      const mockEventSource = new MockEventSource(serverUrl);
+      transportAny.eventSource = mockEventSource;
+
+      // Call setupEventSourceListeners
+      transportAny.setupEventSourceListeners();
+
+      // Verify listeners were added
+      expect(mockEventSource.listenerCount('open')).toBe(1);
+      expect(mockEventSource.listenerCount('message')).toBe(1);
+      expect(mockEventSource.listenerCount('error')).toBe(1);
+
+      // Verify bound handlers are stored
+      expect(transportAny.boundHandlers.open).toBeDefined();
+      expect(transportAny.boundHandlers.message).toBeDefined();
+      expect(transportAny.boundHandlers.error).toBeDefined();
+
+      // Store references to verify they're the same
+      const storedOpenHandler = transportAny.boundHandlers.open;
+      const storedMessageHandler = transportAny.boundHandlers.message;
+      const storedErrorHandler = transportAny.boundHandlers.error;
+
+      // Call removeEventSourceListeners
+      transportAny.removeEventSourceListeners();
+
+      // Verify all listeners were removed
+      expect(mockEventSource.listenerCount('open')).toBe(0);
+      expect(mockEventSource.listenerCount('message')).toBe(0);
+      expect(mockEventSource.listenerCount('error')).toBe(0);
+
+      // Verify bound handlers are cleared
+      expect(transportAny.boundHandlers.open).toBeUndefined();
+      expect(transportAny.boundHandlers.message).toBeUndefined();
+      expect(transportAny.boundHandlers.error).toBeUndefined();
+
+      // Cleanup
+      await transport.close();
+    });
+
+    it('should clean up handlers during multiple connection cycles', async () => {
+      const transport = new SSEClientTransport({
+        url: serverUrl,
+        timeout: 5000,
+      });
+
+      const transportAny = transport as any;
+
+      // Simulate multiple connection cycles
+      for (let cycle = 0; cycle < 3; cycle++) {
+        const mockEventSource = new MockEventSource(serverUrl);
+        transportAny.eventSource = mockEventSource;
+
+        // Setup listeners
+        transportAny.setupEventSourceListeners();
+
+        // Verify listeners were added
+        expect(mockEventSource.listenerCount('open')).toBe(1);
+        expect(mockEventSource.listenerCount('message')).toBe(1);
+        expect(mockEventSource.listenerCount('error')).toBe(1);
+
+        // Verify bound handlers exist
+        expect(transportAny.boundHandlers.open).toBeDefined();
+        expect(transportAny.boundHandlers.message).toBeDefined();
+        expect(transportAny.boundHandlers.error).toBeDefined();
+
+        // Cleanup (simulate connection close)
+        transportAny.removeEventSourceListeners();
+
+        // Verify all listeners were removed
+        expect(mockEventSource.listenerCount('open')).toBe(0);
+        expect(mockEventSource.listenerCount('message')).toBe(0);
+        expect(mockEventSource.listenerCount('error')).toBe(0);
+
+        // Verify handlers are cleared
+        expect(Object.keys(transportAny.boundHandlers)).toHaveLength(0);
+      }
+
+      // Final cleanup
+      await transport.close();
+    });
+
+    it('should properly cleanup during closeConnection', async () => {
+      const transport = new SSEClientTransport({
+        url: serverUrl,
+        timeout: 5000,
+      });
+
+      const transportAny = transport as any;
+
+      // Set up a mock EventSource
+      const mockEventSource = new MockEventSource(serverUrl);
+      transportAny.eventSource = mockEventSource;
+
+      // Setup listeners
+      transportAny.setupEventSourceListeners();
+
+      // Verify setup
+      expect(mockEventSource.listenerCount('open')).toBe(1);
+      expect(mockEventSource.listenerCount('message')).toBe(1);
+      expect(mockEventSource.listenerCount('error')).toBe(1);
+      expect(transportAny.boundHandlers.open).toBeDefined();
+
+      // Call closeConnection
+      await transportAny.closeConnection();
+
+      // Verify EventSource is null
+      expect(transportAny.eventSource).toBeNull();
+
+      // Verify handlers are cleared (even though eventSource is null)
+      expect(Object.keys(transportAny.boundHandlers)).toHaveLength(0);
+    });
+
+    it('should handle edge case where removeEventSourceListeners is called without EventSource', async () => {
+      const transport = new SSEClientTransport({
+        url: serverUrl,
+        timeout: 5000,
+      });
+
+      const transportAny = transport as any;
+
+      // Set up bound handlers without EventSource
+      transportAny.boundHandlers = {
+        open: vi.fn(),
+        message: vi.fn(),
+        error: vi.fn(),
+      };
+
+      // This should not throw and should clear handlers
+      transportAny.removeEventSourceListeners();
+
+      // Verify handlers are cleared
+      expect(Object.keys(transportAny.boundHandlers)).toHaveLength(0);
+
+      // Cleanup
+      await transport.close();
     });
   });
 });
