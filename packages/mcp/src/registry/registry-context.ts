@@ -179,9 +179,13 @@ export class RegistryContext {
    * prevent getting results from others.
    *
    * @param keywords - Search terms to query across registries
+   * @param registry - Optional registry filter to search within specific registry
    * @returns Promise resolving to aggregated search results
    */
-  async searchServers(keywords: string): Promise<RegistrySearchResult> {
+  async searchServers(
+    keywords: string,
+    registry?: string,
+  ): Promise<RegistrySearchResult> {
     if (this.registryClients.size === 0) {
       return {
         found: false,
@@ -197,8 +201,24 @@ export class RegistryContext {
     const allResults: NonNullable<RegistrySearchResult['servers']> = [];
     const errors: string[] = [];
 
+    // Filter registries if specific registry requested
+    let registriesToSearch = Array.from(this.registryClients.entries());
+    if (registry) {
+      registriesToSearch = registriesToSearch.filter(([url]) =>
+        url.toLowerCase().includes(registry.toLowerCase()),
+      );
+
+      if (registriesToSearch.length === 0) {
+        return {
+          found: false,
+          servers: [],
+          message: `No registry found matching: ${registry}`,
+        };
+      }
+    }
+
     // Search all registries in parallel for better performance
-    const searchPromises = Array.from(this.registryClients.entries()).map(
+    const searchPromises = registriesToSearch.map(
       async ([registryUrl, client]) => {
         try {
           const results = await client.searchServers(keywords);
@@ -226,7 +246,9 @@ export class RegistryContext {
         const convertedResults = results.map((server) => ({
           name: server.name,
           description: server.description,
-          registryId: server.id,
+          registryId:
+            server._meta?.['io.modelcontextprotocol.registry/official']?.id ||
+            server.id,
           isRemote: !!(server.remotes && server.remotes.length > 0),
           registryType: server.registry_type,
         }));
