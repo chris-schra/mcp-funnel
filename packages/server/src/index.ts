@@ -8,6 +8,7 @@ import { serversRoute } from './api/servers.js';
 import { toolsRoute } from './api/tools.js';
 import { configRoute } from './api/config.js';
 import { oauthRoute } from './api/oauth.js';
+import { streamableRoute } from './api/streamable.js';
 import { WebSocketManager } from './ws/manager.js';
 import type { MCPProxy } from 'mcp-funnel';
 import { appRoute } from './app';
@@ -45,6 +46,7 @@ export async function startWebServer(
   app.route('/api/tools', toolsRoute);
   app.route('/api/config', configRoute);
   app.route('/api/oauth', oauthRoute);
+  app.route('/api/streamable', streamableRoute);
 
   app.route('/app', appRoute);
 
