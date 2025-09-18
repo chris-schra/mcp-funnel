@@ -102,10 +102,13 @@ async function main() {
   }
 
   let config: ProxyConfig;
+  let actualConfigPath: string;
   try {
     // Merge user base and project config; project overrides user
     const merged = resolveMergedProxyConfig(resolvedPath);
     config = merged.config;
+    // Use the actual project config path that was resolved
+    actualConfigPath = merged.paths.projectConfigPath;
   } catch (error) {
     console.error('Failed to load configuration:', error);
     logError('config-load', error, { path: resolvedPath });
@@ -114,14 +117,14 @@ async function main() {
 
   const normalizedServers = normalizeServers(config.servers);
   logEvent('info', 'cli:config_loaded', {
-    path: resolvedPath,
+    path: actualConfigPath,
     servers: normalizedServers.map((s) => ({
       name: s.name,
       cmd: s.command,
     })),
   });
 
-  const proxy = new MCPProxy(config);
+  const proxy = new MCPProxy(config, actualConfigPath);
   logEvent('info', 'cli:proxy_starting');
   await proxy.start();
   logEvent('info', 'cli:proxy_started');

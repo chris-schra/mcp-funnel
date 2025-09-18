@@ -43,7 +43,9 @@ export class GetServerInstallInfo extends BaseCoreTool {
     }
 
     try {
-      const registryContext = RegistryContext.getInstance(context.config);
+      const registryContext = RegistryContext.getInstance(context.config, {
+        configPath: context.configPath,
+      });
       const server = await registryContext.getServerDetails(registryId);
 
       if (!server) {

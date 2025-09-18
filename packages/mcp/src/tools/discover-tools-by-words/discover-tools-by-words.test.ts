@@ -82,6 +82,7 @@ describe('DiscoverToolsByWords', () => {
       config: {
         servers: [],
       },
+      configPath: './.mcp-funnel.json',
       enableTools: (tools: string[]) => {
         enabledTools.push(...tools);
         tools.forEach((t) => mockContext.dynamicallyEnabledTools.add(t));

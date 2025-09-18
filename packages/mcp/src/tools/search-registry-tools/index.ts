@@ -62,7 +62,9 @@ export class SearchRegistryTools extends BaseCoreTool {
 
     try {
       // Get RegistryContext singleton instance
-      const registryContext = RegistryContext.getInstance(context.config);
+      const registryContext = RegistryContext.getInstance(context.config, {
+        configPath: context.configPath,
+      });
 
       // Search for servers
       const result = await registryContext.searchServers(keywords, registry);

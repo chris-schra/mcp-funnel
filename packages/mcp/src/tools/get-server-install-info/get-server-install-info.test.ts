@@ -24,6 +24,7 @@ describe('GetServerInstallInfo', () => {
       config: {
         servers: [],
       },
+      configPath: './.mcp-funnel.json',
       enableTools: vi.fn(),
     };
 
