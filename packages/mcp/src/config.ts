@@ -130,19 +130,29 @@ export const TransportConfigSchema = z.discriminatedUnion('type', [
 ]);
 
 // Extended target server schema that includes auth and transport
-export const ExtendedTargetServerSchema = TargetServerSchema.extend({
-  transport: TransportConfigSchema.optional(),
-  auth: AuthConfigSchema.optional(),
-}).refine((data) => data.command || data.transport, {
-  message: "Server must have either 'command' or 'transport'",
-});
-
-// Extended target server without name (for record format)
-export const ExtendedTargetServerWithoutNameSchema =
-  TargetServerWithoutNameSchema.extend({
+export const ExtendedTargetServerSchema = z
+  .object({
+    name: z.string(),
+    command: z.string().optional(), // Make optional to allow transport-only configs
+    args: z.array(z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
     transport: TransportConfigSchema.optional(),
     auth: AuthConfigSchema.optional(),
-  }).refine((data) => data.command || data.transport, {
+  })
+  .refine((data) => data.command || data.transport, {
+    message: "Server must have either 'command' or 'transport'",
+  });
+
+// Extended target server without name (for record format)
+export const ExtendedTargetServerWithoutNameSchema = z
+  .object({
+    command: z.string().optional(), // Make optional to allow transport-only configs
+    args: z.array(z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
+    transport: TransportConfigSchema.optional(),
+    auth: AuthConfigSchema.optional(),
+  })
+  .refine((data) => data.command || data.transport, {
     message: "Server must have either 'command' or 'transport'",
   });
 
