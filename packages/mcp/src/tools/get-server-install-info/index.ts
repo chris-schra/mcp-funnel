@@ -1,7 +1,7 @@
 import { BaseCoreTool } from '../base-core-tool.js';
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from '../core-tool.interface.js';
-import { RegistryContext } from '../../registry/registry-context.js';
+import { RegistryContext } from '../../registry/index.js';
 
 /**
  * Tool for getting server installation information from the MCP registry
