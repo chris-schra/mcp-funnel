@@ -1,6 +1,7 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
+import { RegistryContext } from '../../registry/index.js';
 
 export interface DiscoverToolsParams {
   words: string;
@@ -98,8 +99,8 @@ export class DiscoverToolsByWords extends BaseCoreTool {
 
     if (matches.length === 0) {
       // Check if registries are configured to suggest registry search
-      const hasRegistries =
-        context.config.registries && context.config.registries.length > 0;
+      const registryContext = RegistryContext.getInstance(context.config);
+      const hasRegistries = registryContext.hasRegistries();
 
       let message = `No local tools found matching keywords: ${typedArgs.words}`;
       if (hasRegistries) {
