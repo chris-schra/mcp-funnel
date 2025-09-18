@@ -11,6 +11,7 @@ import {
   AuthErrorCode,
 } from '../errors/authentication-error.js';
 import { logEvent } from '../../logger.js';
+import { ValidationUtils } from '../../utils/validation-utils.js';
 
 /**
  * Configuration interface for BearerTokenAuthProvider
@@ -49,7 +50,19 @@ export class BearerTokenAuthProvider implements IAuthProvider {
 
   constructor(config: BearerTokenConfig) {
     // Resolve environment variables in token
-    const resolvedToken = this.resolveEnvironmentVariables(config.token);
+    let resolvedToken: string;
+    try {
+      resolvedToken = ValidationUtils.hasEnvironmentVariables(config.token)
+        ? ValidationUtils.resolveEnvironmentVariables(config.token)
+        : config.token;
+    } catch (error) {
+      throw new AuthenticationError(
+        error instanceof Error
+          ? error.message
+          : 'Environment variable resolution failed',
+        AuthErrorCode.INVALID_TOKEN,
+      );
+    }
 
     // Validate token format and presence
     this.validateToken(resolvedToken);
@@ -122,25 +135,5 @@ export class BearerTokenAuthProvider implements IAuthProvider {
     // Additional validation could be added here based on expected token format
     // For example, checking for minimum length, character patterns, etc.
     // But we keep it minimal to support various token formats
-  }
-
-  /**
-   * Resolves environment variable references in the token string
-   * Supports ${VAR_NAME} syntax
-   * @param value - The value that may contain environment variable references
-   * @returns The resolved value with environment variables substituted
-   * @throws AuthenticationError if referenced environment variable is not set
-   */
-  private resolveEnvironmentVariables(value: string): string {
-    return value.replace(/\${([^}]+)}/g, (match, varName) => {
-      const envValue = process.env[varName];
-      if (envValue === undefined) {
-        throw new AuthenticationError(
-          `Environment variable ${varName} is not set`,
-          AuthErrorCode.INVALID_TOKEN,
-        );
-      }
-      return envValue;
-    });
   }
 }

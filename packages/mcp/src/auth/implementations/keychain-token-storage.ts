@@ -9,11 +9,9 @@ import type {
   TokenData,
 } from '../interfaces/token-storage.interface.js';
 import { logEvent } from '../../logger.js';
+import { ValidationUtils } from '../../utils/validation-utils.js';
 
 const execFileAsync = promisify(execFile);
-
-// Security validation for serverId to prevent command injection
-const SAFE_SERVER_ID_REGEX = /^[a-zA-Z0-9._-]+$/;
 
 /**
  * Token storage implementation using OS-native keychain/credential storage
@@ -33,18 +31,8 @@ export class KeychainTokenStorage implements ITokenStorage {
   private readonly fallbackDir = join(homedir(), '.mcp-funnel', 'tokens');
 
   constructor(private readonly serverId: string) {
-    this.validateServerId(serverId);
-  }
-
-  /**
-   * Validates serverId to prevent command injection attacks
-   */
-  private validateServerId(serverId: string): void {
-    if (!SAFE_SERVER_ID_REGEX.test(serverId)) {
-      throw new Error(
-        'Invalid serverId: contains unsafe characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.',
-      );
-    }
+    // Validate and sanitize serverId to prevent command injection
+    ValidationUtils.sanitizeServerId(serverId);
   }
 
   /**

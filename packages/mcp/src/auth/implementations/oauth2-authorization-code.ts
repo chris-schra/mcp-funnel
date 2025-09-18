@@ -9,6 +9,7 @@ import { logEvent } from '../../logger.js';
 import type { OAuth2TokenResponse } from '../utils/oauth-types.js';
 import { resolveOAuth2AuthCodeConfig } from '../utils/oauth-utils.js';
 import { BaseOAuthProvider } from './base-oauth-provider.js';
+import { ValidationUtils } from '../../utils/validation-utils.js';
 
 /**
  * PKCE (Proof Key for Code Exchange) utilities for OAuth2 Authorization Code flow
@@ -346,42 +347,21 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * Validates the configuration has required fields
    */
   private validateConfig(): void {
-    if (!this.config.clientId) {
-      throw new AuthenticationError(
-        'OAuth2 client ID is required',
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
-
-    if (!this.config.authorizationEndpoint) {
-      throw new AuthenticationError(
-        'OAuth2 authorization URL is required',
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
-
-    if (!this.config.tokenEndpoint) {
-      throw new AuthenticationError(
-        'OAuth2 token URL is required',
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
-
-    if (!this.config.redirectUri) {
-      throw new AuthenticationError(
-        'OAuth2 redirect URI is required',
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
-
-    // Validate URL formats
     try {
-      new URL(this.config.authorizationEndpoint);
-      new URL(this.config.tokenEndpoint);
-      new URL(this.config.redirectUri);
-    } catch {
+      // Validate required fields
+      ValidationUtils.validateRequired(
+        this.config,
+        ['clientId', 'authorizationEndpoint', 'tokenEndpoint', 'redirectUri'],
+        'OAuth2 Authorization Code config',
+      );
+
+      // Validate URL formats
+      ValidationUtils.validateOAuthUrls(this.config);
+    } catch (error) {
       throw new AuthenticationError(
-        'OAuth2 URLs must be valid URLs',
+        error instanceof Error
+          ? error.message
+          : 'Configuration validation failed',
         OAuth2ErrorCode.INVALID_REQUEST,
       );
     }

@@ -11,6 +11,7 @@ import type {
 import { DEFAULT_EXPIRY_SECONDS } from './oauth-types.js';
 import type { OAuth2ClientCredentialsConfigZod } from '../../config.js';
 import type { OAuth2AuthCodeConfig } from '../../types/auth.types.js';
+import { ValidationUtils } from '../../utils/validation-utils.js';
 
 /**
  * Resolves environment variables in configuration
@@ -23,7 +24,20 @@ export function resolveEnvironmentVariables<
   for (const field of fields) {
     const value = config[field];
     if (typeof value === 'string') {
-      resolved[field] = resolveEnvVar(value) as T[keyof T];
+      try {
+        resolved[field] = (
+          ValidationUtils.hasEnvironmentVariables(value)
+            ? ValidationUtils.resolveEnvironmentVariables(value)
+            : value
+        ) as T[keyof T];
+      } catch (error) {
+        throw new AuthenticationError(
+          error instanceof Error
+            ? error.message
+            : 'Environment variable resolution failed',
+          OAuth2ErrorCode.INVALID_REQUEST,
+        );
+      }
     }
   }
 
@@ -74,23 +88,18 @@ export function resolveOAuth2AuthCodeConfig(
  * Resolves a single environment variable reference
  */
 export function resolveEnvVar(value: string): string {
-  // Match ${VAR_NAME} pattern
-  const envVarMatch = value.match(/^\$\{([^}]+)\}$/);
-  if (envVarMatch) {
-    const envVarName = envVarMatch[1];
-    const envValue = process.env[envVarName];
-
-    if (envValue === undefined) {
-      throw new AuthenticationError(
-        `Environment variable ${envVarName} is not set`,
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
-
-    return envValue;
+  try {
+    return ValidationUtils.hasEnvironmentVariables(value)
+      ? ValidationUtils.resolveEnvironmentVariables(value)
+      : value;
+  } catch (error) {
+    throw new AuthenticationError(
+      error instanceof Error
+        ? error.message
+        : 'Environment variable resolution failed',
+      OAuth2ErrorCode.INVALID_REQUEST,
+    );
   }
-
-  return value;
 }
 
 /**

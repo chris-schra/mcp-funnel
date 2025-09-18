@@ -17,14 +17,12 @@ import type {
 } from '../types/transport.types.js';
 import type { IAuthProvider } from '../auth/interfaces/auth-provider.interface.js';
 import type { ITokenStorage } from '../auth/interfaces/token-storage.interface.js';
-import {
-  TransportError,
-  TransportErrorCode,
-} from './errors/transport-error.js';
+import { TransportError } from './errors/transport-error.js';
 import { StdioClientTransport } from './implementations/stdio-client-transport.js';
 import { SSEClientTransport } from './implementations/sse-client-transport.js';
 import { WebSocketClientTransport } from './implementations/websocket-client-transport.js';
 import { StreamableHTTPClientTransport } from './implementations/streamable-http-client-transport.js';
+import { ValidationUtils } from '../utils/validation-utils.js';
 
 /**
  * Dependencies that can be injected into transports
@@ -233,12 +231,13 @@ export async function createTransport(
     // Validate dependencies if auth provider or token storage is provided
     if (dependencies?.authProvider) {
       try {
-        await dependencies.authProvider.isValid();
+        const isValid = await dependencies.authProvider.isValid();
+        if (!isValid) {
+          throw new Error('Auth provider configuration is not valid');
+        }
       } catch (error) {
-        throw new TransportError(
-          `Failed to initialize auth provider: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          TransportErrorCode.UNKNOWN_ERROR,
-          false,
+        throw TransportError.authenticationFailed(
+          error instanceof Error ? error.message : 'Unknown error',
           error instanceof Error ? error : undefined,
         );
       }
@@ -248,10 +247,8 @@ export async function createTransport(
       try {
         await dependencies.tokenStorage.retrieve();
       } catch (error) {
-        throw new TransportError(
+        throw TransportError.serverError(
           `Failed to initialize token storage: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          TransportErrorCode.UNKNOWN_ERROR,
-          false,
           error instanceof Error ? error : undefined,
         );
       }
@@ -271,10 +268,8 @@ export async function createTransport(
     if (error instanceof TransportError) {
       throw error;
     }
-    throw new TransportError(
+    throw TransportError.serverError(
       `Failed to create transport: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
       error instanceof Error ? error : undefined,
     );
   }
@@ -291,33 +286,17 @@ function resolveEnvironmentVariables(
 
   // Helper function to resolve variables in a string
   const resolveString = (value: string): string => {
-    let resolved = value;
-    const varPattern = /\$\{([^}]+)\}/g;
-    let match;
-
-    // Keep resolving until no more variables are found (handles nested variables)
-    let lastResolved = '';
-    while (resolved !== lastResolved) {
-      lastResolved = resolved;
-      varPattern.lastIndex = 0; // Reset regex state
-
-      while ((match = varPattern.exec(resolved)) !== null) {
-        const varName = match[1];
-        const envValue = process.env[varName];
-
-        if (envValue === undefined) {
-          throw new TransportError(
-            `Environment variable ${varName} is not defined`,
-            TransportErrorCode.UNKNOWN_ERROR,
-            false,
-          );
-        }
-
-        resolved = resolved.replace(match[0], envValue);
-      }
+    try {
+      return ValidationUtils.hasEnvironmentVariables(value)
+        ? ValidationUtils.resolveEnvironmentVariables(value)
+        : value;
+    } catch (error) {
+      throw TransportError.serverError(
+        error instanceof Error
+          ? error.message
+          : 'Environment variable resolution failed',
+      );
     }
-
-    return resolved;
   };
 
   // Resolve variables in command
@@ -375,10 +354,8 @@ function normalizeConfig(config: ResolvedConfig): TransportConfig {
   }
 
   // If no type and no command, this is an invalid config
-  throw new TransportError(
+  throw TransportError.protocolError(
     'Invalid configuration: must specify either type or command field',
-    TransportErrorCode.UNKNOWN_ERROR,
-    false,
   );
 }
 
@@ -402,10 +379,8 @@ function validateConfig(config: TransportConfig): void {
     default: {
       // Use exhaustive check to handle unknown transport types
       const _exhaustive: never = config;
-      throw new TransportError(
+      throw TransportError.protocolError(
         `Unsupported transport type: ${(_exhaustive as TransportConfig).type}`,
-        TransportErrorCode.UNKNOWN_ERROR,
-        false,
       );
     }
   }
@@ -416,10 +391,8 @@ function validateConfig(config: TransportConfig): void {
  */
 function validateStdioConfig(config: StdioTransportConfig): void {
   if (!config.command) {
-    throw new TransportError(
+    throw TransportError.protocolError(
       'Command is required for stdio transport',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
     );
   }
 }
@@ -429,21 +402,15 @@ function validateStdioConfig(config: StdioTransportConfig): void {
  */
 function validateSSEConfig(config: SSETransportConfig): void {
   if (!config.url) {
-    throw new TransportError(
-      'URL is required for SSE transport',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
-    );
+    throw TransportError.protocolError('URL is required for SSE transport');
   }
 
   // Validate URL format
   try {
-    new URL(config.url);
+    ValidationUtils.validateUrl(config.url, 'SSE URL');
   } catch (error) {
-    throw new TransportError(
-      'Invalid URL format',
-      TransportErrorCode.INVALID_URL,
-      false,
+    throw TransportError.invalidUrl(
+      config.url,
       error instanceof Error ? error : undefined,
     );
   }
@@ -459,29 +426,27 @@ function validateSSEConfig(config: SSETransportConfig): void {
  */
 function validateWebSocketConfig(config: WebSocketTransportConfig): void {
   if (!config.url) {
-    throw new TransportError(
+    throw TransportError.protocolError(
       'URL is required for WebSocket transport',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
     );
   }
 
   // Validate URL format and protocol
   try {
+    ValidationUtils.validateUrl(config.url, 'WebSocket URL');
     const url = new URL(config.url);
     const validProtocols = ['ws:', 'wss:', 'http:', 'https:'];
     if (!validProtocols.includes(url.protocol)) {
-      throw new TransportError(
-        'WebSocket URL must use ws:, wss:, http:, or https: protocol',
-        TransportErrorCode.INVALID_URL,
-        false,
+      throw TransportError.invalidUrl(
+        config.url,
+        new Error(
+          'WebSocket URL must use ws:, wss:, http:, or https: protocol',
+        ),
       );
     }
   } catch (error) {
-    throw new TransportError(
-      'Invalid URL format',
-      TransportErrorCode.INVALID_URL,
-      false,
+    throw TransportError.invalidUrl(
+      config.url,
       error instanceof Error ? error : undefined,
     );
   }
@@ -493,11 +458,7 @@ function validateWebSocketConfig(config: WebSocketTransportConfig): void {
 
   // Validate timeout
   if (config.timeout !== undefined && config.timeout <= 0) {
-    throw new TransportError(
-      'timeout must be a positive number',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
-    );
+    throw TransportError.protocolError('timeout must be a positive number');
   }
 }
 
@@ -508,29 +469,25 @@ function validateStreamableHTTPConfig(
   config: StreamableHTTPTransportConfig,
 ): void {
   if (!config.url) {
-    throw new TransportError(
+    throw TransportError.protocolError(
       'URL is required for StreamableHTTP transport',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
     );
   }
 
   // Validate URL format and protocol
   try {
+    ValidationUtils.validateUrl(config.url, 'StreamableHTTP URL');
     const url = new URL(config.url);
     const validProtocols = ['http:', 'https:'];
     if (!validProtocols.includes(url.protocol)) {
-      throw new TransportError(
-        'StreamableHTTP URL must use http: or https: protocol',
-        TransportErrorCode.INVALID_URL,
-        false,
+      throw TransportError.invalidUrl(
+        config.url,
+        new Error('StreamableHTTP URL must use http: or https: protocol'),
       );
     }
   } catch (error) {
-    throw new TransportError(
-      'Invalid URL format',
-      TransportErrorCode.INVALID_URL,
-      false,
+    throw TransportError.invalidUrl(
+      config.url,
       error instanceof Error ? error : undefined,
     );
   }
@@ -542,11 +499,7 @@ function validateStreamableHTTPConfig(
 
   // Validate timeout
   if (config.timeout !== undefined && config.timeout <= 0) {
-    throw new TransportError(
-      'timeout must be a positive number',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
-    );
+    throw TransportError.protocolError('timeout must be a positive number');
   }
 }
 
@@ -566,34 +519,22 @@ function validateReconnectConfig(reconnect: {
     maxAttempts !== undefined &&
     (maxAttempts < 0 || !Number.isInteger(maxAttempts))
   ) {
-    throw new TransportError(
-      'maxAttempts must be a positive number',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
-    );
+    throw TransportError.protocolError('maxAttempts must be a positive number');
   }
 
   if (initialDelayMs !== undefined && initialDelayMs < 0) {
-    throw new TransportError(
+    throw TransportError.protocolError(
       'initialDelayMs must be a positive number',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
     );
   }
 
   if (maxDelayMs !== undefined && maxDelayMs < 0) {
-    throw new TransportError(
-      'maxDelayMs must be a positive number',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
-    );
+    throw TransportError.protocolError('maxDelayMs must be a positive number');
   }
 
   if (backoffMultiplier !== undefined && backoffMultiplier <= 1) {
-    throw new TransportError(
+    throw TransportError.protocolError(
       'backoffMultiplier must be greater than 1',
-      TransportErrorCode.UNKNOWN_ERROR,
-      false,
     );
   }
 }
@@ -767,10 +708,8 @@ async function createTransportImplementation(
     default: {
       // Use exhaustive check to handle unknown transport types
       const _exhaustive: never = config;
-      throw new TransportError(
+      throw TransportError.protocolError(
         `Unsupported transport type: ${(_exhaustive as TransportConfig).type}`,
-        TransportErrorCode.UNKNOWN_ERROR,
-        false,
       );
     }
   }
