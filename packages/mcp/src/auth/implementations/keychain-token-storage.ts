@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -10,7 +10,10 @@ import type {
 } from '../interfaces/token-storage.interface.js';
 import { logEvent } from '../../logger.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+// Security validation for serverId to prevent command injection
+const SAFE_SERVER_ID_REGEX = /^[a-zA-Z0-9._-]+$/;
 
 /**
  * Token storage implementation using OS-native keychain/credential storage
@@ -21,12 +24,28 @@ const execAsync = promisify(exec);
  * - Linux: Falls back to encrypted file storage with restrictive permissions
  *
  * No external dependencies - uses OS built-in commands following protocol
+ *
+ * Security: All command execution uses execFile with argument arrays to prevent
+ * command injection attacks. ServerIds are validated against a strict regex.
  */
 export class KeychainTokenStorage implements ITokenStorage {
   private readonly serviceName = 'mcp-funnel';
   private readonly fallbackDir = join(homedir(), '.mcp-funnel', 'tokens');
 
-  constructor(private readonly serverId: string) {}
+  constructor(private readonly serverId: string) {
+    this.validateServerId(serverId);
+  }
+
+  /**
+   * Validates serverId to prevent command injection attacks
+   */
+  private validateServerId(serverId: string): void {
+    if (!SAFE_SERVER_ID_REGEX.test(serverId)) {
+      throw new Error(
+        'Invalid serverId: contains unsafe characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.',
+      );
+    }
+  }
 
   /**
    * Store token data securely using OS keychain
@@ -135,18 +154,28 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Store token in OS keychain using platform-specific commands
+   * Uses execFile with argument arrays to prevent command injection
    */
   private async storeInKeychain(key: string, value: string): Promise<void> {
     if (process.platform === 'darwin') {
-      // macOS: Use security command
-      await execAsync(
-        `security add-generic-password -a "${key}" -s "${this.serviceName}" -w "${value}" -U 2>/dev/null`,
-      );
+      // macOS: Use security command with argument array to prevent injection
+      await execFileAsync('security', [
+        'add-generic-password',
+        '-a',
+        key,
+        '-s',
+        this.serviceName,
+        '-w',
+        value,
+        '-U',
+      ]);
     } else if (process.platform === 'win32') {
-      // Windows: Use cmdkey command
-      await execAsync(
-        `cmdkey /generic:"${key}" /user:"${this.serviceName}" /pass:"${value}"`,
-      );
+      // Windows: Use cmdkey command with argument array to prevent injection
+      await execFileAsync('cmdkey', [
+        `/generic:${key}`,
+        `/user:${this.serviceName}`,
+        `/pass:${value}`,
+      ]);
     } else {
       // Linux/other: No keychain command available, will fallback to file
       throw new Error('No keychain available for this platform');
@@ -155,17 +184,23 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Retrieve token from OS keychain using platform-specific commands
+   * Uses execFile with argument arrays to prevent command injection
    */
   private async retrieveFromKeychain(key: string): Promise<string> {
     if (process.platform === 'darwin') {
-      // macOS: Use security command
-      const { stdout } = await execAsync(
-        `security find-generic-password -a "${key}" -s "${this.serviceName}" -w 2>/dev/null`,
-      );
+      // macOS: Use security command with argument array to prevent injection
+      const { stdout } = await execFileAsync('security', [
+        'find-generic-password',
+        '-a',
+        key,
+        '-s',
+        this.serviceName,
+        '-w',
+      ]);
       return stdout.trim();
     } else if (process.platform === 'win32') {
       // Windows: cmdkey doesn't support retrieval, parse cmdkey /list output
-      const { stdout } = await execAsync(`cmdkey /list:"${key}"`);
+      const { stdout } = await execFileAsync('cmdkey', [`/list:${key}`]);
 
       // Parse cmdkey output to extract password
       const lines = stdout.split('\n');
@@ -189,16 +224,21 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Remove token from OS keychain using platform-specific commands
+   * Uses execFile with argument arrays to prevent command injection
    */
   private async removeFromKeychain(key: string): Promise<void> {
     if (process.platform === 'darwin') {
-      // macOS: Use security command
-      await execAsync(
-        `security delete-generic-password -a "${key}" -s "${this.serviceName}" 2>/dev/null`,
-      );
+      // macOS: Use security command with argument array to prevent injection
+      await execFileAsync('security', [
+        'delete-generic-password',
+        '-a',
+        key,
+        '-s',
+        this.serviceName,
+      ]);
     } else if (process.platform === 'win32') {
-      // Windows: Use cmdkey command
-      await execAsync(`cmdkey /delete:"${key}"`);
+      // Windows: Use cmdkey command with argument array to prevent injection
+      await execFileAsync('cmdkey', [`/delete:${key}`]);
     } else {
       // Linux/other: No keychain command available
       throw new Error('No keychain available for this platform');

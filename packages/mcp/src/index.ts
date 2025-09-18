@@ -131,6 +131,10 @@ interface TransportOptions {
   env?: Record<string, string>;
 }
 
+export type ProxyStartOptions = {
+  transport: "stdio" | "streamable-http";
+}
+
 // Custom transport that prefixes server stderr logs
 export class PrefixedStdioClientTransport {
   private readonly _serverName: string;
@@ -812,12 +816,19 @@ export class MCPProxy {
     });
   }
 
-  async start() {
+  async start(options?:ProxyStartOptions) {
+    const transportOption = options?.transport ?? "stdio";
+
     await this.initialize();
-    const transport = new StdioServerTransport();
-    await this._server.connect(transport);
-    console.error('[proxy] Server started successfully');
-    logEvent('info', 'proxy:started');
+
+    if(transportOption === "stdio") {
+      const transport = new StdioServerTransport();
+      await this._server.connect(transport);
+      console.error('[proxy] Server started successfully');
+      logEvent('info', 'proxy:started');
+    }
+
+    return this._server;
   }
 
   // Public getters for web UI and other integrations
