@@ -4,18 +4,9 @@ import type { RegistrySearchResult } from '../../registry/types/registry.types.j
 import type { ToolRegistry } from '../../tool-registry.js';
 import { SearchRegistryTools } from './index.js';
 
-// Mock RegistryContext
-const mockRegistryContext = {
-  searchServers: vi.fn(),
-  getInstance: vi.fn(),
-};
-
-// Mock the RegistryContext module
-vi.mock('../../registry/index.js', () => ({
-  RegistryContext: {
-    getInstance: vi.fn(() => mockRegistryContext),
-  },
-}));
+// Mock fetch globally
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
 
 describe('SearchRegistryTools', () => {
   let tool: SearchRegistryTools;
@@ -37,28 +28,50 @@ describe('SearchRegistryTools', () => {
     // Reset mocks
     vi.clearAllMocks();
 
-    // Setup default mock responses
-    mockRegistryContext.searchServers.mockResolvedValue({
-      found: true,
-      servers: [
-        {
-          name: 'GitHub MCP Server',
-          description:
-            'Interact with GitHub repositories, issues, and pull requests',
-          registryId: 'github-mcp-server',
-          isRemote: false,
-          registryType: 'official',
-        },
-        {
-          name: 'File System Server',
-          description: 'Read and write files on the local filesystem',
-          registryId: 'filesystem-server',
-          isRemote: false,
-          registryType: 'official',
-        },
-      ],
-      message: 'Found 2 servers matching your search criteria',
-    } satisfies RegistrySearchResult);
+    // Setup default mock fetch responses for search endpoint
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/v0/servers?search=')) {
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: async () => ({
+            servers: [
+              {
+                id: 'github-mcp-server',
+                name: 'GitHub MCP Server',
+                description:
+                  'Interact with GitHub repositories, issues, and pull requests',
+                registry_type: 'official',
+                remotes: [],
+                _meta: {
+                  'io.modelcontextprotocol.registry/official': {
+                    id: 'github-mcp-server',
+                  },
+                },
+              },
+              {
+                id: 'filesystem-server',
+                name: 'File System Server',
+                description: 'Read and write files on the local filesystem',
+                registry_type: 'official',
+                remotes: [],
+                _meta: {
+                  'io.modelcontextprotocol.registry/official': {
+                    id: 'filesystem-server',
+                  },
+                },
+              },
+            ],
+            metadata: {
+              count: 2,
+              next_cursor: null,
+            },
+          }),
+        };
+      }
+      throw new Error(`Unmocked fetch request: ${url}`);
+    });
   });
 
   describe('Tool Definition', () => {
@@ -141,9 +154,15 @@ describe('SearchRegistryTools', () => {
         mockContext,
       );
 
-      expect(mockRegistryContext.searchServers).toHaveBeenCalledWith(
-        'github issues',
-        undefined,
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/v0/servers?search=github%20issues'),
+        expect.objectContaining({
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }),
       );
       expect(result.content).toHaveLength(1);
       const textContent = result.content[0] as { type: string; text: string };
@@ -165,14 +184,18 @@ describe('SearchRegistryTools', () => {
     });
 
     it('should handle specific registry parameter', async () => {
+      // Use registry URL substring that will match the default registry
       const result = await tool.handle(
-        { keywords: 'github', registry: 'official' },
+        { keywords: 'github', registry: 'modelcontextprotocol' },
         mockContext,
       );
 
-      expect(mockRegistryContext.searchServers).toHaveBeenCalledWith(
-        'github',
-        'official',
+      // Registry filtering happens in RegistryContext, HTTP call should be made
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/v0/servers?search=github'),
+        expect.objectContaining({
+          method: 'GET',
+        }),
       );
       expect(result.content).toHaveLength(1);
       const textContent = result.content[0] as { type: string; text: string };
@@ -195,11 +218,18 @@ describe('SearchRegistryTools', () => {
 
     it('should handle no results found', async () => {
       // Mock no results
-      mockRegistryContext.searchServers.mockResolvedValue({
-        found: false,
-        servers: [],
-        message: 'No servers found',
-      } satisfies RegistrySearchResult);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          servers: [],
+          metadata: {
+            count: 0,
+            next_cursor: null,
+          },
+        }),
+      });
 
       const result = await tool.handle(
         { keywords: 'nonexistent' },
@@ -223,44 +253,60 @@ describe('SearchRegistryTools', () => {
     });
   });
 
-  describe('Integration with RegistryContext', () => {
-    it('should use singleton RegistryContext', async () => {
+  describe('Integration with Real RegistryContext', () => {
+    it('should make HTTP request to search endpoint', async () => {
       await tool.handle({ keywords: 'test' }, mockContext);
-      expect(mockRegistryContext.getInstance).toBeDefined();
-    });
-
-    it('should pass keywords correctly to registry search', async () => {
-      await tool.handle({ keywords: 'test keywords' }, mockContext);
-      expect(mockRegistryContext.searchServers).toHaveBeenCalledWith(
-        'test keywords',
-        undefined,
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/v0/servers?search=test'),
+        expect.objectContaining({
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }),
       );
     });
 
-    it('should pass registry parameter to searchServers', async () => {
+    it('should encode keywords correctly in URL', async () => {
+      await tool.handle({ keywords: 'test keywords' }, mockContext);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/v0/servers?search=test%20keywords'),
+        expect.any(Object),
+      );
+    });
+
+    it('should still work with registry parameter', async () => {
       const result = await tool.handle(
         {
           keywords: 'test',
-          registry: 'official',
+          registry: 'modelcontextprotocol',
         },
         mockContext,
       );
 
-      expect(mockRegistryContext.searchServers).toHaveBeenCalledWith(
-        'test',
-        'official',
+      // Should make HTTP call when registry matches default URL
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/v0/servers?search=test'),
+        expect.any(Object),
       );
       expect(result.content).toHaveLength(1);
     });
 
-    it('should pass optional registry parameter to search', async () => {
-      await tool.handle(
-        { keywords: 'test', registry: 'community' },
+    it('should handle registry filter that does not match', async () => {
+      // Test registry filter that won't match the default URL
+      const result = await tool.handle(
+        { keywords: 'test', registry: 'nonexistent' },
         mockContext,
       );
-      expect(mockRegistryContext.searchServers).toHaveBeenCalledWith(
-        'test',
-        'community',
+
+      // No HTTP call should be made since no registries match the filter
+      expect(mockFetch).not.toHaveBeenCalled();
+
+      const textContent = result.content[0] as { type: string; text: string };
+      // The tool returns a "no servers found" message when no registries match
+      expect(textContent.text).toContain(
+        'No servers found matching keywords: test in registry: nonexistent',
       );
     });
   });
@@ -297,11 +343,18 @@ describe('SearchRegistryTools', () => {
     });
 
     it('should handle whitespace-only keywords', async () => {
-      mockRegistryContext.searchServers.mockResolvedValue({
-        found: false,
-        servers: [],
-        message: 'No servers found',
-      } satisfies RegistrySearchResult);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          servers: [],
+          metadata: {
+            count: 0,
+            next_cursor: null,
+          },
+        }),
+      });
 
       const result = await tool.handle({ keywords: '   ' }, mockContext);
       const textContent = result.content[0] as { type: string; text: string };
@@ -309,13 +362,22 @@ describe('SearchRegistryTools', () => {
     });
 
     it('should handle registry search errors gracefully', async () => {
-      mockRegistryContext.searchServers.mockRejectedValue(
-        new Error('Registry service unavailable'),
-      );
+      // Mock HTTP error response
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: async () => ({}),
+      });
 
-      await expect(
-        tool.handle({ keywords: 'test' }, mockContext),
-      ).rejects.toThrow('Registry search failed: Registry service unavailable');
+      // RegistryContext handles errors gracefully and returns empty results
+      const result = await tool.handle({ keywords: 'test' }, mockContext);
+
+      expect(result.content).toHaveLength(1);
+      const textContent = result.content[0] as { type: string; text: string };
+      expect(textContent.text).toContain(
+        'No servers found matching keywords: test',
+      );
     });
   });
 
