@@ -35,7 +35,7 @@ describe('Config Generation', () => {
 
       expect(result).toEqual({
         name: 'NPM Example Server',
-        command: 'npx',
+        command: 'node',
         args: ['-y', '@mcp/example-server', '--config', 'production.json'],
         env: {
           NODE_ENV: 'production',
@@ -88,7 +88,7 @@ describe('Config Generation', () => {
 
       expect(result).toEqual({
         name: 'Python MCP Server',
-        command: 'uvx',
+        command: 'python',
         args: ['mcp-python-server', '--verbose', '--port', '8080'],
         env: {
           PYTHONPATH: '/opt/mcp',
