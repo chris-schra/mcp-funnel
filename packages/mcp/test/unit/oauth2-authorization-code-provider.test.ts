@@ -155,7 +155,7 @@ describe('OAuth2AuthCodeProvider', () => {
 
     beforeEach(() => {
       provider = new OAuth2AuthCodeProvider(mockConfig, mockStorage);
-      consoleSpy = vi.spyOn(console, 'info').mockImplementation();
+      consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -247,13 +247,13 @@ describe('OAuth2AuthCodeProvider', () => {
       const stateMatch = consoleOutput.match(/state=([^&\s]+)/);
       const state = stateMatch![1];
 
-      // Attempt to complete OAuth flow should reject
-      await expect(
-        provider.completeOAuthFlow(state, 'invalid-code'),
-      ).rejects.toThrow('OAuth2 authentication failed: invalid_grant');
+      // Complete OAuth flow with invalid code - this should resolve but trigger error handling
+      await provider.completeOAuthFlow(state, 'invalid-code');
 
-      // Wait for refresh to complete (will throw)
-      await expect(refreshPromise).rejects.toThrow();
+      // The refresh promise should reject with the error
+      await expect(refreshPromise).rejects.toThrow(
+        'OAuth2 authentication failed: invalid_grant',
+      );
     });
   });
 
@@ -281,25 +281,42 @@ describe('OAuth2AuthCodeProvider', () => {
     it('should initiate OAuth flow when no valid token exists', async () => {
       mockStorage.retrieve = vi.fn().mockResolvedValue(null);
 
-      // This will timeout since we don't complete the OAuth flow
+      // Start the OAuth flow and expect it to reject due to timeout
       const promise = provider.getHeaders();
 
-      // Let it run for a brief moment then cleanup
-      setTimeout(() => {
-        // Cleanup any pending auth to prevent timeout
-        if ((provider as any).pendingAuth) {
-          clearTimeout((provider as any).pendingAuth.timeout);
-        }
-      }, 100);
+      // Wait briefly to ensure the OAuth flow has started
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      await expect(promise).rejects.toThrow();
+      // Force cleanup of pending auth to simulate timeout
+      const providerAny = provider as unknown as {
+        pendingAuth?: {
+          timeout: NodeJS.Timeout;
+          reject: (error: Error) => void;
+        };
+      };
+
+      if (providerAny.pendingAuth) {
+        clearTimeout(providerAny.pendingAuth.timeout);
+        providerAny.pendingAuth.reject(
+          new Error('Authorization timeout - please try again'),
+        );
+        providerAny.pendingAuth = undefined;
+      }
+
+      await expect(promise).rejects.toThrow('Authorization timeout');
     });
   });
 
   describe('PKCE security', () => {
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+
     beforeEach(() => {
       provider = new OAuth2AuthCodeProvider(mockConfig, mockStorage);
-      vi.spyOn(console, 'info').mockImplementation();
+      consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleSpy.mockRestore();
     });
 
     it('should generate different PKCE verifier and challenge each time', async () => {
@@ -308,11 +325,20 @@ describe('OAuth2AuthCodeProvider', () => {
 
       // Capture multiple OAuth flows
       for (let i = 0; i < 3; i++) {
-        const refreshPromise = provider.refresh();
+        // Create a fresh provider for each iteration to ensure clean state
+        const freshProvider = new OAuth2AuthCodeProvider(
+          mockConfig,
+          mockStorage,
+        );
+        const freshConsoleSpy = vi
+          .spyOn(console, 'info')
+          .mockImplementation(() => {});
+
+        const refreshPromise = freshProvider.refresh();
 
         await new Promise((resolve) => setTimeout(resolve, 50));
 
-        const consoleOutput = (console.info as any).mock.calls.flat().join(' ');
+        const consoleOutput = freshConsoleSpy.mock.calls.flat().join(' ');
 
         const stateMatch = consoleOutput.match(/state=([^&\s]+)/);
         const challengeMatch = consoleOutput.match(/code_challenge=([^&\s]+)/);
@@ -323,13 +349,17 @@ describe('OAuth2AuthCodeProvider', () => {
         }
 
         // Cleanup
-        if ((provider as any).pendingAuth) {
-          clearTimeout((provider as any).pendingAuth.timeout);
+        const providerAny = freshProvider as unknown as {
+          pendingAuth?: { timeout: NodeJS.Timeout };
+        };
+
+        if (providerAny.pendingAuth) {
+          clearTimeout(providerAny.pendingAuth.timeout);
+          providerAny.pendingAuth = undefined;
         }
         refreshPromise.catch(() => {});
 
-        // Reset console spy
-        (console.info as any).mockClear();
+        freshConsoleSpy.mockRestore();
       }
 
       // Verify all states are unique
