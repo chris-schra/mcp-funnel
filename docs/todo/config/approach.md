@@ -82,6 +82,7 @@ const DEFAULT_PASSTHROUGH_ENV = [
   'NODE_ENV',  // development/production/test
   'HOME',      // User home directory
   'USER',      // Current user
+  'PATH',      // Required for finding executables
   'TERM',      // Terminal type
   'CI',        // CI environment flag
   'DEBUG'      // Debug output control
@@ -108,7 +109,7 @@ Phase 1: Interfaces & Types
 - Update packages/mcp/src/config.ts to add:
   - `secretProviders` field to TargetServerSchema
   - `defaultSecretProviders` field to ProxyConfigSchema
-  - `defaultPassthroughEnv` field to ProxyConfigSchema (string array, defaults to ["NODE_ENV", "HOME", "USER", "TERM", "CI", "DEBUG"])
+  - `defaultPassthroughEnv` field to ProxyConfigSchema (string array, defaults to ["NODE_ENV", "HOME", "USER", "PATH", "TERM", "CI", "DEBUG"])
 
 **DO NOT** proceed to next phase until:
 - [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
@@ -263,7 +264,7 @@ Key Implementation Details:
     { "type": "process", "config": { "prefix": "MCP_" } }
   ],
   "defaultPassthroughEnv": [
-    "NODE_ENV", "HOME", "USER", "TERM", "CI", "DEBUG"
+    "NODE_ENV", "HOME", "USER", "PATH", "TERM", "CI", "DEBUG"
   ],
   "servers": {
     "github": {
@@ -274,7 +275,7 @@ Key Implementation Details:
 }
 ```
 
-Note: `defaultPassthroughEnv` allows overriding the built-in list of always-passed environment variables. If not specified, defaults to: `["NODE_ENV", "HOME", "USER", "TERM", "CI", "DEBUG"]`.
+Note: `defaultPassthroughEnv` allows overriding the built-in list of always-passed environment variables. If not specified, defaults to: `["NODE_ENV", "HOME", "USER", "PATH", "TERM", "CI", "DEBUG"]`.
 
 ## Success Criteria
 
