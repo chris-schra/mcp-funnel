@@ -98,13 +98,15 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ## Phase 3 Objectives
 
 ### Primary Goal
-**Eliminate DRY violations in both implementation and tests while completing SSE transport testing.**
+**Eliminate DRY violations and modernize transports by adding StreamableHTTP support while maintaining backward compatibility.**
 
 ### Success Criteria
 - [ ] All code DRY violations eliminated (extracted to shared utilities)
 - [ ] Base transport tests created for shared functionality
 - [ ] SSE-specific tests implemented (15-20 tests only)
 - [ ] WebSocket tests refactored to remove base functionality tests
+- [ ] StreamableHTTP client transport implemented (replacing deprecated SSE)
+- [ ] StreamableHTTP server transport exposed for incoming connections
 - [ ] End-to-end OAuth flow tested with mock servers
 - [ ] Zero test redundancy between transports
 - [ ] 90%+ coverage maintained with 50% fewer tests
@@ -190,44 +192,39 @@ You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
 
-### Task 3: Extract HTTP Utilities to Base Transport (Streaming-Capable Design)
+### Task 3: Extract HTTP Utilities to Base Transport
 **Priority: CRITICAL**
-**Size: Large (6-8 hours)**
+**Size: Medium (4-5 hours)**
 
 **BEFORE** starting this task:
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** make sure that all files modified by the workers and this file have been committed
 - You **MUST** assess current transport implementations
-- You **MUST** identify HTTP logic that can be shared
+- You **MUST** understand SDK's StreamableHTTPClientTransport interface
 - You **MUST** ensure no other worker is modifying transports
 
 **Files to modify:**
 - `packages/mcp/src/transports/implementations/base-client-transport.ts`
 - `packages/mcp/src/transports/implementations/sse-client-transport.ts`
 
-**Create streaming-capable HTTP utility in base class:**
-- [ ] Create executeHttpRequest() method with streaming support options
-- [ ] Add HttpRequestOptions interface with streaming?: boolean flag
-- [ ] Return type should support both Response and ReadableStream access
-- [ ] Add async generator helper for reading stream chunks
+**Extract shared HTTP utilities to base class:**
+- [ ] Move sendHttpRequest() core logic to base (auth injection, retry, timeout)
+- [ ] Create executeHttpRequest() for shared HTTP operations
 - [ ] Implement automatic auth header injection
 - [ ] Implement 401 response handling with token refresh
-- [ ] Create sendJsonRequest() convenience method for non-streaming
 - [ ] Move retry logic implementation to base
 - [ ] Move request timeout handling to base
 - [ ] Move error mapping utilities to base
 
-**Design for future Streamable HTTP support:**
-- [ ] Response wrapper should expose bodyStream when available
-- [ ] Include readChunks() async generator for streaming responses
-- [ ] Support both text and binary stream decoding
-- [ ] Design pattern that works for SSE, Streamable HTTP, and future transports
+**Note: SDK Integration**
+- [ ] Do NOT reimplement streaming - SDK's StreamableHTTPClientTransport handles it
+- [ ] Focus on utilities that complement SDK transports
+- [ ] Ensure compatibility with SDK Transport interface
 
 **SSE transport updates:**
 - [ ] Remove sendHttpRequest() implementation
-- [ ] Use base class executeHttpRequest() or sendJsonRequest()
+- [ ] Use base class HTTP utilities
 - [ ] Keep only SSE-specific logic (EventSource, query params)
-- [ ] Adapt to use the new flexible HTTP pattern
 
 **DO NOT** proceed to next task until:
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -421,7 +418,72 @@ You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
 
-### Task 9: Create OAuth Utility Tests
+### Task 9: Implement StreamableHTTP Client Transport
+**Priority: HIGH**
+**Size: Medium (3-4 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** ensure Task 3 is complete (HTTP utilities extracted)
+- You **MUST** understand SDK's StreamableHTTPClientTransport
+- You **MUST** ensure no other worker is modifying transport files
+
+**Files to create:**
+- `packages/mcp/src/transports/implementations/streamable-http-client-transport.ts`
+- `packages/mcp/test/unit/streamable-http-client-transport.test.ts`
+
+**Implementation:**
+- [ ] Create wrapper class extending SDK's StreamableHTTPClientTransport
+- [ ] Integrate with our auth provider interface
+- [ ] Add to transport-factory.ts with "streamable-http" type
+- [ ] Ensure compatibility with base transport utilities
+
+**Testing (~10 tests, SDK does heavy lifting):**
+- [ ] Connection establishment
+- [ ] Message sending/receiving
+- [ ] Auth integration
+- [ ] Resumption token handling
+- [ ] Error scenarios
+
+**DO NOT** proceed to next task until:
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next task.
+
+### Task 10: Expose StreamableHTTP Server Transport
+**Priority: HIGH**
+**Size: Small (2-3 hours)**
+
+**BEFORE** starting this task:
+- You **MUST** tick the checklist boxes for previous task
+- You **MUST** ensure Task 9 is complete (client transport implemented)
+- You **MUST** understand SDK's StreamableHTTPServerTransport
+- You **MUST** ensure no other worker is modifying server files
+
+**Files to modify:**
+- `packages/server/src/index.ts` or equivalent server entry point
+- `packages/server/src/routes/streamable.ts` (create if needed)
+
+**Implementation:**
+- [ ] Add StreamableHTTPServerTransport from SDK
+- [ ] Configure server routes for StreamableHTTP endpoint
+- [ ] Integrate with existing auth middleware
+- [ ] Update server documentation
+
+**Testing:**
+- [ ] Manual testing with StreamableHTTP client
+- [ ] Verify auth flow works
+- [ ] Test resumption tokens
+
+**DO NOT** proceed to next task until:
+- [ ] Server starts without errors
+- [ ] Can connect with StreamableHTTP client
+- [ ] Auth flow works end-to-end
+
+### Task 11: Create OAuth Utility Tests
 **Priority: MEDIUM**
 **Size: Small (2-3 hours)**
 
@@ -518,14 +580,12 @@ Before marking Phase 3 complete:
 - Create base class with both fully and partially shared implementations
 - Abstract acquireToken() method for subclass-specific logic
 
-### Transport HTTP Utilities
-- Implement streaming-capable executeHttpRequest() with options pattern
-- Response type supports both regular and streaming responses
-- Provide async generators for reading stream chunks
-- Provide convenience methods like sendJsonRequest() for non-streaming
-- Allow transports to customize HTTP behavior while sharing auth/retry logic
-- Design with SEAMS for future Streamable HTTP support (SSE is deprecated in MCP specs)
-- HTTP utilities ready for SSE, Streamable HTTP, and future streaming transports
+### Transport Strategy
+- Use SDK's StreamableHTTPClientTransport - no wheel reinvention
+- Extract shared HTTP utilities to base transport (auth, retry, timeout)
+- SSE remains for backward compatibility (deprecated)
+- Add StreamableHTTP as modern replacement
+- Both client transport (for upstream servers) and server transport (for CLI clients)
 
 ### Test Implementation
 - Replace all SSE placeholder tests with actual implementations
@@ -544,6 +604,8 @@ Phase 3 is complete when:
 - [ ] Zero code duplication across transports
 - [ ] Base transport tests eliminate test redundancy
 - [ ] SSE has ~20 specific tests, not 78 redundant ones
+- [ ] StreamableHTTP client transport implemented and tested
+- [ ] StreamableHTTP server transport exposed and working
 - [ ] All tests passing with ≥90% coverage
-- [ ] E2E OAuth flow verified
+- [ ] E2E OAuth flow verified with multiple transports
 - [ ] Code review confirms DRY principles followed
