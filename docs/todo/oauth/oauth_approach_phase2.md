@@ -1,5 +1,112 @@
 # OAuth Phase 2: Enhanced Security & User Delegation Implementation
 
+## Implementation Status Overview
+
+### Phase 2.1: OAuth2 Authorization Code Flow
+**Server Integration:**
+- [x] OAuth callback route in packages/server (`/api/oauth/callback`)
+- [x] Hono server integration with MCPProxy
+- [x] HTML success/error pages with auto-close
+- [x] Route added to main server (`app.route('/api/oauth', oauthRoute)`)
+
+**OAuth2AuthCodeProvider:**
+- [x] Complete RFC 6749 + RFC 7636 PKCE implementation
+- [x] PKCE challenge/verifier generation
+- [x] Browser authorization URL output (console-based)
+- [x] State management and validation
+- [x] Token exchange implementation
+- [x] **Fix broken unit tests (syntax errors)** ✅ COMPLETED
+
+**MCPProxy Integration:**
+- [x] `completeOAuthFlow` method implemented
+- [x] Factory method for OAuth2AuthCodeProvider creation
+- [x] Support for both connected/disconnected servers
+- [x] Automatic reconnection after OAuth completion
+
+### Phase 2.2: Secure Token Storage (Keychain)
+**Implementation:**
+- [x] KeychainTokenStorage class with OS commands
+- [x] Cross-platform support (macOS security, Windows cmdkey, Linux files)
+- [x] TokenStorageFactory with auto-detection
+- [x] Graceful fallback to memory in CI/test environments
+- [x] **Fix failing unit tests (mocking issues)** ✅ COMPLETED
+
+**Integration:**
+- [x] Used in OAuth2ClientCredentialsProvider
+- [x] Used in OAuth2AuthCodeProvider
+- [x] Environment-based selection logic
+
+### Phase 2.3: WebSocket Transport
+**Client-side Implementation:**
+- [ ] **WebSocket client transport class (`websocket-client-transport.ts`)**
+- [ ] **WebSocket transport type in configuration schemas**
+- [ ] **Integration in transport factory (`createTransportImplementation`)**
+- [ ] **Auth provider integration for WebSocket**
+- [ ] **Reconnection logic (reuse from SSE patterns)**
+
+**Server-side (Ready):**
+- [x] WebSocketServer setup in packages/server
+- [x] WebSocketManager for handling connections
+- [x] `/ws` endpoint configured
+- [x] Tool execution over WebSocket implemented
+
+### Phase 2.4: Security Enhancements
+**Audit Logging:**
+- [x] OAuth event logging in existing logger
+- [x] Authentication attempt tracking
+- [x] Token refresh logging
+
+**Rate Limiting:**
+- [ ] **Simple in-memory rate limiter implementation**
+- [ ] **Integration with auth providers**
+
+### Phase 2.5: Testing & Documentation
+**Unit Tests:**
+- [x] OAuth2AuthCodeProvider tests ✅ COMPLETED
+- [x] KeychainTokenStorage tests ✅ COMPLETED
+- [ ] **WebSocket client transport tests**
+- [ ] **Integration tests for complete OAuth flow**
+
+**Quality Issues:**
+- [x] **Fix TypeScript/ESLint validation errors** ✅ COMPLETED
+- [x] **Fix console.log violations in OAuth2AuthCodeProvider** ✅ COMPLETED
+- [x] **Fix require() import violations** ✅ COMPLETED
+
+**Summary:**
+- **Completed:** OAuth2 authorization code flow implementation, keychain storage, server infrastructure, unit tests, quality fixes
+- **Remaining:** WebSocket client transport, rate limiting
+- **Critical blockers:** None - all test and validation issues resolved, ready for WebSocket implementation
+
+## Your responsibility
+**BEFORE** creating tasks, keep in mind:
+- you need to assess the current state first
+- make sure to detect existing packages (recursively, use a scan for package.json, excluding **/node_modules/**)
+  to understand the repo first, then check relevant files for focus.
+- Remember: you are the supervisor and at this stage your main responsibility is to make sure that the implementation
+  is correct. Your context is "reserved" to be bloated with useful input tokens, so go ahead, use code-reasoning MCP to get a full understanding of current implementation status.
+- You **MUST** make sure that scope is clear, that there will be no duplications implemented,
+  and that the tasks are small enough to be handled by an engineer.
+- Your job is **NOT** to please the user, but to support them that beginning with an epic, throughout the implementation
+  everything is clear, small enough, and that the implementation is correct and well-aligned.
+- Your job **IS** to ask questions to the user to clarify the scope and to identify possible blockers and risks.
+
+## CRITICAL:
+
+- **NEVER** touch tsconfig.json or any configuration files without **EXPLICIT** user approval
+- **NEVER** remove or delete tests or test files - that's a **CRIME** against our methodology
+- **NEVER** touch source code - it's not your job as supervisor to touch code. **You have subagent workers for that.**
+- **NEVER** modify existing transport (PrefixedStdioClientTransport) - create new abstractions alongside it
+
+## Before starting
+
+**BEFORE** starting a new phase, you **MUST** create tasks that are optimized for parallel work,
+so it should be **NO** work on the same files in parallel.
+Then start instances of subagent worker IN PARALLEL to work on the tasks and coordinate them.
+Use as many PARALLEL worker instances as useful - CONSIDER dependencies so do NOT launch workers
+in parallel that have dependencies that are not implemented or will be worked on in other tasks.
+
+To start parallel subagent workers, you **MUST** send a single message with multiple Task tool calls.
+
 ## Overview
 
 This document outlines the implementation approach for Phase 2 OAuth enhancements, building upon the completed Phase 1 MVP (OAuth2 Client Credentials flow). Phase 2 focuses on user-centric authentication, secure token storage, and leveraging existing infrastructure.
@@ -40,7 +147,12 @@ yarn add -D @types/keytar
 
 ## Implementation Phases
 
-### Phase 2.1: OAuth2 Authorization Code Flow
+### Phase 2.1: OAuth2 Authorization Code Flow ✅ **COMPLETED**
+
+**BEFORE** starting this phase:
+- [ ] You **MUST** tick the checklist boxes for Phase 1 (OAuth Client Credentials)
+- [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
+- [ ] **Fix critical blockers:** OAuth2 authorization code provider test syntax errors
 
 **Objective**: Enable individual developers to authenticate with their personal accounts without managing PATs.
 
@@ -124,7 +236,22 @@ yarn add -D @types/keytar
 - ✅ Leverages existing MCPProxy connection
 - ✅ Simple console output instead of browser launching package
 
-### Phase 2.2: Secure Token Storage (Keychain)
+**DO NOT** proceed to next phase until:
+- [x] **Fix OAuth2 authorization code provider test syntax errors** ✅ COMPLETED
+- [x] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
+- [x] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
+- [x] You did a thorough review of all code changes using code-reasoning tool ✅ COMPLETED
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
+### Phase 2.2: Secure Token Storage (Keychain) ✅ **COMPLETED**
+
+**BEFORE** starting this phase:
+- [ ] You **MUST** tick the checklist boxes for previous phase
+- [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
+- [ ] **Fix critical blockers:** Keychain token storage test failures (mocking issues)
 
 **Objective**: Replace in-memory storage with OS keychain, but consider using OS commands instead of packages.
 
@@ -191,7 +318,21 @@ yarn add -D @types/keytar
 - ✅ CI/CD friendly with memory fallback
 - ✅ Implements existing ITokenStorage interface
 
-### Phase 2.3: WebSocket Transport
+**DO NOT** proceed to next phase until:
+- [x] **Fix keychain token storage test failures (mocking issues)** ✅ COMPLETED
+- [x] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
+- [x] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
+- [x] You did a thorough review of all code changes using code-reasoning tool ✅ COMPLETED
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
+### Phase 2.3: WebSocket Transport ❌ **NOT STARTED**
+
+**BEFORE** starting this phase:
+- [ ] You **MUST** tick the checklist boxes for previous phase
+- [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
 
 **Objective**: Create client-side WebSocket transport that connects to EXISTING server infrastructure.
 
@@ -238,7 +379,24 @@ yarn add -D @types/keytar
 - ✅ No new server infrastructure needed
 - ✅ WebSocket package already in packages/server
 
-### Phase 2.4: Security Enhancements
+**DO NOT** proceed to next phase until:
+- [ ] **Implement WebSocket client transport class (`websocket-client-transport.ts`)**
+- [ ] **Add WebSocket transport type to configuration schemas**
+- [ ] **Integrate WebSocket transport into transport factory**
+- [ ] **Add WebSocket client transport tests**
+- [ ] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
+### Phase 2.4: Security Enhancements ❌ **NOT STARTED**
+
+**BEFORE** starting this phase:
+- [ ] You **MUST** tick the checklist boxes for previous phase
+- [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
 
 **Objective**: Add security features using existing logging and patterns.
 
@@ -282,7 +440,23 @@ yarn add -D @types/keytar
 - ✅ Simple, effective rate limiting without new dependencies
 - ✅ Follows existing error handling patterns
 
-### Phase 2.5: Testing & Documentation
+**DO NOT** proceed to next phase until:
+- [ ] **Implement simple in-memory rate limiter**
+- [ ] **Integrate rate limiting with auth providers**
+- [ ] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
+### Phase 2.5: Testing & Documentation ❌ **PARTIALLY STARTED**
+
+**BEFORE** starting this phase:
+- [ ] You **MUST** tick the checklist boxes for previous phase
+- [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
+- [ ] **Fix critical blockers:** All validation errors and test failures from previous phases
 
 **Objective**: Test within existing test infrastructure.
 
@@ -299,6 +473,20 @@ yarn add -D @types/keytar
    // packages/server/test/integration/oauth-callback.test.ts
    // Test OAuth callback route with existing test setup
    ```
+
+**DO NOT** proceed to next phase until:
+- [ ] **Add WebSocket client transport tests**
+- [ ] **Add integration tests for complete OAuth flow**
+- [ ] **Fix all TypeScript/ESLint validation errors**
+- [ ] **Fix console.log violations in OAuth2AuthCodeProvider**
+- [ ] **Fix require() import violations**
+- [ ] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] You did a thorough review of all code changes using code-reasoning tool
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
 ## What We're NOT Doing
 
