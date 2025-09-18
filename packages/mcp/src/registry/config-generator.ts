@@ -18,17 +18,17 @@ export function generateConfigSnippet(
 
     switch (pkg.registry_type) {
       case 'npm':
-        entry.command = 'npx';
+        entry.command = pkg.runtime_hint || 'npx';
         entry.args = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
         handled = true;
         break;
       case 'pypi':
-        entry.command = 'uvx';
+        entry.command = pkg.runtime_hint || 'uvx';
         entry.args = [pkg.identifier, ...(pkg.package_arguments || [])];
         handled = true;
         break;
       case 'oci':
-        entry.command = 'docker';
+        entry.command = pkg.runtime_hint || 'docker';
         entry.args = [
           'run',
           '-i',
@@ -76,7 +76,7 @@ export function generateConfigSnippet(
   }
 
   // Fallback for unknown types or missing configuration
-  entry._raw_metadata = server as unknown as Record<string, unknown>;
+  entry._raw_metadata = { ...server };
   return entry;
 }
 
