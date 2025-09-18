@@ -443,6 +443,19 @@ export class RegistryContext {
 
     // For MVP, return default registry - will be extended in Phase 2
     console.info('[RegistryContext] Using default registry URL');
-    return ['https://api.mcpregistry.io'];
+    return ['https://registry.modelcontextprotocol.io'];
+  }
+
+  /**
+   * Determines if a failed registry request should be retried.
+   * This is a seam for future retry logic implementation.
+   *
+   * @param _error - The error that occurred
+   * @param _attemptNumber - The current attempt number (1-based)
+   * @returns Whether to retry the request
+   */
+  private shouldRetry(_error: unknown, _attemptNumber: number): boolean {
+    // MVP: No retry logic - will be implemented in future phase
+    return false;
   }
 }
