@@ -1,20 +1,14 @@
 import { randomBytes, createHash } from 'crypto';
-import type { IAuthProvider, ITokenStorage, TokenData } from '../index.js';
+import type { ITokenStorage, TokenData } from '../index.js';
 import type { OAuth2AuthCodeConfig } from '../../types/auth.types.js';
 import {
   AuthenticationError,
   OAuth2ErrorCode,
-  AuthErrorCode,
 } from '../errors/authentication-error.js';
 import { logEvent } from '../../logger.js';
 import type { OAuth2TokenResponse } from '../utils/oauth-types.js';
-import { DEFAULT_EXPIRY_SECONDS } from '../utils/oauth-types.js';
-import {
-  resolveOAuth2AuthCodeConfig,
-  parseErrorResponse,
-  createOAuth2Error,
-  parseTokenResponse,
-} from '../utils/oauth-utils.js';
+import { resolveOAuth2AuthCodeConfig } from '../utils/oauth-utils.js';
+import { BaseOAuthProvider } from './base-oauth-provider.js';
 
 /**
  * PKCE (Proof Key for Code Exchange) utilities for OAuth2 Authorization Code flow
@@ -60,62 +54,40 @@ interface PendingAuth {
  * - Secure state management and validation
  * - Integration with existing Hono server callback route
  */
-export class OAuth2AuthCodeProvider implements IAuthProvider {
+export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
   private readonly config: OAuth2AuthCodeConfig;
-  private readonly storage: ITokenStorage;
   private pendingAuth?: PendingAuth;
-  private refreshPromise?: Promise<void>;
   private readonly AUTH_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor(config: OAuth2AuthCodeConfig, storage: ITokenStorage) {
+    super(storage);
     this.config = resolveOAuth2AuthCodeConfig(config);
-    this.storage = storage;
     this.validateConfig();
   }
 
   /**
-   * Returns authentication headers for requests
+   * Ensures a valid token is available, acquiring one if necessary
+   * Overridden for Auth Code flow to avoid proactive refresh scheduling
    */
-  async getHeaders(): Promise<Record<string, string>> {
-    const token = await this.ensureValidToken();
-    return {
-      Authorization: `${token.tokenType} ${token.accessToken}`,
-    };
-  }
+  protected async ensureValidToken(): Promise<TokenData> {
+    const existingToken = await this.storage.retrieve();
 
-  /**
-   * Checks if the current authentication state is valid
-   */
-  async isValid(): Promise<boolean> {
-    try {
-      const token = await this.storage.retrieve();
-      if (!token) {
-        return false;
-      }
-      return !(await this.storage.isExpired());
-    } catch (error) {
-      logEvent('debug', 'auth:token_validation_error', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return false;
-    }
-  }
-
-  /**
-   * Refresh credentials by acquiring a new token
-   */
-  async refresh(): Promise<void> {
-    if (this.refreshPromise) {
-      return this.refreshPromise;
+    if (existingToken && !(await this.storage.isExpired())) {
+      return existingToken;
     }
 
-    this.refreshPromise = this.acquireNewToken();
+    // Need to acquire new token through OAuth flow
+    await this.refresh();
 
-    try {
-      await this.refreshPromise;
-    } finally {
-      this.refreshPromise = undefined;
+    const token = await this.storage.retrieve();
+    if (!token) {
+      throw new AuthenticationError(
+        'Failed to acquire OAuth2 token',
+        OAuth2ErrorCode.INVALID_REQUEST,
+      );
     }
+
+    return token;
   }
 
   /**
@@ -139,12 +111,22 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
     }
 
     try {
-      const tokenData = await this.exchangeCodeForToken(
+      const tokenResponse = await this.exchangeCodeForTokenResponse(
         code,
         this.pendingAuth.codeVerifier,
       );
 
-      await this.storage.store(tokenData);
+      const requestId = this.generateRequestId();
+      await this.processTokenResponse(tokenResponse, requestId);
+
+      // Get the stored token to pass to the resolver
+      const tokenData = await this.storage.retrieve();
+      if (!tokenData) {
+        throw new AuthenticationError(
+          'Failed to retrieve stored token after OAuth flow completion',
+          OAuth2ErrorCode.INVALID_REQUEST,
+        );
+      }
 
       logEvent('info', 'auth:oauth_flow_completed', {
         expiresAt: tokenData.expiresAt.toISOString(),
@@ -160,33 +142,9 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
   }
 
   /**
-   * Ensures a valid token is available, acquiring one if necessary
-   */
-  private async ensureValidToken(): Promise<TokenData> {
-    const existingToken = await this.storage.retrieve();
-
-    if (existingToken && !(await this.storage.isExpired())) {
-      return existingToken;
-    }
-
-    // Need to acquire new token through OAuth flow
-    await this.refresh();
-
-    const token = await this.storage.retrieve();
-    if (!token) {
-      throw new AuthenticationError(
-        'Failed to acquire OAuth2 token',
-        AuthErrorCode.UNKNOWN_ERROR,
-      );
-    }
-
-    return token;
-  }
-
-  /**
    * Acquires a new OAuth2 token using authorization code flow
    */
-  private async acquireNewToken(): Promise<void> {
+  protected async acquireToken(): Promise<void> {
     return new Promise((resolve, reject) => {
       const state = generateState();
       const codeVerifier = generateCodeVerifier();
@@ -257,10 +215,10 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
   /**
    * Exchange authorization code for access token
    */
-  private async exchangeCodeForToken(
+  private async exchangeCodeForTokenResponse(
     code: string,
     codeVerifier: string,
-  ): Promise<TokenData> {
+  ): Promise<OAuth2TokenResponse> {
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
@@ -289,37 +247,17 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
       });
 
       if (!response.ok) {
-        const errorResponse = await parseErrorResponse(response);
-        throw createOAuth2Error(errorResponse, response.status);
+        await this.handleTokenRequestError(undefined, response);
       }
 
       const tokenResponse = (await response.json()) as OAuth2TokenResponse;
 
-      if (!tokenResponse.access_token) {
-        throw new AuthenticationError(
-          'OAuth2 token response missing access_token field',
-          OAuth2ErrorCode.INVALID_REQUEST,
-        );
-      }
+      this.validateTokenResponse(tokenResponse);
 
-      return parseTokenResponse(tokenResponse, DEFAULT_EXPIRY_SECONDS);
+      return tokenResponse;
     } catch (error) {
-      if (error instanceof AuthenticationError) {
-        throw error;
-      }
-
-      if (error instanceof SyntaxError) {
-        throw new AuthenticationError(
-          'Failed to parse OAuth2 token response: invalid JSON',
-          AuthErrorCode.UNKNOWN_ERROR,
-          error,
-        );
-      }
-
-      throw AuthenticationError.networkError(
-        error instanceof Error ? error.message : String(error),
-        error instanceof Error ? error : undefined,
-      );
+      await this.handleTokenRequestError(error);
+      throw new Error('This line should never be reached');
     }
   }
 
