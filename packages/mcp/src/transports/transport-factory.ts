@@ -3,7 +3,11 @@
  * Handles legacy detection, environment variable resolution, and dependency injection.
  */
 
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type {
+  Transport,
+  TransportSendOptions,
+} from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type {
   TransportConfig,
   StdioTransportConfig,
@@ -15,6 +19,8 @@ import {
   TransportError,
   TransportErrorCode,
 } from './errors/transport-error.js';
+import { StdioClientTransport } from './implementations/stdio-client-transport.js';
+import { SSEClientTransport } from './implementations/sse-client-transport.js';
 
 /**
  * Dependencies that can be injected into transports
@@ -34,6 +40,88 @@ export interface FactoryTransport extends Transport {
   tokenStorage?: ITokenStorage;
   dispose: () => Promise<void>;
   isConnected: () => boolean;
+}
+
+/**
+ * Wrapper class to add factory-specific methods to transport implementations
+ */
+class TransportWrapper implements FactoryTransport {
+  public readonly type: string;
+  public readonly config: TransportConfig;
+  public readonly authProvider?: IAuthProvider;
+  public readonly tokenStorage?: ITokenStorage;
+
+  constructor(
+    private transport: Transport,
+    type: string,
+    config: TransportConfig,
+    authProvider?: IAuthProvider,
+    tokenStorage?: ITokenStorage,
+  ) {
+    this.type = type;
+    this.config = config;
+    this.authProvider = authProvider;
+    this.tokenStorage = tokenStorage;
+  }
+
+  // Delegate Transport interface methods
+  get onclose() {
+    return this.transport.onclose;
+  }
+  set onclose(value) {
+    this.transport.onclose = value;
+  }
+
+  get onerror() {
+    return this.transport.onerror;
+  }
+  set onerror(value) {
+    this.transport.onerror = value;
+  }
+
+  get onmessage() {
+    return this.transport.onmessage;
+  }
+  set onmessage(value) {
+    this.transport.onmessage = value;
+  }
+
+  get sessionId() {
+    return this.transport.sessionId;
+  }
+  set sessionId(value) {
+    this.transport.sessionId = value;
+  }
+
+  async start() {
+    return this.transport.start();
+  }
+  async send(message: JSONRPCMessage, options?: TransportSendOptions) {
+    return this.transport.send(message, options);
+  }
+  async close() {
+    return this.transport.close();
+  }
+  setProtocolVersion?(version: string) {
+    if (this.transport.setProtocolVersion) {
+      this.transport.setProtocolVersion(version);
+    }
+  }
+
+  // Factory-specific methods
+  async dispose(): Promise<void> {
+    await this.close();
+  }
+
+  isConnected(): boolean {
+    // Basic implementation - can be enhanced based on transport state
+    // Type assertion for internal transport state properties
+    const transportWithState = this.transport as {
+      isStarted?: boolean;
+      isClosed?: boolean;
+    };
+    return !!(transportWithState.isStarted && !transportWithState.isClosed);
+  }
 }
 
 /**
@@ -418,29 +506,57 @@ function generateCacheKey(
 
 /**
  * Creates the actual transport implementation based on configuration.
- * Currently throws placeholder errors until implementations are available.
+ * Instantiates appropriate transport classes with dependency injection.
  */
 async function createTransportImplementation(
   config: TransportConfig,
-  _dependencies?: TransportFactoryDependencies,
+  dependencies?: TransportFactoryDependencies,
 ): Promise<FactoryTransport> {
-  // TODO: Use dependencies when transport implementations are available
   switch (config.type) {
-    case 'stdio':
-      // TODO: Replace with actual StdioClientTransport implementation
-      throw new TransportError(
-        'StdioClientTransport not implemented - this is a placeholder for Phase 5 implementation',
-        TransportErrorCode.UNKNOWN_ERROR,
-        false,
+    case 'stdio': {
+      // Create stdio transport with process spawn configuration
+      const stdioTransport = new StdioClientTransport(
+        `stdio-${config.command}`,
+        {
+          command: config.command,
+          args: config.args,
+          env: config.env,
+        },
       );
 
-    case 'sse':
-      // TODO: Replace with actual SSEClientTransport implementation
-      throw new TransportError(
-        'SSEClientTransport not implemented - this is a placeholder for Phase 5 implementation',
-        TransportErrorCode.UNKNOWN_ERROR,
-        false,
+      return new TransportWrapper(
+        stdioTransport,
+        'stdio',
+        config,
+        dependencies?.authProvider,
+        dependencies?.tokenStorage,
       );
+    }
+
+    case 'sse': {
+      // Create SSE transport with OAuth configuration
+      const sseTransport = new SSEClientTransport({
+        url: config.url,
+        timeout: config.timeout,
+        authProvider: dependencies?.authProvider
+          ? {
+              getAuthHeaders: () => dependencies.authProvider!.getHeaders(),
+              refreshToken: dependencies.authProvider.refresh
+                ? () => dependencies.authProvider!.refresh!()
+                : undefined,
+            }
+          : undefined,
+        reconnect: config.reconnect,
+      });
+
+      return new TransportWrapper(
+        sseTransport,
+        'sse',
+        config,
+        dependencies?.authProvider,
+        dependencies?.tokenStorage,
+      );
+    }
 
     default: {
       // Use exhaustive check to handle unknown transport types
