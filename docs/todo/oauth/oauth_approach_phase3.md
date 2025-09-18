@@ -31,6 +31,19 @@ in parallel that have dependencies that are not implemented or will be worked on
 
 To start parallel subagent workers, you **MUST** send a single message with multiple Task tool calls.
 
+## Supervisor Verification Protocol
+
+**AFTER EACH WORKER COMPLETES**, the supervisor MUST:
+1. [ ] Run `git status` to verify files are tracked
+2. [ ] Run `yarn validate packages/mcp` personally
+3. [ ] Run `yarn test packages/mcp` personally
+4. [ ] Use code-reasoning tool to review changes
+5. [ ] Commit all files with `git add` and `git commit`
+6. [ ] Update task checkboxes in this document
+7. [ ] Only then proceed to dependent tasks
+
+
+
 ## Critical Gaps Identified
 
 ### Test Redundancy (60-70% duplication)
@@ -129,22 +142,22 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - `packages/mcp/src/auth/utils/oauth-types.ts`
 
 **Extract from OAuth providers:**
-- [ ] Move OAuth2TokenResponse and OAuth2ErrorResponse to oauth-types.ts
-- [ ] Extract resolveEnvironmentVariables() to oauth-utils.ts
-- [ ] Move shared constants (DEFAULT_EXPIRY_SECONDS, MAX_RETRIES, RETRY_DELAY_MS)
-- [ ] Create shared error handling patterns
-- [ ] Update both OAuth providers to import from utils
-- [ ] Use new standardized OAuth field names (no backward compatibility needed)
+- [x] Move OAuth2TokenResponse and OAuth2ErrorResponse to oauth-types.ts
+- [x] Extract resolveEnvironmentVariables() to oauth-utils.ts
+- [x] Move shared constants (DEFAULT_EXPIRY_SECONDS, MAX_RETRIES, RETRY_DELAY_MS)
+- [x] Create shared error handling patterns
+- [x] Update both OAuth providers to import from utils
+- [x] Use new standardized OAuth field names (no backward compatibility needed)
 
 **Files to modify:**
 - `packages/mcp/src/auth/implementations/oauth2-client-credentials.ts`
 - `packages/mcp/src/auth/implementations/oauth2-authorization-code.ts`
 
 **DO NOT** proceed to next task until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] You did a thorough review of all code changes using code-reasoning tool
-- [ ] All files modified by this task have been committed
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] You did a thorough review of all code changes using code-reasoning tool
+- [x] All files modified by this task have been committed
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -165,28 +178,28 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/src/auth/implementations/base-oauth-provider.ts`
 
 **Extract shared methods:**
-- [ ] getHeaders() implementation (fully shared)
-- [ ] isValid() implementation (fully shared)
-- [ ] refresh() base implementation (partially shared, calls abstract acquireToken())
-- [ ] ensureValidToken() implementation (fully shared)
-- [ ] parseTokenResponse() utility (fully shared)
-- [ ] parseErrorResponse() utility (fully shared)
-- [ ] createOAuth2Error() utility (fully shared)
-- [ ] scheduleProactiveRefresh() implementation (fully shared)
-- [ ] Token storage integration
-- [ ] Error handling and retry logic
-- [ ] Abstract acquireToken() method for subclasses
+- [x] getHeaders() implementation (fully shared)
+- [x] isValid() implementation (fully shared)
+- [x] refresh() base implementation (partially shared, calls abstract acquireToken())
+- [x] ensureValidToken() implementation (fully shared)
+- [x] parseTokenResponse() utility (fully shared)
+- [x] parseErrorResponse() utility (fully shared)
+- [x] createOAuth2Error() utility (fully shared)
+- [x] scheduleProactiveRefresh() implementation (fully shared)
+- [x] Token storage integration
+- [x] Error handling and retry logic
+- [x] Abstract acquireToken() method for subclasses
 
 **Update providers to extend base:**
-- [ ] OAuth2ClientCredentialsProvider extends BaseOAuthProvider
-- [ ] OAuth2AuthCodeProvider extends BaseOAuthProvider
-- [ ] Remove duplicated methods and use base class implementations
+- [x] OAuth2ClientCredentialsProvider extends BaseOAuthProvider
+- [x] OAuth2AuthCodeProvider extends BaseOAuthProvider
+- [x] Remove duplicated methods and use base class implementations
 
 **DO NOT** proceed to next task until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] You did a thorough review of all code changes using code-reasoning tool
-- [ ] All files modified by this task have been committed
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] You did a thorough review of all code changes using code-reasoning tool
+- [x] All files modified by this task have been committed
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -208,13 +221,13 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/src/transports/implementations/sse-client-transport.ts`
 
 **Extract shared HTTP utilities to base class:**
-- [ ] Move sendHttpRequest() core logic to base (auth injection, retry, timeout)
-- [ ] Create executeHttpRequest() for shared HTTP operations
-- [ ] Implement automatic auth header injection
-- [ ] Implement 401 response handling with token refresh
-- [ ] Move retry logic implementation to base
-- [ ] Move request timeout handling to base
-- [ ] Move error mapping utilities to base
+- [x] Move sendHttpRequest() core logic to base (auth injection, retry, timeout)
+- [x] Create executeHttpRequest() for shared HTTP operations
+- [x] Implement automatic auth header injection
+- [x] Implement 401 response handling with token refresh
+- [x] Move retry logic implementation to base
+- [x] Move request timeout handling to base
+- [x] Move error mapping utilities to base
 
 **Note: SDK Integration**
 - [ ] Do NOT reimplement streaming - SDK's StreamableHTTPClientTransport handles it
@@ -222,15 +235,15 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - [ ] Ensure compatibility with SDK Transport interface
 
 **SSE transport updates:**
-- [ ] Remove sendHttpRequest() implementation
-- [ ] Use base class HTTP utilities
-- [ ] Keep only SSE-specific logic (EventSource, query params)
+- [x] Remove sendHttpRequest() implementation
+- [x] Use base class HTTP utilities
+- [x] Keep only SSE-specific logic (EventSource, query params)
 
 **DO NOT** proceed to next task until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] You did a thorough review of all code changes using code-reasoning tool
-- [ ] All files modified by this task have been committed
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] You did a thorough review of all code changes using code-reasoning tool
+- [x] All files modified by this task have been committed
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -252,24 +265,24 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/test/unit/transport-utils.test.ts`
 
 **Test categories for base transport:**
-- [ ] Configuration management and validation
-- [ ] Authentication provider integration
-- [ ] Message correlation (pending requests)
-- [ ] Reconnection manager integration
-- [ ] Data sanitization utilities
-- [ ] Lifecycle management (start/close)
-- [ ] HTTP request handling (new shared method)
+- [x] Configuration management and validation
+- [x] Authentication provider integration
+- [x] Message correlation (pending requests)
+- [x] Reconnection manager integration
+- [x] Data sanitization utilities
+- [x] Lifecycle management (start/close)
+- [x] HTTP request handling (new shared method)
 
 **Test categories for transport utils:**
-- [ ] ReconnectionManager behavior
-- [ ] Exponential backoff calculations
-- [ ] Utility function testing
+- [x] ReconnectionManager behavior
+- [x] Exponential backoff calculations
+- [x] Utility function testing
 
 **DO NOT** proceed to next task until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] You did a thorough review of all code changes using code-reasoning tool
-- [ ] All files modified by this task have been committed
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] You did a thorough review of all code changes using code-reasoning tool
+- [x] All files modified by this task have been committed
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -366,22 +379,22 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/test/mocks/mock-sse-server.ts`
 
 **MockEventSource (similar to MockWebSocket):**
-- [ ] Controllable readyState
-- [ ] Event emission simulation
-- [ ] Error injection
-- [ ] Connection lifecycle
+- [x] Controllable readyState
+- [x] Event emission simulation
+- [x] Error injection
+- [x] Connection lifecycle
 
 **MockSSEServer (using Express):**
-- [ ] SSE endpoint with event streaming
-- [ ] POST endpoint for messages
-- [ ] Auth validation
-- [ ] Error simulation
+- [x] SSE endpoint with event streaming
+- [x] POST endpoint for messages
+- [x] Auth validation
+- [x] Error simulation
 
 **DO NOT** proceed to next task until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] You did a thorough review of all code changes using code-reasoning tool
-- [ ] All files modified by this task have been committed
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] You did a thorough review of all code changes using code-reasoning tool
+- [x] All files modified by this task have been committed
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -433,21 +446,21 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/test/unit/streamable-http-client-transport.test.ts`
 
 **Implementation:**
-- [ ] Create wrapper class extending SDK's StreamableHTTPClientTransport
-- [ ] Integrate with our auth provider interface
-- [ ] Add to transport-factory.ts with "streamable-http" type
-- [ ] Ensure compatibility with base transport utilities
+- [x] Create wrapper class extending SDK's StreamableHTTPClientTransport
+- [x] Integrate with our auth provider interface
+- [x] Add to transport-factory.ts with "streamable-http" type
+- [x] Ensure compatibility with base transport utilities
 
 **Testing (~10 tests, SDK does heavy lifting):**
-- [ ] Connection establishment
-- [ ] Message sending/receiving
-- [ ] Auth integration
-- [ ] Resumption token handling
-- [ ] Error scenarios
+- [x] Connection establishment
+- [x] Message sending/receiving
+- [x] Auth integration
+- [x] Resumption token handling
+- [x] Error scenarios
 
 **DO NOT** proceed to next task until:
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 
 You **MUST** run above commands **ALWAYS** from package root.
 
