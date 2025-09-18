@@ -12,7 +12,7 @@ import {
 
 describe('Config Generation', () => {
   describe('generateConfigSnippet', () => {
-    it.skip('should generate npm package config', () => {
+    it('should generate npm package config', () => {
       const npmPackage: Package = {
         identifier: '@mcp/example-server',
         registry_type: 'npm',
@@ -43,7 +43,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate npm package config without arguments', () => {
+    it('should generate npm package config without arguments', () => {
       const npmPackage: Package = {
         identifier: 'simple-mcp-server',
         registry_type: 'npm',
@@ -65,7 +65,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate pypi package config', () => {
+    it('should generate pypi package config', () => {
       const pypiPackage: Package = {
         identifier: 'mcp-python-server',
         registry_type: 'pypi',
@@ -97,7 +97,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate pypi package config without environment variables', () => {
+    it('should generate pypi package config without environment variables', () => {
       const pypiPackage: Package = {
         identifier: 'basic-python-server',
         registry_type: 'pypi',
@@ -120,7 +120,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate oci container config', () => {
+    it('should generate oci container config', () => {
       const ociPackage: Package = {
         identifier: 'ghcr.io/example/mcp-server:v1.2.3',
         registry_type: 'oci',
@@ -161,7 +161,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate oci container config with minimal setup', () => {
+    it('should generate oci container config with minimal setup', () => {
       const ociPackage: Package = {
         identifier: 'docker.io/mcp/server:latest',
         registry_type: 'oci',
@@ -183,7 +183,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate github package config', () => {
+    it('should generate github package config', () => {
       const githubPackage: Package = {
         identifier: 'owner/repo',
         registry_type: 'github',
@@ -211,7 +211,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate remote server config with SSE transport', () => {
+    it('should generate remote server config with SSE transport', () => {
       const remote: Remote = {
         type: 'sse',
         url: 'https://api.example.com/mcp/events',
@@ -243,7 +243,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate remote server config with WebSocket transport', () => {
+    it('should generate remote server config with WebSocket transport', () => {
       const remote: Remote = {
         type: 'websocket',
         url: 'wss://websocket.example.com/mcp',
@@ -273,7 +273,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should generate remote server config without headers', () => {
+    it('should generate remote server config without headers', () => {
       const remote: Remote = {
         type: 'stdio',
         url: 'http://localhost:3000/mcp',
@@ -295,7 +295,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should handle environment variables array to object conversion', () => {
+    it('should handle environment variables array to object conversion', () => {
       const envVars: EnvironmentVariable[] = [
         { name: 'VAR1', value: 'value1' },
         { name: 'VAR2', value: 'value2', is_required: false },
@@ -327,7 +327,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should return raw metadata for unknown registry types', () => {
+    it('should return raw metadata for unknown registry types', () => {
       const unknownPackage: Package = {
         identifier: 'unknown-package',
         registry_type: 'custom-registry' as 'npm',
@@ -349,7 +349,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should return raw metadata when no packages or remotes', () => {
+    it('should return raw metadata when no packages or remotes', () => {
       const server: RegistryServer = {
         id: 'empty-server',
         name: 'Empty Server',
@@ -364,7 +364,7 @@ describe('Config Generation', () => {
       });
     });
 
-    it.skip('should prefer packages over remotes when both exist', () => {
+    it('should prefer packages over remotes when both exist', () => {
       const package_: Package = {
         identifier: '@preferred/package',
         registry_type: 'npm',
@@ -392,7 +392,7 @@ describe('Config Generation', () => {
       expect(result.url).toBeUndefined();
     });
 
-    it.skip('should use first package when multiple packages exist', () => {
+    it('should use first package when multiple packages exist', () => {
       const packages: Package[] = [
         {
           identifier: '@first/package',
@@ -418,7 +418,7 @@ describe('Config Generation', () => {
       expect(result.args).toEqual(['-y', '@first/package']);
     });
 
-    it.skip('should use first remote when multiple remotes exist', () => {
+    it('should use first remote when multiple remotes exist', () => {
       const remotes: Remote[] = [
         {
           type: 'sse',
@@ -446,7 +446,7 @@ describe('Config Generation', () => {
   });
 
   describe('generateInstallInstructions', () => {
-    it.skip('should generate helpful instructions for npm packages', () => {
+    it('should generate helpful instructions for npm packages', () => {
       const server: RegistryServer = {
         id: 'npm-instructions',
         name: 'NPM Instructions Server',
@@ -472,7 +472,7 @@ describe('Config Generation', () => {
       expect(instructions).toContain('environment variable');
     });
 
-    it.skip('should generate helpful instructions for pypi packages', () => {
+    it('should generate helpful instructions for pypi packages', () => {
       const server: RegistryServer = {
         id: 'pypi-instructions',
         name: 'PyPI Instructions Server',
@@ -494,7 +494,7 @@ describe('Config Generation', () => {
       expect(instructions).toContain('uvx');
     });
 
-    it.skip('should generate helpful instructions for OCI containers', () => {
+    it('should generate helpful instructions for OCI containers', () => {
       const server: RegistryServer = {
         id: 'oci-instructions',
         name: 'OCI Instructions Server',
@@ -516,7 +516,7 @@ describe('Config Generation', () => {
       expect(instructions).toContain('docker pull');
     });
 
-    it.skip('should generate helpful instructions for remote servers', () => {
+    it('should generate helpful instructions for remote servers', () => {
       const server: RegistryServer = {
         id: 'remote-instructions',
         name: 'Remote Instructions Server',
@@ -539,7 +539,7 @@ describe('Config Generation', () => {
       expect(instructions).toContain('authentication');
     });
 
-    it.skip('should handle servers with no installation requirements', () => {
+    it('should handle servers with no installation requirements', () => {
       const server: RegistryServer = {
         id: 'no-install',
         name: 'No Install Server',
@@ -559,7 +559,7 @@ describe('Config Generation', () => {
       expect(instructions).toContain('simple-server');
     });
 
-    it.skip('should provide fallback instructions for unknown types', () => {
+    it('should provide fallback instructions for unknown types', () => {
       const server: RegistryServer = {
         id: 'unknown-instructions',
         name: 'Unknown Type Server',
@@ -579,7 +579,7 @@ describe('Config Generation', () => {
       expect(instructions).toContain('unknown-package');
     });
 
-    it.skip('should mention required environment variables prominently', () => {
+    it('should mention required environment variables prominently', () => {
       const server: RegistryServer = {
         id: 'required-env',
         name: 'Required Environment Server',
@@ -608,7 +608,7 @@ describe('Config Generation', () => {
       expect(requiredMatches).toHaveLength(2);
     });
 
-    it.skip('should provide step-by-step format', () => {
+    it('should provide step-by-step format', () => {
       const server: RegistryServer = {
         id: 'step-by-step',
         name: 'Step by Step Server',

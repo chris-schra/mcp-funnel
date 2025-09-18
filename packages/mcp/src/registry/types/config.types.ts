@@ -20,7 +20,7 @@ export type { ServerConfig };
  * from a registry, allowing us to preserve the original registry data alongside
  * the normalized server configuration.
  */
-export interface RegistryConfigEntry extends ServerConfig {
+export interface RegistryConfigEntry extends Omit<ServerConfig, 'headers'> {
   /**
    * Optional metadata from the original registry source.
    * This can include registry-specific fields like download counts,
@@ -28,6 +28,20 @@ export interface RegistryConfigEntry extends ServerConfig {
    * for displaying or filtering registry entries.
    */
   _registry_metadata?: Record<string, unknown>; // Store original registry data
+
+  /**
+   * Raw metadata for cases where the server configuration cannot be normalized.
+   * Used as a fallback when registry types are unknown or configuration fails.
+   */
+  _raw_metadata?: Record<string, unknown>;
+
+  /**
+   * HTTP headers for remote server authentication and configuration.
+   * Can be either a Record (final format) or KeyValueInput[] (registry format).
+   */
+  headers?:
+    | Record<string, string>
+    | import('./registry.types.js').KeyValueInput[];
 }
 
 /**
