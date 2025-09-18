@@ -7,6 +7,14 @@ import {
   AuthErrorCode,
 } from '../errors/authentication-error.js';
 import { logEvent } from '../../logger.js';
+import type { OAuth2TokenResponse } from '../utils/oauth-types.js';
+import { DEFAULT_EXPIRY_SECONDS } from '../utils/oauth-types.js';
+import {
+  resolveOAuth2AuthCodeConfig,
+  parseErrorResponse,
+  createOAuth2Error,
+  parseTokenResponse,
+} from '../utils/oauth-utils.js';
 
 /**
  * PKCE (Proof Key for Code Exchange) utilities for OAuth2 Authorization Code flow
@@ -30,26 +38,6 @@ function generateCodeChallenge(verifier: string): string {
 
 function generateState(): string {
   return base64URLEncode(randomBytes(16));
-}
-
-/**
- * OAuth2 token response interface following RFC 6749
- */
-interface OAuth2TokenResponse {
-  access_token: string;
-  token_type?: string;
-  expires_in?: number;
-  refresh_token?: string;
-  scope?: string;
-}
-
-/**
- * OAuth2 error response interface following RFC 6749
- */
-interface OAuth2ErrorResponse {
-  error: string;
-  error_description?: string;
-  error_uri?: string;
 }
 
 /**
@@ -77,13 +65,10 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
   private readonly storage: ITokenStorage;
   private pendingAuth?: PendingAuth;
   private refreshPromise?: Promise<void>;
-  private readonly DEFAULT_EXPIRY_SECONDS = 3600; // 1 hour
   private readonly AUTH_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-  private readonly MAX_RETRIES = 3;
-  private readonly RETRY_DELAY_MS = 1000;
 
   constructor(config: OAuth2AuthCodeConfig, storage: ITokenStorage) {
-    this.config = this.resolveEnvironmentVariables(config);
+    this.config = resolveOAuth2AuthCodeConfig(config);
     this.storage = storage;
     this.validateConfig();
   }
@@ -304,8 +289,8 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
       });
 
       if (!response.ok) {
-        const errorResponse = await this.parseErrorResponse(response);
-        throw this.createOAuth2Error(errorResponse, response.status);
+        const errorResponse = await parseErrorResponse(response);
+        throw createOAuth2Error(errorResponse, response.status);
       }
 
       const tokenResponse = (await response.json()) as OAuth2TokenResponse;
@@ -317,7 +302,7 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
         );
       }
 
-      return this.parseTokenResponse(tokenResponse);
+      return parseTokenResponse(tokenResponse, DEFAULT_EXPIRY_SECONDS);
     } catch (error) {
       if (error instanceof AuthenticationError) {
         throw error;
@@ -339,84 +324,6 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
   }
 
   /**
-   * Parses error response from OAuth2 server
-   */
-  private async parseErrorResponse(
-    response: Response,
-  ): Promise<OAuth2ErrorResponse> {
-    try {
-      const errorData = await response.json();
-      return errorData as OAuth2ErrorResponse;
-    } catch {
-      return {
-        error: response.status >= 500 ? 'server_error' : 'invalid_request',
-        error_description: `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
-  }
-
-  /**
-   * Creates appropriate AuthenticationError from OAuth2 error response
-   */
-  private createOAuth2Error(
-    errorResponse: OAuth2ErrorResponse,
-    statusCode: number,
-  ): AuthenticationError {
-    const message = errorResponse.error_description
-      ? `OAuth2 authentication failed: ${errorResponse.error} - ${errorResponse.error_description}`
-      : `OAuth2 authentication failed: ${errorResponse.error}`;
-
-    let errorCode: OAuth2ErrorCode | AuthErrorCode;
-
-    switch (errorResponse.error) {
-      case 'invalid_request':
-        errorCode = OAuth2ErrorCode.INVALID_REQUEST;
-        break;
-      case 'invalid_client':
-        errorCode = OAuth2ErrorCode.INVALID_CLIENT;
-        break;
-      case 'invalid_grant':
-        errorCode = OAuth2ErrorCode.INVALID_GRANT;
-        break;
-      case 'unauthorized_client':
-        errorCode = OAuth2ErrorCode.UNAUTHORIZED_CLIENT;
-        break;
-      case 'unsupported_grant_type':
-        errorCode = OAuth2ErrorCode.UNSUPPORTED_GRANT_TYPE;
-        break;
-      case 'invalid_scope':
-        errorCode = OAuth2ErrorCode.INVALID_SCOPE;
-        break;
-      case 'access_denied':
-        errorCode = OAuth2ErrorCode.ACCESS_DENIED;
-        break;
-      default:
-        errorCode =
-          statusCode >= 500
-            ? OAuth2ErrorCode.SERVER_ERROR
-            : AuthErrorCode.UNKNOWN_ERROR;
-    }
-
-    return new AuthenticationError(message, errorCode);
-  }
-
-  /**
-   * Parses OAuth2 token response into TokenData
-   */
-  private parseTokenResponse(tokenResponse: OAuth2TokenResponse): TokenData {
-    const expiresIn = tokenResponse.expires_in ?? this.DEFAULT_EXPIRY_SECONDS;
-    const expiresAt = new Date(Date.now() + expiresIn * 1000);
-    const tokenType = tokenResponse.token_type ?? 'Bearer';
-
-    return {
-      accessToken: tokenResponse.access_token,
-      expiresAt,
-      tokenType,
-      scope: tokenResponse.scope,
-    };
-  }
-
-  /**
    * Clean up pending authorization state
    */
   private cleanupPendingAuth(): void {
@@ -424,50 +331,6 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
       clearTimeout(this.pendingAuth.timeout);
       this.pendingAuth = undefined;
     }
-  }
-
-  /**
-   * Resolves environment variables in configuration
-   */
-  private resolveEnvironmentVariables(
-    config: OAuth2AuthCodeConfig,
-  ): OAuth2AuthCodeConfig {
-    return {
-      ...config,
-      clientId: this.resolveEnvVar(config.clientId),
-      clientSecret: config.clientSecret
-        ? this.resolveEnvVar(config.clientSecret)
-        : config.clientSecret,
-      authorizationEndpoint: this.resolveEnvVar(config.authorizationEndpoint),
-      tokenEndpoint: this.resolveEnvVar(config.tokenEndpoint),
-      redirectUri: this.resolveEnvVar(config.redirectUri),
-      scope: config.scope ? this.resolveEnvVar(config.scope) : config.scope,
-      audience: config.audience
-        ? this.resolveEnvVar(config.audience)
-        : config.audience,
-    };
-  }
-
-  /**
-   * Resolves a single environment variable reference
-   */
-  private resolveEnvVar(value: string): string {
-    const envVarMatch = value.match(/^\$\{([^}]+)\}$/);
-    if (envVarMatch) {
-      const envVarName = envVarMatch[1];
-      const envValue = process.env[envVarName];
-
-      if (envValue === undefined) {
-        throw new AuthenticationError(
-          `Environment variable ${envVarName} is not set`,
-          OAuth2ErrorCode.INVALID_REQUEST,
-        );
-      }
-
-      return envValue;
-    }
-
-    return value;
   }
 
   /**

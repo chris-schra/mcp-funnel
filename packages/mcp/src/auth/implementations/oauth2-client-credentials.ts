@@ -7,26 +7,19 @@ import {
   AuthErrorCode,
 } from '../errors/authentication-error.js';
 import { logEvent } from '../../logger.js';
-
-/**
- * OAuth2 token response interface following RFC 6749
- */
-interface OAuth2TokenResponse {
-  access_token: string;
-  token_type?: string;
-  expires_in?: number;
-  scope?: string;
-  audience?: string;
-}
-
-/**
- * OAuth2 error response interface following RFC 6749
- */
-interface OAuth2ErrorResponse {
-  error: string;
-  error_description?: string;
-  error_uri?: string;
-}
+import type { OAuth2TokenResponse } from '../utils/oauth-types.js';
+import {
+  DEFAULT_EXPIRY_SECONDS,
+  MAX_RETRIES,
+  RETRY_DELAY_MS,
+} from '../utils/oauth-types.js';
+import {
+  resolveOAuth2ClientCredentialsConfig,
+  parseErrorResponse,
+  createOAuth2Error,
+  parseTokenResponse,
+  isRetryableError,
+} from '../utils/oauth-utils.js';
 
 /**
  * OAuth2 Client Credentials provider implementing IAuthProvider
@@ -44,15 +37,12 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
   private readonly storage: ITokenStorage;
   private refreshPromise?: Promise<void>;
   private readonly BUFFER_TIME_MS = 5 * 60 * 1000; // 5 minutes
-  private readonly DEFAULT_EXPIRY_SECONDS = 3600; // 1 hour
-  private readonly MAX_RETRIES = 3;
-  private readonly RETRY_DELAY_MS = 1000;
 
   constructor(
     config: OAuth2ClientCredentialsConfigZod,
     storage: ITokenStorage,
   ) {
-    this.config = this.resolveEnvironmentVariables(config);
+    this.config = resolveOAuth2ClientCredentialsConfig(config);
     this.storage = storage;
 
     // Validate required configuration
@@ -145,7 +135,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
     });
 
     const tokenResponse = await this.requestTokenWithRetry(requestId);
-    const tokenData = this.parseTokenResponse(tokenResponse);
+    const tokenData = parseTokenResponse(tokenResponse, DEFAULT_EXPIRY_SECONDS);
 
     // Validate audience if configured
     if (
@@ -191,15 +181,15 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
   ): Promise<OAuth2TokenResponse> {
     let lastError: Error;
 
-    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         return await this.makeTokenRequest(requestId);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         // Only retry on network errors, not OAuth2 errors
-        if (this.isRetryableError(lastError) && attempt < this.MAX_RETRIES) {
-          const delayMs = this.RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        if (isRetryableError(lastError) && attempt < MAX_RETRIES) {
+          const delayMs = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
           logEvent('warn', 'auth:token_request_retry', {
             requestId,
             attempt,
@@ -253,8 +243,8 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
       });
 
       if (!response.ok) {
-        const errorResponse = await this.parseErrorResponse(response);
-        throw this.createOAuth2Error(errorResponse, response.status);
+        const errorResponse = await parseErrorResponse(response);
+        throw createOAuth2Error(errorResponse, response.status);
       }
 
       const tokenResponse = (await response.json()) as OAuth2TokenResponse;
@@ -291,95 +281,6 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
   }
 
   /**
-   * Parses error response from OAuth2 server
-   */
-  private async parseErrorResponse(
-    response: Response,
-  ): Promise<OAuth2ErrorResponse> {
-    try {
-      const errorData = await response.json();
-      return errorData as OAuth2ErrorResponse;
-    } catch {
-      // If JSON parsing fails, return generic error based on status
-      return {
-        error: response.status >= 500 ? 'server_error' : 'invalid_request',
-        error_description: `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
-  }
-
-  /**
-   * Creates appropriate AuthenticationError from OAuth2 error response
-   */
-  private createOAuth2Error(
-    errorResponse: OAuth2ErrorResponse,
-    statusCode: number,
-  ): AuthenticationError {
-    const message = errorResponse.error_description
-      ? `OAuth2 authentication failed: ${errorResponse.error} - ${errorResponse.error_description}`
-      : `OAuth2 authentication failed: ${errorResponse.error}`;
-
-    // Map OAuth2 error codes to our error codes
-    let errorCode: OAuth2ErrorCode | AuthErrorCode;
-
-    switch (errorResponse.error) {
-      case 'invalid_request':
-        errorCode = OAuth2ErrorCode.INVALID_REQUEST;
-        break;
-      case 'invalid_client':
-        errorCode = OAuth2ErrorCode.INVALID_CLIENT;
-        break;
-      case 'invalid_grant':
-        errorCode = OAuth2ErrorCode.INVALID_GRANT;
-        break;
-      case 'unauthorized_client':
-        errorCode = OAuth2ErrorCode.UNAUTHORIZED_CLIENT;
-        break;
-      case 'unsupported_grant_type':
-        errorCode = OAuth2ErrorCode.UNSUPPORTED_GRANT_TYPE;
-        break;
-      case 'invalid_scope':
-        errorCode = OAuth2ErrorCode.INVALID_SCOPE;
-        break;
-      case 'access_denied':
-        errorCode = OAuth2ErrorCode.ACCESS_DENIED;
-        break;
-      case 'unsupported_response_type':
-        errorCode = OAuth2ErrorCode.UNSUPPORTED_RESPONSE_TYPE;
-        break;
-      case 'server_error':
-        errorCode = OAuth2ErrorCode.SERVER_ERROR;
-        break;
-      case 'temporarily_unavailable':
-        errorCode = OAuth2ErrorCode.TEMPORARILY_UNAVAILABLE;
-        break;
-      default:
-        errorCode =
-          statusCode >= 500
-            ? OAuth2ErrorCode.SERVER_ERROR
-            : AuthErrorCode.UNKNOWN_ERROR;
-    }
-
-    return new AuthenticationError(message, errorCode);
-  }
-
-  /**
-   * Parses OAuth2 token response into TokenData
-   */
-  private parseTokenResponse(tokenResponse: OAuth2TokenResponse): TokenData {
-    const expiresIn = tokenResponse.expires_in ?? this.DEFAULT_EXPIRY_SECONDS;
-    const expiresAt = new Date(Date.now() + expiresIn * 1000);
-    const tokenType = tokenResponse.token_type ?? 'Bearer';
-
-    return {
-      accessToken: tokenResponse.access_token,
-      expiresAt,
-      tokenType,
-      scope: tokenResponse.scope,
-    };
-  }
-
-  /**
    * Schedules proactive token refresh 5 minutes before expiry
    */
   private scheduleProactiveRefresh(tokenData: TokenData): void {
@@ -408,91 +309,6 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
         }
       });
     }
-  }
-
-  /**
-   * Determines if an error is retryable (network errors, not OAuth2 errors)
-   */
-  private isRetryableError(error: Error): boolean {
-    // Network errors that might be transient
-    const retryableNetworkErrors = [
-      'ECONNRESET',
-      'ECONNREFUSED',
-      'ETIMEDOUT',
-      'ENOTFOUND',
-      'EAI_AGAIN',
-      'ENETUNREACH',
-      'ECONNABORTED',
-    ];
-
-    const errorMessage = error.message.toLowerCase();
-
-    // Check for specific network error codes
-    if (
-      retryableNetworkErrors.some((code) =>
-        errorMessage.includes(code.toLowerCase()),
-      )
-    ) {
-      return true;
-    }
-
-    // Check for generic network timeout/reset messages
-    if (
-      errorMessage.includes('network') ||
-      errorMessage.includes('timeout') ||
-      errorMessage.includes('reset') ||
-      errorMessage.includes('connection')
-    ) {
-      return true;
-    }
-
-    // Don't retry OAuth2 authentication errors
-    if (error instanceof AuthenticationError) {
-      return false;
-    }
-
-    return false;
-  }
-
-  /**
-   * Resolves environment variables in configuration
-   */
-  private resolveEnvironmentVariables(
-    config: OAuth2ClientCredentialsConfigZod,
-  ): OAuth2ClientCredentialsConfigZod {
-    return {
-      ...config,
-      clientId: this.resolveEnvVar(config.clientId),
-      clientSecret: this.resolveEnvVar(config.clientSecret),
-      tokenEndpoint: this.resolveEnvVar(config.tokenEndpoint),
-      scope: config.scope ? this.resolveEnvVar(config.scope) : config.scope,
-      audience: config.audience
-        ? this.resolveEnvVar(config.audience)
-        : config.audience,
-    };
-  }
-
-  /**
-   * Resolves a single environment variable reference
-   */
-  private resolveEnvVar(value: string): string {
-    // Match ${VAR_NAME} pattern
-    const envVarMatch = value.match(/^\$\{([^}]+)\}$/);
-    if (envVarMatch) {
-      const envVarName = envVarMatch[1];
-      const envValue = process.env[envVarName];
-
-      if (envValue === undefined) {
-        throw new AuthenticationError(
-          `Environment variable ${envVarName} is not set`,
-          OAuth2ErrorCode.INVALID_REQUEST,
-        );
-      }
-
-      return envValue;
-    }
-
-    return value;
   }
 
   /**
