@@ -148,35 +148,38 @@ export abstract class BaseClientTransport implements Transport {
         request.id = generateRequestId();
       }
 
-      // Set up pending request for response correlation (fire-and-forget mode)
-      const controller = new AbortController();
-      const pending: PendingRequest = {
-        resolve: () => {}, // No-op - fire and forget
-        reject: () => {}, // No-op - fire and forget
-        controller,
-        timestamp: Date.now(),
-      };
+      // Create promise for response correlation
+      return new Promise<void>((resolve, reject) => {
+        const controller = new AbortController();
 
-      this.pendingRequests.set(String(request.id), pending);
+        const timeoutId = setTimeout(() => {
+          this.pendingRequests.delete(String(request.id));
+          controller.abort();
+          reject(new Error(`Request timeout after ${this.config.timeout}ms`));
+        }, this.config.timeout);
 
-      // Set up timeout to clean up tracking
-      const timeoutId = setTimeout(() => {
-        this.pendingRequests.delete(String(request.id));
-        controller.abort();
-      }, this.config.timeout);
+        const pending: PendingRequest = {
+          resolve: (_response: JSONRPCResponse) => {
+            clearTimeout(timeoutId);
+            resolve();
+          },
+          reject: (error: Error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+          },
+          controller,
+          timestamp: Date.now(),
+        };
 
-      // Clear timeout when request completes
-      controller.signal.addEventListener('abort', () => {
-        clearTimeout(timeoutId);
+        this.pendingRequests.set(String(request.id), pending);
+
+        // Send the message
+        this.sendMessage(request).catch((error) => {
+          this.pendingRequests.delete(String(request.id));
+          clearTimeout(timeoutId);
+          reject(error);
+        });
       });
-
-      try {
-        await this.sendMessage(request);
-        // Fire-and-forget: don't wait for response
-      } catch (error) {
-        this.pendingRequests.delete(String(request.id));
-        throw error;
-      }
     } else {
       // For responses/notifications, just send directly
       await this.sendMessage(message);
@@ -248,12 +251,24 @@ export abstract class BaseClientTransport implements Transport {
       method: 'method' in message ? message.method : 'none',
     });
 
-    // Check for response correlation (clean up tracking)
+    // Handle response correlation
     if ('id' in message && message.id !== null && message.id !== undefined) {
       const pending = this.pendingRequests.get(String(message.id));
       if (pending) {
         this.pendingRequests.delete(String(message.id));
-        // In fire-and-forget mode, just clean up - don't resolve/reject
+
+        if ('error' in message && message.error) {
+          // JSON-RPC error response
+          const errorMessage =
+            message.error.message || 'Unknown JSON-RPC error';
+          const errorCode = message.error.code || -1;
+          pending.reject(
+            new Error(`JSON-RPC error ${errorCode}: ${errorMessage}`),
+          );
+        } else {
+          // Successful response
+          pending.resolve(message as JSONRPCResponse);
+        }
       }
     }
 
