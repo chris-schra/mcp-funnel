@@ -164,7 +164,7 @@ describe('OAuth Configuration Schemas', () => {
             type: 'oauth2-client' as const,
             clientId: 'client-123',
             clientSecret: 'secret-456',
-            tokenUrl: 'https://auth.example.com/token',
+            tokenEndpoint: 'https://auth.example.com/token',
             scope: 'read write',
             audience: 'api.example.com',
           },
@@ -190,8 +190,8 @@ describe('OAuth Configuration Schemas', () => {
             type: 'oauth2-code' as const,
             clientId: 'web-app-123',
             clientSecret: 'web-secret-456',
-            authUrl: 'https://auth.example.com/authorize',
-            tokenUrl: 'https://auth.example.com/token',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
+            tokenEndpoint: 'https://auth.example.com/token',
             redirectUri: 'https://app.example.com/callback',
             scope: 'openid profile',
           },
@@ -452,7 +452,7 @@ describe('OAuth Configuration Schemas', () => {
           type: 'oauth2-client' as const,
           clientId: 'client-123',
           clientSecret: 'secret-456',
-          tokenUrl: 'https://auth.example.com/token',
+          tokenEndpoint: 'https://auth.example.com/token',
           scope: 'read write',
           audience: 'api.example.com',
         };
@@ -464,7 +464,9 @@ describe('OAuth Configuration Schemas', () => {
           const oauth2Result = result as OAuth2ClientCredentialsConfigZod;
           expect(oauth2Result.clientId).toBe('client-123');
           expect(oauth2Result.clientSecret).toBe('secret-456');
-          expect(oauth2Result.tokenUrl).toBe('https://auth.example.com/token');
+          expect(oauth2Result.tokenEndpoint).toBe(
+            'https://auth.example.com/token',
+          );
           expect(oauth2Result.scope).toBe('read write');
           expect(oauth2Result.audience).toBe('api.example.com');
         }
@@ -475,7 +477,7 @@ describe('OAuth Configuration Schemas', () => {
           type: 'oauth2-client' as const,
           clientId: 'client-123',
           clientSecret: 'secret-456',
-          tokenUrl: 'https://auth.example.com/token',
+          tokenEndpoint: 'https://auth.example.com/token',
         };
 
         expect(() => AuthConfigSchema.parse(minimalConfig)).not.toThrow();
@@ -492,12 +494,12 @@ describe('OAuth Configuration Schemas', () => {
           {
             type: 'oauth2-client' as const,
             clientSecret: 'secret',
-            tokenUrl: 'https://auth.example.com/token',
+            tokenEndpoint: 'https://auth.example.com/token',
           },
           {
             type: 'oauth2-client' as const,
             clientId: 'client',
-            tokenUrl: 'https://auth.example.com/token',
+            tokenEndpoint: 'https://auth.example.com/token',
           },
           {
             type: 'oauth2-client' as const,
@@ -520,8 +522,8 @@ describe('OAuth Configuration Schemas', () => {
           type: 'oauth2-code' as const,
           clientId: 'web-app-123',
           clientSecret: 'web-secret-456',
-          authUrl: 'https://auth.example.com/authorize',
-          tokenUrl: 'https://auth.example.com/token',
+          authorizationEndpoint: 'https://auth.example.com/authorize',
+          tokenEndpoint: 'https://auth.example.com/token',
           redirectUri: 'https://app.example.com/callback',
           scope: 'openid profile email',
           audience: 'api.example.com',
@@ -533,7 +535,7 @@ describe('OAuth Configuration Schemas', () => {
         if (result.type === 'oauth2-code') {
           const oauth2Result = result as OAuth2AuthCodeConfigZod;
           expect(oauth2Result.clientId).toBe('web-app-123');
-          expect(oauth2Result.authUrl).toBe(
+          expect(oauth2Result.authorizationEndpoint).toBe(
             'https://auth.example.com/authorize',
           );
           expect(oauth2Result.redirectUri).toBe(
@@ -546,8 +548,8 @@ describe('OAuth Configuration Schemas', () => {
         const pkceConfig = {
           type: 'oauth2-code' as const,
           clientId: 'public-client-123',
-          authUrl: 'https://auth.example.com/authorize',
-          tokenUrl: 'https://auth.example.com/token',
+          authorizationEndpoint: 'https://auth.example.com/authorize',
+          tokenEndpoint: 'https://auth.example.com/token',
           redirectUri: 'https://app.example.com/callback',
         };
 
@@ -563,27 +565,27 @@ describe('OAuth Configuration Schemas', () => {
         const invalidConfigs = [
           {
             type: 'oauth2-code' as const,
-            authUrl: 'https://auth.example.com/authorize',
-            tokenUrl: 'https://auth.example.com/token',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
+            tokenEndpoint: 'https://auth.example.com/token',
             redirectUri: 'https://app.example.com/callback',
           },
           {
             type: 'oauth2-code' as const,
             clientId: 'client',
-            tokenUrl: 'https://auth.example.com/token',
+            tokenEndpoint: 'https://auth.example.com/token',
             redirectUri: 'https://app.example.com/callback',
           },
           {
             type: 'oauth2-code' as const,
             clientId: 'client',
-            authUrl: 'https://auth.example.com/authorize',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
             redirectUri: 'https://app.example.com/callback',
           },
           {
             type: 'oauth2-code' as const,
             clientId: 'client',
-            authUrl: 'https://auth.example.com/authorize',
-            tokenUrl: 'https://auth.example.com/token',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
+            tokenEndpoint: 'https://auth.example.com/token',
           },
         ];
 
@@ -858,7 +860,7 @@ describe('OAuth Configuration Schemas', () => {
           type: 'oauth2-client' as const,
           clientId: 'prod-client-12345',
           clientSecret: 'ultra-secret-key-67890',
-          tokenUrl: 'https://auth.example.com/oauth/token',
+          tokenEndpoint: 'https://auth.example.com/oauth/token',
           scope: 'api:read api:write monitoring:read',
           audience: 'https://api.example.com',
         },
@@ -929,13 +931,13 @@ describe('OAuth Configuration Schemas', () => {
                   ? {
                       clientId: 'test',
                       clientSecret: 'test',
-                      tokenUrl: 'https://auth.example.com/token',
+                      tokenEndpoint: 'https://auth.example.com/token',
                     }
                   : authType === 'oauth2-code'
                     ? {
                         clientId: 'test',
-                        authUrl: 'https://auth.example.com/auth',
-                        tokenUrl: 'https://auth.example.com/token',
+                        authorizationEndpoint: 'https://auth.example.com/auth',
+                        tokenEndpoint: 'https://auth.example.com/token',
                         redirectUri: 'https://app.example.com/callback',
                       }
                     : {}),

@@ -54,7 +54,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
       type: 'oauth2-client',
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
-      tokenUrl: 'https://auth.example.com/oauth/token',
+      tokenEndpoint: 'https://auth.example.com/oauth/token',
       scope: 'api:read api:write',
       audience: 'https://api.example.com',
     };
@@ -120,7 +120,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
         type: 'oauth2-client',
         clientId: 'test-client',
         clientSecret: 'test-secret',
-        tokenUrl: 'https://auth.example.com/token',
+        tokenEndpoint: 'https://auth.example.com/token',
       };
 
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
@@ -505,7 +505,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
         type: 'oauth2-client',
         clientId: '${OAUTH_CLIENT_ID}',
         clientSecret: 'test-secret',
-        tokenUrl: 'https://auth.example.com/token',
+        tokenEndpoint: 'https://auth.example.com/token',
       };
 
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
@@ -537,7 +537,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
         type: 'oauth2-client',
         clientId: 'test-client',
         clientSecret: '${OAUTH_CLIENT_SECRET}',
-        tokenUrl: 'https://auth.example.com/token',
+        tokenEndpoint: 'https://auth.example.com/token',
       };
 
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
@@ -562,14 +562,14 @@ describe('OAuth2ClientCredentialsProvider', () => {
       delete process.env.OAUTH_CLIENT_SECRET;
     });
 
-    it('should resolve tokenUrl from environment variable', async () => {
+    it('should resolve tokenEndpoint from environment variable', async () => {
       process.env.OAUTH_TOKEN_URL = 'https://env-auth.example.com/token';
 
       const configWithEnvVar: OAuth2ClientCredentialsConfigZod = {
         type: 'oauth2-client',
         clientId: 'test-client',
         clientSecret: 'test-secret',
-        tokenUrl: '${OAUTH_TOKEN_URL}',
+        tokenEndpoint: '${OAUTH_TOKEN_URL}',
       };
 
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
@@ -595,7 +595,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
         type: 'oauth2-client',
         clientId: '${MISSING_CLIENT_ID}',
         clientSecret: 'test-secret',
-        tokenUrl: 'https://auth.example.com/token',
+        tokenEndpoint: 'https://auth.example.com/token',
       };
 
       // Should throw error during provider construction
@@ -831,7 +831,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
         type: 'oauth2-client',
         clientId: 'client-with-@-symbol',
         clientSecret: 'secret-with-&-symbol',
-        tokenUrl: 'https://auth.example.com/token?extra=param',
+        tokenEndpoint: 'https://auth.example.com/token?extra=param',
         scope: 'scope:with:colons',
         audience: 'https://api.example.com/v1',
       };
@@ -860,7 +860,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
         type: 'oauth2-client',
         clientId: 'test-client',
         clientSecret: 'test-secret',
-        tokenUrl: 'https://auth.example.com/token',
+        tokenEndpoint: 'https://auth.example.com/token',
         scope: longScope,
       };
 

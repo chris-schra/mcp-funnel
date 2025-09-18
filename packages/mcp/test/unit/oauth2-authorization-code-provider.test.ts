@@ -35,8 +35,8 @@ describe('OAuth2AuthCodeProvider', () => {
       type: 'oauth2-code',
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
-      authUrl: 'https://auth.example.com/oauth/authorize',
-      tokenUrl: 'https://auth.example.com/oauth/token',
+      authorizationEndpoint: 'https://auth.example.com/oauth/authorize',
+      tokenEndpoint: 'https://auth.example.com/oauth/token',
       redirectUri: 'http://localhost:3456/api/oauth/callback',
       scope: 'read write',
       audience: 'https://api.example.com',
@@ -62,14 +62,14 @@ describe('OAuth2AuthCodeProvider', () => {
     });
 
     it('should throw error for missing auth URL', () => {
-      const invalidConfig = { ...mockConfig, authUrl: '' };
+      const invalidConfig = { ...mockConfig, authorizationEndpoint: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
       }).toThrow('OAuth2 authorization URL is required');
     });
 
     it('should throw error for missing token URL', () => {
-      const invalidConfig = { ...mockConfig, tokenUrl: '' };
+      const invalidConfig = { ...mockConfig, tokenEndpoint: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
       }).toThrow('OAuth2 token URL is required');
@@ -83,7 +83,10 @@ describe('OAuth2AuthCodeProvider', () => {
     });
 
     it('should throw error for invalid URLs', () => {
-      const invalidConfig = { ...mockConfig, authUrl: 'not-a-url' };
+      const invalidConfig = {
+        ...mockConfig,
+        authorizationEndpoint: 'not-a-url',
+      };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
       }).toThrow('OAuth2 URLs must be valid URLs');
