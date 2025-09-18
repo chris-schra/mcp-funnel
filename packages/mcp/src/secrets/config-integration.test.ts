@@ -11,7 +11,7 @@ import type { SecretProviderConfig } from './provider-configs.js';
 describe('Secrets Configuration Tests', () => {
   describe('Config Schema Validation', () => {
     describe('secretProviders field in TargetServerSchema', () => {
-      it.skip('should validate valid secretProviders configuration', () => {
+      it('should validate valid secretProviders configuration', () => {
         const validServer: TargetServer = {
           name: 'test-server',
           command: 'node',
@@ -52,7 +52,7 @@ describe('Secrets Configuration Tests', () => {
         expect(result.secretProviders?.[2]?.type).toBe('inline');
       });
 
-      it.skip('should validate server without secretProviders (optional field)', () => {
+      it('should validate server without secretProviders (optional field)', () => {
         const serverWithoutSecrets: TargetServer = {
           name: 'simple-server',
           command: 'echo',
@@ -64,7 +64,7 @@ describe('Secrets Configuration Tests', () => {
         expect(result.secretProviders).toBeUndefined();
       });
 
-      it.skip('should validate empty secretProviders array', () => {
+      it('should validate empty secretProviders array', () => {
         const serverWithEmptyProviders: TargetServer = {
           name: 'empty-providers-server',
           command: 'node',
@@ -78,7 +78,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('defaultSecretProviders field in ProxyConfigSchema', () => {
-      it.skip('should validate valid defaultSecretProviders configuration', () => {
+      it('should validate valid defaultSecretProviders configuration', () => {
         const validConfig: ProxyConfig = {
           servers: [
             {
@@ -109,7 +109,7 @@ describe('Secrets Configuration Tests', () => {
         expect(result.defaultSecretProviders?.[1]?.type).toBe('dotenv');
       });
 
-      it.skip('should validate config without defaultSecretProviders (optional field)', () => {
+      it('should validate config without defaultSecretProviders (optional field)', () => {
         const configWithoutDefaults: ProxyConfig = {
           servers: [
             {
@@ -126,7 +126,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('defaultPassthroughEnv field in ProxyConfigSchema', () => {
-      it.skip('should validate valid defaultPassthroughEnv configuration', () => {
+      it('should validate valid defaultPassthroughEnv configuration', () => {
         const validConfig: ProxyConfig = {
           servers: [
             {
@@ -147,7 +147,7 @@ describe('Secrets Configuration Tests', () => {
         ]);
       });
 
-      it.skip('should validate empty defaultPassthroughEnv array', () => {
+      it('should validate empty defaultPassthroughEnv array', () => {
         const configWithEmptyPassthrough: ProxyConfig = {
           servers: [
             {
@@ -163,7 +163,7 @@ describe('Secrets Configuration Tests', () => {
         expect(result.defaultPassthroughEnv).toEqual([]);
       });
 
-      it.skip('should validate config without defaultPassthroughEnv (optional field)', () => {
+      it('should validate config without defaultPassthroughEnv (optional field)', () => {
         const configWithoutPassthrough: ProxyConfig = {
           servers: [
             {
@@ -180,7 +180,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('invalid provider configurations', () => {
-      it.skip('should reject invalid provider type', () => {
+      it('should reject invalid provider type', () => {
         const invalidProvider = {
           type: 'invalid-type',
           config: {},
@@ -191,7 +191,7 @@ describe('Secrets Configuration Tests', () => {
         }).toThrow();
       });
 
-      it.skip('should reject dotenv provider with missing path', () => {
+      it('should reject dotenv provider with missing path', () => {
         const invalidDotEnvProvider = {
           type: 'dotenv',
           config: {
@@ -205,7 +205,7 @@ describe('Secrets Configuration Tests', () => {
         }).toThrow();
       });
 
-      it.skip('should reject inline provider with missing values', () => {
+      it('should reject inline provider with missing values', () => {
         const invalidInlineProvider = {
           type: 'inline',
           config: {
@@ -218,7 +218,7 @@ describe('Secrets Configuration Tests', () => {
         }).toThrow();
       });
 
-      it.skip('should reject provider with wrong config structure', () => {
+      it('should reject provider with wrong config structure', () => {
         const invalidProviderConfig = {
           type: 'process',
           config: {
@@ -234,7 +234,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('discriminated union validation', () => {
-      it.skip('should correctly validate discriminated union based on type', () => {
+      it('should correctly validate discriminated union based on type', () => {
         const dotenvProvider: SecretProviderConfig = {
           type: 'dotenv',
           config: { path: '.env' },
@@ -261,7 +261,7 @@ describe('Secrets Configuration Tests', () => {
         );
       });
 
-      it.skip('should reject mismatched type and config combinations', () => {
+      it('should reject mismatched type and config combinations', () => {
         const mismatchedProvider = {
           type: 'dotenv',
           config: {
@@ -276,7 +276,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('default values for defaultPassthroughEnv', () => {
-      it.skip('should have expected default behavior for defaultPassthroughEnv', () => {
+      it('should have expected default behavior for defaultPassthroughEnv', () => {
         const configWithoutPassthrough: ProxyConfig = {
           servers: [
             {
@@ -296,7 +296,7 @@ describe('Secrets Configuration Tests', () => {
   });
 
   describe('Backward Compatibility Tests', () => {
-    it.skip('should support existing env field without breaking changes', () => {
+    it('should support existing env field without breaking changes', () => {
       const legacyServerConfig: TargetServer = {
         name: 'legacy-server',
         command: 'node',
@@ -317,7 +317,7 @@ describe('Secrets Configuration Tests', () => {
       });
     });
 
-    it.skip('should support env field alongside secretProviders', () => {
+    it('should support env field alongside secretProviders', () => {
       const hybridServerConfig: TargetServer = {
         name: 'hybrid-server',
         command: 'node',
@@ -343,7 +343,7 @@ describe('Secrets Configuration Tests', () => {
       expect(result.secretProviders).toHaveLength(1);
     });
 
-    it.skip('should maintain backward compatibility for configs without any secret providers', () => {
+    it('should maintain backward compatibility for configs without any secret providers', () => {
       const oldConfig: ProxyConfig = {
         servers: [
           {
@@ -364,7 +364,7 @@ describe('Secrets Configuration Tests', () => {
       expect(result.defaultPassthroughEnv).toBeUndefined();
     });
 
-    it.skip('should validate complete legacy configuration without breaking', () => {
+    it('should validate complete legacy configuration without breaking', () => {
       const fullLegacyConfig: ProxyConfig = {
         servers: [
           {
@@ -399,7 +399,7 @@ describe('Secrets Configuration Tests', () => {
 
   describe('Integration Tests', () => {
     describe('end-to-end flow: config → providers → resolved secrets', () => {
-      it.skip('should handle complete configuration with multiple provider types', () => {
+      it('should handle complete configuration with multiple provider types', () => {
         const complexConfig: ProxyConfig = {
           servers: [
             {
@@ -478,7 +478,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('multiple providers working together', () => {
-      it.skip('should validate configuration with overlapping provider configurations', () => {
+      it('should validate configuration with overlapping provider configurations', () => {
         const overlappingConfig: ProxyConfig = {
           servers: [
             {
@@ -526,7 +526,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('default providers applied to all servers', () => {
-      it.skip('should validate that default providers are available for all servers', () => {
+      it('should validate that default providers are available for all servers', () => {
         const configWithDefaults: ProxyConfig = {
           servers: [
             {
@@ -584,7 +584,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('server-specific providers override defaults', () => {
-      it.skip('should validate mixed default and server-specific provider scenarios', () => {
+      it('should validate mixed default and server-specific provider scenarios', () => {
         const mixedConfig: ProxyConfig = {
           servers: [
             {
@@ -648,7 +648,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     describe('environment variable passthrough with defaultPassthroughEnv', () => {
-      it.skip('should validate defaultPassthroughEnv configuration for environment inheritance', () => {
+      it('should validate defaultPassthroughEnv configuration for environment inheritance', () => {
         const passthroughConfig: ProxyConfig = {
           servers: [
             {
@@ -691,7 +691,7 @@ describe('Secrets Configuration Tests', () => {
         expect(server.env).toEqual({ CUSTOM_VAR: 'custom-value' });
       });
 
-      it.skip('should validate complex scenario with all secret features combined', () => {
+      it('should validate complex scenario with all secret features combined', () => {
         const fullFeaturesConfig: ProxyConfig = {
           servers: [
             {
