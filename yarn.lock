@@ -3878,6 +3878,7 @@ __metadata:
     "@types/eventsource": "npm:^3.0.0"
     "@types/node": "npm:^24.3.1"
     "@types/uuid": "npm:^11.0.0"
+    "@types/ws": "npm:^8.18.1"
     deepmerge-ts: "npm:^7.0.5"
     esbuild: "npm:^0.25.9"
     eventsource: "npm:^4.0.0"
@@ -3887,6 +3888,7 @@ __metadata:
     uuid: "npm:^13.0.0"
     vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^3.2.4"
+    ws: "npm:^8.18.3"
     zod: "npm:^4.1.8"
   bin:
     mcp-funnel: ./dist/cli.js

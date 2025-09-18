@@ -12,6 +12,7 @@ import type {
   TransportConfig,
   StdioTransportConfig,
   SSETransportConfig,
+  WebSocketTransportConfig,
 } from '../types/transport.types.js';
 import type { IAuthProvider } from '../auth/interfaces/auth-provider.interface.js';
 import type { ITokenStorage } from '../auth/interfaces/token-storage.interface.js';
@@ -21,6 +22,7 @@ import {
 } from './errors/transport-error.js';
 import { StdioClientTransport } from './implementations/stdio-client-transport.js';
 import { SSEClientTransport } from './implementations/sse-client-transport.js';
+import { WebSocketClientTransport } from './implementations/websocket-client-transport.js';
 
 /**
  * Dependencies that can be injected into transports
@@ -176,6 +178,20 @@ const DEFAULT_SSE_CONFIG = {
     maxDelayMs: 30000,
     backoffMultiplier: 2,
   },
+} as const;
+
+/**
+ * Default values for WebSocket transport configuration
+ */
+const DEFAULT_WEBSOCKET_CONFIG = {
+  timeout: 30000,
+  reconnect: {
+    maxAttempts: 5,
+    initialDelayMs: 1000,
+    maxDelayMs: 16000,
+    backoffMultiplier: 2,
+  },
+  pingInterval: 30000,
 } as const;
 
 /**
@@ -375,6 +391,9 @@ function validateConfig(config: TransportConfig): void {
     case 'sse':
       validateSSEConfig(config);
       break;
+    case 'websocket':
+      validateWebSocketConfig(config);
+      break;
     default: {
       // Use exhaustive check to handle unknown transport types
       const _exhaustive: never = config;
@@ -426,43 +445,102 @@ function validateSSEConfig(config: SSETransportConfig): void {
 
   // Validate reconnect configuration
   if (config.reconnect) {
-    const { maxAttempts, initialDelayMs, maxDelayMs, backoffMultiplier } =
-      config.reconnect;
+    validateReconnectConfig(config.reconnect);
+  }
+}
 
-    if (
-      maxAttempts !== undefined &&
-      (maxAttempts < 0 || !Number.isInteger(maxAttempts))
-    ) {
+/**
+ * Validates WebSocket transport configuration.
+ */
+function validateWebSocketConfig(config: WebSocketTransportConfig): void {
+  if (!config.url) {
+    throw new TransportError(
+      'URL is required for WebSocket transport',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+
+  // Validate URL format and protocol
+  try {
+    const url = new URL(config.url);
+    const validProtocols = ['ws:', 'wss:', 'http:', 'https:'];
+    if (!validProtocols.includes(url.protocol)) {
       throw new TransportError(
-        'maxAttempts must be a positive number',
-        TransportErrorCode.UNKNOWN_ERROR,
+        'WebSocket URL must use ws:, wss:, http:, or https: protocol',
+        TransportErrorCode.INVALID_URL,
         false,
       );
     }
+  } catch (error) {
+    throw new TransportError(
+      'Invalid URL format',
+      TransportErrorCode.INVALID_URL,
+      false,
+      error instanceof Error ? error : undefined,
+    );
+  }
 
-    if (initialDelayMs !== undefined && initialDelayMs < 0) {
-      throw new TransportError(
-        'initialDelayMs must be a positive number',
-        TransportErrorCode.UNKNOWN_ERROR,
-        false,
-      );
-    }
+  // Validate reconnect configuration
+  if (config.reconnect) {
+    validateReconnectConfig(config.reconnect);
+  }
 
-    if (maxDelayMs !== undefined && maxDelayMs < 0) {
-      throw new TransportError(
-        'maxDelayMs must be a positive number',
-        TransportErrorCode.UNKNOWN_ERROR,
-        false,
-      );
-    }
+  // Validate timeout
+  if (config.timeout !== undefined && config.timeout <= 0) {
+    throw new TransportError(
+      'timeout must be a positive number',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+}
 
-    if (backoffMultiplier !== undefined && backoffMultiplier <= 1) {
-      throw new TransportError(
-        'backoffMultiplier must be greater than 1',
-        TransportErrorCode.UNKNOWN_ERROR,
-        false,
-      );
-    }
+/**
+ * Validates reconnection configuration (shared by SSE and WebSocket).
+ */
+function validateReconnectConfig(reconnect: {
+  maxAttempts?: number;
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+  backoffMultiplier?: number;
+}): void {
+  const { maxAttempts, initialDelayMs, maxDelayMs, backoffMultiplier } =
+    reconnect;
+
+  if (
+    maxAttempts !== undefined &&
+    (maxAttempts < 0 || !Number.isInteger(maxAttempts))
+  ) {
+    throw new TransportError(
+      'maxAttempts must be a positive number',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+
+  if (initialDelayMs !== undefined && initialDelayMs < 0) {
+    throw new TransportError(
+      'initialDelayMs must be a positive number',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+
+  if (maxDelayMs !== undefined && maxDelayMs < 0) {
+    throw new TransportError(
+      'maxDelayMs must be a positive number',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
+  }
+
+  if (backoffMultiplier !== undefined && backoffMultiplier <= 1) {
+    throw new TransportError(
+      'backoffMultiplier must be greater than 1',
+      TransportErrorCode.UNKNOWN_ERROR,
+      false,
+    );
   }
 }
 
@@ -483,6 +561,15 @@ function applyDefaults(config: TransportConfig): TransportConfig {
         timeout: config.timeout ?? DEFAULT_SSE_CONFIG.timeout,
         reconnect: {
           ...DEFAULT_SSE_CONFIG.reconnect,
+          ...config.reconnect,
+        },
+      };
+    case 'websocket':
+      return {
+        ...config,
+        timeout: config.timeout ?? DEFAULT_WEBSOCKET_CONFIG.timeout,
+        reconnect: {
+          ...DEFAULT_WEBSOCKET_CONFIG.reconnect,
           ...config.reconnect,
         },
       };
@@ -552,6 +639,32 @@ async function createTransportImplementation(
       return new TransportWrapper(
         sseTransport,
         'sse',
+        config,
+        dependencies?.authProvider,
+        dependencies?.tokenStorage,
+      );
+    }
+
+    case 'websocket': {
+      // Create WebSocket transport with OAuth configuration
+      const wsTransport = new WebSocketClientTransport({
+        url: config.url,
+        timeout: config.timeout,
+        authProvider: dependencies?.authProvider
+          ? {
+              getAuthHeaders: () => dependencies.authProvider!.getHeaders(),
+              refreshToken: dependencies.authProvider.refresh
+                ? () => dependencies.authProvider!.refresh!()
+                : undefined,
+            }
+          : undefined,
+        reconnect: config.reconnect,
+        pingInterval: DEFAULT_WEBSOCKET_CONFIG.pingInterval,
+      });
+
+      return new TransportWrapper(
+        wsTransport,
+        'websocket',
         config,
         dependencies?.authProvider,
         dependencies?.tokenStorage,
