@@ -207,6 +207,86 @@ describe('Registry Integration Tests', () => {
       expect(installInfo.installInstructions).toContain('API_TOKEN');
       expect(installInfo.installInstructions).toContain('Bearer');
     });
+
+    it('should complete full flow for server lookup by UUID', async () => {
+      const serverUuid = 'a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d';
+      const mockServer: ServerDetail = {
+        id: serverUuid,
+        name: 'mcp-funnel-server',
+        description: 'MCP proxy server',
+        packages: [
+          {
+            registry_type: 'npm' as const,
+            identifier: '@chris-schra/mcp-funnel',
+            runtime_hint: 'npx',
+            environment_variables: [],
+          },
+        ],
+        _meta: {
+          'io.modelcontextprotocol.registry/official': {
+            id: serverUuid,
+            published_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        },
+      };
+
+      // Mock direct GET endpoint for UUID
+      mockFetch.mockImplementation(async (url) => {
+        const urlStr = typeof url === 'string' ? url : url.toString();
+
+        if (urlStr.includes(`/v0/servers/${serverUuid}`)) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => mockServer,
+          } as Response;
+        }
+
+        throw new Error(`Unexpected fetch: ${urlStr}`);
+      });
+
+      const context = RegistryContext.getInstance(mockProxyConfig);
+
+      // Get server details by UUID
+      const serverDetails = await context.getServerDetails(serverUuid);
+      expect(serverDetails).toEqual(mockServer);
+
+      // Generate config
+      const config = await context.generateServerConfig(mockServer);
+      expect(config.command).toBe('npx');
+      expect(config.args).toEqual(['-y', '@chris-schra/mcp-funnel']);
+
+      // Generate install info
+      const installInfo = await context.generateInstallInfo(mockServer);
+      expect(installInfo.name).toBe('mcp-funnel-server');
+      expect(installInfo.configSnippet.command).toBe('npx');
+    });
+
+    it('should handle UUID lookup failure gracefully', async () => {
+      const invalidUuid = '550e8400-e29b-41d4-a716-446655440000';
+
+      // Mock 404 response for invalid UUID
+      mockFetch.mockImplementation(async (url) => {
+        const urlStr = typeof url === 'string' ? url : url.toString();
+
+        if (urlStr.includes(`/v0/servers/${invalidUuid}`)) {
+          return {
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+          } as Response;
+        }
+
+        throw new Error(`Unexpected fetch: ${urlStr}`);
+      });
+
+      const context = RegistryContext.getInstance(mockProxyConfig);
+
+      // Get server details should return null for not found
+      const serverDetails = await context.getServerDetails(invalidUuid);
+      expect(serverDetails).toBeNull();
+    });
   });
 
   describe('Multiple Package Types Configuration Validation', () => {
