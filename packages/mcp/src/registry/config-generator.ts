@@ -2,7 +2,19 @@ import { RegistryServer } from './types/registry.types.js';
 import { RegistryConfigEntry } from './types/config.types.js';
 
 /**
- * Generates a server configuration snippet from registry server data
+ * Generates a server configuration snippet from registry server data.
+ *
+ * RUNTIME HINTS:
+ * The function respects `pkg.runtime_hint` from the registry to allow
+ * alternate launchers (e.g., 'pnpm dlx', 'yarn dlx', 'pipx', 'podman').
+ * Falls back to defaults ('npx', 'uvx', 'docker') when not specified.
+ *
+ * TYPE SAFETY:
+ * Uses spread operator for metadata to avoid type casting violations.
+ * The spread creates a shallow copy without requiring 'as unknown as'.
+ *
+ * @param server - Registry server data containing package or remote configuration
+ * @returns Configuration entry suitable for MCP client consumption
  */
 export function generateConfigSnippet(
   server: RegistryServer,
@@ -19,7 +31,11 @@ export function generateConfigSnippet(
     switch (pkg.registry_type) {
       case 'npm':
         entry.command = pkg.runtime_hint || 'npx';
-        entry.args = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
+        // Only add -y flag for npx, not for other launchers
+        entry.args =
+          entry.command === 'npx'
+            ? ['-y', pkg.identifier, ...(pkg.package_arguments || [])]
+            : [pkg.identifier, ...(pkg.package_arguments || [])];
         handled = true;
         break;
       case 'pypi':
@@ -177,12 +193,17 @@ export function generateInstallInstructions(server: RegistryServer): string {
     lines.push(`"${server.name}": {`);
 
     switch (pkg.registry_type) {
-      case 'npm':
-        lines.push(`  "command": "${pkg.runtime_hint || 'npx'}",`);
-        lines.push(
-          `  "args": ["-y", "${pkg.identifier}"${pkg.package_arguments ? ', "' + pkg.package_arguments.join('", "') + '"' : ''}]`,
-        );
+      case 'npm': {
+        const command = pkg.runtime_hint || 'npx';
+        lines.push(`  "command": "${command}",`);
+        // Only add -y flag for npx, not for other launchers
+        const argsArray =
+          command === 'npx'
+            ? ['-y', pkg.identifier, ...(pkg.package_arguments || [])]
+            : [pkg.identifier, ...(pkg.package_arguments || [])];
+        lines.push(`  "args": ["${argsArray.join('", "')}"]`);
         break;
+      }
       case 'pypi':
         lines.push(`  "command": "${pkg.runtime_hint || 'uvx'}",`);
         lines.push(
