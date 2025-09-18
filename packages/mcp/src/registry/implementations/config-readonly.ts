@@ -48,10 +48,12 @@ export class ReadOnlyConfigManager implements IConfigManager {
       if (error instanceof Error) {
         throw new Error(
           `Failed to read config from ${this.configPath}: ${error.message}`,
+          { cause: error },
         );
       }
       throw new Error(
         `Failed to read config from ${this.configPath}: Unknown error`,
+        { cause: error },
       );
     }
   }
