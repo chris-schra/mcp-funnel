@@ -62,8 +62,9 @@ export class StreamableHTTPClientTransport implements Transport {
       backoffMultiplier: number;
     };
   };
-  private readonly sdkTransport: SDKStreamableHTTPClientTransport;
+  private sdkTransport: SDKStreamableHTTPClientTransport;
   private readonly authProvider?: AuthProvider;
+  private currentAuthHeaders: Record<string, string> = {};
   private readonly logPrefix = 'streamable-http-client';
   private isStarted = false;
   private isClosed = false;
@@ -115,8 +116,7 @@ export class StreamableHTTPClientTransport implements Transport {
 
     // Create SDK transport instance
     try {
-      const url = new URL(this.config.url);
-      this.sdkTransport = new SDKStreamableHTTPClientTransport(url, sdkOptions);
+      this.sdkTransport = this.createSDKTransport(this.config.requestInit);
     } catch (error) {
       throw TransportError.connectionFailed(
         `Failed to create StreamableHTTP transport: ${error}`,
@@ -149,45 +149,24 @@ export class StreamableHTTPClientTransport implements Transport {
     try {
       this.isStarted = true;
 
-      // If auth provider is configured, set up auth headers in the SDK transport's requestInit
+      // If auth provider is configured, get and store auth headers, then replace transport
       if (this.authProvider) {
-        const authHeaders = await this.authProvider.getAuthHeaders();
-        // Update the SDK transport's requestInit with auth headers
-        const currentRequestInit = this.config.requestInit || {};
+        this.currentAuthHeaders = await this.authProvider.getAuthHeaders();
+
+        // Create request init with auth headers
         const requestInitWithAuth = {
-          ...currentRequestInit,
+          ...this.config.requestInit,
           headers: {
-            ...currentRequestInit.headers,
-            ...authHeaders,
+            ...this.config.requestInit?.headers,
+            ...this.currentAuthHeaders,
           },
         };
 
-        // Replace the SDK transport with one that has auth headers
-        const url = new URL(this.config.url);
-        const sdkOptions: StreamableHTTPClientTransportOptions = {
-          requestInit: requestInitWithAuth,
-          sessionId: this.config.sessionId,
-        };
+        // Create new SDK transport with auth headers
+        const newSdkTransport = this.createSDKTransport(requestInitWithAuth);
 
-        if (this.config.reconnect) {
-          sdkOptions.reconnectionOptions = {
-            maxRetries: this.config.reconnect.maxAttempts,
-            initialReconnectionDelay: this.config.reconnect.initialDelayMs,
-            maxReconnectionDelay: this.config.reconnect.maxDelayMs,
-            reconnectionDelayGrowFactor:
-              this.config.reconnect.backoffMultiplier,
-          };
-        }
-
-        // Create new SDK transport instance with auth headers
-        const newSdkTransport = new SDKStreamableHTTPClientTransport(
-          url,
-          sdkOptions,
-        );
-        this.setupSDKCallbacksFor(newSdkTransport);
-
-        // Replace the SDK transport
-        Object.assign(this.sdkTransport, newSdkTransport);
+        // Properly replace the transport
+        await this.replaceTransport(newSdkTransport);
       }
 
       await this.sdkTransport.start();
@@ -352,6 +331,85 @@ export class StreamableHTTPClientTransport implements Transport {
    */
   public get protocolVersion(): string | undefined {
     return this.sdkTransport.protocolVersion;
+  }
+
+  /**
+   * Upgrade transport while preserving auth headers and state
+   * This method can be used to upgrade from one transport type to another
+   * while maintaining authentication and configuration
+   */
+  public async upgradeTransport(
+    _type: 'websocket' | 'sse' | 'http',
+  ): Promise<void> {
+    if (this.isClosed) {
+      throw new Error('Cannot upgrade closed transport');
+    }
+
+    // Create new transport with preserved auth headers
+    const requestInitWithAuth = {
+      ...this.config.requestInit,
+      headers: {
+        ...this.config.requestInit?.headers,
+        ...this.currentAuthHeaders, // Use preserved headers
+      },
+    };
+
+    const newTransport = this.createSDKTransport(requestInitWithAuth);
+    await this.replaceTransport(newTransport);
+
+    // If transport was already started, start the new one
+    if (this.isStarted) {
+      await this.sdkTransport.start();
+      this.sessionId = this.sdkTransport.sessionId;
+    }
+  }
+
+  /**
+   * Create SDK transport with given request init options
+   */
+  private createSDKTransport(
+    requestInit?: RequestInit,
+  ): SDKStreamableHTTPClientTransport {
+    const url = new URL(this.config.url);
+    const sdkOptions: StreamableHTTPClientTransportOptions = {
+      requestInit,
+      sessionId: this.config.sessionId,
+    };
+
+    if (this.config.reconnect) {
+      sdkOptions.reconnectionOptions = {
+        maxRetries: this.config.reconnect.maxAttempts,
+        initialReconnectionDelay: this.config.reconnect.initialDelayMs,
+        maxReconnectionDelay: this.config.reconnect.maxDelayMs,
+        reconnectionDelayGrowFactor: this.config.reconnect.backoffMultiplier,
+      };
+    }
+
+    return new SDKStreamableHTTPClientTransport(url, sdkOptions);
+  }
+
+  /**
+   * Replace transport while preserving state and properly closing old transport
+   */
+  private async replaceTransport(
+    newTransport: SDKStreamableHTTPClientTransport,
+  ): Promise<void> {
+    const oldTransport = this.sdkTransport;
+
+    // Close old transport gracefully if it exists
+    if (oldTransport) {
+      try {
+        await oldTransport.close();
+      } catch {
+        // Ignore errors during cleanup - old transport may already be closed
+      }
+    }
+
+    // Replace the reference (not mutation)
+    this.sdkTransport = newTransport;
+
+    // Setup callbacks on new transport
+    this.setupSDKCallbacks();
   }
 
   /**
