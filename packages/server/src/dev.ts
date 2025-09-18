@@ -1,27 +1,16 @@
 import { startWebServer } from './index.js';
 import { resolve } from 'node:path';
-import {
-  ProxyConfig,
-  normalizeServers,
-  resolveMergedProxyConfig,
-} from 'mcp-funnel';
+import { ProxyConfig, resolveMergedProxyConfig } from 'mcp-funnel';
 
-function loadConfig(): ProxyConfig & {
-  servers: Array<{
-    name: string;
-    command: string;
-    args?: string[];
-    env?: Record<string, string>;
-  }>;
-} {
+function loadConfig(): ProxyConfig {
   const configPathEnv = process.env.MCP_FUNNEL_CONFIG_PATH;
   const defaultPath = resolve(process.cwd(), '.mcp-funnel.json');
   const projectPath = configPathEnv ?? defaultPath;
 
   try {
     const { config } = resolveMergedProxyConfig(projectPath);
-    const normalizedServers = normalizeServers(config.servers);
-    return { ...config, servers: normalizedServers };
+    // No need to normalize here since config already has the right type
+    return config;
   } catch (error) {
     console.error(
       `[server] Failed to load merged config (project: ${projectPath}):`,
