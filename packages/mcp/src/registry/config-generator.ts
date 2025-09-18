@@ -10,8 +10,8 @@ import { RegistryConfigEntry } from './types/config.types.js';
  * Falls back to defaults ('npx', 'uvx', 'docker') when not specified.
  *
  * TYPE SAFETY:
- * Uses spread operator for metadata to avoid type casting violations.
- * The spread creates a shallow copy without requiring 'as unknown as'.
+ * Uses structured clone (JSON parse/stringify) for metadata to ensure deep copying
+ * and type safety. This avoids shallow copy mutation issues and type casting violations.
  *
  * @param server - Registry server data containing package or remote configuration
  * @returns Configuration entry suitable for MCP client consumption
@@ -129,7 +129,8 @@ export function generateConfigSnippet(
   }
 
   // Fallback for unknown types or missing configuration
-  entry._raw_metadata = { ...server };
+  // Use structured clone to create a deep copy and ensure type safety
+  entry._raw_metadata = JSON.parse(JSON.stringify(server));
   return entry;
 }
 

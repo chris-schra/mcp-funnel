@@ -33,6 +33,19 @@ export class ReadOnlyConfigManager implements IConfigManager {
   constructor(private readonly configPath: string) {}
 
   /**
+   * Checks if a server with the given name exists in the configuration.
+   *
+   * @param config - The proxy configuration to check
+   * @param serverName - Name of the server to check for
+   * @returns true if the server exists, false otherwise
+   */
+  private serverExists(config: ProxyConfig, serverName: string): boolean {
+    return Array.isArray(config.servers)
+      ? config.servers.some((s) => s.name === serverName)
+      : serverName in config.servers;
+  }
+
+  /**
    * Reads and parses the current proxy configuration from the file system.
    *
    * This is the only method that performs actual file operations in the MVP.
@@ -71,11 +84,8 @@ export class ReadOnlyConfigManager implements IConfigManager {
     // Simulate basic validation by checking existing config
     try {
       const currentConfig = await this.readConfig();
-      const serverExists = Array.isArray(currentConfig.servers)
-        ? currentConfig.servers.some((s) => s.name === server.name)
-        : server.name in currentConfig.servers;
 
-      if (serverExists) {
+      if (this.serverExists(currentConfig, server.name)) {
         throw new Error(
           `Server with name '${server.name}' already exists in configuration`,
         );
@@ -109,11 +119,8 @@ export class ReadOnlyConfigManager implements IConfigManager {
     // Simulate validation by checking if server exists
     try {
       const currentConfig = await this.readConfig();
-      const serverExists = Array.isArray(currentConfig.servers)
-        ? currentConfig.servers.some((s) => s.name === serverName)
-        : serverName in currentConfig.servers;
 
-      if (!serverExists) {
+      if (!this.serverExists(currentConfig, serverName)) {
         throw new Error(
           `Server with name '${serverName}' does not exist in configuration`,
         );
@@ -149,11 +156,8 @@ export class ReadOnlyConfigManager implements IConfigManager {
     // Simulate validation by checking if server exists
     try {
       const currentConfig = await this.readConfig();
-      const serverExists = Array.isArray(currentConfig.servers)
-        ? currentConfig.servers.some((s) => s.name === serverName)
-        : serverName in currentConfig.servers;
 
-      if (!serverExists) {
+      if (!this.serverExists(currentConfig, serverName)) {
         throw new Error(
           `Server with name '${serverName}' does not exist in configuration`,
         );
@@ -161,11 +165,7 @@ export class ReadOnlyConfigManager implements IConfigManager {
 
       // Simulate validation: if trying to update name, check for conflicts
       if (updates.name && updates.name !== serverName) {
-        const nameConflict = Array.isArray(currentConfig.servers)
-          ? currentConfig.servers.some((s) => s.name === updates.name)
-          : updates.name in currentConfig.servers;
-
-        if (nameConflict) {
+        if (this.serverExists(currentConfig, updates.name)) {
           throw new Error(
             `Server with name '${updates.name}' already exists in configuration`,
           );
