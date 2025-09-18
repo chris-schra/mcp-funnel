@@ -338,6 +338,107 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
+   * Execute HTTP request with auth headers, 401 handling, and retry logic
+   */
+  protected async executeHttpRequest(
+    message: JSONRPCMessage,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const isRequest = 'method' in message;
+
+    try {
+      // Get auth headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (this.config.authProvider) {
+        const authHeaders = await this.config.authProvider.getAuthHeaders();
+        Object.assign(headers, authHeaders);
+      }
+
+      // Send HTTP POST request
+      const response = await fetch(this.config.url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(message),
+        signal,
+      });
+
+      // Handle HTTP errors
+      if (!response.ok) {
+        // Special handling for 401 Unauthorized
+        if (
+          response.status === 401 &&
+          this.config.authProvider?.refreshToken &&
+          isRequest
+        ) {
+          try {
+            await this.config.authProvider.refreshToken();
+            // Retry with refreshed token
+            const retryHeaders = {
+              'Content-Type': 'application/json',
+              ...(await this.config.authProvider.getAuthHeaders()),
+            };
+
+            const retryResponse = await fetch(this.config.url, {
+              method: 'POST',
+              headers: retryHeaders,
+              body: JSON.stringify(message),
+              signal,
+            });
+
+            if (!retryResponse.ok) {
+              throw TransportError.fromHttpStatus(
+                retryResponse.status,
+                retryResponse.statusText,
+              );
+            }
+            return;
+          } catch (refreshError) {
+            logEvent('error', `${this.logPrefix}:token-refresh-failed`, {
+              error: String(refreshError),
+            });
+            throw TransportError.fromHttpStatus(401, 'Token refresh failed');
+          }
+        }
+
+        throw TransportError.fromHttpStatus(
+          response.status,
+          response.statusText,
+        );
+      }
+
+      logEvent('debug', `${this.logPrefix}:http-request-sent`, {
+        method: isRequest ? (message as JSONRPCRequest).method : 'response',
+        id: 'id' in message ? message.id : 'none',
+      });
+    } catch (error) {
+      if (error instanceof TransportError) {
+        throw error;
+      }
+
+      // Handle network errors
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw TransportError.requestTimeout(this.config.timeout, error);
+        }
+        if (error.message.includes('fetch')) {
+          throw TransportError.connectionFailed(
+            `Network error: ${error.message}`,
+            error,
+          );
+        }
+      }
+
+      throw TransportError.connectionFailed(
+        `HTTP request failed: ${error}`,
+        error as Error,
+      );
+    }
+  }
+
+  /**
    * Parse message with error handling
    */
   protected parseMessage(data: string): JSONRPCMessage {
