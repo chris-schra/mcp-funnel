@@ -65,6 +65,78 @@ export const ToolOverrideSchema = z.object({
     .optional(),
 });
 
+// Auth configuration schemas
+export const NoAuthConfigSchema = z.object({
+  type: z.literal('none'),
+});
+
+export const BearerAuthConfigSchema = z.object({
+  type: z.literal('bearer'),
+  token: z.string(),
+});
+
+export const OAuth2ClientCredentialsConfigSchema = z.object({
+  type: z.literal('oauth2-client'),
+  clientId: z.string(),
+  clientSecret: z.string(),
+  tokenUrl: z.string(),
+  scope: z.string().optional(),
+  audience: z.string().optional(),
+});
+
+export const OAuth2AuthCodeConfigSchema = z.object({
+  type: z.literal('oauth2-code'),
+  clientId: z.string(),
+  clientSecret: z.string().optional(),
+  authUrl: z.string(),
+  tokenUrl: z.string(),
+  redirectUri: z.string(),
+  scope: z.string().optional(),
+  audience: z.string().optional(),
+});
+
+export const AuthConfigSchema = z.discriminatedUnion('type', [
+  NoAuthConfigSchema,
+  BearerAuthConfigSchema,
+  OAuth2ClientCredentialsConfigSchema,
+  OAuth2AuthCodeConfigSchema,
+]);
+
+// Transport configuration schemas
+export const StdioTransportConfigSchema = z.object({
+  type: z.literal('stdio'),
+  command: z.string(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+});
+
+export const SSETransportConfigSchema = z.object({
+  type: z.literal('sse'),
+  url: z.string(),
+  timeout: z.number().optional(),
+  reconnect: z
+    .object({
+      maxAttempts: z.number().optional(),
+      initialDelayMs: z.number().optional(),
+      maxDelayMs: z.number().optional(),
+      backoffMultiplier: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const TransportConfigSchema = z.discriminatedUnion('type', [
+  StdioTransportConfigSchema,
+  SSETransportConfigSchema,
+]);
+
+// Extended target server schema that includes auth and transport
+export const ExtendedTargetServerSchema = TargetServerSchema.extend({
+  transport: TransportConfigSchema.optional(),
+  auth: AuthConfigSchema.optional(),
+}).refine((data) => data.command || data.transport, {
+  message: "Server must have either 'command' or 'transport'",
+});
+
 export const ProxyConfigSchema = z.object({
   servers: z.union([
     z.array(TargetServerSchema),
@@ -116,6 +188,37 @@ export type TargetServerWithoutName = z.infer<
 export type ServersRecord = Record<string, TargetServerWithoutName>;
 export type ToolOverride = z.infer<typeof ToolOverrideSchema>;
 export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
+
+// OAuth and transport schema types (Zod-derived)
+export type NoAuthConfigZod = z.infer<typeof NoAuthConfigSchema>;
+export type BearerAuthConfigZod = z.infer<typeof BearerAuthConfigSchema>;
+export type OAuth2ClientCredentialsConfigZod = z.infer<
+  typeof OAuth2ClientCredentialsConfigSchema
+>;
+export type OAuth2AuthCodeConfigZod = z.infer<
+  typeof OAuth2AuthCodeConfigSchema
+>;
+export type AuthConfigZod = z.infer<typeof AuthConfigSchema>;
+export type StdioTransportConfigZod = z.infer<
+  typeof StdioTransportConfigSchema
+>;
+export type SSETransportConfigZod = z.infer<typeof SSETransportConfigSchema>;
+export type TransportConfigZod = z.infer<typeof TransportConfigSchema>;
+export type ExtendedTargetServerZod = z.infer<typeof ExtendedTargetServerSchema>;
+
+// Main type exports (re-exported from types directory for consistency)
+export type {
+  AuthConfig,
+  NoAuthConfig,
+  BearerAuthConfig,
+  OAuth2ClientCredentialsConfig,
+  OAuth2AuthCodeConfig,
+  TransportConfig,
+  StdioTransportConfig,
+  SSETransportConfig,
+  ExtendedTargetServer,
+  ExtendedTargetServerWithoutName,
+} from './types/index.js';
 
 /**
  * Normalizes server configurations from either array or record format into a standardized array format.
