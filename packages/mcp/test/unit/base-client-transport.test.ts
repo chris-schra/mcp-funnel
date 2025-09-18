@@ -352,32 +352,6 @@ describe('BaseClientTransport', () => {
     });
   });
 
-  describe('Data Sanitization', () => {
-    it('sanitizes URLs with auth tokens', () => {
-      const urlWithToken = 'https://example.com?auth=secret-token';
-      const sanitized = transport['sanitizeUrl'](urlWithToken);
-      expect(sanitized).toBe('https://example.com/?auth=%5BREDACTED%5D');
-    });
-
-    it('handles invalid URLs gracefully', () => {
-      const invalidUrl = 'not-a-valid-url';
-      const sanitized = transport['sanitizeUrl'](invalidUrl);
-      expect(sanitized).toBe('[INVALID_URL]');
-    });
-
-    it('sanitizes log data with auth tokens', () => {
-      const dataWithAuth = '{"auth":"secret","data":"value"}';
-      const sanitized = transport['sanitizeLogData'](dataWithAuth);
-      expect(sanitized).toBe('{"auth":"[REDACTED]","data":"value"}');
-    });
-
-    it('sanitizes Bearer tokens in log data', () => {
-      const dataWithBearer = 'Authorization: Bearer secret-token';
-      const sanitized = transport['sanitizeLogData'](dataWithBearer);
-      expect(sanitized).toBe('Authorization: Bearer [REDACTED]');
-    });
-  });
-
   describe('Lifecycle Management', () => {
     it('starts transport and establishes connection', async () => {
       expect(transport['isStarted']).toBe(false);

@@ -20,16 +20,16 @@ import {
   MockSSEServer,
   createMockSSEServer,
 } from '../mocks/mock-sse-server.js';
-import type {
-  JSONRPCResponse,
-  JSONRPCRequest,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
+import type { MockEventSource } from '../mocks/mock-eventsource';
 
 // Mock EventSource globally - must be before SSE imports
-vi.mock('eventsource', () => {
-  const { MockEventSource } = vi.importActual('../mocks/mock-eventsource.js') as typeof import('../mocks/mock-eventsource.js');
+vi.mock('eventsource', async () => {
+  const importActual = (await vi.importActual(
+    '../mocks/mock-eventsource.js',
+  )) as { MockEventSource: typeof MockEventSource };
   return {
-    EventSource: MockEventSource,
+    EventSource: importActual,
   };
 });
 
@@ -47,51 +47,55 @@ class MockOAuthServer {
   public tokenRefreshCount = 0;
 
   setupMockResponses(): void {
-    mockFetch.mockImplementation(async (url: string, options: RequestInit = {}) => {
-      const urlObj = new URL(url);
+    mockFetch.mockImplementation(
+      async (url: string, options: RequestInit = {}) => {
+        const urlObj = new URL(url);
 
-      // Token endpoint for client credentials
-      if (urlObj.pathname === '/oauth/token') {
-        if (this.shouldFailAuth) {
+        // Token endpoint for client credentials
+        if (urlObj.pathname === '/oauth/token') {
+          if (this.shouldFailAuth) {
+            return new Response(
+              JSON.stringify({
+                error: 'invalid_client',
+                error_description: 'Invalid client credentials',
+              }),
+              {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            );
+          }
+
+          this.tokenRefreshCount++;
+
           return new Response(
             JSON.stringify({
-              error: 'invalid_client',
-              error_description: 'Invalid client credentials'
+              access_token: this.authToken,
+              token_type: 'Bearer',
+              expires_in: 3600,
+              scope: 'read write',
             }),
             {
-              status: 401,
+              status: 200,
               headers: { 'Content-Type': 'application/json' },
-            }
+            },
           );
         }
 
-        this.tokenRefreshCount++;
-
-        return new Response(
-          JSON.stringify({
-            access_token: this.authToken,
-            token_type: 'Bearer',
-            expires_in: 3600,
-            scope: 'read write',
-          }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
+        // SSE endpoint with auth check
+        if (urlObj.pathname.includes('/sse')) {
+          const authHeader = (options.headers as Record<string, string>)?.[
+            'Authorization'
+          ];
+          if (!authHeader || !authHeader.includes(this.authToken)) {
+            return new Response('Unauthorized', { status: 401 });
           }
-        );
-      }
-
-      // SSE endpoint with auth check
-      if (urlObj.pathname.includes('/sse')) {
-        const authHeader = (options.headers as Record<string, string>)?.['Authorization'];
-        if (!authHeader || !authHeader.includes(this.authToken)) {
-          return new Response('Unauthorized', { status: 401 });
+          return new Response('OK', { status: 200 });
         }
-        return new Response('OK', { status: 200 });
-      }
 
-      return new Response('Not Found', { status: 404 });
-    });
+        return new Response('Not Found', { status: 404 });
+      },
+    );
   }
 
   expireToken(): void {
@@ -143,7 +147,7 @@ describe('OAuth + SSE Integration E2E Tests', () => {
           tokenEndpoint: `${serverInfo.url}/oauth/token`,
           scope: 'read write',
         },
-        tokenStorage
+        tokenStorage,
       );
 
       // Create transport with auth
@@ -181,7 +185,7 @@ describe('OAuth + SSE Integration E2E Tests', () => {
           clientSecret: 'test-client-secret',
           tokenEndpoint: `${serverInfo.url}/oauth/token`,
         },
-        tokenStorage
+        tokenStorage,
       );
 
       const transport = new SSEClientTransport({
@@ -233,7 +237,7 @@ describe('OAuth + SSE Integration E2E Tests', () => {
           clientSecret: 'invalid-secret',
           tokenEndpoint: `${serverInfo.url}/oauth/token`,
         },
-        tokenStorage
+        tokenStorage,
       );
 
       // Trying to get headers should fail with auth error
@@ -264,7 +268,7 @@ describe('OAuth + SSE Integration E2E Tests', () => {
           clientSecret: 'test-client-secret',
           tokenEndpoint: `${serverInfo.url}/oauth/token`,
         },
-        tokenStorage
+        tokenStorage,
       );
 
       for (let i = 0; i < 3; i++) {
@@ -283,13 +287,13 @@ describe('OAuth + SSE Integration E2E Tests', () => {
       }
 
       // Start all transports concurrently
-      await Promise.all(transports.map(t => t.start()));
+      await Promise.all(transports.map((t) => t.start()));
 
       // Should reuse same token for all connections
       expect(mockOAuthServer.tokenRefreshCount).toBe(1);
 
       // Clean up
-      await Promise.all(transports.map(t => t.close()));
+      await Promise.all(transports.map((t) => t.close()));
     }, 10000);
 
     it('should handle token expiry during active connection', async () => {
@@ -303,7 +307,7 @@ describe('OAuth + SSE Integration E2E Tests', () => {
           clientSecret: 'test-client-secret',
           tokenEndpoint: `${serverInfo.url}/oauth/token`,
         },
-        tokenStorage
+        tokenStorage,
       );
 
       const transport = new SSEClientTransport({
@@ -329,7 +333,7 @@ describe('OAuth + SSE Integration E2E Tests', () => {
       });
 
       // Wait for expiry
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       // Next request should trigger refresh
       const request: JSONRPCRequest = {
@@ -345,7 +349,9 @@ describe('OAuth + SSE Integration E2E Tests', () => {
         // Expected to fail but should have refreshed
       }
 
-      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(initialRefreshCount);
+      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(
+        initialRefreshCount,
+      );
 
       await transport.close();
     }, 10000);

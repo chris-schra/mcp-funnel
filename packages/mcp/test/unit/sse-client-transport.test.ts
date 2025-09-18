@@ -43,7 +43,6 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 describe('SSEClientTransport - SSE-Specific Tests', () => {
-  let mockEventSource: MockEventSource;
   let mockSSEServer: MockSSEServer;
   let serverUrl: string;
 
@@ -65,9 +64,6 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
       status: 200,
       json: () => Promise.resolve({ success: true }),
     } as Response);
-
-    // Reset the mock EventSource for each test
-    mockEventSource = new MockEventSource(serverUrl);
   });
 
   afterEach(async () => {
