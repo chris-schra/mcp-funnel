@@ -132,6 +132,7 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] Move shared constants (DEFAULT_EXPIRY_SECONDS, MAX_RETRIES, RETRY_DELAY_MS)
 - [ ] Create shared error handling patterns
 - [ ] Update both OAuth providers to import from utils
+- [ ] Use new standardized OAuth field names (no backward compatibility needed)
 
 **Files to modify:**
 - `packages/mcp/src/auth/implementations/oauth2-client-credentials.ts`
@@ -162,16 +163,22 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/src/auth/implementations/base-oauth-provider.ts`
 
 **Extract shared methods:**
-- [ ] getHeaders() implementation
-- [ ] isValid() implementation
-- [ ] refresh() base implementation
-- [ ] ensureValidToken() implementation
+- [ ] getHeaders() implementation (fully shared)
+- [ ] isValid() implementation (fully shared)
+- [ ] refresh() base implementation (partially shared, calls abstract acquireToken())
+- [ ] ensureValidToken() implementation (fully shared)
+- [ ] parseTokenResponse() utility (fully shared)
+- [ ] parseErrorResponse() utility (fully shared)
+- [ ] createOAuth2Error() utility (fully shared)
+- [ ] scheduleProactiveRefresh() implementation (fully shared)
 - [ ] Token storage integration
 - [ ] Error handling and retry logic
+- [ ] Abstract acquireToken() method for subclasses
 
 **Update providers to extend base:**
 - [ ] OAuth2ClientCredentialsProvider extends BaseOAuthProvider
 - [ ] OAuth2AuthCodeProvider extends BaseOAuthProvider
+- [ ] Remove duplicated methods and use base class implementations
 
 **DO NOT** proceed to next task until:
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -198,18 +205,21 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - `packages/mcp/src/transports/implementations/base-client-transport.ts`
 - `packages/mcp/src/transports/implementations/sse-client-transport.ts`
 
-**Move to base class:**
-- [ ] sendHttpRequest() method (100+ lines from SSE)
-- [ ] Auth header injection logic
-- [ ] 401 response handling with token refresh
-- [ ] Retry logic implementation
-- [ ] Request timeout handling
-- [ ] Error mapping utilities
+**Create flexible HTTP utility in base class:**
+- [ ] Create executeHttpRequest() method with options pattern
+- [ ] Add HttpRequestOptions interface (url, method, headers, body, signal, retryOn401)
+- [ ] Implement automatic auth header injection
+- [ ] Implement 401 response handling with token refresh
+- [ ] Create sendJsonRequest() convenience method
+- [ ] Move retry logic implementation to base
+- [ ] Move request timeout handling to base
+- [ ] Move error mapping utilities to base
 
 **SSE transport updates:**
 - [ ] Remove sendHttpRequest() implementation
-- [ ] Call super.sendHttpRequest() from base class
+- [ ] Use base class executeHttpRequest() or sendJsonRequest()
 - [ ] Keep only SSE-specific logic (EventSource, query params)
+- [ ] Adapt to use the new flexible HTTP pattern
 
 **DO NOT** proceed to next task until:
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -312,16 +322,18 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 **Files to modify:**
 - `packages/mcp/test/unit/sse-client-transport.test.ts`
 
-**Replace placeholders with SSE-specific tests only:**
-- [ ] EventSource connection establishment
-- [ ] SSE message event handling
-- [ ] HTTP POST for client→server messages
-- [ ] Auth token as query parameter (browser limitation)
-- [ ] EventSource error states and recovery
-- [ ] SSE-specific reconnection behavior
-- [ ] EventSource cleanup
+**Replace placeholders with actual SSE-specific test implementations:**
+- [ ] EventSource connection establishment (implement actual test)
+- [ ] SSE message event handling (implement actual test)
+- [ ] HTTP POST for client→server messages (implement actual test)
+- [ ] Auth token as query parameter for browser limitation (implement actual test)
+- [ ] EventSource error states and recovery (implement actual test)
+- [ ] SSE-specific reconnection behavior (implement actual test)
+- [ ] EventSource cleanup (implement actual test)
+- [ ] Remove all placeholder tests with expect(true).toBe(true)
+- [ ] Implement real assertions and mock interactions
 
-**Expected test count: ~15-20 tests (not 78)**
+**Expected test count: ~15-20 implemented tests (not 40 placeholders)**
 
 **DO NOT** proceed to next task until:
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -490,6 +502,27 @@ Before marking Phase 3 complete:
 - **Test Count**: ~65 total (down from 120+)
 - **Test Coverage**: ≥90% maintained
 - **DRY Violations**: 0 remaining
+
+## Implementation Decisions
+
+### OAuth Refactoring
+- Use new standardized OAuth field names (no backward compatibility required)
+- Create base class with both fully and partially shared implementations
+- Abstract acquireToken() method for subclass-specific logic
+
+### Transport HTTP Utilities
+- Implement flexible executeHttpRequest() with options pattern
+- Provide convenience methods like sendJsonRequest()
+- Allow transports to customize HTTP behavior while sharing auth/retry logic
+
+### Test Implementation
+- Replace all SSE placeholder tests with actual implementations
+- Focus on SSE-specific behavior only (~15-20 tests)
+- Base transport tests will cover shared functionality
+
+### Breaking Changes
+- Internal API modifications allowed to improve architecture
+- Public APIs must remain stable
 
 ## Definition of Done
 
