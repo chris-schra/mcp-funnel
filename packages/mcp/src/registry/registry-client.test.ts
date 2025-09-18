@@ -110,6 +110,13 @@ describe('MCPRegistryClient', () => {
       const mockServers: ServerDetail[] = [
         {
           id: 'test-server-1',
+          _meta: {
+            'io.modelcontextprotocol.registry/official': {
+              id: 'test-server-1-registry-id',
+              published_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            },
+          },
           name: 'Test Server 1',
           description: 'A test server for demonstration',
           packages: [
@@ -174,6 +181,13 @@ describe('MCPRegistryClient', () => {
       const cachedResults: ServerDetail[] = [
         {
           id: 'cached-server',
+          _meta: {
+            'io.modelcontextprotocol.registry/official': {
+              id: 'cached-server-registry-id',
+              published_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            },
+          },
           name: 'Cached Server',
           description: 'Server from cache',
         },
@@ -194,6 +208,13 @@ describe('MCPRegistryClient', () => {
       const fetchResults: ServerDetail[] = [
         {
           id: 'fetched-server',
+          _meta: {
+            'io.modelcontextprotocol.registry/official': {
+              id: 'fetched-server-registry-id',
+              published_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            },
+          },
           name: 'Fetched Server',
           description: 'Server from API',
         },
@@ -238,11 +259,25 @@ describe('MCPRegistryClient', () => {
       const allServers: ServerDetail[] = [
         {
           id: 'server-1',
+          _meta: {
+            'io.modelcontextprotocol.registry/official': {
+              id: 'server-1-registry-id',
+              published_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            },
+          },
           name: 'Server 1',
           description: 'First server',
         },
         {
           id: 'server-2',
+          _meta: {
+            'io.modelcontextprotocol.registry/official': {
+              id: 'server-2-registry-id',
+              published_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            },
+          },
           name: 'Server 2',
           description: 'Second server',
         },
@@ -269,6 +304,13 @@ describe('MCPRegistryClient', () => {
     it('should find server by exact name match using search', async () => {
       const serverDetail: ServerDetail = {
         id: 'test-server',
+        _meta: {
+          'io.modelcontextprotocol.registry/official': {
+            id: 'test-server-registry-id',
+            published_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+          },
+        },
         name: 'Test Server',
         description: 'Detailed test server information',
         packages: [
@@ -334,6 +376,13 @@ describe('MCPRegistryClient', () => {
     it.skip('should use cache when available for server details', async () => {
       const cachedServer: ServerDetail = {
         id: 'cached-server',
+        _meta: {
+          'io.modelcontextprotocol.registry/official': {
+            id: 'cached-server-registry-id',
+            published_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+          },
+        },
         name: 'Cached Server',
         description: 'Server from cache',
       };
@@ -352,6 +401,13 @@ describe('MCPRegistryClient', () => {
     it.skip('should store server details in cache after fetch', async () => {
       const serverDetail: ServerDetail = {
         id: 'new-server',
+        _meta: {
+          'io.modelcontextprotocol.registry/official': {
+            id: 'new-server-registry-id',
+            published_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+          },
+        },
         name: 'New Server',
         description: 'Newly fetched server',
       };
@@ -439,6 +495,13 @@ describe('MCPRegistryClient', () => {
       const mockResponse: ServerDetail[] = [
         {
           id: 'no-cache-server',
+          _meta: {
+            'io.modelcontextprotocol.registry/official': {
+              id: 'no-cache-server-registry-id',
+              published_at: '2025-01-01T00:00:00Z',
+              updated_at: '2025-01-01T00:00:00Z',
+            },
+          },
           name: 'No Cache Server',
           description: 'Server without caching',
         },
@@ -460,6 +523,13 @@ describe('MCPRegistryClient', () => {
     it.skip('should respect cache TTL when implemented', async () => {
       const serverDetail: ServerDetail = {
         id: 'ttl-server',
+        _meta: {
+          'io.modelcontextprotocol.registry/official': {
+            id: 'ttl-server-registry-id',
+            published_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+          },
+        },
         name: 'TTL Server',
         description: 'Server for TTL testing',
       };
@@ -534,6 +604,13 @@ describe('MCPRegistryClient', () => {
     it.skip('should handle concurrent requests properly', async () => {
       const serverDetail: ServerDetail = {
         id: 'concurrent-server',
+        _meta: {
+          'io.modelcontextprotocol.registry/official': {
+            id: 'concurrent-server-registry-id',
+            published_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+          },
+        },
         name: 'Concurrent Server',
         description: 'Server for concurrency testing',
       };
