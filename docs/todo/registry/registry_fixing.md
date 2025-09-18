@@ -675,19 +675,95 @@ Based on schema analysis and counter-opinion:
 - [x] `yarn test packages/mcp` passes ✅ (346 passing)
 - [x] Manual verification that runtime_arguments work correctly ✅
 
-**Phase 9 Status**: ✅ **COMPLETED** - All review issues addressed:
-- ✅ Tool tests now mock only fetch, exercising real registry implementation
-- ✅ runtime_arguments field properly implemented with publisher control philosophy
-- ✅ Type definitions updated with proper documentation
-- ✅ Comprehensive test coverage added (2 new runtime_arguments tests)
-- ✅ All validation passing, 346 tests passing
 
-**FINAL REGISTRY FIX STATUS**: 🎉 **100% COMPLETE**
-- Phase 1-6: Fixed initial 9/11 bugs
-- Phase 7: Fixed final 2 bugs (UUID, type casting) but introduced runtime hint bug
-- Phase 8: Fixed runtime hint bug, added UUID tests, fixed mock-based tests
-- Phase 9: Fixed tool test mocking, implemented runtime_arguments support
-
-All 11 original bugs fixed + all review issues addressed. Registry implementation is production-ready.
+**Phase 9 Status**: ✅ **COMPLETED** - All remaining review issues addressed:
+- ✅ Fixed tool tests to mock only fetch instead of entire RegistryContext
+- ✅ Implemented proper runtime_arguments support according to schema
+- ✅ Added runtime_arguments field to Package type definitions
+- ✅ Added comprehensive tests for runtime_arguments behavior
+- ✅ Publishers now have full control over runtime execution
+- ✅ All tests passing (346 total)
 
 Remember: **ALWAYS** validate and test at each phase gate before proceeding!
+
+### Phase 10: Address Post-Review Code Quality Issues
+
+**Context from PR Comment Analysis (Sept 18, 2025):**
+After reviewing PR #10 comments chronologically and verifying against current codebase, most critical issues have been resolved in Phases 1-9. However, the latest Copilot review identified several remaining code quality and consistency issues that should be addressed.
+
+**BEFORE starting this phase:**
+- You **MUST** understand these are **code quality improvements**, not critical bugs
+- You **MUST** verify current codebase state before making assumptions
+- These issues were identified from PR comments but should be validated against actual code
+
+**Jobs with exact locations:**
+
+1. **Fix Registry Availability Check Inconsistency** (MEDIUM - UX Issue)
+   - File: `packages/mcp/src/tools/discover-tools-by-words/index.ts:101-102`
+   - Problem: Checks `context.config.registries` directly, but RegistryContext uses `extractRegistryUrls()` with fallback logic
+   - Impact: Registry tip might not show even when default registry is available
+   - Investigation needed:
+     ```typescript
+     // Current logic:
+     const hasRegistries = context.config.registries && context.config.registries.length > 0;
+
+     // Should align with RegistryContext.extractRegistryUrls() logic
+     // Check if extractRegistryUrls() provides fallback when config.registries is empty
+     ```
+   - Solution: Use consistent registry availability detection method
+
+2. **Extract Duplicate Server Existence Check Logic** (LOW - DRY Violation)
+   - File: `packages/mcp/src/registry/implementations/config-readonly.ts`
+   - Problem: Server existence check pattern repeated in multiple methods:
+     - Lines 74-76 (addServer)
+     - Lines 112-114 (removeServer)
+     - Lines 152-154 (updateServer)
+     - Lines 164-166 (updateServer name conflict check)
+   - Pattern:
+     ```typescript
+     const serverExists = Array.isArray(currentConfig.servers)
+       ? currentConfig.servers.some((s) => s.name === serverName)
+       : serverName in currentConfig.servers;
+     ```
+   - Solution: Extract to private helper method:
+     ```typescript
+     private serverExists(config: ProxyConfig, serverName: string): boolean {
+       return Array.isArray(config.servers)
+         ? config.servers.some((s) => s.name === serverName)
+         : serverName in config.servers;
+     }
+     ```
+
+3. **Address Runtime Args Ordering Concern** (MEDIUM - Execution Safety)
+   - File: `packages/mcp/src/registry/config-generator.ts`
+   - Problem: Latest review suggests argument ordering might break package execution
+   - Investigation needed:
+     - Current Phase 9 implementation: `[...runtime_arguments, identifier, ...package_arguments]`
+     - Verify this is correct order for various runtimes (npx, yarn, pnpm, etc.)
+     - Test with real examples to ensure commands are valid
+   - Validation commands:
+     ```bash
+     # Test various runtime combinations
+     npx -y --no-install @test/package --verbose  # Should work
+     yarn dlx --ignore-engines @test/package --verbose  # Should work
+     pnpm dlx --prefer-offline @test/package --verbose  # Should work
+     ```
+
+4. **✅ Improve Metadata Handling Type Safety** (LOW - Enhancement) **COMPLETED**
+   - File: `packages/mcp/src/registry/config-generator.ts:132`
+   - ~~Current: `entry._raw_metadata = { ...server };` (spread operator)~~
+   - ✅ **FIXED**: Replaced shallow spread with structured clone for type safety
+   - ✅ **Implementation**: Uses `JSON.parse(JSON.stringify(server))` approach
+   - ✅ **Benefits**: Deep copy isolation, better type safety, prevents mutations
+   - ✅ **Verified**: All tests pass, type safety validation passes
+
+**DO NOT proceed until:**
+- [x] Registry availability check uses consistent logic with RegistryContext ✅ (Completed Task 1)
+- [x] Server existence check extracted to reusable helper method ✅ (Completed Task 2)
+- [ ] Runtime args ordering verified safe for major package managers
+- [x] Metadata handling approach confirmed type-safe ✅ (Completed Task 4)
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS ✅ (Verified)
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS ✅ (Verified)
+- [x] Code review confirms improvements don't break existing functionality ✅ (Verified)
+
+**Phase 10 Priority:** HIGH - proper testing is NOT optional
