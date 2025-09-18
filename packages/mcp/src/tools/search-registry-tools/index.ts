@@ -65,7 +65,7 @@ export class SearchRegistryTools extends BaseCoreTool {
       const registryContext = RegistryContext.getInstance(context.config);
 
       // Search for servers
-      const result = await registryContext.searchServers(keywords);
+      const result = await registryContext.searchServers(keywords, registry);
 
       // Return results optimized for token efficiency
       if (!result.found || !result.servers || result.servers.length === 0) {
