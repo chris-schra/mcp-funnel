@@ -137,10 +137,25 @@ export const ExtendedTargetServerSchema = TargetServerSchema.extend({
   message: "Server must have either 'command' or 'transport'",
 });
 
+// Extended target server without name (for record format)
+export const ExtendedTargetServerWithoutNameSchema =
+  TargetServerWithoutNameSchema.extend({
+    transport: TransportConfigSchema.optional(),
+    auth: AuthConfigSchema.optional(),
+  }).refine((data) => data.command || data.transport, {
+    message: "Server must have either 'command' or 'transport'",
+  });
+
 export const ProxyConfigSchema = z.object({
   servers: z.union([
-    z.array(TargetServerSchema),
-    z.record(z.string(), TargetServerWithoutNameSchema),
+    z.array(z.union([TargetServerSchema, ExtendedTargetServerSchema])),
+    z.record(
+      z.string(),
+      z.union([
+        TargetServerWithoutNameSchema,
+        ExtendedTargetServerWithoutNameSchema,
+      ]),
+    ),
   ]),
   alwaysVisibleTools: z.array(z.string()).optional(),
   exposeTools: z.array(z.string()).optional(),
@@ -186,6 +201,10 @@ export type TargetServerWithoutName = z.infer<
   typeof TargetServerWithoutNameSchema
 >;
 export type ServersRecord = Record<string, TargetServerWithoutName>;
+export type ExtendedServersRecord = Record<
+  string,
+  ExtendedTargetServerWithoutNameZod
+>;
 export type ToolOverride = z.infer<typeof ToolOverrideSchema>;
 export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
 
@@ -204,7 +223,12 @@ export type StdioTransportConfigZod = z.infer<
 >;
 export type SSETransportConfigZod = z.infer<typeof SSETransportConfigSchema>;
 export type TransportConfigZod = z.infer<typeof TransportConfigSchema>;
-export type ExtendedTargetServerZod = z.infer<typeof ExtendedTargetServerSchema>;
+export type ExtendedTargetServerZod = z.infer<
+  typeof ExtendedTargetServerSchema
+>;
+export type ExtendedTargetServerWithoutNameZod = z.infer<
+  typeof ExtendedTargetServerWithoutNameSchema
+>;
 
 // Main type exports (re-exported from types directory for consistency)
 export type {
@@ -255,6 +279,32 @@ export type {
 export function normalizeServers(
   servers: TargetServer[] | ServersRecord,
 ): TargetServer[] {
+  if (Array.isArray(servers)) {
+    return servers;
+  }
+
+  return Object.entries(servers).map(([name, server]) => ({
+    name,
+    ...server,
+  }));
+}
+
+/**
+ * Normalizes extended server configurations from either array or record format into a standardized array format.
+ *
+ * This function supports both legacy and extended server configurations:
+ * - Legacy: TargetServer configurations (command-based)
+ * - Extended: ExtendedTargetServer configurations (with auth and transport options)
+ *
+ * @param servers - Server configurations in either array or record format
+ * @returns Normalized array of server configurations with name property included
+ */
+export function normalizeExtendedServers(
+  servers:
+    | (TargetServer | ExtendedTargetServerZod)[]
+    | ServersRecord
+    | ExtendedServersRecord,
+): (TargetServer | ExtendedTargetServerZod)[] {
   if (Array.isArray(servers)) {
     return servers;
   }
