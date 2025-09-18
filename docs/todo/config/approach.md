@@ -150,7 +150,7 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 
 - Core implementations:
     - SecretManager class to orchestrate providers
-    - DotEnvProvidare you 100% sure? Think harder, use code-reasoning, challenge yourselfer for reading .env files (simple parser implementation):
+    - DotEnvProvider for reading .env files (simple parser implementation):
       * Read file with readFileSync
       * Parse line by line (split on \n)
       * Handle comments (lines starting with #) and empty lines

@@ -554,7 +554,7 @@ export class MCPProxy {
       'NODE_ENV',
       'HOME',
       'USER',
-      'PATH',  // Required for finding executables
+      'PATH', // Required for finding executables
       'TERM',
       'CI',
       'DEBUG',
