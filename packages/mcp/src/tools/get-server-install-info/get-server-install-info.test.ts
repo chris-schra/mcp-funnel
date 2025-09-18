@@ -115,8 +115,8 @@ describe('GetServerInstallInfo', () => {
             runtime_hint: 'node',
             package_arguments: ['--port', '3000'],
             environment_variables: [
-              { name: 'API_KEY', required: true },
-              { name: 'DEBUG', value: 'false', required: false },
+              { name: 'API_KEY', is_required: true },
+              { name: 'DEBUG', value: 'false', is_required: false },
             ],
           },
         ],
@@ -290,10 +290,10 @@ describe('GetServerInstallInfo', () => {
           {
             type: 'sse',
             url: 'https://api.example.com/mcp',
-            headers: {
-              Authorization: 'Bearer ${API_TOKEN}',
-              'Content-Type': 'application/json',
-            },
+            headers: [
+              { name: 'Authorization', value: 'Bearer ${API_TOKEN}' },
+              { name: 'Content-Type', value: 'application/json' },
+            ],
           },
         ],
       };
@@ -330,8 +330,12 @@ describe('GetServerInstallInfo', () => {
             identifier: 'env-test-server',
             registry_type: 'npm',
             environment_variables: [
-              { name: 'REQUIRED_VAR', required: true },
-              { name: 'OPTIONAL_VAR', value: 'default-value', required: false },
+              { name: 'REQUIRED_VAR', is_required: true },
+              {
+                name: 'OPTIONAL_VAR',
+                value: 'default-value',
+                is_required: false,
+              },
               { name: 'ANOTHER_VAR', value: 'another-default' },
             ],
           },
