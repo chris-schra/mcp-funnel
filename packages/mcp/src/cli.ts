@@ -1,5 +1,5 @@
 import { MCPProxy } from './index.js';
-import { ProxyConfig, normalizeServers } from './config.js';
+import { ProxyConfig, normalizeExtendedServers } from './config.js';
 import { mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -112,7 +112,7 @@ async function main() {
     process.exit(1);
   }
 
-  const normalizedServers = normalizeServers(config.servers);
+  const normalizedServers = normalizeExtendedServers(config.servers);
   logEvent('info', 'cli:config_loaded', {
     path: resolvedPath,
     servers: normalizedServers.map((s) => ({

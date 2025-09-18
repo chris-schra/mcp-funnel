@@ -6,7 +6,11 @@ import {
   CallToolRequestSchema,
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
+import {
+  ProxyConfig,
+  normalizeExtendedServers,
+  TargetServer,
+} from './config.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -257,7 +261,9 @@ export class MCPProxy {
 
   constructor(config: ProxyConfig) {
     this._config = config;
-    this._normalizedServers = normalizeServers(config.servers);
+    this._normalizedServers = normalizeExtendedServers(
+      config.servers,
+    ) as TargetServer[];
     this.toolRegistry = new ToolRegistry(config);
 
     this._normalizedServers.forEach((server) => {
