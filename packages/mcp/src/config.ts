@@ -1,16 +1,50 @@
 import { z } from 'zod';
+import type { SecretProviderConfig as _SecretProviderConfig } from './secrets/provider-configs.js';
+
+// Zod schema for secret provider configurations
+const DotEnvProviderConfigSchema = z.object({
+  type: z.literal('dotenv'),
+  config: z.object({
+    path: z.string(),
+    encoding: z.string().optional(),
+  }),
+});
+
+const ProcessEnvProviderConfigSchema = z.object({
+  type: z.literal('process'),
+  config: z.object({
+    prefix: z.string().optional(),
+    allowlist: z.array(z.string()).optional(),
+    blocklist: z.array(z.string()).optional(),
+  }),
+});
+
+const InlineProviderConfigSchema = z.object({
+  type: z.literal('inline'),
+  config: z.object({
+    values: z.record(z.string(), z.string()),
+  }),
+});
+
+export const SecretProviderConfigSchema = z.discriminatedUnion('type', [
+  DotEnvProviderConfigSchema,
+  ProcessEnvProviderConfigSchema,
+  InlineProviderConfigSchema,
+]);
 
 export const TargetServerSchema = z.object({
   name: z.string(),
   command: z.string(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
+  secretProviders: z.array(SecretProviderConfigSchema).optional(),
 });
 
 export const TargetServerWithoutNameSchema = z.object({
   command: z.string(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
+  secretProviders: z.array(SecretProviderConfigSchema).optional(),
 });
 
 export const ToolOverrideSchema = z.object({
@@ -103,6 +137,8 @@ export const ProxyConfigSchema = z.object({
       validateOverrides: z.boolean().default(true),
     })
     .optional(),
+  defaultSecretProviders: z.array(SecretProviderConfigSchema).optional(),
+  defaultPassthroughEnv: z.array(z.string()).optional(),
   // @deprecated Use 'commands' instead of 'developmentTools'
   developmentTools: z
     .object({
