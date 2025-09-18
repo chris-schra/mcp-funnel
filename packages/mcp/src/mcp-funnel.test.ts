@@ -5,6 +5,9 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 
+// Create hoisted mock for execAsync (needed for keychain-token-storage)
+const mockExecAsync = vi.hoisted(() => vi.fn());
+
 // Mock the SDK modules
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
   Server: vi.fn(() => ({
@@ -27,8 +30,9 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
   })),
 }));
 
-// Mock child_process
+// Mock child_process (needs exec for keychain-token-storage)
 vi.mock('child_process', () => ({
+  exec: vi.fn(),
   spawn: vi.fn(() => ({
     stdin: { write: vi.fn() },
     stdout: { on: vi.fn() },
@@ -36,6 +40,21 @@ vi.mock('child_process', () => ({
     on: vi.fn(),
     kill: vi.fn(),
   })),
+}));
+
+// Mock util.promisify to return our hoisted mock function (for keychain-token-storage)
+vi.mock('util', () => ({
+  promisify: () => mockExecAsync,
+}));
+
+// Mock fs promises (needed for keychain-token-storage)
+vi.mock('fs', () => ({
+  promises: {
+    mkdir: vi.fn(),
+    writeFile: vi.fn(),
+    readFile: vi.fn(),
+    unlink: vi.fn(),
+  },
 }));
 
 type MockServer = {
@@ -57,6 +76,7 @@ describe('MCPProxy', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
     mockServer = {
       setRequestHandler: vi.fn(),
