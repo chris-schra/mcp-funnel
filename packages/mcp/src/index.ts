@@ -247,6 +247,7 @@ export class MCPProxy {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
+  private _configPath: string;
   private _normalizedServers: TargetServer[];
   private toolRegistry: ToolRegistry;
   private coreTools: Map<string, ICoreTool> = new Map();
@@ -257,8 +258,9 @@ export class MCPProxy {
     TargetServer & { error?: string }
   >();
 
-  constructor(config: ProxyConfig) {
+  constructor(config: ProxyConfig, configPath: string) {
     this._config = config;
+    this._configPath = configPath;
     this._normalizedServers = normalizeServers(config.servers);
     this.toolRegistry = new ToolRegistry(config);
 
@@ -491,6 +493,7 @@ export class MCPProxy {
           .map((t) => t.fullName),
       ),
       config: this._config,
+      configPath: this._configPath,
       enableTools: (toolNames: string[]) => {
         this.toolRegistry.enableTools(toolNames, 'discovery');
         for (const toolName of toolNames) {
