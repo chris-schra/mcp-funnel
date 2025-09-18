@@ -1,22 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { TransportConfig } from '../../src/types/transport.types.js';
+import type {
+  TransportConfig,
+  StdioTransportConfig,
+  SSETransportConfig,
+} from '../../src/types/transport.types.js';
 import type { IAuthProvider } from '../../src/auth/interfaces/auth-provider.interface.js';
 import type { ITokenStorage } from '../../src/auth/interfaces/token-storage.interface.js';
+import {
+  createTransport,
+  clearTransportCache,
+} from '../../src/transports/transport-factory.js';
 
 // Type definitions for testing
-interface MockTransport {
-  type: string;
-  config: TestTransportConfig;
-  authProvider?: IAuthProvider;
-  tokenStorage?: ITokenStorage;
-  dispose: () => Promise<void>;
-  isConnected: () => boolean;
-}
-
-interface TransportFactoryDependencies {
-  authProvider?: IAuthProvider;
-  tokenStorage?: ITokenStorage;
-}
 
 type InvalidConfig = {
   type?: string;
@@ -32,22 +27,6 @@ type InvalidConfig = {
     backoffMultiplier?: number;
   };
 } & Record<string, unknown>;
-
-// Test config type that combines all possible properties
-type TestTransportConfig = {
-  type: 'stdio' | 'sse';
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  timeout?: number;
-  reconnect?: {
-    maxAttempts?: number;
-    initialDelayMs?: number;
-    maxDelayMs?: number;
-    backoffMultiplier?: number;
-  };
-};
 
 // Mock implementations for testing
 const mockAuthProvider: IAuthProvider = {
@@ -85,16 +64,18 @@ const _mockSSETransport = {
   isConnected: vi.fn().mockReturnValue(true),
 };
 
-describe.skip('TransportFactory', () => {
+describe('TransportFactory', () => {
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
     originalEnv = { ...process.env };
     vi.clearAllMocks();
+    clearTransportCache();
   });
 
   afterEach(() => {
     process.env = originalEnv;
+    clearTransportCache();
   });
 
   describe('Transport Creation', () => {
@@ -188,7 +169,7 @@ describe.skip('TransportFactory', () => {
       };
 
       await expect(createTransport(legacyConfig)).rejects.toThrow(
-        'Command is required for stdio transport',
+        'Invalid configuration: must specify either type or command field',
       );
     });
   });
@@ -262,7 +243,9 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.command).toBe('/usr/bin/node');
+      expect((transport.config as StdioTransportConfig).command).toBe(
+        '/usr/bin/node',
+      );
     });
 
     it('should resolve environment variables in args', async () => {
@@ -276,8 +259,12 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.args).toContain('--test-mode');
-      expect(transport.config.args).toContain('--version');
+      expect((transport.config as StdioTransportConfig).args).toContain(
+        '--test-mode',
+      );
+      expect((transport.config as StdioTransportConfig).args).toContain(
+        '--version',
+      );
     });
 
     it('should resolve environment variables in URL for SSE', async () => {
@@ -290,7 +277,9 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.url).toBe('https://api.example.com/events');
+      expect((transport.config as SSETransportConfig).url).toBe(
+        'https://api.example.com/events',
+      );
     });
 
     it('should handle missing environment variables gracefully', async () => {
@@ -315,7 +304,9 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.command).toBe('/usr/bin/node');
+      expect((transport.config as StdioTransportConfig).command).toBe(
+        '/usr/bin/node',
+      );
     });
 
     it('should merge config env with process env', async () => {
@@ -332,8 +323,12 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.env?.LOCAL_VAR).toBe('local');
-      expect(transport.config.env?.GLOBAL_VAR).toBe('overridden');
+      expect((transport.config as StdioTransportConfig).env?.LOCAL_VAR).toBe(
+        'local',
+      );
+      expect((transport.config as StdioTransportConfig).env?.GLOBAL_VAR).toBe(
+        'overridden',
+      );
     });
   });
 
@@ -429,7 +424,7 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.timeout).toBe(30000); // default timeout
+      expect((transport.config as SSETransportConfig).timeout).toBe(30000); // default timeout
     });
 
     it('should apply custom timeout for SSE transport', async () => {
@@ -441,7 +436,7 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.timeout).toBe(60000);
+      expect((transport.config as SSETransportConfig).timeout).toBe(60000);
     });
 
     it('should apply default reconnect settings for SSE transport', async () => {
@@ -452,10 +447,18 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.reconnect?.maxAttempts).toBe(3);
-      expect(transport.config.reconnect?.initialDelayMs).toBe(1000);
-      expect(transport.config.reconnect?.maxDelayMs).toBe(30000);
-      expect(transport.config.reconnect?.backoffMultiplier).toBe(2);
+      expect(
+        (transport.config as SSETransportConfig).reconnect?.maxAttempts,
+      ).toBe(3);
+      expect(
+        (transport.config as SSETransportConfig).reconnect?.initialDelayMs,
+      ).toBe(1000);
+      expect(
+        (transport.config as SSETransportConfig).reconnect?.maxDelayMs,
+      ).toBe(30000);
+      expect(
+        (transport.config as SSETransportConfig).reconnect?.backoffMultiplier,
+      ).toBe(2);
     });
 
     it('should merge custom reconnect settings with defaults', async () => {
@@ -470,8 +473,12 @@ describe.skip('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      expect(transport.config.reconnect?.maxAttempts).toBe(5);
-      expect(transport.config.reconnect?.initialDelayMs).toBe(1000); // default
+      expect(
+        (transport.config as SSETransportConfig).reconnect?.maxAttempts,
+      ).toBe(5);
+      expect(
+        (transport.config as SSETransportConfig).reconnect?.initialDelayMs,
+      ).toBe(1000); // default
     });
   });
 
@@ -524,13 +531,5 @@ describe.skip('TransportFactory', () => {
   });
 });
 
-// Helper function that would be implemented by the actual TransportFactory
-async function createTransport(
-  _config: TransportConfig | InvalidConfig,
-  _dependencies?: TransportFactoryDependencies,
-): Promise<MockTransport> {
-  // This would be the actual implementation in the TransportFactory
-  throw new Error(
-    'TransportFactory not implemented - this is a placeholder for tests',
-  );
-}
+// createTransport is now imported from the actual implementation
+// No placeholder function needed
