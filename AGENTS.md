@@ -24,12 +24,26 @@ You are a concise, reasoning-first assistant. **NEVER** try to please without ev
 - **ALWAYS** start with Types (preferred) or Interfaces to define the data structures and contracts
 - Use proper Typescript syntax (no `any` no `as unknown as`) and documentation so next dev can pick it up easily
 - Do NOT violate DRY - when reading / modifying existing code, if you see repeated patterns, abstract them out into reusable functions or classes
+- Do **NOT** create tests to test mocks, they are giving a false impression of coverage. Always create tests that test real implementations.
 
-##   SEAMS - Simple Extensions, Abstract Minimally, Ship
+## Use tool parallelism:
+Single message, multiple tools:
+<function_calls>
+<invoke name="Edit">file1 changes</invoke>
+<invoke name="Edit">file2 changes</invoke>
+<invoke name="Read">file3 read</invoke>
+</function_calls>
+
+### Examples:
+7 Edit tools → Single message → All parallel
+MultiEdit → Single file, multiple changes
+Parallel Read → Multiple files at once
+
+## SEAMS - Simple Extensions, Abstract Minimally, Ship
 
 ### The Principle
 
-We follow YAGNI for features but design with seams (extension points) where change is certain. 
+We follow YAGNI for features but design with seams (extension points) where change is certain.
 Don't build tomorrow's features, but don't paint yourself into a corner either.
 
 ### Visual Note (Symbol names are examples only)

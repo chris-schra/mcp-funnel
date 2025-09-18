@@ -17,6 +17,19 @@
 - **NEVER** remove or delete tests or test files - that's a **CRIME** against our methodology
 - **NEVER** touch source code - it's not your job as supervisor to touch code. **You have subagent workers for that.**
 
+## Supervisor Verification Protocol
+
+**AFTER EACH WORKER COMPLETES**, the supervisor MUST:
+1. [ ] Run `git status` to verify files are tracked
+2. [ ] Run `yarn validate packages/mcp` personally
+3. [ ] Run `yarn test packages/mcp` personally
+4. [ ] Use code-reasoning tool to review changes
+5. [ ] Verify that the workers did not fool you with cosmetic tests
+6. [ ] Commit all files with `git add` and `git commit`
+7. [ ] Update task checkboxes in this document
+8. [ ] Only then proceed to dependent tasks
+
+
 ## Before starting
 
 **BEFORE** starting a new phase, you **MUST** create tasks that are optimized for parallel work,
