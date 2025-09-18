@@ -42,6 +42,22 @@ export interface ICommand {
    * @returns Array of MCP Tool definitions with name, description, and input schema
    */
   getMCPDefinitions(): Tool[];
+
+  /**
+   * Get the server dependencies for this command.
+   * Used to declare which MCP servers this command requires.
+   *
+   * @returns Array of server dependencies, or undefined if no dependencies
+   */
+  getServerDependencies?(): ServerDependency[] | undefined;
+
+  /**
+   * Set the MCPProxy instance for server dependency support.
+   * Called by MCPProxy during command initialization.
+   *
+   * @param proxy - The MCPProxy instance
+   */
+  setProxy?(proxy: IMCPProxy): void;
 }
 
 /**
@@ -84,6 +100,57 @@ export interface ICommandOptions {
 
   /** Additional custom options specific to individual commands */
   [key: string]: unknown;
+}
+
+/**
+ * Represents a server dependency requirement for a command.
+ * Commands can declare which MCP servers they need to function.
+ */
+export interface ServerDependency {
+  /** List of server names/aliases to match against configured servers */
+  aliases: string[];
+
+  /** Whether to automatically expose tools from this server when found */
+  ensureToolsExposed?: boolean;
+}
+
+/**
+ * Result of checking server requirements.
+ * Following SEAMS principle - minimal now, extensible later.
+ */
+export type ServerRequirementResult = { configured: boolean } | undefined;
+
+/**
+ * Minimal interface for MCP Proxy to support server dependency checking.
+ * Defines only the methods needed by BaseCommand for server requirements.
+ */
+export interface IMCPProxy {
+  /**
+   * Get information about target servers (connected and disconnected)
+   */
+  getTargetServers(): {
+    connected: Array<[string, unknown]>;
+    disconnected: Array<[string, unknown]>;
+  };
+
+  /**
+   * Check if a server is configured (exists in configuration)
+   * @param name Server name or alias to check
+   */
+  hasServerConfigured(name: string): boolean;
+
+  /**
+   * Check if a server is currently connected
+   * @param name Server name or alias to check
+   */
+  isServerConnected(name: string): boolean;
+
+  /**
+   * Registry for managing tool exposure
+   */
+  registry?: {
+    enableTools(patterns: string[], reason: string): void;
+  };
 }
 
 // Re-export commonly used MCP SDK types for convenience

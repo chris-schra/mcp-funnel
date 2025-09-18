@@ -6,6 +6,7 @@
  */
 
 import { ISecretProvider, ISecretProviderRegistry } from './types.js';
+import { defaultLogger, type ILogger } from './logger.js';
 
 /**
  * Cache entry for resolved secrets with expiration.
@@ -25,6 +26,11 @@ export interface SecretManagerOptions {
    * Default: 300000 (5 minutes)
    */
   cacheTtl?: number;
+
+  /**
+   * Custom logger implementation. If not provided, uses the default logger.
+   */
+  logger?: ILogger;
 }
 
 /**
@@ -50,6 +56,7 @@ export class SecretManager {
   private registry?: ISecretProviderRegistry;
   private cache?: CacheEntry;
   private cacheTtl: number;
+  private logger: ILogger;
 
   /**
    * Creates a new SecretManager instance.
@@ -66,6 +73,7 @@ export class SecretManager {
     this.providers = [...providers]; // Create a defensive copy
     this.registry = registry;
     this.cacheTtl = options.cacheTtl ?? 300000; // 5 minutes default
+    this.logger = options.logger ?? defaultLogger;
   }
 
   /**
@@ -96,9 +104,10 @@ export class SecretManager {
       } catch (error) {
         // Log error but continue with other providers
         const providerName = provider.getName();
-        console.error(
-          `Failed to resolve secrets from provider '${providerName}':`,
+        this.logger.error(
+          `Failed to resolve secrets from provider '${providerName}'`,
           error,
+          { providerName },
         );
       }
     }
@@ -154,11 +163,17 @@ export class SecretManager {
    * @returns A defensive copy of all providers (direct + registry)
    */
   private getAllProviders(): ISecretProvider[] {
-    const registryProviders = this.registry
-      ? Array.from(this.registry.getAll().values())
-      : [];
+    const combined: ISecretProvider[] = [...this.providers];
 
-    return [...this.providers, ...registryProviders];
+    if (this.registry) {
+      for (const provider of this.registry.getAll().values()) {
+        if (!combined.includes(provider)) {
+          combined.push(provider);
+        }
+      }
+    }
+
+    return combined;
   }
 
   /**

@@ -589,4 +589,82 @@ describe('MCPProxy', () => {
       });
     });
   });
+
+  describe('server dependency methods', () => {
+    describe('hasServerConfigured', () => {
+      it('should return true for configured servers', () => {
+        const config: ProxyConfig = {
+          servers: [
+            { name: 'github', command: 'echo' },
+            { name: 'filesystem', command: 'echo' },
+          ],
+        };
+
+        const proxy = new MCPProxy(config, './.mcp-funnel.json');
+
+        expect(proxy.hasServerConfigured('github')).toBe(true);
+        expect(proxy.hasServerConfigured('filesystem')).toBe(true);
+      });
+
+      it('should return false for unconfigured servers', () => {
+        const config: ProxyConfig = {
+          servers: [{ name: 'github', command: 'echo' }],
+        };
+
+        const proxy = new MCPProxy(config, './.mcp-funnel.json');
+
+        expect(proxy.hasServerConfigured('filesystem')).toBe(false);
+        expect(proxy.hasServerConfigured('nonexistent')).toBe(false);
+      });
+
+      it('should work with record-format server configuration', () => {
+        const config: ProxyConfig = {
+          servers: {
+            github: { command: 'echo' },
+            filesystem: { command: 'echo' },
+          },
+        };
+
+        const proxy = new MCPProxy(config, './.mcp-funnel.json');
+
+        expect(proxy.hasServerConfigured('github')).toBe(true);
+        expect(proxy.hasServerConfigured('filesystem')).toBe(true);
+        expect(proxy.hasServerConfigured('nonexistent')).toBe(false);
+      });
+    });
+
+    describe('isServerConnected', () => {
+      it('should return false for servers before connection', () => {
+        const config: ProxyConfig = {
+          servers: [{ name: 'github', command: 'echo' }],
+        };
+
+        const proxy = new MCPProxy(config, './.mcp-funnel.json');
+
+        expect(proxy.isServerConnected('github')).toBe(false);
+      });
+
+      it('should return true for servers after successful connection', async () => {
+        const config: ProxyConfig = {
+          servers: [{ name: 'github', command: 'echo' }],
+        };
+
+        const proxy = new MCPProxy(config, './.mcp-funnel.json');
+        await proxy.initialize();
+
+        expect(proxy.isServerConnected('github')).toBe(true);
+      });
+
+      it('should return false for unconfigured servers', async () => {
+        const config: ProxyConfig = {
+          servers: [{ name: 'github', command: 'echo' }],
+        };
+
+        const proxy = new MCPProxy(config, './.mcp-funnel.json');
+        await proxy.initialize();
+
+        expect(proxy.isServerConnected('nonexistent')).toBe(false);
+      });
+    });
+  });
 });

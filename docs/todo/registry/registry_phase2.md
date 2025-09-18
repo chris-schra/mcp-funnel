@@ -3,6 +3,7 @@
 ## Current Production Status (MVP/Phase 1)
 
 ### ✅ Production-Ready Features
+
 - **Registry Search**: Full keyword search across server metadata
 - **Server Details**: UUID and name-based retrieval
 - **Config Generation**: All package types (npm, pypi, oci, remote)
@@ -19,6 +20,7 @@
 ## Caching System
 
 ### Registry Response Caching
+
 ```typescript
 interface RegistryCacheEntry {
   server: RegistryServer;
@@ -45,10 +47,12 @@ class MCPRegistryClient {
 When `allowRuntimeServers` is enabled in config:
 
 ### Tool: enable_temporary_server
+
 ```typescript
 export class EnableTemporaryServer extends BaseCoreTool {
   name = 'enable_temporary_server';
-  description = 'Temporarily enable a server from registry for this session only';
+  description =
+    'Temporarily enable a server from registry for this session only';
 
   async execute(input: { serverName: string; registryId: string }) {
     // 1. Fetch full server details from registry
@@ -66,13 +70,14 @@ export class EnableTemporaryServer extends BaseCoreTool {
     return {
       enabled: true,
       temporary: true,
-      message: `Server '${input.serverName}' is running temporarily. To keep it, add it to your config.`
+      message: `Server '${input.serverName}' is running temporarily. To keep it, add it to your config.`,
     };
   }
 }
 ```
 
 ### Tool: persist_temporary_server
+
 ```typescript
 export class PersistTemporaryServer extends BaseCoreTool {
   name = 'persist_temporary_server';
@@ -89,7 +94,7 @@ export class PersistTemporaryServer extends BaseCoreTool {
       name: tempServer.name,
       command: tempServer.command,
       args: tempServer.args,
-      env: tempServer.env
+      env: tempServer.env,
     };
 
     // Update config file
@@ -98,7 +103,7 @@ export class PersistTemporaryServer extends BaseCoreTool {
     return {
       persisted: true,
       message: `Added '${input.serverName}' to .mcp-funnel.json`,
-      configEntry
+      configEntry,
     };
   }
 }
@@ -107,22 +112,25 @@ export class PersistTemporaryServer extends BaseCoreTool {
 ## Server Management Tools
 
 ### Tool: disconnect_server
+
 ```typescript
 export class DisconnectServer extends BaseCoreTool {
   name = 'disconnect_server';
-  description = 'Disconnect a running server (session only, does not modify config)';
+  description =
+    'Disconnect a running server (session only, does not modify config)';
 
   async execute(input: { serverName: string }) {
     await this.context.disconnectServer(input.serverName);
     return {
       disconnected: true,
-      message: `Server '${input.serverName}' disconnected for this session`
+      message: `Server '${input.serverName}' disconnected for this session`,
     };
   }
 }
 ```
 
 ### Tool: uninstall_server
+
 ```typescript
 export class UninstallServer extends BaseCoreTool {
   name = 'uninstall_server';
@@ -137,7 +145,7 @@ export class UninstallServer extends BaseCoreTool {
 
     return {
       uninstalled: true,
-      message: `Server '${input.serverName}' removed from config`
+      message: `Server '${input.serverName}' removed from config`,
     };
   }
 }
@@ -149,10 +157,10 @@ export class UninstallServer extends BaseCoreTool {
 {
   "registrySettings": {
     "autoSearch": true,
-    "cacheMinutes": 60,                // Cache duration
-    "allowRuntimeServers": true,       // Enable temporary servers
-    "autoCleanupOnExit": true,         // Clean temp servers on exit
-    "trackUsagePatterns": true         // Track which servers are used frequently
+    "cacheMinutes": 60, // Cache duration
+    "allowRuntimeServers": true, // Enable temporary servers
+    "autoCleanupOnExit": true, // Clean temp servers on exit
+    "trackUsagePatterns": true // Track which servers are used frequently
   }
 }
 ```
@@ -170,12 +178,13 @@ interface UsagePattern {
 }
 
 // After 3+ uses across sessions:
-"You've used 'sql-tools' in 3 sessions. Would you like to add it permanently?"
+("You've used 'sql-tools' in 3 sessions. Would you like to add it permanently?");
 ```
 
 ## Smart Cleanup
 
 Automatically clean up:
+
 - Temporary servers on session end
 - Unused permanent servers (with confirmation)
 - Stale cache entries
@@ -186,14 +195,19 @@ Automatically clean up:
 These improvements emerged during development and weren't in the original Phase 2 plan:
 
 ### Error Handling Pattern
+
 - **Architecture**: Client throws → Context catches pattern
 - **Benefit**: Maintains error visibility while preventing registry failure cascades
 - **Implementation**: Try-catch in context layer aggregates errors from multiple registries
 
 ### UUID Detection and Smart Routing
+
 ```typescript
 // Automatically detects UUIDs and uses direct GET endpoint
-const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+const isUuid =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    identifier,
+  );
 if (isUuid) {
   // Direct GET /v0/servers/{uuid}
 } else {
@@ -202,20 +216,22 @@ if (isUuid) {
 ```
 
 ### Runtime Arguments Schema Support
+
 ```typescript
 // Three-tier argument system for full publisher control
 interface Package {
-  runtime_hint?: string;       // Which runtime (npx, node, yarn)
+  runtime_hint?: string; // Which runtime (npx, node, yarn)
   runtime_arguments?: string[]; // Flags for runtime (-y, --no-install)
   package_arguments?: string[]; // Flags for package (--verbose)
 }
 ```
 
 ### Registry ID Mapping
+
 ```typescript
 // User-friendly registry names
 RegistryContext.REGISTRY_ID_MAPPING = {
-  'official': 'https://registry.modelcontextprotocol.io',
+  official: 'https://registry.modelcontextprotocol.io',
   // Future: 'community', 'private', etc.
 };
 ```

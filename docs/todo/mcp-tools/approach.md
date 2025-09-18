@@ -1,5 +1,7 @@
 ## Your responsibility
+
 **BEFORE** creating tasks, keep in mind:
+
 - you need to assess the current state first
 - make sure to detect existing packages (recursively, use a scan for package.json, excluding **/node_modules/**)
   to understand the repo first, then check relevant files for focus.
@@ -17,8 +19,10 @@
 - **NEVER** remove or delete tests or test files - that's a **CRIME** against our methodology
 - **NEVER** touch source code - it's not your job as supervisor to touch code. **You have subagent workers for that.**
 
-## Preflight Checklist 
+## Preflight Checklist
+
 You **MUST** do the following **BEFORE** creating tasks **and** tick the checkboxes:
+
 - [ ] Analyze existing infrastructure and files that might be relevant
 - [ ] Check for usage of existing packages
 - [ ] Before introducing new external packages from NPM, make sure to enable tool npm, also check if we already use a similar package
@@ -26,6 +30,7 @@ You **MUST** do the following **BEFORE** creating tasks **and** tick the checkbo
 ## Supervisor Verification Protocol
 
 **AFTER EACH WORKER COMPLETES**, the supervisor MUST:
+
 1. [ ] Run `git status` to verify files are tracked
 2. [ ] Run `yarn validate packages/commands/core` personally
 3. [ ] Run `yarn test packages/commands/core` personally
@@ -48,12 +53,14 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ## Problem Statement
 
 Currently, MCP Funnel commands cannot:
+
 - Declare dependencies on MCP servers configured in `.mcp-funnel.json`
 - Check if required servers are available before execution
 - Request that server tools be exposed when needed
 - Provide clear error messages when dependencies are missing
 
 This limits the ability to create commands that leverage existing MCP infrastructure, such as:
+
 - A command that uses Codex CLI's MCP mode for reasoning
 - A command that requires GitHub MCP for repository operations
 - A command that needs filesystem MCP for file access
@@ -61,6 +68,7 @@ This limits the ability to create commands that leverage existing MCP infrastruc
 ## Solution: Server Dependency System for Commands
 
 Implement a `requireServer()` method in BaseCommand that:
+
 1. Checks if specified MCP servers are configured
 2. Optionally ensures their tools are exposed
 3. Returns simple, extensible status information
@@ -69,12 +77,14 @@ Implement a `requireServer()` method in BaseCommand that:
 ## Implementation Context (from discussion)
 
 ### Design Decisions Made
+
 - **Simple return type**: `{ configured: boolean } | undefined` for MVP
 - **Clear naming**: `ensureToolsExposed` instead of complex alternatives
 - **User approval model**: Configuration in `.mcp-funnel.json` IS the approval
 - **SEAMS approach**: Start minimal, add complexity only when needed
 
 ### Existing Infrastructure to Leverage
+
 - `BaseCommand` class in `packages/commands/core/src/base-command.ts`
 - `ICommand` interface in `packages/commands/core/src/interfaces.ts`
 - MCPProxy instance available to commands during execution
@@ -97,10 +107,11 @@ Phase 1: Types & Interfaces
   - Export via index.ts
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES (no tests exist yet)
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -120,13 +131,14 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
   - Multiple requireServer calls
 - Mock MCPProxy behavior appropriately
 - All tests initially skipped but validate against types
-- Location: packages/commands/core/src/__tests__/server-dependency.test.ts
+- Location: packages/commands/core/src/**tests**/server-dependency.test.ts
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -147,10 +159,11 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - Error handling for edge cases
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -168,18 +181,125 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - Test integration between commands and proxy
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-Phase 5: Unskip & Run Tests
+Phase 5: Fix Critical Phase 4 Issues
+
+You **MUST** tick the checklist boxes for previous phase before continuing.
+
+**CRITICAL ISSUES TO FIX:**
+
+1. Missing required methods in MCPProxy
+2. CLI execution doesn't pass proxy to commands
+3. Wrong semantics - checking connected instead of configured servers
+4. TODO comments not cleaned up from Phase 4
+
+**Implementation Tasks:**
+
+1. **Update IMCPProxy interface** (packages/commands/core/src/interfaces.ts):
+   - Add `hasServerConfigured(name: string): boolean`
+   - Add `isServerConnected(name: string): boolean`
+   - Keep existing methods for compatibility
+
+2. **Implement methods in MCPProxy** (packages/mcp/src/index.ts):
+   - `hasServerConfigured(name: string): boolean` - check if server exists in \_normalizedServers
+   - `isServerConnected(name: string): boolean` - check if server exists in connectedServers Map
+
+3. **Refactor BaseCommand methods** (packages/commands/core/src/base-command.ts):
+   - Rename existing `requireServer()` to `requireServerConnected()`
+   - Create new `requireServerConfigured()` that checks configuration only
+   - Remove ALL TODO/Phase 4 comments
+   - Both methods should use the new MCPProxy methods
+
+4. **Fix CLI execution** (packages/mcp/src/commands/run.ts):
+   - Create a minimal proxy instance or configuration reader
+   - Pass it to commands via setProxy() before executeViaCLI()
+   - Ensure commands can check server configuration even in CLI mode
+
+5. **Update all tests** (packages/commands/core/src/**tests**/server-dependency.test.ts):
+   - Update test names to reflect new method names
+   - Test both requireServerConfigured and requireServerConnected
+   - Ensure tests cover CLI execution scenario
+
+**DO NOT** proceed to next phase until:
+
+- [x] All TODO/Phase 4 comments are removed from the codebase
+- [x] hasServerConfigured() and isServerConnected() are implemented in MCPProxy
+- [x] requireServerConfigured() and requireServerConnected() work correctly in BaseCommand
+- [x] CLI execution passes proxy/config to commands
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review using code-reasoning tool to ensure no worker fooled you
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
+Phase 5: Enable Tool Invocation from Commands
+
+You **MUST** tick the checklist boxes for previous phase before continuing.
+
+**CRITICAL GAP IDENTIFIED:**
+Commands can check server dependencies but cannot actually USE those servers' tools.
+This phase adds the missing capability for commands to invoke tools from dependent servers.
+
+**Implementation Tasks:**
+
+1. **Add tool invocation method to IMCPProxy interface** (packages/commands/core/src/interfaces.ts):
+   - Add `callServerTool(serverName: string, toolName: string, args: Record<string, unknown>): Promise<CallToolResult>`
+   - Document that this allows commands to invoke tools from other connected servers
+
+2. **Implement callServerTool in MCPProxy** (packages/mcp/src/index.ts):
+   - Check if server is connected
+   - Format tool name as `${serverName}__${toolName}`
+   - Delegate to existing handleCallToolRequest method
+   - Return error if server not connected or tool not found
+
+3. **Implement stub in CLIProxy** (packages/mcp/src/commands/run.ts):
+   - Return error indicating tool invocation not available in CLI mode
+   - Suggest running via MCP mode for full functionality
+
+4. **Add protected helper method in BaseCommand** (packages/commands/core/src/base-command.ts):
+   - `callDependencyTool(serverName: string, toolName: string, args: Record<string, unknown>)`
+   - Check proxy exists, delegate to proxy.callServerTool
+   - Provide helpful error messages
+
+5. **Write comprehensive tests** (packages/commands/core/src/**tests**/server-dependency.test.ts):
+   - Test successful tool invocation
+   - Test error handling for disconnected servers
+   - Test error handling in CLI mode
+   - Test invalid server/tool names
+
+**DO NOT** proceed to next phase until:
+
+- [ ] callServerTool method added to IMCPProxy interface
+- [ ] MCPProxy implementation delegates to handleCallToolRequest correctly
+- [ ] CLIProxy returns appropriate error for CLI mode
+- [ ] BaseCommand helper method provides good developer experience
+- [ ] Tests cover all scenarios
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] you did a thorough review using code-reasoning tool
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
+Phase 6: Unskip & Run Tests
 
 You **MUST** tick the checklist boxes for previous phase before continuing.
 
@@ -190,16 +310,17 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - Verify server dependency checking works correctly
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-Phase 6: Example Command & Documentation
+Phase 7: Example Command & Documentation
 
 You **MUST** tick the checklist boxes for previous phase before continuing.
 
@@ -215,6 +336,7 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - Add section on server dependencies to main documentation
 
 **DO NOT** complete until:
+
 - [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
 - [ ] `yarn validate` passes for all packages WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test` passes for all packages WITHOUT ANY ERRORS OR ISSUES
@@ -232,12 +354,13 @@ Key Implementation Details:
 ## Configuration Examples
 
 ### Command with server dependency:
+
 ```typescript
 class CodexBridgeCommand extends BaseCommand {
   async executeViaCLI(args: string[]): Promise<void> {
     const result = await this.requireServer({
       aliases: ['codex', 'codex-cli', 'codex-mcp'],
-      ensureToolsExposed: true
+      ensureToolsExposed: true,
     });
 
     if (!result?.configured) {
@@ -251,6 +374,7 @@ class CodexBridgeCommand extends BaseCommand {
 ```
 
 ### Configuration in .mcp-funnel.json:
+
 ```json
 {
   "servers": {

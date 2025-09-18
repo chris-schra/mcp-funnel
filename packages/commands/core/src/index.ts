@@ -11,6 +11,9 @@ export type {
   ICommand,
   ICommandMetadata,
   ICommandOptions,
+  ServerDependency,
+  ServerRequirementResult,
+  IMCPProxy,
   Tool,
   CallToolResult,
 } from './interfaces.js';

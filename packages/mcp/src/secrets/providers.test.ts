@@ -213,6 +213,289 @@ describe('DotEnvProvider', () => {
     });
   });
 
+  it('should handle multiline values in quotes', async () => {
+    // Arrange
+    const envContent = [
+      'API_KEY="multi',
+      'line',
+      'value"',
+      "DATABASE_URL='single",
+      'quoted',
+      "multiline'",
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      API_KEY: 'multi\nline\nvalue',
+      DATABASE_URL: 'single\nquoted\nmultiline',
+    });
+  });
+
+  it('should handle escape sequences in double quotes', async () => {
+    // Arrange
+    const envContent = [
+      'ESCAPED="Value with \\n newline and \\t tab"',
+      'BACKSLASH="Value with \\\\ backslash"',
+      'QUOTES="Value with \\" double quote"',
+      'UNICODE="Unicode \\u0048\\u0065\\u006C\\u006C\\u006F"', // "Hello"
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      ESCAPED: 'Value with \n newline and \t tab',
+      BACKSLASH: 'Value with \\ backslash',
+      QUOTES: 'Value with " double quote',
+      UNICODE: 'Unicode Hello',
+    });
+  });
+
+  it('should handle escape sequences in single quotes (minimal escaping)', async () => {
+    // Arrange
+    const envContent = [
+      "LITERAL='Value with \\n literal backslash n'",
+      "ESCAPED_QUOTE='Value with \\' single quote'",
+      "BACKSLASH='Value with \\\\ literal backslashes'",
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      LITERAL: 'Value with \\n literal backslash n',
+      ESCAPED_QUOTE: "Value with ' single quote",
+      BACKSLASH: 'Value with \\\\ literal backslashes',
+    });
+  });
+
+  it('should handle export statements', async () => {
+    // Arrange
+    const envContent = [
+      'export DATABASE_URL="postgres://user:pass@host/db"',
+      'export API_KEY=secret123',
+      'NORMAL_VAR=normal_value',
+      'export   SPACED_EXPORT=value_with_spaces',
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      DATABASE_URL: 'postgres://user:pass@host/db',
+      API_KEY: 'secret123',
+      NORMAL_VAR: 'normal_value',
+      SPACED_EXPORT: 'value_with_spaces',
+    });
+  });
+
+  it('should handle backslash line continuations', async () => {
+    // Arrange
+    const envContent = [
+      'DATABASE_URL="postgres://user:pass@host/db\\',
+      '?sslmode=require"',
+      'LONG_VALUE=first\\',
+      'second\\',
+      'third',
+      'NORMAL=simple_value',
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      DATABASE_URL: 'postgres://user:pass@host/db?sslmode=require',
+      LONG_VALUE: 'firstsecondthird',
+      NORMAL: 'simple_value',
+    });
+  });
+
+  it('should handle variable interpolation', async () => {
+    // Arrange
+    const envContent = [
+      'HOME=/home/user',
+      'PATH_WITH_VAR="$HOME/bin:$PATH"',
+      'BRACED_VAR="${HOME}/projects"',
+      'MIXED_VAR="$HOME/bin:${PATH}"',
+      'PATH=/usr/bin:/bin',
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      HOME: '/home/user',
+      PATH_WITH_VAR: '/home/user/bin:/usr/bin:/bin',
+      BRACED_VAR: '/home/user/projects',
+      MIXED_VAR: '/home/user/bin:/usr/bin:/bin',
+      PATH: '/usr/bin:/bin',
+    });
+  });
+
+  it('should handle undefined variable references gracefully', async () => {
+    // Arrange
+    const envContent = [
+      'DEFINED_VAR=defined_value',
+      'UNDEFINED_REF="Value with $UNDEFINED_VAR reference"',
+      'BRACED_UNDEFINED="Value with ${ALSO_UNDEFINED} reference"',
+      'MIXED="$DEFINED_VAR and $UNDEFINED_VAR"',
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      DEFINED_VAR: 'defined_value',
+      UNDEFINED_REF: 'Value with  reference',
+      BRACED_UNDEFINED: 'Value with  reference',
+      MIXED: 'defined_value and ',
+    });
+  });
+
+  it('should handle circular variable references', async () => {
+    // Arrange
+    const envContent = [
+      'CIRCULAR_A="$CIRCULAR_B"',
+      'CIRCULAR_B="$CIRCULAR_A"',
+      'SELF_REF="$SELF_REF"',
+      'NORMAL_VAR=normal_value',
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      CIRCULAR_A: '',
+      CIRCULAR_B: '',
+      SELF_REF: '',
+      NORMAL_VAR: 'normal_value',
+    });
+  });
+
+  it('should handle complex .env file with all features', async () => {
+    // Arrange - This is the example from the requirements
+    const envContent = [
+      'export DATABASE_URL="postgres://user:pass@host/db\\',
+      '?sslmode=require"',
+      'API_KEY="multi',
+      'line',
+      'value"',
+      'PATH_WITH_VAR="$HOME/bin:$PATH"',
+      'ESCAPED="Value with \\n newline and \\t tab"',
+      'HOME=/home/user',
+      'PATH=/usr/bin:/bin',
+      '# This is a comment',
+      '',
+      'SIMPLE=simple_value',
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({
+      DATABASE_URL: 'postgres://user:pass@host/db?sslmode=require',
+      API_KEY: 'multi\nline\nvalue',
+      PATH_WITH_VAR: '/home/user/bin:/usr/bin:/bin',
+      ESCAPED: 'Value with \n newline and \t tab',
+      HOME: '/home/user',
+      PATH: '/usr/bin:/bin',
+      SIMPLE: 'simple_value',
+    });
+  });
+
+  it('should handle malformed input gracefully', async () => {
+    // Arrange
+    const envContent = [
+      'VALID_VAR=valid_value',
+      'UNCLOSED_QUOTE="unclosed quote', // This should parse as literal since quote is not closed on same line
+      'NO_EQUALS_SIGN',
+      'EMPTY_KEY==value',
+      '=EMPTY_KEY_START',
+      'ANOTHER_VALID=another_value',
+    ].join('\n');
+
+    mockReadFileSync.mockReturnValue(envContent);
+    mockIsAbsolute.mockReturnValue(false);
+    mockResolve.mockReturnValue('/test/.env');
+
+    const provider = new DotEnvProvider({ path: '.env' });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert - Should continue parsing valid entries and skip malformed ones
+    expect(secrets).toEqual({
+      VALID_VAR: 'valid_value',
+      UNCLOSED_QUOTE: '"unclosed quote', // Since quote is unclosed, treat as unquoted value
+      ANOTHER_VALID: 'another_value',
+    });
+  });
+
   it('should use custom encoding parameter', async () => {
     // Arrange
     const envContent = 'KEY=value';

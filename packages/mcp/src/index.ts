@@ -7,7 +7,7 @@ import {
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
-import { SecretManager, createSecretProviders } from './secrets/index.js';
+import { resolveSecretsFromConfig } from './secrets/index.js';
 import { filterEnvVars } from './env-filter.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
@@ -19,12 +19,19 @@ import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
 import { SearchRegistryTools } from './tools/search-registry-tools/index.js';
 import { GetServerInstallInfo } from './tools/get-server-install-info/index.js';
-import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
-import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
+import { type ICommand, type IMCPProxy } from '@mcp-funnel/commands-core';
+import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError, getServerStreamLogPath } from './logger.js';
 import { ToolRegistry } from './tool-registry.js';
+import {
+  ReconnectionManager,
+  ConnectionState,
+  type ReconnectionConfig,
+  type ConnectionStateChange,
+} from './reconnection-manager.js';
+import { discoverCommandsFromPaths } from './shared-command-discovery.js';
 
 import Package from '../package.json';
 export {
@@ -99,8 +106,8 @@ interface TransportOptions {
 
 // Custom transport that prefixes server stderr logs
 export class PrefixedStdioClientTransport {
-  private readonly _serverName: string;
-  private process?: ChildProcess;
+  protected readonly _serverName: string;
+  protected process?: ChildProcess;
   private messageHandlers: ((message: JSONRPCMessage) => void)[] = [];
   private errorHandlers: ((error: Error) => void)[] = [];
   private closeHandlers: (() => void)[] = [];
@@ -245,9 +252,218 @@ export class PrefixedStdioClientTransport {
   }
 }
 
-export class MCPProxy {
+// Enhanced transport with reconnection capability
+export interface ReconnectableTransportOptions extends TransportOptions {
+  /** Reconnection configuration */
+  reconnection?: ReconnectionConfig;
+  /** Enable health checks via ping (default: true) */
+  healthChecks?: boolean;
+  /** Health check interval in milliseconds (default: 30000) */
+  healthCheckInterval?: number;
+}
+
+export class ReconnectablePrefixedStdioClientTransport extends PrefixedStdioClientTransport {
+  private reconnectionManager: ReconnectionManager;
+  private healthCheckInterval?: NodeJS.Timeout;
+  private reconnectionOptions: Required<
+    Pick<ReconnectableTransportOptions, 'healthChecks' | 'healthCheckInterval'>
+  >;
+  private isManuallyDisconnected = false;
+  private disconnectionHandlers: ((state: ConnectionStateChange) => void)[] =
+    [];
+
+  constructor(
+    serverName: string,
+    private enhancedOptions: ReconnectableTransportOptions,
+  ) {
+    super(serverName, enhancedOptions);
+    this.reconnectionManager = new ReconnectionManager(
+      enhancedOptions.reconnection,
+    );
+    this.reconnectionOptions = {
+      healthChecks: enhancedOptions.healthChecks ?? true,
+      healthCheckInterval: enhancedOptions.healthCheckInterval ?? 30000,
+    };
+
+    // Set up reconnection state change handling
+    this.reconnectionManager.onStateChange((stateChange) => {
+      logEvent('info', 'transport:state_change', {
+        server: this._serverName,
+        from: stateChange.from,
+        to: stateChange.to,
+        retryCount: stateChange.retryCount,
+        nextRetryDelay: stateChange.nextRetryDelay,
+        error: stateChange.error?.message,
+      });
+
+      this.disconnectionHandlers.forEach((handler) => handler(stateChange));
+    });
+  }
+
+  get connectionState(): ConnectionState {
+    return this.reconnectionManager.state;
+  }
+
+  get retryCount(): number {
+    return this.reconnectionManager.currentRetryCount;
+  }
+
+  async start(): Promise<void> {
+    this.isManuallyDisconnected = false;
+    this.reconnectionManager.onConnecting();
+
+    try {
+      await super.start();
+      this.reconnectionManager.onConnected();
+      this.startHealthChecks();
+
+      // Override the parent's close handler to add reconnection logic
+      super.onclose = () => {
+        this.stopHealthChecks();
+
+        if (!this.isManuallyDisconnected) {
+          const error = new Error('Server process closed unexpectedly');
+          this.handleDisconnection(error);
+        }
+      };
+
+      // Override the parent's error handler to add reconnection logic
+      super.onerror = (error: Error) => {
+        this.handleDisconnection(error);
+      };
+    } catch (error) {
+      this.reconnectionManager.onDisconnected(error as Error);
+      throw error;
+    }
+  }
+
+  private startHealthChecks(): void {
+    if (!this.reconnectionOptions.healthChecks) {
+      return;
+    }
+
+    this.healthCheckInterval = setInterval(() => {
+      this.performHealthCheck().catch((error) => {
+        console.error(`[${this._serverName}] Health check failed:`, error);
+        this.handleDisconnection(error);
+      });
+    }, this.reconnectionOptions.healthCheckInterval);
+  }
+
+  private stopHealthChecks(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = undefined;
+    }
+  }
+
+  private async performHealthCheck(): Promise<void> {
+    // Simple health check - ensure the process is still alive
+    if (!this.process || this.process.killed) {
+      throw new Error('Process is not running');
+    }
+
+    // Additional health check could be implemented here, such as:
+    // - Sending a ping message if the server supports it
+    // - Checking if stdin/stdout/stderr streams are still writable/readable
+  }
+
+  private handleDisconnection(error: Error): void {
+    this.stopHealthChecks();
+    this.reconnectionManager.onDisconnected(error);
+
+    if (
+      !this.isManuallyDisconnected &&
+      this.reconnectionManager.hasRetriesLeft
+    ) {
+      this.scheduleReconnection();
+    }
+  }
+
+  private scheduleReconnection(): void {
+    this.reconnectionManager
+      .scheduleReconnect(async () => {
+        console.error(
+          `[${this._serverName}] Attempting reconnection (${this.reconnectionManager.currentRetryCount}/${this.reconnectionManager['config'].maxRetries})`,
+        );
+
+        // Clean up old process
+        await this.close();
+
+        // Attempt to restart
+        await this.start();
+
+        console.error(`[${this._serverName}] Reconnection successful`);
+      })
+      .catch((error) => {
+        console.error(`[${this._serverName}] Reconnection failed:`, error);
+
+        if (error.message.includes('Max reconnection attempts')) {
+          console.error(
+            `[${this._serverName}] Giving up after maximum retry attempts`,
+          );
+          logError('reconnection-failed-max-retries', error, {
+            server: this._serverName,
+          });
+        } else {
+          // Individual attempt failed, will try again
+          this.handleDisconnection(error);
+        }
+      });
+  }
+
+  async close(): Promise<void> {
+    this.isManuallyDisconnected = true;
+    this.stopHealthChecks();
+    this.reconnectionManager.cancelReconnect();
+    this.reconnectionManager.reset();
+    await super.close();
+  }
+
+  /**
+   * Manually trigger a reconnection attempt
+   */
+  async reconnect(): Promise<void> {
+    console.error(`[${this._serverName}] Manual reconnection requested`);
+    this.reconnectionManager.reset();
+    await this.close();
+    await this.start();
+  }
+
+  /**
+   * Add a handler for disconnection state changes
+   */
+  onDisconnection(handler: (state: ConnectionStateChange) => void): void {
+    this.disconnectionHandlers.push(handler);
+  }
+
+  /**
+   * Remove a disconnection state change handler
+   */
+  removeDisconnectionHandler(
+    handler: (state: ConnectionStateChange) => void,
+  ): void {
+    const index = this.disconnectionHandlers.indexOf(handler);
+    if (index >= 0) {
+      this.disconnectionHandlers.splice(index, 1);
+    }
+  }
+
+  /**
+   * Clean up all resources
+   */
+  async destroy(): Promise<void> {
+    await this.close();
+    this.reconnectionManager.destroy();
+    this.disconnectionHandlers.length = 0;
+  }
+}
+
+export class MCPProxy implements IMCPProxy {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
+  private _transports: Map<string, ReconnectablePrefixedStdioClientTransport> =
+    new Map();
   private _config: ProxyConfig;
   private _configPath: string;
   private _normalizedServers: TargetServer[];
@@ -340,143 +556,52 @@ export class MCPProxy {
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = dirname(__filename);
       const commandsPath = join(__dirname, '../../commands');
+      const scopeDir = join(process.cwd(), 'node_modules', '@mcp-funnel');
 
       const enabledCommands = this._config.commands.list || [];
 
-      const registerFromRegistry = async (
-        registry: Awaited<ReturnType<typeof discoverCommands>>,
-      ) => {
-        for (const commandName of registry.getAllCommandNames()) {
-          const command = registry.getCommandForMCP(commandName);
-          if (
-            command &&
-            (enabledCommands.length === 0 ||
-              enabledCommands.includes(command.name))
-          ) {
-            const mcpDefs = command.getMCPDefinitions();
-            const isSingle = mcpDefs.length === 1;
-            const singleMatchesCommand =
-              isSingle && mcpDefs[0]?.name === command.name;
-
-            for (const mcpDef of mcpDefs) {
-              const useCompact =
-                singleMatchesCommand && mcpDef.name === command.name;
-              const displayName = useCompact
-                ? `${command.name}`
-                : `${command.name}_${mcpDef.name}`;
-
-              if (!mcpDef.description) {
-                throw new Error(
-                  `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
-                );
-              }
-              // Register command tool in the registry
-              this.toolRegistry.registerDiscoveredTool({
-                fullName: displayName,
-                originalName: mcpDef.name,
-                serverName: 'commands',
-                definition: { ...mcpDef, name: displayName },
-                command,
-              });
-            }
+      await discoverCommandsFromPaths({
+        paths: {
+          bundled: commandsPath,
+          nodeModulesScope: scopeDir,
+        },
+        enabledCommands,
+        context: 'mcp',
+        onCommandFound: (command: ICommand) => {
+          // Set proxy reference for server dependency support
+          if (typeof command.setProxy === 'function') {
+            command.setProxy(this);
           }
-        }
-      };
 
-      // 1) Bundled commands (only when the directory exists in this build)
-      try {
-        const { existsSync } = await import('fs');
-        if (existsSync(commandsPath)) {
-          const bundledRegistry = await discoverCommands(commandsPath);
-          await registerFromRegistry(bundledRegistry);
-        }
-      } catch {
-        // ignore
-      }
+          const mcpDefs = command.getMCPDefinitions();
+          const isSingle = mcpDefs.length === 1;
+          const singleMatchesCommand =
+            isSingle && mcpDefs[0]?.name === command.name;
 
-      // 2) Zero-config auto-scan for installed command packages under node_modules/@mcp-funnel
-      try {
-        const scopeDir = join(process.cwd(), 'node_modules', '@mcp-funnel');
-        const { readdirSync, existsSync } = await import('fs');
-        if (existsSync(scopeDir)) {
-          const entries = readdirSync(scopeDir, { withFileTypes: true });
-          const packageDirs = entries
-            .filter(
-              (e: Dirent) => e.isDirectory() && e.name.startsWith('command-'),
-            )
-            .map((e: Dirent) => join(scopeDir, e.name));
+          for (const mcpDef of mcpDefs) {
+            const useCompact =
+              singleMatchesCommand && mcpDef.name === command.name;
+            const displayName = useCompact
+              ? `${command.name}`
+              : `${command.name}_${mcpDef.name}`;
 
-          const isValidCommand = (obj: unknown): obj is ICommand => {
-            if (!obj || typeof obj !== 'object') return false;
-            const c = obj as Record<string, unknown>;
-            return (
-              typeof c.name === 'string' &&
-              typeof c.description === 'string' &&
-              typeof c.executeToolViaMCP === 'function' &&
-              typeof c.executeViaCLI === 'function' &&
-              typeof c.getMCPDefinitions === 'function'
-            );
-          };
-
-          for (const pkgDir of packageDirs) {
-            try {
-              const pkgJsonPath = join(pkgDir, 'package.json');
-              if (!existsSync(pkgJsonPath)) continue;
-              const { readFile } = await import('fs/promises');
-              const pkg = JSON.parse(await readFile(pkgJsonPath, 'utf-8')) as {
-                module?: string;
-                main?: string;
-              };
-              const entry = pkg.module || pkg.main;
-              if (!entry) continue;
-              const mod = await import(join(pkgDir, entry));
-              const modObj = mod as Record<string, unknown>;
-              const candidate = modObj.default || modObj.command;
-              const chosen = isValidCommand(candidate)
-                ? candidate
-                : (Object.values(modObj).find(isValidCommand) as
-                    | ICommand
-                    | undefined);
-              if (
-                chosen &&
-                (enabledCommands.length === 0 ||
-                  enabledCommands.includes(chosen.name))
-              ) {
-                // Reuse registration logic
-                const mcpDefs = chosen.getMCPDefinitions();
-                const isSingle = mcpDefs.length === 1;
-                const singleMatchesCommand =
-                  isSingle && mcpDefs[0]?.name === chosen.name;
-                for (const mcpDef of mcpDefs) {
-                  const useCompact =
-                    singleMatchesCommand && mcpDef.name === chosen.name;
-                  const displayName = useCompact
-                    ? `${chosen.name}`
-                    : `${chosen.name}_${mcpDef.name}`;
-                  if (!mcpDef.description) {
-                    throw new Error(
-                      `Tool ${mcpDef.name} from command ${chosen.name} is missing a description`,
-                    );
-                  }
-                  // Register command tool in the registry
-                  this.toolRegistry.registerDiscoveredTool({
-                    fullName: displayName,
-                    originalName: mcpDef.name,
-                    serverName: 'commands',
-                    definition: { ...mcpDef, name: displayName },
-                    command: chosen,
-                  });
-                }
-              }
-            } catch (_err) {
-              // skip invalid package
-              continue;
+            if (!mcpDef.description) {
+              throw new Error(
+                `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
+              );
             }
+
+            // Register command tool in the registry
+            this.toolRegistry.registerDiscoveredTool({
+              fullName: displayName,
+              originalName: mcpDef.name,
+              serverName: 'commands',
+              definition: { ...mcpDef, name: displayName },
+              command,
+            });
           }
-        }
-      } catch (_e) {
-        // No scope directory or unreadable; ignore
-      }
+        },
+      });
     } catch (error) {
       console.error('Failed to load commands:', error);
     }
@@ -502,7 +627,7 @@ export class MCPProxy {
           console.error(`[proxy] Dynamically enabled tool: ${toolName}`);
         }
         // Send notification that the tool list has changed
-        this._server.sendToolListChanged();
+        this.notifyToolListChanged('core-tool-enable');
         console.error(`[proxy] Sent tools/list_changed notification`);
       },
       sendNotification: async (
@@ -563,42 +688,28 @@ export class MCPProxy {
 
     // 2. Apply default secret providers if configured
     if (this._config.defaultSecretProviders) {
-      try {
-        const configDir = dirname(this._configPath);
-        const defaultProviders = createSecretProviders(
-          this._config.defaultSecretProviders,
-          configDir,
-        );
-        const secretManager = new SecretManager(defaultProviders);
-        const defaultSecrets = await secretManager.resolveSecrets();
-        finalEnv = { ...finalEnv, ...defaultSecrets };
-      } catch (error) {
-        console.error(
-          `[proxy] Failed to resolve default secrets for ${targetServer.name}:`,
-          error,
-        );
-        // Continue without default secrets
-      }
+      const configDir = dirname(this._configPath);
+      const defaultSecrets = await resolveSecretsFromConfig(
+        this._config.defaultSecretProviders,
+        configDir,
+        {
+          context: { name: targetServer.name, type: 'default secrets' },
+        },
+      );
+      finalEnv = { ...finalEnv, ...defaultSecrets };
     }
 
     // 3. Apply server-specific secret providers
     if (targetServer.secretProviders) {
-      try {
-        const configDir = dirname(this._configPath);
-        const serverProviders = createSecretProviders(
-          targetServer.secretProviders,
-          configDir,
-        );
-        const secretManager = new SecretManager(serverProviders);
-        const serverSecrets = await secretManager.resolveSecrets();
-        finalEnv = { ...finalEnv, ...serverSecrets };
-      } catch (error) {
-        console.error(
-          `[proxy] Failed to resolve secrets for ${targetServer.name}:`,
-          error,
-        );
-        // Continue without server-specific secrets
-      }
+      const configDir = dirname(this._configPath);
+      const serverSecrets = await resolveSecretsFromConfig(
+        targetServer.secretProviders,
+        configDir,
+        {
+          context: { name: targetServer.name, type: 'server-specific secrets' },
+        },
+      );
+      finalEnv = { ...finalEnv, ...serverSecrets };
     }
 
     // 4. Apply server-specific env (highest priority)
@@ -626,19 +737,36 @@ export class MCPProxy {
           // Resolve environment variables using the new secret system
           const resolvedEnv = await this.resolveServerEnvironment(targetServer);
 
-          const transport = new PrefixedStdioClientTransport(
+          const transport = new ReconnectablePrefixedStdioClientTransport(
             targetServer.name,
             {
               command: targetServer.command,
               args: targetServer.args || [],
               env: resolvedEnv,
+              reconnection: {
+                initialDelay: 1000,
+                maxDelay: 30000,
+                backoffMultiplier: 2,
+                maxRetries: 10,
+                jitter: 0.25,
+              },
+              healthChecks: true,
+              healthCheckInterval: 30000,
             },
           );
 
+          // Store transport for management
+          this._transports.set(targetServer.name, transport);
+
+          // Handle disconnection events
+          transport.onDisconnection((stateChange) => {
+            this.handleServerDisconnection(targetServer.name, stateChange);
+          });
+
           await client.connect(transport);
 
-          // TODO: handle disconnects
-          this.connectedServers.set(targetServer.name, targetServer);
+          // Connection successful - update server tracking
+          this.handleServerConnection(targetServer.name, targetServer);
 
           this._clients.set(targetServer.name, client);
           console.error(`[proxy] Connected to: ${targetServer.name}`);
@@ -668,6 +796,108 @@ export class MCPProxy {
       r.status === 'fulfilled' ? r.value : r.reason,
     );
     logEvent('info', 'server:connect_summary', { summary });
+  }
+
+  private handleServerConnection(
+    serverName: string,
+    targetServer: TargetServer,
+  ): void {
+    // Move from disconnected to connected
+    this.disconnectedServers.delete(serverName);
+    this.connectedServers.set(serverName, targetServer);
+
+    logEvent('info', 'server:reconnected', { name: serverName });
+
+    // Rediscover tools from this server since it's now available
+    this.rediscoverServerTools(serverName).catch((error) => {
+      console.error(
+        `[proxy] Failed to rediscover tools from ${serverName}:`,
+        error,
+      );
+      logError('tools:rediscovery_failed', error, { server: serverName });
+    });
+  }
+
+  private handleServerDisconnection(
+    serverName: string,
+    stateChange: ConnectionStateChange,
+  ): void {
+    const targetServer = this.connectedServers.get(serverName);
+
+    if (
+      stateChange.to === ConnectionState.Disconnected ||
+      stateChange.to === ConnectionState.Failed
+    ) {
+      // Move from connected to disconnected
+      this.connectedServers.delete(serverName);
+
+      if (targetServer) {
+        this.disconnectedServers.set(serverName, {
+          ...targetServer,
+          error: stateChange.error?.message,
+        });
+      }
+
+      // Remove client reference for this server
+      this._clients.delete(serverName);
+
+      logEvent('warn', 'server:disconnected', {
+        name: serverName,
+        retryCount: stateChange.retryCount,
+        state: stateChange.to,
+        error: stateChange.error?.message,
+      });
+
+      // Remove tools from this server since it's no longer available
+      this.toolRegistry.removeServerTools(serverName);
+
+      // Notify that tools have changed
+      this.notifyToolListChanged('disconnected');
+    } else if (stateChange.to === ConnectionState.Connected) {
+      // Reconnection successful
+      if (targetServer) {
+        this.handleServerConnection(serverName, targetServer);
+      }
+    }
+  }
+
+  private async rediscoverServerTools(serverName: string): Promise<void> {
+    const client = this._clients.get(serverName);
+    if (!client) {
+      return;
+    }
+
+    try {
+      const response = await client.listTools();
+      for (const tool of response.tools) {
+        this.toolRegistry.registerDiscoveredTool({
+          fullName: `${serverName}__${tool.name}`,
+          originalName: tool.name,
+          serverName,
+          definition: tool,
+          client,
+        });
+      }
+
+      // Notify that tools have changed
+      this.notifyToolListChanged('rediscover');
+      console.error(
+        `[proxy] Rediscovered ${response.tools.length} tools from ${serverName}`,
+      );
+    } catch (error) {
+      throw new Error(`Failed to rediscover tools: ${error}`);
+    }
+  }
+
+  private notifyToolListChanged(reason: string): void {
+    void this._server.sendToolListChanged().catch((error) => {
+      const message =
+        error instanceof Error ? error.message : String(error);
+      console.error(
+        `[proxy] Failed to send tools/list_changed (${reason}): ${message}`,
+      );
+      logError('tools:list_changed_failed', error, { reason });
+    });
   }
 
   getTargetServers() {
@@ -805,6 +1035,47 @@ export class MCPProxy {
 
   get registry() {
     return this.toolRegistry;
+  }
+
+  /**
+   * Check if a server is configured in the proxy configuration
+   * @param name Server name to check
+   */
+  hasServerConfigured(name: string): boolean {
+    // Check in _normalizedServers array which contains all configured servers
+    return this._normalizedServers.some((server) => server.name === name);
+  }
+
+  /**
+   * Check if a server is currently connected and available
+   * @param name Server name to check
+   */
+  isServerConnected(name: string): boolean {
+    // Check if server exists in connectedServers Map
+    return this.connectedServers.has(name);
+  }
+
+  /**
+   * Clean up all resources and connections
+   */
+  async cleanup(): Promise<void> {
+    console.error('[proxy] Cleaning up all connections...');
+
+    // Clean up all transports (which will handle reconnection cleanup)
+    const cleanupPromises = Array.from(this._transports.values()).map(
+      (transport) => transport.destroy(),
+    );
+
+    await Promise.allSettled(cleanupPromises);
+
+    // Clear all maps
+    this._clients.clear();
+    this._transports.clear();
+    this.connectedServers.clear();
+    this.disconnectedServers.clear();
+
+    console.error('[proxy] Cleanup completed');
+    logEvent('info', 'proxy:cleanup_completed');
   }
 }
 
