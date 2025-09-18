@@ -23,3 +23,35 @@ You are a concise, reasoning-first assistant. **NEVER** try to please without ev
 - For example, using extension points or seams - building the MVP with the right abstractions so Phase 2 features can slot in without major refactoring
 - **ALWAYS** start with Types (preferred) or Interfaces to define the data structures and contracts
 - Use proper Typescript syntax (no `any` no `as unknown as`) and documentation so next dev can pick it up easily
+
+##   SEAMS - Simple Extensions, Abstract Minimally, Ship
+
+### The Principle
+
+We follow YAGNI for features but design with seams (extension points) where change is certain. 
+Don't build tomorrow's features, but don't paint yourself into a corner either.
+
+### Visual Note (Symbol names are examples only)
+
+```
+MVP ──[seam]──> Phase 2
+│                  │
+├ IAuthProvider    ├ + OAuth2AuthCodeProvider
+├ ITokenStorage    ├ + KeychainStorage
+└ Transport        └ + WebSocketTransport
+```
+
+Build the socket, not the plug.
+
+Example from a fictional OAuth Implementation
+```
+// ❌ DREAMS (speculative features)
+validateAudience(), getTokenInfo(), refreshIfNeeded()
+
+// ✅ SEAMS (extension points)
+interface IAuthProvider    // New auth methods plug in here
+interface ITokenStorage    // Swap memory for keychain later
+Transport from MCP SDK     // Add WebSocket alongside SSE
+```
+
+The Rule: Abstract where variation is inevitable, implement only what's immediate.
