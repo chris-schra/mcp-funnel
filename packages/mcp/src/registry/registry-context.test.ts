@@ -250,6 +250,92 @@ describe('RegistryContext', () => {
       expect(Array.isArray(result.servers)).toBe(true);
       expect(typeof result.message).toBe('string');
     });
+
+    it('should filter by registry ID "official" mapping to official registry URL', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () =>
+          Promise.resolve({
+            servers: [
+              {
+                name: 'official-server',
+                description: 'Server from official registry',
+                id: 'official-server',
+                registry_type: 'official',
+                tools: ['test_tool'],
+                _meta: {
+                  'io.modelcontextprotocol.registry/official': {
+                    id: 'official-server',
+                  },
+                },
+              },
+            ],
+            metadata: {
+              count: 1,
+              next_cursor: null,
+            },
+          }),
+      });
+
+      const context = RegistryContext.getInstance(mockConfig);
+      const result = await context.searchServers('filesystem', 'official');
+
+      expect(result.found).toBe(true);
+      expect(result.servers).toHaveLength(1);
+      expect(result.servers?.[0]?.name).toBe('official-server');
+      // Verify the correct registry was called
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('https://registry.modelcontextprotocol.io'),
+        expect.any(Object),
+      );
+    });
+
+    it('should fallback to URL substring matching for unknown registry IDs', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () =>
+          Promise.resolve({
+            servers: [],
+            metadata: {
+              count: 0,
+              next_cursor: null,
+            },
+          }),
+      });
+
+      const context = RegistryContext.getInstance(mockConfig);
+      const result = await context.searchServers(
+        'filesystem',
+        'modelcontextprotocol',
+      );
+
+      expect(result).toBeDefined();
+      // Should still work because "modelcontextprotocol" is substring of URL
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('https://registry.modelcontextprotocol.io'),
+        expect.any(Object),
+      );
+    });
+
+    it('should return "no registry found" for unknown registry filter', async () => {
+      const context = RegistryContext.getInstance(mockConfig);
+      const result = await context.searchServers(
+        'filesystem',
+        'nonexistent-registry',
+      );
+
+      expect(result.found).toBe(false);
+      expect(result.servers).toEqual([]);
+      expect(result.message).toBe(
+        'No registry found matching: nonexistent-registry',
+      );
+      // Should not make any HTTP calls
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
   });
 
   describe('getServerDetails() method', () => {

@@ -76,6 +76,12 @@ export class RegistryContext {
   /** Singleton instance */
   private static instance: RegistryContext | null = null;
 
+  /** Mapping of registry IDs to their corresponding URLs */
+  private static readonly REGISTRY_ID_MAPPING: Record<string, string> = {
+    official: 'https://registry.modelcontextprotocol.io',
+    // Future registry IDs can be added here
+  };
+
   /** Cache implementation for storing API responses and computed data */
   private readonly cache: IRegistryCache;
 
@@ -205,9 +211,21 @@ export class RegistryContext {
     // Filter registries if specific registry requested
     let registriesToSearch = Array.from(this.registryClients.entries());
     if (registry) {
-      registriesToSearch = registriesToSearch.filter(([url]) =>
-        url.toLowerCase().includes(registry.toLowerCase()),
-      );
+      // First try to map registry ID to URL
+      const registryUrl =
+        RegistryContext.REGISTRY_ID_MAPPING[registry.toLowerCase()];
+
+      if (registryUrl) {
+        // Exact match by registry ID
+        registriesToSearch = registriesToSearch.filter(
+          ([url]) => url === registryUrl,
+        );
+      } else {
+        // Fallback to URL substring matching for custom registries
+        registriesToSearch = registriesToSearch.filter(([url]) =>
+          url.toLowerCase().includes(registry.toLowerCase()),
+        );
+      }
 
       if (registriesToSearch.length === 0) {
         return {
@@ -253,6 +271,7 @@ export class RegistryContext {
           isRemote: !!(server.remotes && server.remotes.length > 0),
           registryType:
             server.packages?.[0]?.registry_type ||
+            server.registry_type ||
             (server.remotes && server.remotes.length > 0
               ? 'remote'
               : 'unknown'),
