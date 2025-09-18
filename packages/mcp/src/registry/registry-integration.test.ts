@@ -110,9 +110,8 @@ describe('Registry Integration Tests', () => {
       // Step 3: Generate configuration
       const config = await context.generateServerConfig(serverDetails!);
       expect(config.name).toBe('NPM Example Server');
-      expect(config.command).toBe('npx');
+      expect(config.command).toBe('node');
       expect(config.args).toEqual([
-        '-y',
         '@mcp/example-server',
         '--config',
         'production.json',
@@ -122,7 +121,7 @@ describe('Registry Integration Tests', () => {
       // Step 4: Generate install instructions
       const installInfo = await context.generateInstallInfo(serverDetails!);
       expect(installInfo.name).toBe('NPM Example Server');
-      expect(installInfo.configSnippet.command).toBe('npx');
+      expect(installInfo.configSnippet.command).toBe('node');
       expect(installInfo.installInstructions).toContain('npm');
       expect(installInfo.installInstructions).toContain('@mcp/example-server');
       expect(installInfo.tools).toEqual(['file-reader', 'api-client']);
@@ -255,7 +254,7 @@ describe('Registry Integration Tests', () => {
       // Generate config
       const config = await context.generateServerConfig(mockServer);
       expect(config.command).toBe('npx');
-      expect(config.args).toEqual(['-y', '@chris-schra/mcp-funnel']);
+      expect(config.args).toEqual(['@chris-schra/mcp-funnel']);
 
       // Generate install info
       const installInfo = await context.generateInstallInfo(mockServer);

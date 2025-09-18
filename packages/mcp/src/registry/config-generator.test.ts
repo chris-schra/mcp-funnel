@@ -274,11 +274,60 @@ describe('Config Generation', () => {
 
       expect(result).toEqual({
         name: 'GitHub MCP Server',
-        command: 'npx',
-        args: ['-y', 'github:owner/repo', 'start', '--production'],
+        command: 'node',
+        args: ['github:owner/repo', 'start', '--production'],
         env: {
           NODE_ENV: 'production',
         },
+      });
+    });
+
+    it('should use runtime_arguments when provided with runtime_hint', () => {
+      const packageWithRuntimeArgs: Package = {
+        identifier: '@test/server',
+        registry_type: 'npm',
+        runtime_hint: 'npx',
+        runtime_arguments: ['-y', '--no-install'],
+        package_arguments: ['--verbose'],
+      };
+
+      const server: RegistryServer = {
+        id: 'test-server',
+        name: 'Test Server with Runtime Args',
+        description: 'Server testing runtime_arguments functionality',
+        packages: [packageWithRuntimeArgs],
+      };
+
+      const result = generateConfigSnippet(server);
+
+      expect(result).toEqual({
+        name: 'Test Server with Runtime Args',
+        command: 'npx',
+        args: ['-y', '--no-install', '@test/server', '--verbose'],
+      });
+    });
+
+    it('should not auto-add -y flag when runtime_hint provided without runtime_arguments', () => {
+      const packageWithHintOnly: Package = {
+        identifier: '@test/server',
+        registry_type: 'npm',
+        runtime_hint: 'npx',
+        package_arguments: ['--verbose'],
+      };
+
+      const server: RegistryServer = {
+        id: 'test-server-hint-only',
+        name: 'Test Server with Hint Only',
+        description: 'Server testing runtime_hint without runtime_arguments',
+        packages: [packageWithHintOnly],
+      };
+
+      const result = generateConfigSnippet(server);
+
+      expect(result).toEqual({
+        name: 'Test Server with Hint Only',
+        command: 'npx',
+        args: ['@test/server', '--verbose'],
       });
     });
 
