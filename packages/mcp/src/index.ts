@@ -15,15 +15,18 @@ import {
   TransportConfigZod,
 } from './config.js';
 import { createTransport } from './transports/index.js';
+import type { FactoryTransport } from './transports/transport-factory.js';
 import {
   MemoryTokenStorage,
   OAuth2ClientCredentialsProvider,
+  OAuth2AuthCodeProvider,
   BearerTokenAuthProvider,
   NoAuthProvider,
   AuthenticationError,
   type IAuthProvider,
   type ITokenStorage,
 } from './auth/index.js';
+import { TokenStorageFactory } from './auth/token-storage-factory.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -568,7 +571,10 @@ export class MCPProxy {
   /**
    * Creates an appropriate auth provider based on the authentication configuration
    */
-  private createAuthProvider(authConfig?: AuthConfigZod): IAuthProvider {
+  private createAuthProvider(
+    authConfig?: AuthConfigZod,
+    serverName?: string,
+  ): IAuthProvider {
     if (!authConfig || authConfig.type === 'none') {
       return new NoAuthProvider();
     }
@@ -578,7 +584,7 @@ export class MCPProxy {
         return new BearerTokenAuthProvider({ token: authConfig.token });
       }
       case 'oauth2-client': {
-        const tokenStorage = new MemoryTokenStorage();
+        const tokenStorage = TokenStorageFactory.create('auto', serverName);
         return new OAuth2ClientCredentialsProvider(
           {
             type: 'oauth2-client',
@@ -592,8 +598,19 @@ export class MCPProxy {
         );
       }
       case 'oauth2-code': {
-        throw new Error(
-          'OAuth2 Authorization Code flow is not yet implemented',
+        const tokenStorage = TokenStorageFactory.create('auto', serverName);
+        return new OAuth2AuthCodeProvider(
+          {
+            type: 'oauth2-code',
+            clientId: authConfig.clientId,
+            clientSecret: authConfig.clientSecret,
+            authUrl: authConfig.authUrl,
+            tokenUrl: authConfig.tokenUrl,
+            redirectUri: authConfig.redirectUri,
+            scope: authConfig.scope,
+            audience: authConfig.audience,
+          },
+          tokenStorage,
         );
       }
       default: {
@@ -629,7 +646,10 @@ export class MCPProxy {
           // Check if this is an extended server config with auth/transport
           if (extendedServer.auth || extendedServer.transport) {
             // Use TransportFactory for new OAuth-enabled configurations
-            const authProvider = this.createAuthProvider(extendedServer.auth);
+            const authProvider = this.createAuthProvider(
+              extendedServer.auth,
+              extendedServer.name,
+            );
 
             // If transport is specified, use it; otherwise fall back to stdio from command
             const transportConfig = extendedServer.transport || {
@@ -848,6 +868,73 @@ export class MCPProxy {
 
   get registry() {
     return this.toolRegistry;
+  }
+
+  /**
+   * Complete OAuth2 authorization code flow
+   * Delegates to the appropriate OAuth2AuthCodeProvider for the server
+   */
+  async completeOAuthFlow(state: string, code: string): Promise<void> {
+    // Find the server with pending OAuth flow by iterating through transports
+    for (const [serverName, _server] of this.connectedServers) {
+      const client = this._clients.get(serverName);
+      if (!client) continue;
+
+      // Get the transport's auth provider
+      const transport = client.transport as FactoryTransport;
+      const authProvider = transport?.authProvider;
+
+      // Check if this is an OAuth2AuthCodeProvider with pending auth
+      if (
+        authProvider &&
+        typeof authProvider.completeOAuthFlow === 'function'
+      ) {
+        try {
+          await authProvider.completeOAuthFlow(state, code);
+          logEvent('info', 'proxy:oauth_completed', { serverName, state });
+          return;
+        } catch (error) {
+          // This provider didn't have the matching state, continue to next
+          if (
+            error instanceof Error &&
+            error.message.includes('Invalid state')
+          ) {
+            continue;
+          }
+          // Other errors should be thrown
+          throw error;
+        }
+      }
+    }
+
+    // Also check disconnected servers that might be in OAuth flow
+    for (const [serverName, server] of this.disconnectedServers) {
+      // Check if this server has auth config and create provider to test
+      if ('auth' in server && server.auth) {
+        const authProvider = this.createAuthProvider(server.auth, serverName);
+
+        if (authProvider && authProvider.completeOAuthFlow) {
+          try {
+            await authProvider.completeOAuthFlow(state, code);
+            logEvent('info', 'proxy:oauth_completed', { serverName, state });
+
+            // Attempt to reconnect now that auth is complete
+            setTimeout(() => this.connectToTargetServers(), 1000);
+            return;
+          } catch (error) {
+            if (
+              error instanceof Error &&
+              error.message.includes('Invalid state')
+            ) {
+              continue;
+            }
+            throw error;
+          }
+        }
+      }
+    }
+
+    throw new Error('No matching OAuth flow found for this state parameter');
   }
 }
 
