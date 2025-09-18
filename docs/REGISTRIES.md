@@ -17,11 +17,14 @@ Search the MCP registry for servers by keywords.
 
 **Parameters:**
 - `keywords` (required): Space-separated keywords to search for in server names, descriptions, and tool names
-- `registry` (optional): Registry ID to search within a specific registry (e.g., "official", "community")
+- `registry` (optional): Registry ID or URL to search within a specific registry
+  - Use `"official"` for the main MCP registry
+  - Or provide a full registry URL
 
 **Example Usage:**
 ```
 search_registry_tools keywords="github code review"
+search_registry_tools keywords="github" registry="official"
 ```
 
 **Returns:** Minimal server information optimized for token efficiency:
@@ -36,11 +39,15 @@ search_registry_tools keywords="github code review"
 Retrieve detailed installation instructions and configuration for a specific server.
 
 **Parameters:**
-- `registryId` (required): The unique registry identifier for the server (obtained from search results)
+- `registryId` (required): The server identifier, which can be:
+  - A server name (e.g., "github-mcp-server")
+  - A UUID (e.g., "a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d")
+  - The registry ID from search results
 
 **Example Usage:**
 ```
 get_server_install_info registryId="github-mcp-server"
+get_server_install_info registryId="a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d"
 ```
 
 **Returns:** Complete installation information:
@@ -91,9 +98,15 @@ Remote servers are accessed via HTTP/HTTPS:
 ```json
 {
   "name": "example-remote-server",
-  "remote": "https://api.example.com/mcp"
+  "url": "https://api.example.com/mcp",
+  "transport": "sse",
+  "headers": {
+    "Authorization": "Bearer ${API_TOKEN}"
+  }
 }
 ```
+
+Note: Headers can include environment variable references using `${VAR_NAME}` syntax.
 
 ## Usage Workflow
 
@@ -185,6 +198,56 @@ Add the `configSnippet` to your `.mcp-funnel.json`:
 }
 ```
 
+## Advanced Configuration
+
+### Custom Runtime Commands
+
+The registry system respects server-specified runtime hints, allowing flexibility in how packages are executed:
+
+```json
+{
+  "name": "custom-npm-server",
+  "command": "node",
+  "args": ["path/to/server.js"]
+}
+```
+
+Supported runtime customizations:
+- **NPM**: Can use `npx`, `node`, `yarn dlx`, `pnpm dlx`, etc.
+- **Python**: Can use `uvx`, `pipx`, `poetry run`, `python -m`, etc.
+- **OCI**: Can use `docker`, `podman`, etc.
+
+### Environment Variables
+
+Servers can specify required and optional environment variables:
+
+```json
+{
+  "name": "api-server",
+  "command": "npx",
+  "args": ["-y", "@org/api-server"],
+  "env": {
+    "API_KEY": "${API_KEY}",
+    "DEBUG": "true"
+  }
+}
+```
+
+Environment variables support:
+- Variable substitution using `${VAR_NAME}` syntax
+- Required vs optional flags (metadata in server definition)
+- Secret marking for sensitive values
+
+### UUID-Based Lookup
+
+You can retrieve server details directly using UUIDs for faster access:
+
+```
+get_server_install_info registryId="a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d"
+```
+
+The system automatically detects UUIDs and uses the optimal API endpoint for retrieval.
+
 ## Architecture
 
 The registry integration is built with extensibility in mind, featuring:
@@ -192,8 +255,8 @@ The registry integration is built with extensibility in mind, featuring:
 ### Singleton Pattern
 The `RegistryContext` class implements a singleton pattern to ensure consistent state and shared resources across all registry operations.
 
-### Caching Layer
-An abstraction layer for caching (currently using no-op implementation) reduces redundant API calls and improves response times.
+### Caching Layer (TODO)
+The architecture includes a caching abstraction layer with a pluggable interface. Currently uses a no-op implementation for MVP, with plans for real caching in Phase 2 to reduce API calls and improve response times.
 
 ### Configuration Management
 A flexible configuration system supports multiple package types and generates appropriate configuration snippets for each.
@@ -203,11 +266,24 @@ Search results return minimal information to reduce token usage, with full detai
 
 ## Error Handling
 
-The registry tools include comprehensive error handling:
-- Network failures are caught and reported with helpful messages
+The registry system implements a robust two-layer error handling architecture:
+
+### Client Layer
+- Throws detailed errors with specific error messages
+- Preserves full error context for debugging
+- Provides clear status codes and error descriptions
+
+### Context Layer
+- Catches errors from individual registry clients
+- Continues operation even if some registries fail
+- Aggregates errors and provides graceful degradation
+- Returns partial results when available
+
+This architecture ensures:
+- Network failures don't crash the system
+- Multiple registries can be queried with partial success
 - Invalid registry IDs return clear "not found" messages
-- Malformed requests provide specific parameter validation errors
-- Registry API errors are propagated with status information
+- Malformed requests provide specific validation errors
 
 ## Registry API
 

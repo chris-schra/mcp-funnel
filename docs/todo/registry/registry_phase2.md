@@ -1,5 +1,21 @@
 # MCP Registry Integration - Phase 2 Features
 
+## Current Production Status (MVP/Phase 1)
+
+### ✅ Production-Ready Features
+- **Registry Search**: Full keyword search across server metadata
+- **Server Details**: UUID and name-based retrieval
+- **Config Generation**: All package types (npm, pypi, oci, remote)
+- **Smart Routing**: Automatic UUID detection for optimal API usage
+- **Error Handling**: Robust throw/catch architecture with graceful degradation
+- **Registry Mapping**: User-friendly registry IDs ("official")
+- **Runtime Flexibility**: Support for custom runtime commands and arguments
+- **Environment Variables**: Full support with substitution syntax
+- **Headers Support**: Arrays and objects for remote servers
+- **Tool Integration**: search_registry_tools and get_server_install_info
+
+### 🔄 Phase 2 Features (Below - Not Yet Implemented)
+
 ## Caching System
 
 ### Registry Response Caching
@@ -165,6 +181,45 @@ Automatically clean up:
 - Stale cache entries
 - Failed server processes
 
+## Architectural Improvements (Implemented)
+
+These improvements emerged during development and weren't in the original Phase 2 plan:
+
+### Error Handling Pattern
+- **Architecture**: Client throws → Context catches pattern
+- **Benefit**: Maintains error visibility while preventing registry failure cascades
+- **Implementation**: Try-catch in context layer aggregates errors from multiple registries
+
+### UUID Detection and Smart Routing
+```typescript
+// Automatically detects UUIDs and uses direct GET endpoint
+const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+if (isUuid) {
+  // Direct GET /v0/servers/{uuid}
+} else {
+  // Search API with name matching
+}
+```
+
+### Runtime Arguments Schema Support
+```typescript
+// Three-tier argument system for full publisher control
+interface Package {
+  runtime_hint?: string;       // Which runtime (npx, node, yarn)
+  runtime_arguments?: string[]; // Flags for runtime (-y, --no-install)
+  package_arguments?: string[]; // Flags for package (--verbose)
+}
+```
+
+### Registry ID Mapping
+```typescript
+// User-friendly registry names
+RegistryContext.REGISTRY_ID_MAPPING = {
+  'official': 'https://registry.modelcontextprotocol.io',
+  // Future: 'community', 'private', etc.
+};
+```
+
 ## Future Considerations
 
 1. **Registry Webhooks**: Subscribe to updates for installed servers
@@ -172,3 +227,5 @@ Automatically clean up:
 3. **Dependency Resolution**: Install required dependencies automatically
 4. **Conflict Resolution**: Handle tool name conflicts between servers
 5. **Rollback Support**: Undo server installations/changes
+6. **Offline Mode**: Cache and fallback for registry unavailability
+7. **Registry Federation**: Support multiple registry sources simultaneously
