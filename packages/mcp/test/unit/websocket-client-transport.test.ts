@@ -61,7 +61,7 @@ class MockWebSocket {
   public onerror: ((event: WebSocket.ErrorEvent) => void) | null = null;
   public onclose: ((event: WebSocket.CloseEvent) => void) | null = null;
 
-  private listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
+  public listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
 
   constructor(
     url: string | URL,
@@ -93,15 +93,15 @@ class MockWebSocket {
     setTimeout(() => {
       this.readyState = MockWebSocket.CLOSED;
       // Emit close event with Node.js ws format: (code, reason)
-      this.emit('close', code || 1000, reason || '');
+      this.emit('close', code || 1000, Buffer.from(reason || ''));
     }, 10);
   }
 
-  ping(_data?: Buffer, _mask?: boolean, _cb?: (err: Error) => void): void {
+  ping(_data?: unknown, _mask?: boolean, _cb?: (err: Error) => void): void {
     // Simulate ping
   }
 
-  pong(_data?: Buffer, _mask?: boolean, _cb?: (err: Error) => void): void {
+  pong(_data?: unknown, _mask?: boolean, _cb?: (err: Error) => void): void {
     // Simulate pong
   }
 
@@ -136,6 +136,7 @@ class MockWebSocket {
     // Mock implementation
   }
 
+  // Simple event listener implementation
   on(event: string, listener: (...args: unknown[]) => void): this {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
@@ -202,7 +203,7 @@ class MockWebSocket {
     return this.once(event, listener);
   }
 
-  rawListeners(event: string): Array<(...args: unknown[]) => void> {
+  rawListeners(event: string): ((...args: unknown[]) => void)[] {
     return this.listeners[event] || [];
   }
 
@@ -228,7 +229,9 @@ describe('WebSocketClientTransport', () => {
 
     // Reset UUID counter and setup mock
     uuidCounter = 0;
-    vi.mocked(uuidv4).mockImplementation(() => `test-uuid-${++uuidCounter}`);
+    (uuidv4 as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      () => `test-uuid-${++uuidCounter}`,
+    );
 
     // Setup WebSocket mock
     vi.mocked(WebSocket).mockImplementation(
@@ -733,6 +736,7 @@ describe('WebSocketClientTransport', () => {
 
       // Mock WebSocket to fail all connections
       let connectionCount = 0;
+      // @ts-expect-error - MockWebSocket is functionally compatible with WebSocket for testing
       vi.mocked(WebSocket).mockImplementation((url, _protocols, _options) => {
         connectionCount++;
         const ws = new MockWebSocket(url, _protocols, _options);
