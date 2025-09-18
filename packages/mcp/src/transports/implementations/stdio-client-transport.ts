@@ -5,10 +5,7 @@ import {
 import { type JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { spawn, type ChildProcess } from 'child_process';
 import * as readline from 'readline';
-import {
-  TransportError,
-  TransportErrorCode,
-} from '../errors/transport-error.js';
+import { TransportError } from '../errors/transport-error.js';
 import { logEvent, logError } from '../../logger.js';
 
 /**
@@ -73,19 +70,11 @@ export class StdioClientTransport implements Transport {
    */
   async start(): Promise<void> {
     if (this.isStarted) {
-      throw new TransportError(
-        'Transport already started',
-        TransportErrorCode.PROTOCOL_ERROR,
-        false,
-      );
+      throw TransportError.protocolError('Transport already started');
     }
 
     if (this.isClosed) {
-      throw new TransportError(
-        'Cannot start a closed transport',
-        TransportErrorCode.PROTOCOL_ERROR,
-        false,
-      );
+      throw TransportError.protocolError('Cannot start a closed transport');
     }
 
     try {
@@ -114,19 +103,13 @@ export class StdioClientTransport implements Transport {
     options?: TransportSendOptions,
   ): Promise<void> {
     if (!this.isStarted || !this.process?.stdin) {
-      throw new TransportError(
+      throw TransportError.protocolError(
         'Transport not started or stdin unavailable',
-        TransportErrorCode.PROTOCOL_ERROR,
-        false,
       );
     }
 
     if (this.isClosed) {
-      throw new TransportError(
-        'Cannot send on closed transport',
-        TransportErrorCode.PROTOCOL_ERROR,
-        false,
-      );
+      throw TransportError.protocolError('Cannot send on closed transport');
     }
 
     try {
@@ -247,10 +230,8 @@ export class StdioClientTransport implements Transport {
    */
   private setupProcessHandlers(): void {
     if (!this.process) {
-      throw new TransportError(
+      throw TransportError.protocolError(
         'Process not available for handler setup',
-        TransportErrorCode.PROTOCOL_ERROR,
-        false,
       );
     }
 
@@ -377,10 +358,10 @@ export class StdioClientTransport implements Transport {
     });
 
     if (code !== 0 && code !== null) {
-      const error = new TransportError(
-        `Process exited with code ${code}${signal ? `, signal ${signal}` : ''}`,
-        TransportErrorCode.CONNECTION_RESET,
-        true, // Process exits might be retryable
+      const error = TransportError.connectionReset(
+        new Error(
+          `Process exited with code ${code}${signal ? `, signal ${signal}` : ''}`,
+        ),
       );
 
       logError('transport:stdio:process_exit_error', error, {
@@ -450,10 +431,8 @@ export class StdioClientTransport implements Transport {
           error instanceof Error ? error : undefined,
         );
       default:
-        return new TransportError(
-          `Failed to spawn process: ${err.message || String(error)}`,
-          TransportErrorCode.CONNECTION_FAILED,
-          true, // Most spawn errors are retryable
+        return TransportError.connectionFailed(
+          err.message || String(error),
           error instanceof Error ? error : undefined,
         );
     }

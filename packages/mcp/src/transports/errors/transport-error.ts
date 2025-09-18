@@ -19,6 +19,8 @@ export enum TransportErrorCode {
   HOST_UNREACHABLE = 'host_unreachable',
   TOO_MANY_REDIRECTS = 'too_many_redirects',
   INVALID_URL = 'invalid_url',
+  AUTHENTICATION_FAILED = 'authentication_failed',
+  SERVER_ERROR = 'server_error',
   UNKNOWN_ERROR = 'unknown_error',
 }
 
@@ -260,6 +262,30 @@ export class TransportError extends Error {
   }
 
   /**
+   * Creates a TransportError for authentication failures (not retryable)
+   */
+  static authenticationFailed(message: string, cause?: Error): TransportError {
+    return new TransportError(
+      `Authentication failed: ${message}`,
+      TransportErrorCode.AUTHENTICATION_FAILED,
+      false,
+      cause,
+    );
+  }
+
+  /**
+   * Creates a TransportError for server errors (retryable)
+   */
+  static serverError(message: string, cause?: Error): TransportError {
+    return new TransportError(
+      `Server error: ${message}`,
+      TransportErrorCode.SERVER_ERROR,
+      true,
+      cause,
+    );
+  }
+
+  /**
    * Creates a TransportError from an HTTP status code
    */
   static fromHttpStatus(
@@ -277,6 +303,11 @@ export class TransportError extends Error {
     // Map status codes to appropriate transport error codes
     let code: TransportErrorCode;
     switch (statusCode) {
+      case 401:
+      case 403:
+        // Authentication/authorization errors
+        code = TransportErrorCode.AUTHENTICATION_FAILED;
+        break;
       case 429:
         code = TransportErrorCode.RATE_LIMITED;
         break;
@@ -293,7 +324,11 @@ export class TransportError extends Error {
         code = TransportErrorCode.REQUEST_TIMEOUT;
         break;
       default:
-        code = TransportErrorCode.UNKNOWN_ERROR;
+        if (statusCode >= 500) {
+          code = TransportErrorCode.SERVER_ERROR;
+        } else {
+          code = TransportErrorCode.UNKNOWN_ERROR;
+        }
     }
 
     return new TransportError(message, code, isRetryable, cause);

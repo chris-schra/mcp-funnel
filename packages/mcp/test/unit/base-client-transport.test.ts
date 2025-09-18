@@ -408,10 +408,10 @@ describe('BaseClientTransport', () => {
       const sendPromise = shortTimeoutTransport.send(request);
 
       // Don't send response, let it timeout
-      await expect(sendPromise).rejects.toThrow(
-        'Request timeout after 100ms',
-      );
-      expect(shortTimeoutTransport.getPendingRequests().has('timeout-test')).toBe(false);
+      await expect(sendPromise).rejects.toThrow('Request timeout after 100ms');
+      expect(
+        shortTimeoutTransport.getPendingRequests().has('timeout-test'),
+      ).toBe(false);
     });
 
     it('handles multiple concurrent requests correctly', async () => {
@@ -467,7 +467,9 @@ describe('BaseClientTransport', () => {
       // Wait for all promises
       await expect(sendPromises[0]).resolves.toBeUndefined(); // req-1
       await expect(sendPromises[1]).resolves.toBeUndefined(); // req-2
-      await expect(sendPromises[2]).rejects.toThrow('JSON-RPC error -1: Test error'); // req-3
+      await expect(sendPromises[2]).rejects.toThrow(
+        'JSON-RPC error -1: Test error',
+      ); // req-3
 
       // All should be cleaned up
       expect(transport.getPendingRequests().size).toBe(0);
@@ -489,11 +491,7 @@ describe('BaseClientTransport', () => {
       const manager = transport.getReconnectionManager();
       const scheduleSpy = vi.spyOn(manager, 'scheduleReconnection');
 
-      const retryableError = new TransportError(
-        'Network error',
-        undefined,
-        true,
-      );
+      const retryableError = TransportError.connectionFailed('Network error');
       transport.testHandleConnectionError(retryableError);
 
       expect(scheduleSpy).toHaveBeenCalled();
@@ -503,11 +501,8 @@ describe('BaseClientTransport', () => {
       const manager = transport.getReconnectionManager();
       const scheduleSpy = vi.spyOn(manager, 'scheduleReconnection');
 
-      const nonRetryableError = new TransportError(
-        'Auth error',
-        undefined,
-        false,
-      );
+      const nonRetryableError =
+        TransportError.authenticationFailed('Auth error');
       transport.testHandleConnectionError(nonRetryableError);
 
       expect(scheduleSpy).not.toHaveBeenCalled();
@@ -738,7 +733,7 @@ describe('BaseClientTransport', () => {
     });
 
     it('preserves TransportError instances', () => {
-      const transportError = new TransportError('Transport error');
+      const transportError = TransportError.protocolError('Transport error');
       transport.testHandleConnectionError(transportError);
 
       // Should pass through unchanged
