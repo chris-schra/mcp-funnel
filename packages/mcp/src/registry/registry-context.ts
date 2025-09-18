@@ -37,6 +37,7 @@ import type {
   RegistryServer,
   RegistrySearchResult,
   RegistryInstallInfo,
+  KeyValueInput,
 } from './types/registry.types.js';
 import type { ServerConfig } from './types/config.types.js';
 import {
@@ -404,7 +405,7 @@ export class RegistryContext {
       env: configEntry.env,
       transport: configEntry.transport,
       url: configEntry.url,
-      headers: configEntry.headers,
+      headers: this.convertHeaders(configEntry.headers),
     };
 
     return serverConfig;
@@ -426,8 +427,19 @@ export class RegistryContext {
       `[RegistryContext] Generating install info for server: ${server.name}`,
     );
 
-    const configSnippet = generateConfigSnippet(server);
+    const registryConfigEntry = generateConfigSnippet(server);
     const installInstructions = generateInstallInstructions(server);
+
+    // Convert RegistryConfigEntry to ServerConfig for configSnippet
+    const configSnippet: ServerConfig = {
+      name: registryConfigEntry.name,
+      command: registryConfigEntry.command,
+      args: registryConfigEntry.args,
+      env: registryConfigEntry.env,
+      transport: registryConfigEntry.transport,
+      url: registryConfigEntry.url,
+      headers: this.convertHeaders(registryConfigEntry.headers),
+    };
 
     return {
       name: server.name,
@@ -436,6 +448,33 @@ export class RegistryContext {
       installInstructions,
       tools: server.tools,
     };
+  }
+
+  /**
+   * Converts headers from RegistryConfigEntry format to ServerConfig format.
+   *
+   * @param headers - Headers in either KeyValueInput[] or Record<string, string> format
+   * @returns Headers in Record<string, string> format or undefined
+   * @private
+   */
+  private convertHeaders(
+    headers: Record<string, string> | KeyValueInput[] | undefined,
+  ): Record<string, string> | undefined {
+    if (!headers) {
+      return undefined;
+    }
+
+    if (Array.isArray(headers)) {
+      // Convert KeyValueInput[] to Record<string, string>
+      const result: Record<string, string> = {};
+      for (const header of headers) {
+        result[header.name] = header.value || '';
+      }
+      return result;
+    } else {
+      // Already Record<string, string>
+      return headers;
+    }
   }
 
   /**
