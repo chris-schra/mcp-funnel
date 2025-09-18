@@ -111,10 +111,10 @@ Phase 1: Interfaces & Types
   - `defaultPassthroughEnv` field to ProxyConfigSchema (string array, defaults to ["NODE_ENV", "HOME", "USER", "TERM", "CI", "DEBUG"])
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -134,10 +134,10 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - All tests initially skipped but validate against types
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -169,10 +169,10 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
     - Clear separation between secret resolution and usage
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -188,19 +188,11 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - Test with real .env files in different locations
 - Validate security features (no logging of secrets, proper filtering)
 
-Key Implementation Details:
-
-- Provider precedence: Later providers override earlier ones in config
-- Default behavior: If no secretProviders, maintain current behavior for backward compat
-- Extension points: All Phase 2 features (Vault, AWS, etc.) plug in without refactoring
-- Security first: Default to restrictive (don't pass all env vars)
-- Async resolution: All providers must support async secret resolution
-
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
@@ -224,6 +216,14 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] Documentation is clear and comprehensive
 - [ ] Examples are working and tested
+
+Key Implementation Details:
+
+- Provider precedence: Later providers override earlier ones in config
+- Default behavior: If no secretProviders, maintain current behavior for backward compat
+- Extension points: All Phase 2 features (Vault, AWS, etc.) plug in without refactoring
+- Security first: Default to restrictive (don't pass all env vars)
+- Async resolution: All providers must support async secret resolution
 
 ## Configuration Examples
 
@@ -278,10 +278,10 @@ Note: `defaultPassthroughEnv` allows overriding the built-in list of always-pass
 
 ## Success Criteria
 
-1. [ ] No breaking changes - existing configurations continue to work
-2. [ ] Security improved - servers only get necessary env vars
-3. [ ] Extensible design - easy to add new providers in Phase 2
-4. [ ] Well-tested - comprehensive test coverage
+1. [x] No breaking changes - existing configurations continue to work
+2. [x] Security improved - servers only get necessary env vars
+3. [x] Extensible design - easy to add new providers in Phase 2
+4. [x] Well-tested - comprehensive test coverage
 5. [ ] Well-documented - clear examples and migration guide
-6. [ ] Performance - minimal overhead for secret resolution
-7. [ ] Error handling - graceful degradation when providers fail
+6. [x] Performance - minimal overhead for secret resolution
+7. [x] Error handling - graceful degradation when providers fail
