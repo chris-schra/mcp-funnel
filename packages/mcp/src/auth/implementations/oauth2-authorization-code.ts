@@ -35,7 +35,7 @@ function generateState(): string {
 }
 
 /**
- * Pending authorization state
+ * Pending authorization state with timestamp for expiration tracking
  */
 interface PendingAuth {
   state: string;
@@ -43,6 +43,7 @@ interface PendingAuth {
   resolve: (token: TokenData) => void;
   reject: (error: Error) => void;
   timeout: NodeJS.Timeout;
+  timestamp: number;
 }
 
 /**
@@ -56,13 +57,31 @@ interface PendingAuth {
  */
 export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
   private readonly config: OAuth2AuthCodeConfig;
-  private pendingAuth?: PendingAuth;
+
+  // Support concurrent OAuth flows with Map keyed by state
+  private pendingAuthFlows = new Map<string, PendingAuth>();
+
+  // Global state-to-provider mapping for O(1) lookup across all instances
+  private static stateToProvider = new Map<string, OAuth2AuthCodeProvider>();
+
   private readonly AUTH_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly STATE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
+  // Cleanup interval for expired states
+  private cleanupInterval: NodeJS.Timeout;
 
   constructor(config: OAuth2AuthCodeConfig, storage: ITokenStorage) {
     super(storage);
     this.config = resolveOAuth2AuthCodeConfig(config);
     this.validateConfig();
+
+    // Start periodic cleanup of expired states (every 2 minutes)
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupExpiredStates();
+      },
+      2 * 60 * 1000,
+    );
   }
 
   /**
@@ -93,19 +112,13 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
   /**
    * Complete OAuth flow with authorization code from callback
    * Called by Hono server callback route
+   * Now supports concurrent flows using state-based lookup
    */
   async completeOAuthFlow(state: string, code: string): Promise<void> {
-    if (!this.pendingAuth) {
+    const pending = this.pendingAuthFlows.get(state);
+    if (!pending) {
       throw new AuthenticationError(
-        'No pending authorization found',
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
-
-    if (this.pendingAuth.state !== state) {
-      this.cleanupPendingAuth();
-      throw new AuthenticationError(
-        'Invalid state parameter',
+        'Invalid or expired OAuth state',
         OAuth2ErrorCode.INVALID_REQUEST,
       );
     }
@@ -113,7 +126,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
     try {
       const tokenResponse = await this.exchangeCodeForTokenResponse(
         code,
-        this.pendingAuth.codeVerifier,
+        pending.codeVerifier,
       );
 
       const requestId = this.generateRequestId();
@@ -133,11 +146,12 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
         scope: tokenData.scope,
       });
 
-      this.pendingAuth.resolve(tokenData);
+      pending.resolve(tokenData);
     } catch (error) {
-      this.pendingAuth.reject(error as Error);
+      pending.reject(error as Error);
     } finally {
-      this.cleanupPendingAuth();
+      // Clean up this specific state
+      this.cleanupPendingAuth(state);
     }
   }
 
@@ -150,9 +164,9 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = generateCodeChallenge(codeVerifier);
 
-      // Set up pending auth state
+      // Set up pending auth state with expiry tracking
       const timeout = setTimeout(() => {
-        this.cleanupPendingAuth();
+        this.cleanupPendingAuth(state);
         reject(
           new AuthenticationError(
             'Authorization timeout - please try again',
@@ -161,7 +175,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
         );
       }, this.AUTH_TIMEOUT_MS);
 
-      this.pendingAuth = {
+      const pendingAuth: PendingAuth = {
         state,
         codeVerifier,
         resolve: (_token: TokenData) => {
@@ -173,7 +187,12 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
           reject(error);
         },
         timeout,
+        timestamp: Date.now(),
       };
+
+      // Store in concurrent flow maps
+      this.pendingAuthFlows.set(state, pendingAuth);
+      OAuth2AuthCodeProvider.stateToProvider.set(state, this);
 
       // Build authorization URL with PKCE
       const authUrl = new URL(this.config.authorizationEndpoint);
@@ -262,13 +281,65 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
   }
 
   /**
-   * Clean up pending authorization state
+   * Clean up specific pending authorization state by state key
    */
-  private cleanupPendingAuth(): void {
-    if (this.pendingAuth) {
-      clearTimeout(this.pendingAuth.timeout);
-      this.pendingAuth = undefined;
+  private cleanupPendingAuth(state?: string): void {
+    if (state) {
+      const pending = this.pendingAuthFlows.get(state);
+      if (pending) {
+        clearTimeout(pending.timeout);
+        this.pendingAuthFlows.delete(state);
+        OAuth2AuthCodeProvider.stateToProvider.delete(state);
+      }
+    } else {
+      // Legacy cleanup - clean all pending auths for this instance
+      for (const [stateKey, pending] of this.pendingAuthFlows) {
+        clearTimeout(pending.timeout);
+        OAuth2AuthCodeProvider.stateToProvider.delete(stateKey);
+      }
+      this.pendingAuthFlows.clear();
     }
+  }
+
+  /**
+   * Clean up expired states across all instances
+   */
+  private cleanupExpiredStates(): void {
+    const now = Date.now();
+    const expiredStates: string[] = [];
+
+    for (const [state, pending] of this.pendingAuthFlows) {
+      if (now - pending.timestamp > this.STATE_EXPIRY_MS) {
+        expiredStates.push(state);
+      }
+    }
+
+    for (const state of expiredStates) {
+      logEvent('info', 'auth:oauth_state_expired', { state });
+      this.cleanupPendingAuth(state);
+    }
+  }
+
+  /**
+   * Static method to get provider for a given state (O(1) lookup)
+   */
+  static getProviderForState(
+    state: string,
+  ): OAuth2AuthCodeProvider | undefined {
+    return OAuth2AuthCodeProvider.stateToProvider.get(state);
+  }
+
+  /**
+   * Cleanup resources when provider is destroyed
+   */
+  destroy(): void {
+    // Clear cleanup interval
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+
+    // Clean up all pending auths for this instance
+    this.cleanupPendingAuth();
   }
 
   /**

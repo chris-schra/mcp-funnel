@@ -15,7 +15,6 @@ import {
   TransportConfigZod,
 } from './config.js';
 import { createTransport } from './transports/index.js';
-import type { FactoryTransport } from './transports/transport-factory.js';
 import {
   MemoryTokenStorage,
   OAuth2ClientCredentialsProvider,
@@ -132,8 +131,8 @@ interface TransportOptions {
 }
 
 export type ProxyStartOptions = {
-  transport: "stdio" | "streamable-http";
-}
+  transport: 'stdio' | 'streamable-http';
+};
 
 // Custom transport that prefixes server stderr logs
 export class PrefixedStdioClientTransport {
@@ -816,12 +815,12 @@ export class MCPProxy {
     });
   }
 
-  async start(options?:ProxyStartOptions) {
-    const transportOption = options?.transport ?? "stdio";
+  async start(options?: ProxyStartOptions) {
+    const transportOption = options?.transport ?? 'stdio';
 
     await this.initialize();
 
-    if(transportOption === "stdio") {
+    if (transportOption === 'stdio') {
       const transport = new StdioServerTransport();
       await this._server.connect(transport);
       console.error('[proxy] Server started successfully');
@@ -883,69 +882,30 @@ export class MCPProxy {
 
   /**
    * Complete OAuth2 authorization code flow
-   * Delegates to the appropriate OAuth2AuthCodeProvider for the server
+   * Uses O(1) static state lookup instead of O(n) iteration
    */
   async completeOAuthFlow(state: string, code: string): Promise<void> {
-    // Find the server with pending OAuth flow by iterating through transports
-    for (const [serverName, _server] of this.connectedServers) {
-      const client = this._clients.get(serverName);
-      if (!client) continue;
+    // Use O(1) lookup to find the provider for this state
+    const provider = OAuth2AuthCodeProvider.getProviderForState(state);
 
-      // Get the transport's auth provider
-      const transport = client.transport as FactoryTransport;
-      const authProvider = transport?.authProvider;
-
-      // Check if this is an OAuth2AuthCodeProvider with pending auth
-      if (
-        authProvider &&
-        typeof authProvider.completeOAuthFlow === 'function'
-      ) {
-        try {
-          await authProvider.completeOAuthFlow(state, code);
-          logEvent('info', 'proxy:oauth_completed', { serverName, state });
-          return;
-        } catch (error) {
-          // This provider didn't have the matching state, continue to next
-          if (
-            error instanceof Error &&
-            error.message.includes('Invalid state')
-          ) {
-            continue;
-          }
-          // Other errors should be thrown
-          throw error;
-        }
-      }
+    if (!provider) {
+      throw new Error('No matching OAuth flow found for this state parameter');
     }
 
-    // Also check disconnected servers that might be in OAuth flow
-    for (const [serverName, server] of this.disconnectedServers) {
-      // Check if this server has auth config and create provider to test
-      if ('auth' in server && server.auth) {
-        const authProvider = this.createAuthProvider(server.auth, serverName);
+    try {
+      await provider.completeOAuthFlow(state, code);
+      logEvent('info', 'proxy:oauth_completed', { state });
 
-        if (authProvider && authProvider.completeOAuthFlow) {
-          try {
-            await authProvider.completeOAuthFlow(state, code);
-            logEvent('info', 'proxy:oauth_completed', { serverName, state });
-
-            // Attempt to reconnect now that auth is complete
-            setTimeout(() => this.connectToTargetServers(), 1000);
-            return;
-          } catch (error) {
-            if (
-              error instanceof Error &&
-              error.message.includes('Invalid state')
-            ) {
-              continue;
-            }
-            throw error;
-          }
-        }
-      }
+      // Attempt to reconnect servers if any are disconnected
+      // This handles the case where auth completion enables connection
+      setTimeout(() => this.connectToTargetServers(), 1000);
+    } catch (error) {
+      logEvent('error', 'proxy:oauth_completion_failed', {
+        state,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
-
-    throw new Error('No matching OAuth flow found for this state parameter');
   }
 }
 

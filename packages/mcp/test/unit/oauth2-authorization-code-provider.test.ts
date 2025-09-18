@@ -168,7 +168,7 @@ describe('OAuth2AuthCodeProvider', () => {
     it('should throw error when no pending authorization', async () => {
       await expect(
         provider.completeOAuthFlow('test-state', 'test-code'),
-      ).rejects.toThrow('No pending authorization found');
+      ).rejects.toThrow('Invalid or expired OAuth state');
     });
 
     it('should throw error for invalid state parameter', async () => {
@@ -178,7 +178,7 @@ describe('OAuth2AuthCodeProvider', () => {
       // Try to complete with wrong state
       await expect(
         provider.completeOAuthFlow('wrong-state', 'test-code'),
-      ).rejects.toThrow('Invalid state parameter');
+      ).rejects.toThrow('Invalid or expired OAuth state');
 
       // Clean up
       initPromise.catch(() => {}); // Prevent unhandled rejection
@@ -292,18 +292,20 @@ describe('OAuth2AuthCodeProvider', () => {
 
       // Force cleanup of pending auth to simulate timeout
       const providerAny = provider as unknown as {
-        pendingAuth?: {
+        pendingAuthFlows?: Map<string, {
           timeout: NodeJS.Timeout;
           reject: (error: Error) => void;
-        };
+        }>;
       };
 
-      if (providerAny.pendingAuth) {
-        clearTimeout(providerAny.pendingAuth.timeout);
-        providerAny.pendingAuth.reject(
+      if (providerAny.pendingAuthFlows && providerAny.pendingAuthFlows.size > 0) {
+        // Get the first pending auth flow to simulate timeout
+        const [state, pendingAuth] = providerAny.pendingAuthFlows.entries().next().value;
+        clearTimeout(pendingAuth.timeout);
+        pendingAuth.reject(
           new Error('Authorization timeout - please try again'),
         );
-        providerAny.pendingAuth = undefined;
+        providerAny.pendingAuthFlows.delete(state);
       }
 
       await expect(promise).rejects.toThrow('Authorization timeout');
