@@ -74,40 +74,8 @@ class TestCommand extends BaseCommand {
     return this.mockProxy;
   }
 
-  // Method to be implemented in Phase 3 - currently just a stub for testing
-  // Made public for testing purposes
-  async requireServer(
-    dependency: ServerDependency,
-  ): Promise<ServerRequirementResult> {
-    const proxy = this.getProxy();
-    if (!proxy) {
-      return undefined;
-    }
-
-    const { connected } = proxy.getTargetServers();
-    const serverNames = connected.map(([name]) => name);
-
-    // Check if any alias matches connected servers
-    const isConfigured = dependency.aliases.some((alias) =>
-      serverNames.includes(alias),
-    );
-
-    if (isConfigured && dependency.ensureToolsExposed) {
-      // This would trigger tool exposure in real implementation
-      // For now, just simulate the call
-      const matchingAlias = dependency.aliases.find((alias) =>
-        serverNames.includes(alias),
-      );
-      if (matchingAlias) {
-        proxy.registry.enableTools(
-          [`${matchingAlias}__*`],
-          'server-dependency',
-        );
-      }
-    }
-
-    return { configured: isConfigured };
-  }
+  // requireServer will be implemented in BaseCommand in Phase 3
+  // For now, tests are skipped and waiting for real implementation
 }
 
 describe('Server Dependency System', () => {
@@ -126,6 +94,11 @@ describe('Server Dependency System', () => {
 
   describe('requireServer method', () => {
     test.skip('should return configured true when server found by first alias', async () => {
+      // When implemented, requireServer should:
+      // 1. Check proxy.getTargetServers() for connected servers
+      // 2. Match server names against dependency.aliases
+      // 3. Return { configured: true } when first alias matches
+
       // Setup: Mock proxy with connected server matching first alias
       vi.mocked(mockProxy.getTargetServers).mockReturnValue({
         connected: [
@@ -137,18 +110,21 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      // TODO: Will be used when requireServer is implemented in Phase 3
+      const _dependency: ServerDependency = {
         aliases: ['github', 'github-mcp', 'gh'],
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: true });
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior when requireServer is implemented:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: true });
+      // expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
     });
 
     test.skip('should return configured true when server found by second alias', async () => {
+      // When implemented, requireServer should check all aliases in order
+
       // Setup: Mock proxy with connected server matching second alias
       vi.mocked(mockProxy.getTargetServers).mockReturnValue({
         connected: [
@@ -160,15 +136,14 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github', 'github-mcp', 'gh'],
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: true });
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: true });
     });
 
     test.skip('should return configured true when server found by third alias', async () => {
@@ -183,18 +158,20 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github', 'github-mcp', 'gh'],
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: true });
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: true });
+      // expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
     });
 
     test.skip('should return configured false when server not found', async () => {
+      // When no aliases match any connected servers, should return { configured: false }
+
       // Setup: Mock proxy with no matching servers
       vi.mocked(mockProxy.getTargetServers).mockReturnValue({
         connected: [
@@ -206,30 +183,35 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github', 'github-mcp', 'gh'],
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: false });
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: false });
     });
 
     test.skip('should return undefined when no proxy available', async () => {
+      // When command has no proxy access (e.g., CLI without MCP context),
+      // requireServer should return undefined
+
       // Setup: Command without proxy
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github', 'github-mcp'],
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toBeUndefined();
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toBeUndefined();
     });
 
     test.skip('should handle ensureToolsExposed flag when server is found', async () => {
+      // When ensureToolsExposed is true and server is found,
+      // should call proxy.registry.enableTools() with server pattern
+
       // Setup: Mock proxy with connected server
       vi.mocked(mockProxy.getTargetServers).mockReturnValue({
         connected: [
@@ -241,19 +223,18 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github', 'github-mcp'],
         ensureToolsExposed: true,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: true });
-      expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
-        ['github__*'],
-        'server-dependency',
-      );
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: true });
+      // expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
+      //   ['github__*'],
+      //   'server-dependency',
+      // );
     });
 
     test.skip('should not call enableTools when ensureToolsExposed is false', async () => {
@@ -265,15 +246,15 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github'],
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: true });
-      expect(mockProxy.registry.enableTools).not.toHaveBeenCalled();
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: true });
+      // expect(mockProxy.registry.enableTools).not.toHaveBeenCalled();
     });
 
     test.skip('should not call enableTools when server is not found', async () => {
@@ -285,18 +266,21 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github'],
         ensureToolsExposed: true,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: false });
-      expect(mockProxy.registry.enableTools).not.toHaveBeenCalled();
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: false });
+      // expect(mockProxy.registry.enableTools).not.toHaveBeenCalled();
     });
 
     test.skip('should handle multiple requireServer calls independently', async () => {
+      // Multiple calls to requireServer should work independently
+      // Each call should check current server state
+
       // Setup: Mock proxy with multiple servers
       vi.mocked(mockProxy.getTargetServers).mockReturnValue({
         connected: [
@@ -309,44 +293,36 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      // First call - GitHub dependency
-      const githubDep: ServerDependency = {
+      // Test data for multiple dependencies
+      const _githubDep: ServerDependency = {
         aliases: ['github', 'gh'],
         ensureToolsExposed: true,
       };
 
-      const githubResult = await command.requireServer(githubDep);
-
-      // Second call - Filesystem dependency
-      const fsDep: ServerDependency = {
+      const _fsDep: ServerDependency = {
         aliases: ['filesystem', 'fs'],
         ensureToolsExposed: false,
       };
 
-      const fsResult = await command.requireServer(fsDep);
-
-      // Third call - Non-existent dependency
-      const nonExistentDep: ServerDependency = {
+      const _nonExistentDep: ServerDependency = {
         aliases: ['codex', 'codex-cli'],
         ensureToolsExposed: true,
       };
 
-      const nonExistentResult = await command.requireServer(nonExistentDep);
-
-      // Verify all results
-      expect(githubResult).toEqual({ configured: true });
-      expect(fsResult).toEqual({ configured: true });
-      expect(nonExistentResult).toEqual({ configured: false });
-
-      // Verify enableTools was called only for GitHub (ensureToolsExposed: true)
-      expect(mockProxy.registry.enableTools).toHaveBeenCalledTimes(1);
-      expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
-        ['github__*'],
-        'server-dependency',
-      );
-
-      // Verify getTargetServers was called for each requireServer call
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(3);
+      // Expected behavior when requireServer is implemented:
+      // const githubResult = await command.requireServer(_githubDep);
+      // const fsResult = await command.requireServer(_fsDep);
+      // const nonExistentResult = await command.requireServer(_nonExistentDep);
+      //
+      // expect(githubResult).toEqual({ configured: true });
+      // expect(fsResult).toEqual({ configured: true });
+      // expect(nonExistentResult).toEqual({ configured: false });
+      //
+      // expect(mockProxy.registry.enableTools).toHaveBeenCalledTimes(1);
+      // expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
+      //   ['github__*'],
+      //   'server-dependency',
+      // );
     });
 
     test.skip('should handle empty aliases array', async () => {
@@ -358,15 +334,15 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: [], // Empty aliases
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      expect(result).toEqual({ configured: false });
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior:
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: false });
+      // expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
     });
 
     test.skip('should handle case-sensitive server name matching', async () => {
@@ -380,16 +356,15 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github'], // lowercase
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      // Should not match due to case sensitivity
-      expect(result).toEqual({ configured: false });
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior (should not match due to case sensitivity):
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: false });
+      // expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
     });
 
     test.skip('should handle servers in disconnected state', async () => {
@@ -406,16 +381,15 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      const dependency: ServerDependency = {
+      const _dependency: ServerDependency = {
         aliases: ['github'],
         ensureToolsExposed: false,
       };
 
-      const result = await command.requireServer(dependency);
-
-      // Should return false for disconnected servers
-      expect(result).toEqual({ configured: false });
-      expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
+      // Expected behavior (should return false for disconnected servers):
+      // const result = await command.requireServer(_dependency);
+      // expect(result).toEqual({ configured: false });
+      // expect(mockProxy.getTargetServers).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -512,6 +486,9 @@ describe('Server Dependency System', () => {
 
   describe('Integration scenarios', () => {
     test.skip('should support command validation workflow', async () => {
+      // Commands should be able to check all their dependencies
+      // and handle mixed results (some configured, some not)
+
       // Setup: Mock proxy state
       vi.mocked(mockProxy.getTargetServers).mockReturnValue({
         connected: [['github', { name: 'github', command: 'gh-mcp' }]],
@@ -522,44 +499,49 @@ describe('Server Dependency System', () => {
 
       command.setMockProxy(mockProxy);
 
-      // Simulate command checking its dependencies
+      // Command has predefined dependencies
       const dependencies = command.getServerDependencies();
       expect(dependencies).toBeDefined();
 
-      if (dependencies) {
-        const results = await Promise.all(
-          dependencies.map((dep) => command.requireServer(dep)),
-        );
-
-        // First dependency (github) should be configured
-        expect(results[0]).toEqual({ configured: true });
-
-        // Second dependency (filesystem) should not be configured (disconnected)
-        expect(results[1]).toEqual({ configured: false });
-
-        // Verify tool exposure was triggered for github only
-        expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
-          ['github__*'],
-          'server-dependency',
-        );
-      }
+      // Expected behavior when requireServer is implemented:
+      // if (dependencies) {
+      //   const results = await Promise.all(
+      //     dependencies.map((_dep) => command.requireServer(_dep)),
+      //   );
+      //
+      //   // First dependency (github) should be configured
+      //   expect(results[0]).toEqual({ configured: true });
+      //
+      //   // Second dependency (filesystem) should not be configured (disconnected)
+      //   expect(results[1]).toEqual({ configured: false });
+      //
+      //   // Verify tool exposure was triggered for github only
+      //   expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
+      //     ['github__*'],
+      //     'server-dependency',
+      //   );
+      // }
     });
 
     test.skip('should handle commands with no proxy access gracefully', async () => {
-      // Setup: Command without proxy (e.g., during CLI execution without MCP context)
+      // Commands executed via CLI without MCP context should handle
+      // missing proxy gracefully by returning undefined
+
+      // Setup: Command without proxy (no setMockProxy called)
       const dependencies = command.getServerDependencies();
       expect(dependencies).toBeDefined();
 
-      if (dependencies) {
-        const results = await Promise.all(
-          dependencies.map((dep) => command.requireServer(dep)),
-        );
-
-        // All results should be undefined when no proxy is available
-        results.forEach((result) => {
-          expect(result).toBeUndefined();
-        });
-      }
+      // Expected behavior when requireServer is implemented:
+      // if (dependencies) {
+      //   const results = await Promise.all(
+      //     dependencies.map((_dep) => command.requireServer(_dep)),
+      //   );
+      //
+      //   // All results should be undefined when no proxy is available
+      //   results.forEach((result) => {
+      //     expect(result).toBeUndefined();
+      //   });
+      // }
     });
 
     test.skip('should demonstrate extensibility for future enhancements', () => {
