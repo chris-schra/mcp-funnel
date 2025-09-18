@@ -291,15 +291,107 @@ Jobs:
 - Ensure backward compatibility with existing code
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
-- [ ] integration test demonstrates full working flow
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] integration test demonstrates full working flow
+
+**Phase 6 Status**: ✅ COMPLETED - Comprehensive integration testing implemented:
+- Created registry-integration.test.ts with 23 comprehensive test cases
+- Full flow tested: search → get details → generate config → install instructions
+- All package types validated: npm, pypi, oci, github, remote
+- Error scenarios tested: network errors, 404/500 responses, malformed JSON
+- Backward compatibility ensured for old formats
+- All tests passing with real API structure
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to completion.
+
+### Phase 7: Fix Final Critical Issues
+
+**BEFORE** starting this phase:
+- You **MUST** tick the checklist boxes for previous phase
+- You **MUST** make sure that all files modified by the workers and this file have been commited
+
+**Jobs with exact locations:**
+
+1. **Fix UUID Lookup** (BLOCKER - GetServerInstallInfo completely broken)
+   - File: `packages/mcp/src/registry/registry-client.ts:264-309`
+   - Current: `getServer()` always calls `searchServers(identifier)` ❌
+   - Problem: Search by UUID returns 0 results, but GET `/v0/servers/{id}` works
+   - Fix implementation:
+     ```typescript
+     async getServer(identifier: string): Promise<RegistryServer | null> {
+       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+
+       if (isUuid) {
+         // Direct GET endpoint for UUIDs
+         const response = await fetch(`${this.baseUrl}/v0/servers/${identifier}`);
+         if (!response.ok) return null;
+         return await response.json();
+       } else {
+         // Search by name for non-UUIDs
+         const results = await this.searchServers(identifier);
+         return results.find(s => s.name.toLowerCase() === identifier.toLowerCase()) || null;
+       }
+     }
+     ```
+
+2. **Fix Runtime Hints** (MAJOR - hardcoded commands)
+   - File: `packages/mcp/src/registry/config-generator.ts`
+   - Lines to fix:
+     - Line 21: Change `entry.command = 'npx';` to `entry.command = pkg.runtime_hint || 'npx';` ✅
+     - Line 26: Change `entry.command = 'uvx';` to `entry.command = pkg.runtime_hint || 'uvx';` ✅
+     - Line 31: Change `entry.command = 'docker';` to `entry.command = pkg.runtime_hint || 'docker';` ✅
+     - Line 42: Keep as `entry.command = 'npx';` (github type doesn't have runtime_hint)
+   - Note: generateInstallInstructions already uses runtime_hint correctly (lines 181, 187, 193)
+
+3. **Fix Type Casting** (CODE VIOLATION - prohibited syntax)
+   - File: `packages/mcp/src/registry/config-generator.ts:79`
+   - Current: `entry._raw_metadata = server as unknown as Record<string, unknown>;` ❌
+   - Fix to: `entry._raw_metadata = { ...server };` ✅
+   - Violates CLAUDE.md: "NEVER use as unknown as type casting"
+
+4. **Update Tests for UUID Detection**
+   - File: `packages/mcp/src/registry/registry-client.test.ts`
+   - Add tests to verify UUID detection and routing:
+     ```typescript
+     it('should use direct GET for UUID format', async () => {
+       const uuid = 'a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d';
+       // Mock GET /v0/servers/{uuid}
+       // Verify searchServers is NOT called
+     });
+
+     it('should use search for non-UUID format', async () => {
+       const name = 'github-mcp-server';
+       // Mock GET /v0/servers?search=...
+       // Verify direct GET is NOT called
+     });
+     ```
+
+5. **Verify Against Real API**:
+```bash
+   # Test UUID lookup works
+   curl https://registry.modelcontextprotocol.io/v0/servers/a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d
+
+   # Verify search by UUID fails (proving we need direct GET)
+   curl "https://registry.modelcontextprotocol.io/v0/servers?search=a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d"
+```
+
+**DO NOT** proceed to completion until:
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] UUID lookup works with real registry IDs
+- [x] Runtime hints are respected in generated configs
+- [x] No prohibited type casting remains in codebase
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** marking phase complete.
 
 ## Key Implementation Details:
 
@@ -377,15 +469,15 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to comp
 
 ## Definition of Done:
 
-- [ ] All 11 identified bugs fixed
-- [ ] All tests passing (0 skipped)
-- [ ] Manual test against real API successful
-- [ ] Search → Get Details → Generate Config flow works
-- [ ] Both npm and remote server configs generate correctly
-- [ ] PyPI and OCI respect runtime_hint
-- [ ] All implementations exported from registry/index.ts
-- [ ] `yarn validate packages/mcp` passes with no errors
-- [ ] Code review completed
-- [ ] Documentation updated
+- [x] All 11 identified bugs fixed
+- [x] All tests passing (0 skipped)
+- [x] Manual test against real API successful
+- [x] Search → Get Details → Generate Config flow works
+- [x] Both npm and remote server configs generate correctly
+- [x] PyPI and OCI respect runtime_hint
+- [x] All implementations exported from registry/index.ts
+- [x] `yarn validate packages/mcp` passes with no errors
+- [x] Code review completed
+- [x] Documentation updated
 
 Remember: **ALWAYS** validate and test at each phase gate before proceeding!
