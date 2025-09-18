@@ -218,7 +218,6 @@ describe('SecretManager', () => {
       expect(result.SLOW_KEY).toBe('value');
       expect(endTime - startTime).toBeGreaterThanOrEqual(10);
     });
-
   });
 
   describe('Caching tests', () => {
@@ -287,7 +286,7 @@ describe('SecretManager', () => {
       registry.register('env', envProvider);
 
       expect(() => registry.register('env', fileProvider)).toThrow(
-        'Secret provider \'env\' is already registered',
+        "Secret provider 'env' is already registered",
       );
     });
 
@@ -341,29 +340,28 @@ describe('SecretManager', () => {
   });
 
   describe('Edge cases and error handling', () => {
-    it.skip('should handle empty provider list', async () => {
-      const manager = new MockSecretManager([]);
+    it('should handle empty provider list', async () => {
+      const manager = new SecretManager([]);
 
       const result = await manager.resolveSecrets();
 
-      expect(result.secrets).toEqual({});
-      expect(result.metadata?.source).toBe('merged');
+      expect(result).toEqual({});
     });
 
-    it.skip('should handle providers returning empty secrets', async () => {
+    it('should handle providers returning empty secrets', async () => {
       const emptyProvider = new MockSecretProvider('empty', {});
-      const manager = new MockSecretManager([emptyProvider, envProvider]);
+      const manager = new SecretManager([emptyProvider, envProvider]);
 
       const result = await manager.resolveSecrets();
 
-      expect(result.secrets).toEqual({
+      expect(result).toEqual({
         API_KEY: 'env-api-key',
         DATABASE_URL: 'env-db-url',
       });
     });
 
-    it.skip('should handle concurrent resolution calls', async () => {
-      const manager = new MockSecretManager([envProvider]);
+    it('should handle concurrent resolution calls', async () => {
+      const manager = new SecretManager([envProvider]);
 
       const promises = [
         manager.resolveSecrets(),
@@ -375,18 +373,18 @@ describe('SecretManager', () => {
 
       expect(results).toHaveLength(3);
       results.forEach((result) => {
-        expect(result.secrets.API_KEY).toBe('env-api-key');
+        expect(result.API_KEY).toBe('env-api-key');
       });
     });
 
-    it.skip('should validate provider interface compliance', () => {
+    it('should validate provider interface compliance', () => {
       // Provider must implement ISecretProvider interface
       expect(envProvider.resolveSecrets).toBeInstanceOf(Function);
       expect(envProvider.getName).toBeInstanceOf(Function);
       expect(typeof envProvider.getName()).toBe('string');
     });
 
-    it.skip('should handle mixed sync/async provider behavior', async () => {
+    it('should handle mixed sync/async provider behavior', async () => {
       // All providers should return promises, even if internally synchronous
       const syncProvider = new MockSecretProvider('sync', {
         SYNC_KEY: 'value',
@@ -399,25 +397,20 @@ describe('SecretManager', () => {
   });
 
   describe('Type safety and interface compliance', () => {
-    it.skip('should ensure SecretResolutionResult structure', async () => {
-      const manager = new MockSecretManager([envProvider]);
+    it('should ensure resolved secrets structure', async () => {
+      const manager = new SecretManager([envProvider]);
 
       const result = await manager.resolveSecrets();
 
-      // Verify required properties
-      expect(result).toHaveProperty('secrets');
-      expect(typeof result.secrets).toBe('object');
-
-      // Verify optional metadata structure
-      if (result.metadata) {
-        expect(result.metadata).toHaveProperty('source');
-        expect(result.metadata).toHaveProperty('resolvedAt');
-        expect(result.metadata.resolvedAt).toBeInstanceOf(Date);
-        expect(typeof result.metadata.source).toBe('string');
-      }
+      // Verify result is a plain object with string values
+      expect(typeof result).toBe('object');
+      expect(result).not.toBeNull();
+      Object.values(result).forEach((value) => {
+        expect(typeof value).toBe('string');
+      });
     });
 
-    it.skip('should ensure provider interface compliance', () => {
+    it('should ensure provider interface compliance', () => {
       const provider: ISecretProvider = envProvider;
 
       // TypeScript should enforce interface compliance
@@ -425,7 +418,7 @@ describe('SecretManager', () => {
       expect(provider.resolveSecrets()).toBeInstanceOf(Promise);
     });
 
-    it.skip('should ensure registry interface compliance', () => {
+    it('should ensure registry interface compliance', () => {
       const reg: ISecretProviderRegistry = registry;
 
       // TypeScript should enforce interface compliance
