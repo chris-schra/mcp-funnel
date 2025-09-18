@@ -7,6 +7,8 @@ import {
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
+import { SecretManager, createSecretProviders } from './secrets/index.js';
+import { filterEnvVars } from './env-filter.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -529,6 +531,79 @@ export class MCPProxy {
     };
   }
 
+  /**
+   * Resolves environment variables for a target server using the new secret system.
+   *
+   * Implements the following precedence order:
+   * 1. Start with filtered process.env if defaultPassthroughEnv is set
+   * 2. Apply default secret providers if configured
+   * 3. Apply server-specific secret providers
+   * 4. Apply server-specific env (highest priority)
+   *
+   * @param targetServer - Target server configuration
+   * @returns Promise resolving to final environment variables
+   */
+  private async resolveServerEnvironment(
+    targetServer: TargetServer,
+  ): Promise<Record<string, string>> {
+    let finalEnv: Record<string, string> = {};
+
+    // 1. Start with filtered process.env if defaultPassthroughEnv is set
+    if (this._config.defaultPassthroughEnv) {
+      finalEnv = filterEnvVars(process.env, this._config.defaultPassthroughEnv);
+    } else {
+      // Current behavior - include all process env vars
+      finalEnv = { ...process.env } as Record<string, string>;
+    }
+
+    // 2. Apply default secret providers if configured
+    if (this._config.defaultSecretProviders) {
+      try {
+        const configDir = dirname(this._configPath);
+        const defaultProviders = createSecretProviders(
+          this._config.defaultSecretProviders,
+          configDir,
+        );
+        const secretManager = new SecretManager(defaultProviders);
+        const defaultSecrets = await secretManager.resolveSecrets();
+        finalEnv = { ...finalEnv, ...defaultSecrets };
+      } catch (error) {
+        console.error(
+          `[proxy] Failed to resolve default secrets for ${targetServer.name}:`,
+          error,
+        );
+        // Continue without default secrets
+      }
+    }
+
+    // 3. Apply server-specific secret providers
+    if (targetServer.secretProviders) {
+      try {
+        const configDir = dirname(this._configPath);
+        const serverProviders = createSecretProviders(
+          targetServer.secretProviders,
+          configDir,
+        );
+        const secretManager = new SecretManager(serverProviders);
+        const serverSecrets = await secretManager.resolveSecrets();
+        finalEnv = { ...finalEnv, ...serverSecrets };
+      } catch (error) {
+        console.error(
+          `[proxy] Failed to resolve secrets for ${targetServer.name}:`,
+          error,
+        );
+        // Continue without server-specific secrets
+      }
+    }
+
+    // 4. Apply server-specific env (highest priority)
+    if (targetServer.env) {
+      finalEnv = { ...finalEnv, ...targetServer.env };
+    }
+
+    return finalEnv;
+  }
+
   private async connectToTargetServers() {
     const connectionPromises = this._normalizedServers.map(
       async (targetServer) => {
@@ -543,15 +618,15 @@ export class MCPProxy {
             version: '1.0.0',
           });
 
+          // Resolve environment variables using the new secret system
+          const resolvedEnv = await this.resolveServerEnvironment(targetServer);
+
           const transport = new PrefixedStdioClientTransport(
             targetServer.name,
             {
               command: targetServer.command,
               args: targetServer.args || [],
-              env: { ...process.env, ...targetServer.env } as Record<
-                string,
-                string
-              >,
+              env: resolvedEnv,
             },
           );
 
