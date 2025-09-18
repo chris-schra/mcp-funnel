@@ -44,7 +44,12 @@ describe('Environment Security - Core Functionality', () => {
         USER: 'test',
       };
 
-      const filtered = filterEnvVars(testEnv, ['PATH', 'HOME', 'USER', 'MISSING']);
+      const filtered = filterEnvVars(testEnv, [
+        'PATH',
+        'HOME',
+        'USER',
+        'MISSING',
+      ]);
 
       expect(filtered).toEqual({
         PATH: '/usr/bin',
@@ -71,7 +76,7 @@ describe('Environment Security - Core Functionality', () => {
   describe('Config Schema - defaultPassthroughEnv', () => {
     it('should have defaultPassthroughEnv as optional in schema', () => {
       const config = {
-        servers: []
+        servers: [],
       };
 
       const parsed = ProxyConfigSchema.parse(config);
@@ -83,7 +88,7 @@ describe('Environment Security - Core Functionality', () => {
     it('should accept custom defaultPassthroughEnv', () => {
       const config = {
         servers: [],
-        defaultPassthroughEnv: ['PATH', 'CUSTOM_VAR']
+        defaultPassthroughEnv: ['PATH', 'CUSTOM_VAR'],
       };
 
       const parsed = ProxyConfigSchema.parse(config);
@@ -94,7 +99,7 @@ describe('Environment Security - Core Functionality', () => {
     it('should accept empty defaultPassthroughEnv array', () => {
       const config = {
         servers: [],
-        defaultPassthroughEnv: []
+        defaultPassthroughEnv: [],
       };
 
       const parsed = ProxyConfigSchema.parse(config);
@@ -108,7 +113,7 @@ describe('Environment Security - Core Functionality', () => {
       // This test documents how to manually verify the security fix works
 
       // 1. Create a test config without defaultPassthroughEnv:
-      const testConfig = `{
+      const _testConfig = `{
         "servers": [
           {
             "name": "test-server",
@@ -143,7 +148,9 @@ describe('Environment Security - Core Functionality', () => {
       // The fix: Apply secure defaults at runtime when undefined
 
       // Verify the fix is in place by checking the logic:
-      const simulateRuntimeLogic = (config: any) => {
+      const simulateRuntimeLogic = (config: {
+        defaultPassthroughEnv?: string[];
+      }) => {
         // This simulates the logic in index.ts:resolveServerEnvironment
         const passthroughEnv = config.defaultPassthroughEnv ?? [
           'NODE_ENV',
@@ -160,7 +167,15 @@ describe('Environment Security - Core Functionality', () => {
       // Test undefined defaultPassthroughEnv
       const configWithoutDefault = {};
       const result = simulateRuntimeLogic(configWithoutDefault);
-      expect(result).toEqual(['NODE_ENV', 'HOME', 'USER', 'PATH', 'TERM', 'CI', 'DEBUG']);
+      expect(result).toEqual([
+        'NODE_ENV',
+        'HOME',
+        'USER',
+        'PATH',
+        'TERM',
+        'CI',
+        'DEBUG',
+      ]);
 
       // Test explicit empty array
       const configWithEmpty = { defaultPassthroughEnv: [] };
@@ -198,7 +213,15 @@ describe('Environment Security - Core Functionality', () => {
       };
 
       // Apply default filter
-      const defaultAllowlist = ['NODE_ENV', 'HOME', 'USER', 'PATH', 'TERM', 'CI', 'DEBUG'];
+      const defaultAllowlist = [
+        'NODE_ENV',
+        'HOME',
+        'USER',
+        'PATH',
+        'TERM',
+        'CI',
+        'DEBUG',
+      ];
       const filtered = filterEnvVars(dangerousEnv, defaultAllowlist);
 
       // Verify ONLY safe vars are passed
