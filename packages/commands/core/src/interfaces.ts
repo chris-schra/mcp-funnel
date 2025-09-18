@@ -112,5 +112,26 @@ export interface ServerDependency {
  */
 export type ServerRequirementResult = { configured: boolean } | undefined;
 
+/**
+ * Minimal interface for MCP Proxy to support server dependency checking.
+ * Defines only the methods needed by BaseCommand for server requirements.
+ */
+export interface IMCPProxy {
+  /**
+   * Get information about target servers (connected and disconnected)
+   */
+  getTargetServers(): {
+    connected: Array<[string, unknown]>;
+    disconnected: Array<[string, unknown]>;
+  };
+
+  /**
+   * Registry for managing tool exposure
+   */
+  registry?: {
+    enableTools(patterns: string[], reason: string): void;
+  };
+}
+
 // Re-export commonly used MCP SDK types for convenience
 export type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
