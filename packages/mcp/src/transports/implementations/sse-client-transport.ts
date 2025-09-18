@@ -132,7 +132,7 @@ export class SSEClientTransport extends BaseClientTransport {
 
       if (authHeader) {
         // Add auth token as query param due to EventSource browser limitation
-        url.searchParams.set('auth', encodeURIComponent(authHeader));
+        url.searchParams.set('auth', authHeader);
       }
     }
 
