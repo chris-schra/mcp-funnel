@@ -15,6 +15,7 @@ import {
   TransportConfigZod,
 } from './config.js';
 import { createTransport } from './transports/index.js';
+import { StdioClientTransport } from './transports/implementations/stdio-client-transport.js';
 import {
   MemoryTokenStorage,
   OAuth2ClientCredentialsProvider,
@@ -26,19 +27,16 @@ import {
   type ITokenStorage,
 } from './auth/index.js';
 import { TokenStorageFactory } from './auth/token-storage-factory.js';
-import * as readline from 'readline';
-import { spawn, ChildProcess } from 'child_process';
-import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { ICoreTool, CoreToolContext } from './tools/core-tool.interface.js';
 import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
-import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
+import { writeFileSync, mkdirSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { logEvent, logError, getServerStreamLogPath } from './logger.js';
+import { logEvent, logError } from './logger.js';
 import { ToolRegistry } from './tool-registry.js';
 
 import Package from '../package.json';
@@ -124,163 +122,9 @@ function legacyErrorLog(
   }
 }
 
-interface TransportOptions {
-  command: string;
-  args?: string[];
-  env?: Record<string, string>;
-}
-
 export type ProxyStartOptions = {
   transport: 'stdio' | 'streamable-http';
 };
-
-// Custom transport that prefixes server stderr logs
-export class PrefixedStdioClientTransport {
-  private readonly _serverName: string;
-  private process?: ChildProcess;
-  private messageHandlers: ((message: JSONRPCMessage) => void)[] = [];
-  private errorHandlers: ((error: Error) => void)[] = [];
-  private closeHandlers: (() => void)[] = [];
-
-  constructor(
-    serverName: string,
-    private options: TransportOptions,
-  ) {
-    this._serverName = serverName;
-  }
-
-  async start(): Promise<void> {
-    try {
-      // Spawn the process with full control over stdio
-      this.process = spawn(this.options.command, this.options.args || [], {
-        env: this.options.env,
-        stdio: ['pipe', 'pipe', 'pipe'], // Full control over all streams
-        cwd: process.cwd(), // Explicitly set cwd
-      });
-      logEvent('debug', 'transport:start', {
-        server: this._serverName,
-        command: this.options.command,
-        args: this.options.args,
-      });
-    } catch (error) {
-      console.error(`[${this._serverName}] Failed to spawn process:`, error);
-      // Keep legacy error file + structured log
-      legacyErrorLog(error, 'spawn-failed', this._serverName);
-      logError('spawn-failed', error, {
-        server: this._serverName,
-        command: this.options.command,
-        args: this.options.args,
-      });
-      throw error;
-    }
-
-    // Handle stderr with prefixing
-    if (this.process.stderr) {
-      const rl = readline.createInterface({
-        input: this.process.stderr,
-        crlfDelay: Infinity,
-      });
-
-      rl.on('line', (line: string) => {
-        if (line.trim()) {
-          console.error(`[${this._serverName}] ${line}`);
-          try {
-            appendFileSync(
-              getServerStreamLogPath(this._serverName, 'stderr'),
-              `[${new Date().toISOString()}] ${line}\n`,
-            );
-          } catch {
-            // Failed to append to stderr log file
-          }
-        }
-      });
-    }
-
-    // Handle stdout for MCP protocol messages
-    if (this.process.stdout) {
-      const rl = readline.createInterface({
-        input: this.process.stdout,
-        crlfDelay: Infinity,
-      });
-
-      rl.on('line', (line: string) => {
-        if (line.trim()) {
-          try {
-            const message = JSON.parse(line) as JSONRPCMessage;
-            this.messageHandlers.forEach((handler) => handler(message));
-          } catch {
-            // Not a JSON message, might be a log line that went to stdout
-            console.error(`[${this._serverName}] ${line}`);
-            try {
-              appendFileSync(
-                getServerStreamLogPath(this._serverName, 'stdout'),
-                `[${new Date().toISOString()}] ${line}\n`,
-              );
-            } catch {
-              // Failed to append to stdout log file
-            }
-            logEvent('debug', 'transport:nonjson_stdout', {
-              server: this._serverName,
-              line: line.slice(0, 200),
-            });
-          }
-        }
-      });
-    }
-
-    // Handle process errors and exit
-    this.process.on('error', (error) => {
-      console.error(`[${this._serverName}] Process error:`, error);
-      legacyErrorLog(error, 'process-error', this._serverName);
-      logError('process-error', error, { server: this._serverName });
-      this.errorHandlers.forEach((handler) => handler(error));
-    });
-
-    this.process.on('close', (code, signal) => {
-      if (code !== 0) {
-        const errorMsg = `Process exited with code ${code}, signal ${signal}`;
-        console.error(`[${this._serverName}] ${errorMsg}`);
-        legacyErrorLog(
-          { message: errorMsg, code, signal },
-          'process-exit',
-          this._serverName,
-        );
-        logError('process-exit', new Error(errorMsg), {
-          server: this._serverName,
-          code,
-          signal,
-        });
-      }
-      this.closeHandlers.forEach((handler) => handler());
-    });
-  }
-
-  async send(message: JSONRPCMessage): Promise<void> {
-    if (!this.process?.stdin) {
-      throw new Error('Transport not started');
-    }
-    this.process.stdin.write(JSON.stringify(message) + '\n');
-  }
-
-  async close(): Promise<void> {
-    if (this.process) {
-      this.process.kill();
-      this.process = undefined;
-    }
-  }
-
-  set onmessage(handler: (message: JSONRPCMessage) => void) {
-    this.messageHandlers.push(handler);
-  }
-
-  set onerror(handler: (error: Error) => void) {
-    this.errorHandlers.push(handler);
-  }
-
-  set onclose(handler: () => void) {
-    this.closeHandlers.push(handler);
-  }
-}
 
 export class MCPProxy {
   private _server: Server;
@@ -668,7 +512,7 @@ export class MCPProxy {
               authProvider,
             );
           } else {
-            // Legacy path: use PrefixedStdioClientTransport for backward compatibility
+            // Legacy path: use StdioClientTransport for backward compatibility
             const legacyServer = targetServer as TargetServer;
             if (!legacyServer.command) {
               throw new Error(
@@ -676,7 +520,7 @@ export class MCPProxy {
               );
             }
 
-            transport = new PrefixedStdioClientTransport(targetServer.name, {
+            transport = new StdioClientTransport(targetServer.name, {
               command: legacyServer.command,
               args: legacyServer.args || [],
               env: { ...process.env, ...legacyServer.env } as Record<
