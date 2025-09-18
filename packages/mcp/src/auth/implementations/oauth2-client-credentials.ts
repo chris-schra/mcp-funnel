@@ -138,7 +138,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
 
     logEvent('debug', 'auth:token_request_start', {
       requestId,
-      tokenUrl: this.config.tokenUrl,
+      tokenEndpoint: this.config.tokenEndpoint,
       clientId: this.config.clientId,
       hasScope: !!this.config.scope,
       hasAudience: !!this.config.audience,
@@ -242,7 +242,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
     ).toString('base64');
 
     try {
-      const response = await fetch(this.config.tokenUrl, {
+      const response = await fetch(this.config.tokenEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -464,7 +464,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
       ...config,
       clientId: this.resolveEnvVar(config.clientId),
       clientSecret: this.resolveEnvVar(config.clientSecret),
-      tokenUrl: this.resolveEnvVar(config.tokenUrl),
+      tokenEndpoint: this.resolveEnvVar(config.tokenEndpoint),
       scope: config.scope ? this.resolveEnvVar(config.scope) : config.scope,
       audience: config.audience
         ? this.resolveEnvVar(config.audience)
@@ -513,7 +513,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
       );
     }
 
-    if (!this.config.tokenUrl) {
+    if (!this.config.tokenEndpoint) {
       throw new AuthenticationError(
         'OAuth2 token URL is required',
         OAuth2ErrorCode.INVALID_REQUEST,
@@ -522,7 +522,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
 
     // Validate URL format
     try {
-      new URL(this.config.tokenUrl);
+      new URL(this.config.tokenEndpoint);
     } catch {
       throw new AuthenticationError(
         'OAuth2 token URL is not a valid URL',

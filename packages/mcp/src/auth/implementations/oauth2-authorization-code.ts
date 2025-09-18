@@ -233,7 +233,7 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
       };
 
       // Build authorization URL with PKCE
-      const authUrl = new URL(this.config.authUrl);
+      const authUrl = new URL(this.config.authorizationEndpoint);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', this.config.clientId);
       authUrl.searchParams.set('redirect_uri', this.config.redirectUri);
@@ -250,7 +250,7 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
       }
 
       logEvent('info', 'auth:oauth_flow_initiated', {
-        authUrl: this.config.authUrl,
+        authUrl: this.config.authorizationEndpoint,
         redirectUri: this.config.redirectUri,
         scope: this.config.scope,
       });
@@ -297,7 +297,7 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
     }
 
     try {
-      const response = await fetch(this.config.tokenUrl, {
+      const response = await fetch(this.config.tokenEndpoint, {
         method: 'POST',
         headers,
         body: body.toString(),
@@ -438,8 +438,8 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
       clientSecret: config.clientSecret
         ? this.resolveEnvVar(config.clientSecret)
         : config.clientSecret,
-      authUrl: this.resolveEnvVar(config.authUrl),
-      tokenUrl: this.resolveEnvVar(config.tokenUrl),
+      authorizationEndpoint: this.resolveEnvVar(config.authorizationEndpoint),
+      tokenEndpoint: this.resolveEnvVar(config.tokenEndpoint),
       redirectUri: this.resolveEnvVar(config.redirectUri),
       scope: config.scope ? this.resolveEnvVar(config.scope) : config.scope,
       audience: config.audience
@@ -481,14 +481,14 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
       );
     }
 
-    if (!this.config.authUrl) {
+    if (!this.config.authorizationEndpoint) {
       throw new AuthenticationError(
         'OAuth2 authorization URL is required',
         OAuth2ErrorCode.INVALID_REQUEST,
       );
     }
 
-    if (!this.config.tokenUrl) {
+    if (!this.config.tokenEndpoint) {
       throw new AuthenticationError(
         'OAuth2 token URL is required',
         OAuth2ErrorCode.INVALID_REQUEST,
@@ -504,8 +504,8 @@ export class OAuth2AuthCodeProvider implements IAuthProvider {
 
     // Validate URL formats
     try {
-      new URL(this.config.authUrl);
-      new URL(this.config.tokenUrl);
+      new URL(this.config.authorizationEndpoint);
+      new URL(this.config.tokenEndpoint);
       new URL(this.config.redirectUri);
     } catch {
       throw new AuthenticationError(

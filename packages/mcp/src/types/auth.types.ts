@@ -20,25 +20,34 @@ export interface BearerAuthConfig {
 
 /**
  * OAuth2 client credentials flow authentication
+ *
+ * Input accepts both legacy and new field names, but normalized output uses:
+ * - tokenEndpoint (preferred over legacy tokenUrl)
+ * - scope as space-delimited string (converted from scopes array if provided)
  */
 export interface OAuth2ClientCredentialsConfig {
   type: 'oauth2-client';
   clientId: string;
   clientSecret: string;
-  tokenUrl: string;
+  tokenEndpoint: string;
   scope?: string;
   audience?: string;
 }
 
 /**
- * OAuth2 authorization code flow authentication (for future implementation)
+ * OAuth2 authorization code flow authentication
+ *
+ * Input accepts both legacy and new field names, but normalized output uses:
+ * - authorizationEndpoint (preferred over legacy authUrl)
+ * - tokenEndpoint (preferred over legacy tokenUrl)
+ * - scope as space-delimited string (converted from scopes array if provided)
  */
 export interface OAuth2AuthCodeConfig {
   type: 'oauth2-code';
   clientId: string;
   clientSecret?: string;
-  authUrl: string;
-  tokenUrl: string;
+  authorizationEndpoint: string;
+  tokenEndpoint: string;
   redirectUri: string;
   scope?: string;
   audience?: string;
