@@ -42,6 +42,14 @@ export interface ICommand {
    * @returns Array of MCP Tool definitions with name, description, and input schema
    */
   getMCPDefinitions(): Tool[];
+
+  /**
+   * Get the server dependencies for this command.
+   * Used to declare which MCP servers this command requires.
+   *
+   * @returns Array of server dependencies, or undefined if no dependencies
+   */
+  getServerDependencies?(): ServerDependency[] | undefined;
 }
 
 /**
@@ -85,6 +93,24 @@ export interface ICommandOptions {
   /** Additional custom options specific to individual commands */
   [key: string]: unknown;
 }
+
+/**
+ * Represents a server dependency requirement for a command.
+ * Commands can declare which MCP servers they need to function.
+ */
+export interface ServerDependency {
+  /** List of server names/aliases to match against configured servers */
+  aliases: string[];
+
+  /** Whether to automatically expose tools from this server when found */
+  ensureToolsExposed?: boolean;
+}
+
+/**
+ * Result of checking server requirements.
+ * Following SEAMS principle - minimal now, extensible later.
+ */
+export type ServerRequirementResult = { configured: boolean } | undefined;
 
 // Re-export commonly used MCP SDK types for convenience
 export type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
