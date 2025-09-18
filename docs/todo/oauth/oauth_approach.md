@@ -325,6 +325,7 @@ Jobs:
 
 **DO NOT** proceed to next phase until:
 - [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [ ] there are NO skipped tests remaining
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
