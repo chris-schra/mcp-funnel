@@ -8,8 +8,10 @@ export * from './interfaces/token-storage.interface.js';
 export * from './errors/authentication-error.js';
 
 // Implementations
-// TODO: Add implementation re-exports when created
-// export * from './implementations/no-auth-provider.js';
-// export * from './implementations/bearer-token-provider.js';
+export * from './implementations/no-auth-provider.js';
+export * from './implementations/bearer-token-provider.js';
+export * from './implementations/memory-token-storage.js';
+export * from './implementations/environment-resolver.js';
+export * from './implementations/security-utils.js';
+// TODO: Add OAuth2 implementation re-export when created
 // export * from './implementations/oauth2-client-credentials.js';
-// export * from './implementations/memory-token-storage.js';
