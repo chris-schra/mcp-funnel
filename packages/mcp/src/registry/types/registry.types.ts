@@ -29,6 +29,11 @@ export interface Package {
   registry_type: 'npm' | 'pypi' | 'oci' | 'github';
   /** Optional hint about the runtime environment (e.g., 'node', 'python') */
   runtime_hint?: string;
+  /**
+   * Arguments to be passed to the runtime command (e.g., -y for npx).
+   * These are distinct from package_arguments which are passed to the package itself.
+   */
+  runtime_arguments?: string[];
   /** Additional command-line arguments to pass when starting the package */
   package_arguments?: string[];
   /** Environment variables required or used by this package */
