@@ -9,57 +9,74 @@ export function generateConfigSnippet(
 ): RegistryConfigEntry {
   const entry: RegistryConfigEntry = {
     name: server.name,
-    _registry_metadata: { ...server },
   };
 
-  // Handle remote servers first (they take precedence)
+  // Handle package-based servers first (they take precedence over remotes)
+  if (server.packages && server.packages.length > 0) {
+    const pkg = server.packages[0];
+    let handled = false;
+
+    switch (pkg.registry_type) {
+      case 'npm':
+        entry.command = 'npx';
+        entry.args = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
+        handled = true;
+        break;
+      case 'pypi':
+        entry.command = 'uvx';
+        entry.args = [pkg.identifier, ...(pkg.package_arguments || [])];
+        handled = true;
+        break;
+      case 'oci':
+        entry.command = 'docker';
+        entry.args = [
+          'run',
+          '-i',
+          '--rm',
+          pkg.identifier,
+          ...(pkg.package_arguments || []),
+        ];
+        handled = true;
+        break;
+      case 'github':
+        entry.command = 'npx';
+        entry.args = [
+          '-y',
+          `github:${pkg.identifier}`,
+          ...(pkg.package_arguments || []),
+        ];
+        handled = true;
+        break;
+    }
+
+    if (handled) {
+      // Convert environment variables from array to object format
+      // Only include variables that have values (exclude required-only vars)
+      if (pkg.environment_variables && pkg.environment_variables.length > 0) {
+        entry.env = {};
+        for (const envVar of pkg.environment_variables) {
+          if (envVar.value !== undefined) {
+            entry.env[envVar.name] = envVar.value;
+          }
+        }
+      }
+      return entry;
+    }
+  }
+
+  // Handle remote servers
   if (server.remotes && server.remotes.length > 0) {
     const remote = server.remotes[0];
     entry.transport = remote.type;
     entry.url = remote.url;
     if (remote.headers && remote.headers.length > 0) {
-      entry.headers = {};
-      for (const header of remote.headers) {
-        entry.headers[header.name] = header.value || '';
-      }
+      entry.headers = remote.headers;
     }
     return entry;
   }
 
-  // Handle package-based servers
-  if (server.packages && server.packages.length > 0) {
-    const pkg = server.packages[0];
-
-    switch (pkg.registry_type) {
-      case 'npm':
-        entry.command = pkg.runtime_hint || 'npx';
-        entry.args = ['-y', pkg.identifier, ...(pkg.package_arguments || [])];
-        break;
-      case 'pypi':
-        entry.command = pkg.runtime_hint || 'uvx';
-        entry.args = [pkg.identifier, ...(pkg.package_arguments || [])];
-        break;
-      case 'oci':
-        entry.command = pkg.runtime_hint || 'docker';
-        entry.args = ['run', '-i', '--rm', pkg.identifier];
-        break;
-      case 'github':
-        // GitHub packages are not supported in MVP - return raw metadata
-        break;
-      default:
-        // Fallback for unknown registry types
-        break;
-    }
-
-    // Convert environment variables from array to object format
-    if (pkg.environment_variables && pkg.environment_variables.length > 0) {
-      entry.env = {};
-      for (const envVar of pkg.environment_variables) {
-        entry.env[envVar.name] = envVar.value || '';
-      }
-    }
-  }
-
+  // Fallback for unknown types or missing configuration
+  entry._raw_metadata = server as unknown as Record<string, unknown>;
   return entry;
 }
 
@@ -102,6 +119,22 @@ export function generateInstallInstructions(server: RegistryServer): string {
     }
     lines.push('}');
     lines.push('```');
+
+    // Add authentication note if headers are present
+    if (remote.headers && remote.headers.length > 0) {
+      lines.push('');
+      lines.push('### Authentication');
+      lines.push(
+        'This server requires authentication tokens or API keys in the headers. Make sure to:',
+      );
+      lines.push(
+        '- Replace placeholder values (e.g., ${API_TOKEN}) with actual credentials',
+      );
+      lines.push(
+        '- Keep authentication tokens secure and do not commit them to version control',
+      );
+    }
+
     return lines.join('\n');
   }
 
@@ -123,14 +156,16 @@ export function generateInstallInstructions(server: RegistryServer): string {
         break;
       case 'oci':
         lines.push('- Docker installed and running');
-        lines.push('- Internet connection for image pulling');
+        lines.push('- Internet connection for container image pulling');
+        lines.push('- docker pull permission for the specified container');
         break;
       case 'github':
-        lines.push('- GitHub packages are not supported in this version');
-        lines.push('- Please use alternative installation methods');
+        lines.push('- Node.js and npm installed');
+        lines.push('- Internet connection for package installation');
         break;
       default:
-        lines.push('- Check package documentation for specific requirements');
+        lines.push(`- Check documentation for ${pkg.identifier} package`);
+        lines.push('- manual configuration may be required');
         break;
     }
 
@@ -159,18 +194,26 @@ export function generateInstallInstructions(server: RegistryServer): string {
         lines.push(`  "args": ["run", "-i", "--rm", "${pkg.identifier}"]`);
         break;
       default:
-        lines.push('  // Configuration depends on package type');
+        lines.push(
+          `  // Configuration depends on package type for ${pkg.identifier}`,
+        );
         break;
     }
 
     if (pkg.environment_variables && pkg.environment_variables.length > 0) {
-      lines.push('  "env": {');
-      pkg.environment_variables.forEach((envVar, index, arr) => {
-        const comma = index < arr.length - 1 ? ',' : '';
-        const value = envVar.value || `"<YOUR_${envVar.name}>"`;
-        lines.push(`    "${envVar.name}": ${value}${comma}`);
-      });
-      lines.push('  }');
+      // Only include variables with values in the config
+      const varsWithValues = pkg.environment_variables.filter(
+        (env) => env.value !== undefined,
+      );
+      if (varsWithValues.length > 0) {
+        lines.push('  "env": {');
+        varsWithValues.forEach((envVar, index, arr) => {
+          const comma = index < arr.length - 1 ? ',' : '';
+          const value = envVar.value;
+          lines.push(`    "${envVar.name}": ${value}${comma}`);
+        });
+        lines.push('  }');
+      }
     }
 
     lines.push('}');
@@ -181,15 +224,20 @@ export function generateInstallInstructions(server: RegistryServer): string {
       pkg.environment_variables.some((env) => env.is_required)
     ) {
       lines.push('');
-      lines.push('## Required Environment Variables');
+      const requiredVars = pkg.environment_variables.filter(
+        (env) => env.is_required,
+      );
+      const title =
+        requiredVars.length === 1
+          ? 'Required environment variable'
+          : 'Required Environment Variables';
+      lines.push(`## ${title}`);
       lines.push('');
-      pkg.environment_variables
-        .filter((env) => env.is_required)
-        .forEach((env) => {
-          lines.push(
-            `- **${env.name}**: ${env.value ? `Default: ${env.value}` : 'Required - please set this value'}`,
-          );
-        });
+      requiredVars.forEach((env) => {
+        lines.push(
+          `- **${env.name}**: ${env.value ? `Default: ${env.value}` : 'required - please set this value'}`,
+        );
+      });
     }
   }
 
