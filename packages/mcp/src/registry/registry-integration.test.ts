@@ -101,7 +101,8 @@ describe('Registry Integration Tests', () => {
       expect(searchResult.servers![0].isRemote).toBe(false);
 
       // Step 2: Get server details using server name (since getServer searches by name)
-      const serverDetails = await context.getServerDetails('NPM Example Server');
+      const serverDetails =
+        await context.getServerDetails('NPM Example Server');
       expect(serverDetails).toBeTruthy();
       expect(serverDetails!.name).toBe('NPM Example Server');
       expect(serverDetails!.packages).toHaveLength(1);
@@ -196,9 +197,9 @@ describe('Registry Integration Tests', () => {
       // Headers are converted from KeyValueInput[] to Record<string, string> by RegistryContext
       expect(typeof config.headers).toBe('object');
       expect(config.headers).toEqual({
-        'Authorization': 'Bearer ${API_TOKEN}',
+        Authorization: 'Bearer ${API_TOKEN}',
         'Content-Type': 'text/event-stream',
-        'Accept': 'text/event-stream'
+        Accept: 'text/event-stream',
       });
 
       // Verify install instructions mention authentication
