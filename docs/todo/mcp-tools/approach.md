@@ -179,7 +179,59 @@ You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-Phase 5: Unskip & Run Tests
+Phase 5: Fix Critical Phase 4 Issues
+
+You **MUST** tick the checklist boxes for previous phase before continuing.
+
+**CRITICAL ISSUES TO FIX:**
+1. Missing required methods in MCPProxy
+2. CLI execution doesn't pass proxy to commands
+3. Wrong semantics - checking connected instead of configured servers
+4. TODO comments not cleaned up from Phase 4
+
+**Implementation Tasks:**
+
+1. **Update IMCPProxy interface** (packages/commands/core/src/interfaces.ts):
+   - Add `hasServerConfigured(name: string): boolean`
+   - Add `isServerConnected(name: string): boolean`
+   - Keep existing methods for compatibility
+
+2. **Implement methods in MCPProxy** (packages/mcp/src/index.ts):
+   - `hasServerConfigured(name: string): boolean` - check if server exists in _normalizedServers
+   - `isServerConnected(name: string): boolean` - check if server exists in connectedServers Map
+
+3. **Refactor BaseCommand methods** (packages/commands/core/src/base-command.ts):
+   - Rename existing `requireServer()` to `requireServerConnected()`
+   - Create new `requireServerConfigured()` that checks configuration only
+   - Remove ALL TODO/Phase 4 comments
+   - Both methods should use the new MCPProxy methods
+
+4. **Fix CLI execution** (packages/mcp/src/commands/run.ts):
+   - Create a minimal proxy instance or configuration reader
+   - Pass it to commands via setProxy() before executeViaCLI()
+   - Ensure commands can check server configuration even in CLI mode
+
+5. **Update all tests** (packages/commands/core/src/__tests__/server-dependency.test.ts):
+   - Update test names to reflect new method names
+   - Test both requireServerConfigured and requireServerConnected
+   - Ensure tests cover CLI execution scenario
+
+**DO NOT** proceed to next phase until:
+- [ ] All TODO/Phase 4 comments are removed from the codebase
+- [ ] hasServerConfigured() and isServerConnected() are implemented in MCPProxy
+- [ ] requireServerConfigured() and requireServerConnected() work correctly in BaseCommand
+- [ ] CLI execution passes proxy/config to commands
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] you did a thorough review using code-reasoning tool to ensure no worker fooled you
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
+Phase 6: Unskip & Run Tests
 
 You **MUST** tick the checklist boxes for previous phase before continuing.
 
@@ -199,7 +251,7 @@ You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-Phase 6: Example Command & Documentation
+Phase 7: Example Command & Documentation
 
 You **MUST** tick the checklist boxes for previous phase before continuing.
 
