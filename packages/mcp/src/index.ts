@@ -33,6 +33,7 @@ import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
+import { ServerStatus } from '../../server/src/types/index.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
 import { writeFileSync, mkdirSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
@@ -144,6 +145,8 @@ export class MCPProxy {
     string,
     (TargetServer | ExtendedTargetServerZod) & { error?: string }
   >();
+  private connectionTimestamps = new Map<string, string>();
+  private transports = new Map<string, Transport>();
 
   constructor(config: ProxyConfig) {
     this._config = config;
@@ -549,7 +552,7 @@ export class MCPProxy {
       this.disconnectedServers.set(serverName, disconnectedServerInfo);
     }
 
-    // Clean up client reference
+    // Clean up client reference and associated tracking data
     const client = this._clients.get(serverName);
     if (client) {
       this._clients.delete(serverName);
@@ -559,84 +562,118 @@ export class MCPProxy {
       this.toolRegistry.removeToolsFromServer(serverName);
     }
 
+    // Clean up connection tracking
+    this.connectionTimestamps.delete(serverName);
+    this.transports.delete(serverName);
+
     // Consider automatic reconnection after a delay
     // For now, we just log the disconnection - reconnection could be added later
     // setTimeout(() => this.attemptReconnection(targetServer), 5000);
+  }
+
+  /**
+   * Connect to a single target server
+   * Extracted from connectToTargetServers for reuse in reconnection logic
+   */
+  private async connectToSingleServer(
+    targetServer: TargetServer | ExtendedTargetServerZod,
+  ): Promise<void> {
+    logEvent('info', 'server:connect_start', {
+      name: targetServer.name,
+      command: targetServer.command,
+      args: targetServer.args,
+      hasAuth: !!(targetServer as ExtendedTargetServerZod).auth,
+      hasTransport: !!(targetServer as ExtendedTargetServerZod).transport,
+    });
+
+    const client = new Client({
+      name: `proxy-client-${targetServer.name}`,
+      version: '1.0.0',
+    });
+
+    let transport;
+    const extendedServer = targetServer as ExtendedTargetServerZod;
+
+    // Check if this is an extended server config with auth/transport
+    if (extendedServer.auth || extendedServer.transport) {
+      // Use TransportFactory for new OAuth-enabled configurations
+      const authProvider = this.createAuthProvider(
+        extendedServer.auth,
+        extendedServer.name,
+      );
+
+      // If transport is specified, use it; otherwise fall back to stdio from command
+      const transportConfig = extendedServer.transport || {
+        type: 'stdio' as const,
+        command: extendedServer.command!,
+        args: extendedServer.args,
+        env: extendedServer.env,
+      };
+
+      transport = await this.transportFactory.createTransport(
+        targetServer.name,
+        transportConfig,
+        authProvider,
+      );
+    } else {
+      // Legacy path: use StdioClientTransport for backward compatibility
+      const legacyServer = targetServer as TargetServer;
+      if (!legacyServer.command) {
+        throw new Error(`Server ${targetServer.name} missing command field`);
+      }
+
+      transport = new StdioClientTransport(targetServer.name, {
+        command: legacyServer.command,
+        args: legacyServer.args || [],
+        env: { ...process.env, ...legacyServer.env } as Record<string, string>,
+      });
+    }
+
+    await client.connect(transport);
+
+    // Set up disconnect handling - listen for transport close events
+    this.setupDisconnectHandling(targetServer, client, transport);
+
+    // Track connection timestamp and transport reference
+    const connectedAt = new Date().toISOString();
+    this.connectionTimestamps.set(targetServer.name, connectedAt);
+    this.transports.set(targetServer.name, transport);
+
+    this.connectedServers.set(targetServer.name, targetServer);
+    this.disconnectedServers.delete(targetServer.name); // Remove from disconnected if reconnecting
+    this._clients.set(targetServer.name, client);
+
+    console.error(`[proxy] Connected to: ${targetServer.name}`);
+    logEvent('info', 'server:connect_success', {
+      name: targetServer.name,
+    });
+
+    // Discover tools from the newly connected server
+    try {
+      const response = await client.listTools();
+      for (const tool of response.tools) {
+        this.toolRegistry.registerDiscoveredTool({
+          fullName: `${targetServer.name}__${tool.name}`,
+          originalName: tool.name,
+          serverName: targetServer.name,
+          definition: tool,
+          client,
+        });
+      }
+    } catch (error) {
+      console.error(
+        `[proxy] Failed to discover tools from ${targetServer.name}:`,
+        error,
+      );
+      logError('tools:discovery_failed', error, { server: targetServer.name });
+    }
   }
 
   private async connectToTargetServers() {
     const connectionPromises = this._normalizedServers.map(
       async (targetServer) => {
         try {
-          logEvent('info', 'server:connect_start', {
-            name: targetServer.name,
-            command: targetServer.command,
-            args: targetServer.args,
-            hasAuth: !!(targetServer as ExtendedTargetServerZod).auth,
-            hasTransport: !!(targetServer as ExtendedTargetServerZod).transport,
-          });
-
-          const client = new Client({
-            name: `proxy-client-${targetServer.name}`,
-            version: '1.0.0',
-          });
-
-          let transport;
-          const extendedServer = targetServer as ExtendedTargetServerZod;
-
-          // Check if this is an extended server config with auth/transport
-          if (extendedServer.auth || extendedServer.transport) {
-            // Use TransportFactory for new OAuth-enabled configurations
-            const authProvider = this.createAuthProvider(
-              extendedServer.auth,
-              extendedServer.name,
-            );
-
-            // If transport is specified, use it; otherwise fall back to stdio from command
-            const transportConfig = extendedServer.transport || {
-              type: 'stdio' as const,
-              command: extendedServer.command!,
-              args: extendedServer.args,
-              env: extendedServer.env,
-            };
-
-            transport = await this.transportFactory.createTransport(
-              targetServer.name,
-              transportConfig,
-              authProvider,
-            );
-          } else {
-            // Legacy path: use StdioClientTransport for backward compatibility
-            const legacyServer = targetServer as TargetServer;
-            if (!legacyServer.command) {
-              throw new Error(
-                `Server ${targetServer.name} missing command field`,
-              );
-            }
-
-            transport = new StdioClientTransport(targetServer.name, {
-              command: legacyServer.command,
-              args: legacyServer.args || [],
-              env: { ...process.env, ...legacyServer.env } as Record<
-                string,
-                string
-              >,
-            });
-          }
-
-          await client.connect(transport);
-
-          // Set up disconnect handling - listen for transport close events
-          this.setupDisconnectHandling(targetServer, client, transport);
-
-          this.connectedServers.set(targetServer.name, targetServer);
-          this.disconnectedServers.delete(targetServer.name); // Remove from disconnected if reconnecting
-          this._clients.set(targetServer.name, client);
-
-          console.error(`[proxy] Connected to: ${targetServer.name}`);
-          logEvent('info', 'server:connect_success', {
-            name: targetServer.name,
-          });
+          await this.connectToSingleServer(targetServer);
           return { name: targetServer.name, status: 'connected' as const };
         } catch (error) {
           // Enhanced error handling for authentication failures
@@ -682,6 +719,119 @@ export class MCPProxy {
       connected: Array.from(this.connectedServers),
       disconnected: Array.from(this.disconnectedServers),
     };
+  }
+
+  /**
+   * Get the status of a single server by name
+   * Returns ServerStatus object with current connection state
+   */
+  getServerStatus(name: string): ServerStatus {
+    // Check if server is connected
+    if (this.connectedServers.has(name)) {
+      const connectedAt = this.connectionTimestamps.get(name);
+      return {
+        name,
+        status: 'connected',
+        connectedAt,
+      };
+    }
+
+    // Check if server is in disconnected state
+    const disconnectedServer = this.disconnectedServers.get(name);
+    if (disconnectedServer) {
+      return {
+        name,
+        status: disconnectedServer.error ? 'error' : 'disconnected',
+        error: disconnectedServer.error,
+      };
+    }
+
+    // Server not found in either map - return disconnected status
+    return {
+      name,
+      status: 'disconnected',
+    };
+  }
+
+  /**
+   * Reconnect to a disconnected server
+   * Finds the server in disconnectedServers and attempts to reconnect
+   */
+  async reconnectServer(name: string): Promise<void> {
+    // Check if server is already connected
+    if (this.connectedServers.has(name)) {
+      throw new Error(`Server '${name}' is already connected`);
+    }
+
+    // Find the server in disconnectedServers
+    const disconnectedServer = this.disconnectedServers.get(name);
+    if (!disconnectedServer) {
+      throw new Error(`Server '${name}' not found or not configured`);
+    }
+
+    // Remove the error property if it exists for reconnection
+    const serverConfig = { ...disconnectedServer };
+    delete (serverConfig as { error?: string }).error;
+
+    try {
+      await this.connectToSingleServer(serverConfig);
+      console.error(`[proxy] Successfully reconnected to: ${name}`);
+      logEvent('info', 'server:reconnected', { name });
+    } catch (error) {
+      // Add error info back to disconnected server
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.disconnectedServers.set(name, {
+        ...disconnectedServer,
+        error: errorMessage,
+      });
+
+      console.error(`[proxy] Failed to reconnect to ${name}:`, error);
+      logError('server:reconnect_failed', error, { name });
+      throw error;
+    }
+  }
+
+  /**
+   * Disconnect from a connected server
+   * Closes the connection and moves server to disconnected state
+   */
+  async disconnectServer(name: string): Promise<void> {
+    // Check if server is currently connected
+    if (!this.connectedServers.has(name)) {
+      throw new Error(`Server '${name}' is not currently connected`);
+    }
+
+    const targetServer = this.connectedServers.get(name)!;
+    const client = this._clients.get(name);
+    const transport = this.transports.get(name);
+
+    try {
+      // Close the transport connection
+      if (transport) {
+        await transport.close();
+      } else if (client) {
+        // Fallback: access client's private transport if no transport reference
+        const clientWithTransport = client as unknown as {
+          _transport?: { close: () => Promise<void> };
+        };
+        if (clientWithTransport._transport?.close) {
+          await clientWithTransport._transport.close();
+        }
+      }
+
+      console.error(`[proxy] Manually disconnected from: ${name}`);
+      logEvent('info', 'server:manual_disconnect', { name });
+
+      // Clean up and move to disconnected state
+      // Note: handleServerDisconnection will be called by the transport's onclose handler
+      // But we also call it directly to ensure cleanup happens
+      this.handleServerDisconnection(targetServer, 'manual_disconnect');
+    } catch (error) {
+      console.error(`[proxy] Error during disconnection from ${name}:`, error);
+      logError('server:disconnect_failed', error, { name });
+      throw error;
+    }
   }
 
   private async discoverAllTools() {
