@@ -181,6 +181,42 @@ Use this block to advance status across the lifecycle. One entry per change.
   **Commit/PR:** N/A
   **Next Step:** No action needed - refactoring is complete
 
+- **[ISSUE-8C0AF61-006] – Status Change:** OPEN → IN_PROGRESS
+  **By:** supervisor | claude-opus-4-1-20250805 | latest
+  **Reason/Evidence:** Auth middleware created and wired to /api/streamable/* but tests still failing
+  **Commit/PR:** Multiple worker commits
+  **Next Step:** Verify actual authentication enforcement works
+
+- **[ISSUE-CFA0DBE-005] – Status Change:** OPEN → IN_PROGRESS
+  **By:** supervisor | claude-opus-4-1-20250805 | latest
+  **Reason/Evidence:** /authorize and /token endpoints exist but OAuth provider tests failing (6 failures)
+  **Commit/PR:** Multiple worker commits
+  **Next Step:** Fix remaining OAuth provider test failures
+
+- **[ISSUE-CFA0DBE-001] – Status Change:** OPEN → PARTIALLY_FIXED
+  **By:** supervisor | claude-opus-4-1-20250805 | latest
+  **Reason/Evidence:** Tests reorganized into unit/integration, but integration tests still skip by default
+  **Commit/PR:** Multiple worker commits
+  **Next Step:** Verify integration tests use real implementations
+
+- **[ISSUE-CFA0DBE-002] – Status Change:** OPEN → FIXED
+  **By:** supervisor | claude-opus-4-1-20250805 | latest
+  **Reason/Evidence:** FinalizationRegistry implemented for automatic cleanup at oauth2-authorization-code.ts:54,70
+  **Commit/PR:** Worker 4 implementation
+  **Next Step:** No further action needed
+
+- **[ISSUE-CFA0DBE-006] – Status Change:** OPEN → FIXED
+  **By:** supervisor | claude-opus-4-1-20250805 | latest
+  **Reason/Evidence:** handleServerDisconnection implemented at index.ts:526, properly manages disconnectedServers map
+  **Commit/PR:** Worker 4 implementation
+  **Next Step:** No further action needed
+
+- **[VALIDATION] – Status:** PASSING
+  **By:** supervisor | claude-opus-4-1-20250805 | latest
+  **Reason/Evidence:** yarn validate shows "✨ No issues found" - all TypeScript and ESLint errors resolved
+  **Commit/PR:** Worker 3 fixes
+  **Next Step:** Maintain validation compliance
+
 ---
 
 ### ISSUE-8C0AF61-001 EventSource Token Leakage Not Fixed
