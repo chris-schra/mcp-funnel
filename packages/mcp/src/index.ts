@@ -6,6 +6,7 @@ import {
   CallToolRequestSchema,
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
+import { type Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
   ProxyConfig,
   normalizeExtendedServers,
@@ -470,6 +471,99 @@ export class MCPProxy {
     }
   }
 
+  /**
+   * Set up disconnect handling for a connected server
+   * Listens for transport close events and handles cleanup/reconnection
+   */
+  private setupDisconnectHandling(
+    targetServer: TargetServer | ExtendedTargetServerZod,
+    client: Client,
+    transport: Transport,
+  ): void {
+    // Set up transport close handler
+    const originalOnClose = transport.onclose;
+    transport.onclose = () => {
+      // Call original close handler if it exists
+      if (originalOnClose) {
+        originalOnClose();
+      }
+
+      // Handle the disconnection
+      this.handleServerDisconnection(targetServer, 'transport_closed');
+    };
+
+    // Set up transport error handler for connection issues
+    const originalOnError = transport.onerror;
+    transport.onerror = (error: Error) => {
+      // Call original error handler if it exists
+      if (originalOnError) {
+        originalOnError(error);
+      }
+
+      // Log the error and handle disconnection if it's a connection error
+      logEvent('error', 'server:transport_error', {
+        name: targetServer.name,
+        error: error.message,
+      });
+
+      // Handle disconnection for certain error types
+      if (
+        error.message.includes('connection') ||
+        error.message.includes('closed')
+      ) {
+        this.handleServerDisconnection(
+          targetServer,
+          'transport_error',
+          error.message,
+        );
+      }
+    };
+  }
+
+  /**
+   * Handle server disconnection by cleaning up resources and moving to disconnected state
+   */
+  private handleServerDisconnection(
+    targetServer: TargetServer | ExtendedTargetServerZod,
+    reason: string,
+    errorMessage?: string,
+  ): void {
+    const serverName = targetServer.name;
+
+    console.error(`[proxy] Server disconnected: ${serverName} (${reason})`);
+    logEvent('info', 'server:disconnected', {
+      name: serverName,
+      reason,
+      error: errorMessage,
+    });
+
+    // Move from connected to disconnected
+    if (this.connectedServers.has(serverName)) {
+      this.connectedServers.delete(serverName);
+
+      // Add to disconnected servers with error info
+      const disconnectedServerInfo = errorMessage
+        ? { ...targetServer, error: errorMessage }
+        : targetServer;
+
+      this.disconnectedServers.set(serverName, disconnectedServerInfo);
+    }
+
+    // Clean up client reference
+    const client = this._clients.get(serverName);
+    if (client) {
+      this._clients.delete(serverName);
+
+      // Clean up any resources associated with this client
+      // Remove tools from registry for this server
+      this.toolRegistry.removeToolsFromServer(serverName);
+    }
+
+    // Consider automatic reconnection after a delay
+    // For now, we just log the disconnection - reconnection could be added later
+    // setTimeout(() => this.attemptReconnection(targetServer), 5000);
+  }
+
   private async connectToTargetServers() {
     const connectionPromises = this._normalizedServers.map(
       async (targetServer) => {
@@ -532,8 +626,11 @@ export class MCPProxy {
 
           await client.connect(transport);
 
-          // TODO: handle disconnects
+          // Set up disconnect handling - listen for transport close events
+          this.setupDisconnectHandling(targetServer, client, transport);
+
           this.connectedServers.set(targetServer.name, targetServer);
+          this.disconnectedServers.delete(targetServer.name); // Remove from disconnected if reconnecting
           this._clients.set(targetServer.name, client);
 
           console.error(`[proxy] Connected to: ${targetServer.name}`);

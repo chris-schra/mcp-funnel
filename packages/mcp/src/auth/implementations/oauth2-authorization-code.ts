@@ -48,6 +48,16 @@ interface PendingAuth {
 }
 
 /**
+ * Cleanup registry for automatic resource cleanup when OAuth providers are garbage collected
+ * This prevents memory leaks when destroy() is not called manually
+ */
+const cleanupRegistry = new FinalizationRegistry<NodeJS.Timeout>(
+  (intervalId) => {
+    clearInterval(intervalId);
+  },
+);
+
+/**
  * OAuth2 Authorization Code provider implementing IAuthProvider
  *
  * Implements OAuth2 Authorization Code flow (RFC 6749 Section 4.1) with PKCE (RFC 7636):
@@ -55,6 +65,10 @@ interface PendingAuth {
  * - Token acquisition and automatic refresh
  * - Secure state management and validation
  * - Integration with existing Hono server callback route
+ * - Automatic cleanup of intervals when instance is garbage collected
+ *
+ * **Important**: While automatic cleanup is provided via FinalizationRegistry,
+ * it's recommended to explicitly call destroy() for immediate resource cleanup.
  */
 export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
   private readonly config: OAuth2AuthCodeConfig;
@@ -83,6 +97,10 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
       },
       2 * 60 * 1000,
     );
+
+    // Register for automatic cleanup when instance is garbage collected
+    // This prevents memory leaks if destroy() is not called manually
+    cleanupRegistry.register(this, this.cleanupInterval);
   }
 
   /**
@@ -332,12 +350,19 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
 
   /**
    * Cleanup resources when provider is destroyed
+   *
+   * **Important**: Call this method when you're done with the provider instance
+   * to immediately free resources. If not called, automatic cleanup will occur
+   * during garbage collection, but may be delayed.
    */
   destroy(): void {
     // Clear cleanup interval
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
+
+    // Unregister from automatic cleanup since we're manually destroying
+    cleanupRegistry.unregister(this);
 
     // Clean up all pending auths for this instance
     this.cleanupPendingAuth();

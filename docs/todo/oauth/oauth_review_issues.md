@@ -163,6 +163,24 @@ Use this block to advance status across the lifecycle. One entry per change.
   **Commit/PR:** N/A
   **Next Step:** No action required
 
+- **[ISSUE-8C0AF61-004] – Status Change:** DISPROVEN → DISPROVEN (CONFIRMED)
+  **By:** claude | claude-opus-4-1-20250805 | 8c0af61
+  **Reason/Evidence:** Verified 128-bit entropy from `randomBytes(16)` at oauth2-authorization-code.ts:L34-36. Collision probability is ~1 in 2^128. Map structure inherently prevents duplicates.
+  **Commit/PR:** N/A
+  **Next Step:** No action needed - entropy is sufficient
+
+- **[ISSUE-CFA0DBE-003] – Status Change:** DISPROVEN → DISPROVEN (CONFIRMED)
+  **By:** claude | claude-opus-4-1-20250805 | 8c0af61
+  **Reason/Evidence:** Grep confirms no `new TransportError` usage outside error class definition. All implementations use static factories.
+  **Commit/PR:** N/A
+  **Next Step:** No action needed - refactoring is complete
+
+- **[ISSUE-CFA0DBE-004] – Status Change:** DISPROVEN → DISPROVEN (CONFIRMED)
+  **By:** claude | claude-opus-4-1-20250805 | 8c0af61
+  **Reason/Evidence:** Legacy path now uses `StdioClientTransport` at index.ts:L523. PrefixedStdioClientTransport only exists in documentation.
+  **Commit/PR:** N/A
+  **Next Step:** No action needed - refactoring is complete
+
 ---
 
 ### ISSUE-8C0AF61-001 EventSource Token Leakage Not Fixed
@@ -214,6 +232,13 @@ this.eventSource = new EventSource(url, {
 - **Agent:** claude | **Model:** claude-3-5-sonnet-20241022 | **Run:** phase4-review | **Commit:** 8c0af61
     - [x] Read code at all referenced locations
     - [x] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+- **Agent:** claude | **Model:** claude-opus-4-1-20250805 | **Run:** triage-20250119 | **Commit:** 8c0af61
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
     - [ ] Reproduced (or attempted) locally/in CI
     - [x] Classified **Assumption vs Evidence**: E2
     - [x] Proposed or refined fix
@@ -391,6 +416,7 @@ private generateUniqueState(): string {
 #### Agent Notes (do not delete prior notes)
 - claude | claude-3-5-sonnet-20241022 | 8c0af61: No collision detection for OAuth states despite using Maps for concurrent flows
 - codex | gpt-5-codex | 8c0af61: 128-bit `generateState()` entropy makes collisions vanishingly unlikely; keeping flow map-backed ensures duplicates cannot coexist. Marked DISPROVEN. Evidence: packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:32, packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:113. confidence: 0.9 (E2)
+- claude | claude-opus-4-1-20250805 | 8c0af61: Confirmed 128-bit entropy is sufficient. Collision probability is ~1 in 2^128 (~3.4×10^38). Map structure prevents duplicates. Issue should be DISPROVEN. Evidence: packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:34-36. confidence: 0.95 (E2)
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** claude | **Model:** claude-3-5-sonnet-20241022 | **Run:** phase4-review | **Commit:** 8c0af61
@@ -452,6 +478,7 @@ Create true integration tests that:
 #### Agent Notes (do not delete prior notes)
 - claude | claude-opus-4-1-20250805 | cfa0dbe: Discovered during comprehensive code review. Tests violate principle of not testing mocks.
 - codex | gpt-5-codex | 8c0af61: Confirmed the so-called e2e suite still mocks OAuth + SSE (`packages/mcp/test/e2e/oauth-sse-integration.test.ts:1-134`); recommending real network-backed integration coverage. Status stays OPEN. confidence: 0.8 (E2)
+- claude | claude-opus-4-1-20250805 | 8c0af61: Confirmed issue. E2E tests mock EventSource (L26-34), mockFetch (L37-38), MockOAuthServer (L43-110), and MockSSEServer (L121-130). Violates CLAUDE.md principle against testing mocks. Status remains OPEN. Evidence: packages/mcp/test/e2e/oauth-sse-integration.test.ts:26-130. confidence: 0.95 (E4)
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** claude | **Model:** claude-opus-4-1-20250805 | **Run:** phase4-final-review | **Commit:** cfa0dbe
@@ -467,6 +494,13 @@ Create true integration tests that:
     - [ ] Reproduced (or attempted) locally/in CI
     - [x] Classified **Assumption vs Evidence**: E2
     - [x] Proposed or refined fix
+    - [ ] Set/updated **Status**
+- **Agent:** claude | **Model:** claude-opus-4-1-20250805 | **Run:** triage-20250119 | **Commit:** 8c0af61
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E4
+    - [ ] Proposed or refined fix
     - [ ] Set/updated **Status**
 
 ---
@@ -514,6 +548,7 @@ Options:
 #### Agent Notes (do not delete prior notes)
 - claude | claude-opus-4-1-20250805 | cfa0dbe: Interval needs manual cleanup, no automatic GC cleanup
 - codex | gpt-5-codex | 8c0af61: Each reconnect builds a fresh provider with its own `setInterval` (packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:65-78) while `createTransport` caches transports by config only (packages/mcp/src/transports/transport-factory.ts:218-240, packages/mcp/src/transports/transport-factory.ts:589-600), leaking timers. Recommend reusing providers or calling `destroy()` when discarding them. confidence: 0.7 (E2)
+- claude | claude-opus-4-1-20250805 | 8c0af61: Confirmed issue. Cleanup interval created at L80-85, cleared in destroy() at L337-344. No automatic cleanup on GC. Transport caching at L222-228 doesn't cache auth providers. Low severity - minimal resource impact. Status remains OPEN. confidence: 0.8 (E3)
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** claude | **Model:** claude-opus-4-1-20250805 | **Run:** phase4-final-review | **Commit:** cfa0dbe
@@ -529,6 +564,13 @@ Options:
     - [ ] Reproduced (or attempted) locally/in CI
     - [x] Classified **Assumption vs Evidence**: E2
     - [x] Proposed or refined fix
+    - [ ] Set/updated **Status**
+- **Agent:** claude | **Model:** claude-opus-4-1-20250805 | **Run:** triage-20250119 | **Commit:** 8c0af61
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E3
+    - [ ] Proposed or refined fix
     - [ ] Set/updated **Status**
 
 ---
