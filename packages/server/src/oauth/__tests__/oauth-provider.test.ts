@@ -53,7 +53,9 @@ describe('OAuthProvider', () => {
       expect(client.response_types).toEqual(['code']);
       expect(client.scope).toBe('read write');
       expect(client.client_id_issued_at).toBeDefined();
-      expect(client.client_secret_expires_at).toBe(0);
+      expect(client.client_secret_expires_at).toBeGreaterThan(
+        Math.floor(Date.now() / 1000),
+      );
     });
 
     it('should create client with default values when optional fields omitted', async () => {
@@ -67,6 +69,23 @@ describe('OAuthProvider', () => {
       expect(client.response_types).toEqual(['code']);
       expect(client.client_name).toBeUndefined();
       expect(client.scope).toBeUndefined();
+    });
+
+    it('should set client secret expiry to 1 year by default', async () => {
+      const clientMetadata = {
+        client_name: 'Test Client',
+        redirect_uris: ['http://localhost:8080/callback'],
+      };
+
+      const client = await oauthProvider.registerClient(clientMetadata);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const oneYearFromNow = currentTime + 31536000; // 1 year in seconds
+
+      expect(client.client_secret_expires_at).toBeGreaterThan(currentTime);
+      expect(client.client_secret_expires_at).toBeLessThan(oneYearFromNow + 60); // Allow 60 second margin
+      expect(client.client_secret_expires_at).toBeGreaterThan(
+        oneYearFromNow - 60,
+      ); // Allow 60 second margin
     });
   });
 
@@ -340,6 +359,36 @@ describe('OAuthProvider', () => {
       expect(result.tokenResponse?.expires_in).toBe(3600);
       expect(result.tokenResponse?.scope).toBe('read write');
       expect(result.tokenResponse?.refresh_token).toBeDefined();
+    });
+
+    it('should set refresh token expiry to 30 days by default', async () => {
+      const params = {
+        grant_type: 'authorization_code',
+        code: authCode,
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: testClient.client_id,
+        client_secret: testClient.client_secret,
+        code_verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
+      };
+
+      const result = await oauthProvider.handleTokenRequest(params);
+      expect(result.success).toBe(true);
+      expect(result.tokenResponse?.refresh_token).toBeDefined();
+
+      // Get the refresh token from storage to check its expiry
+      const refreshTokenData = await storage.getRefreshToken(
+        result.tokenResponse!.refresh_token!,
+      );
+      expect(refreshTokenData).toBeDefined();
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      const thirtyDaysFromNow = currentTime + 2592000; // 30 days in seconds
+
+      expect(refreshTokenData!.expires_at).toBeGreaterThan(currentTime);
+      expect(refreshTokenData!.expires_at).toBeLessThan(thirtyDaysFromNow + 60); // Allow 60 second margin
+      expect(refreshTokenData!.expires_at).toBeGreaterThan(
+        thirtyDaysFromNow - 60,
+      ); // Allow 60 second margin
     });
 
     it('should reject request with invalid authorization code', async () => {
