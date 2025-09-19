@@ -387,7 +387,8 @@ describe('WebSocketClientTransport', () => {
         params: { key: 'value' },
       };
 
-      await transport.send(request);
+      // Start the send but don't wait for it to complete (would timeout waiting for response)
+      const sendPromise = transport.send(request);
 
       // Wait for WebSocket send to be called
       await vi.waitFor(() => {
@@ -396,6 +397,11 @@ describe('WebSocketClientTransport', () => {
 
       const sentMessage = JSON.parse(mockWs.lastSentData!);
       expect(sentMessage).toEqual(request);
+
+      // Clean up - this will timeout but we don't wait for it
+      sendPromise.catch(() => {
+        // Expected timeout since mock doesn't respond with JSON-RPC
+      });
     });
 
     it('should receive messages from WebSocket connection', async () => {

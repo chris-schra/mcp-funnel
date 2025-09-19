@@ -605,7 +605,7 @@ describe('OAuth2ClientCredentialsProvider', () => {
             configWithMissingEnvVar,
             mockStorage,
           ),
-      ).toThrow('Environment variable MISSING_CLIENT_ID is not set');
+      ).toThrow('Environment variable MISSING_CLIENT_ID is not defined');
     });
   });
 

@@ -30,9 +30,10 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
   })),
 }));
 
-// Mock child_process (needs exec for keychain-token-storage)
+// Mock child_process (needs exec and execFile for keychain-token-storage)
 vi.mock('child_process', () => ({
   exec: vi.fn(),
+  execFile: vi.fn(),
   spawn: vi.fn(() => ({
     stdin: { write: vi.fn() },
     stdout: { on: vi.fn() },
