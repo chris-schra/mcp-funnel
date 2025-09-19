@@ -547,16 +547,13 @@ describe('Server Dependency System', () => {
   });
 
   describe('Integration scenarios', () => {
-    test.skip('should support command validation workflow', async () => {
+    test('should support command validation workflow with requireServerConnected', async () => {
       // Commands should be able to check all their dependencies
-      // and handle mixed results (some configured, some not)
+      // and handle mixed results (some connected, some not)
 
-      // Setup: Mock proxy state
-      vi.mocked(mockProxy.getTargetServers).mockReturnValue({
-        connected: [['github', { name: 'github', command: 'gh-mcp' }]],
-        disconnected: [
-          ['filesystem', { name: 'filesystem', command: 'fs-mcp' }],
-        ],
+      // Setup: Mock proxy state - github connected, filesystem not connected
+      vi.mocked(mockProxy.isServerConnected).mockImplementation((name) => {
+        return ['github'].includes(name); // Only github is connected
       });
 
       command.setMockProxy(mockProxy);
@@ -565,27 +562,26 @@ describe('Server Dependency System', () => {
       const dependencies = command.getServerDependencies();
       expect(dependencies).toBeDefined();
 
-      // Expected behavior when requireServer is implemented:
-      // if (dependencies) {
-      //   const results = await Promise.all(
-      //     dependencies.map((_dep) => command.requireServer(_dep)),
-      //   );
-      //
-      //   // First dependency (github) should be configured
-      //   expect(results[0]).toEqual({ configured: true });
-      //
-      //   // Second dependency (filesystem) should not be configured (disconnected)
-      //   expect(results[1]).toEqual({ configured: false });
-      //
-      //   // Verify tool exposure was triggered for github only
-      //   expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
-      //     ['github__*'],
-      //     'server-dependency',
-      //   );
-      // }
+      if (dependencies) {
+        const results = await Promise.all(
+          dependencies.map((dep) => command.testRequireServerConnected(dep)),
+        );
+
+        // First dependency (github) should be connected
+        expect(results[0]).toEqual({ configured: true });
+
+        // Second dependency (filesystem) should not be connected
+        expect(results[1]).toEqual({ configured: false });
+
+        // Verify tool exposure was triggered for github only (ensureToolsExposed: true)
+        expect(mockProxy.registry.enableTools).toHaveBeenCalledWith(
+          ['github__*'],
+          'server-dependency',
+        );
+      }
     });
 
-    test.skip('should handle commands with no proxy access gracefully', async () => {
+    test('should handle commands with no proxy access gracefully', async () => {
       // Commands executed via CLI without MCP context should handle
       // missing proxy gracefully by returning undefined
 
@@ -593,17 +589,22 @@ describe('Server Dependency System', () => {
       const dependencies = command.getServerDependencies();
       expect(dependencies).toBeDefined();
 
-      // Expected behavior when requireServer is implemented:
-      // if (dependencies) {
-      //   const results = await Promise.all(
-      //     dependencies.map((_dep) => command.requireServer(_dep)),
-      //   );
-      //
-      //   // All results should be undefined when no proxy is available
-      //   results.forEach((result) => {
-      //     expect(result).toBeUndefined();
-      //   });
-      // }
+      if (dependencies) {
+        const configuredResults = await Promise.all(
+          dependencies.map((dep) => command.testRequireServerConfigured(dep)),
+        );
+        const connectedResults = await Promise.all(
+          dependencies.map((dep) => command.testRequireServerConnected(dep)),
+        );
+
+        // All results should be undefined when no proxy is available
+        configuredResults.forEach((result) => {
+          expect(result).toBeUndefined();
+        });
+        connectedResults.forEach((result) => {
+          expect(result).toBeUndefined();
+        });
+      }
     });
 
     test.skip('should demonstrate extensibility for future enhancements', () => {
