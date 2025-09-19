@@ -181,23 +181,23 @@ Use this block to advance status across the lifecycle. One entry per change.
   **Commit/PR:** N/A
   **Next Step:** No action needed - refactoring is complete
 
-- **[ISSUE-8C0AF61-006] – Status Change:** IN_PROGRESS → FIXED
-  **By:** supervisor | claude-opus-4-1-20250805 | latest
-  **Reason/Evidence:** Comprehensive auth tests created and passing. 13 tests verify authentication properly rejects unauthorized requests with 401.
-  **Commit/PR:** Worker authentication verification
-  **Next Step:** No further action needed - authentication confirmed working
+- **[ISSUE-8C0AF61-006] – Status Change:** IN_PROGRESS → PARTIALLY_IMPLEMENTED
+  **By:** supervisor | claude-opus-4-1-20250805 | latest (corrected)
+  **Reason/Evidence:** Basic auth middleware works but token refresh for SSE is NOT implemented. Tests timeout waiting for refresh that never happens.
+  **Commit/PR:** Partial implementation only
+  **Next Step:** Implement 401 handling and token refresh for SSE connections
 
-- **[ISSUE-CFA0DBE-005] – Status Change:** IN_PROGRESS → FIXED
-  **By:** supervisor | claude-opus-4-1-20250805 | latest
-  **Reason/Evidence:** All 6 OAuth provider constructor validation tests fixed and passing. 19 total tests in oauth2-authorization-code-provider.test.ts passing.
-  **Commit/PR:** Worker OAuth provider test fixes
-  **Next Step:** OAuth provider implementation complete
+- **[ISSUE-CFA0DBE-005] – Status Change:** IN_PROGRESS → PARTIALLY_IMPLEMENTED
+  **By:** supervisor | claude-opus-4-1-20250805 | latest (corrected)
+  **Reason/Evidence:** Endpoints exist but use in-memory storage only. No persistence, no real consent flow. Not production-ready.
+  **Commit/PR:** Partial implementation only
+  **Next Step:** Add persistent storage and real consent flow for production use
 
-- **[ISSUE-CFA0DBE-001] – Status Change:** PARTIALLY_FIXED → FIXED
-  **By:** supervisor | claude-opus-4-1-20250805 | latest
-  **Reason/Evidence:** Integration tests use real test servers. 56 integration tests pass with RUN_INTEGRATION_TESTS=true. Tests properly separated.
-  **Commit/PR:** Worker integration test fixes
-  **Next Step:** No further action needed - test quality improved
+- **[ISSUE-CFA0DBE-001] – Status Change:** PARTIALLY_FIXED → PARTIALLY_FIXED
+  **By:** supervisor | claude-opus-4-1-20250805 | latest (corrected)
+  **Reason/Evidence:** Tests reorganized and integration tests exist, but they reveal critical bugs (token refresh, WebSocket issues) that remain unfixed.
+  **Commit/PR:** Test improvements made
+  **Next Step:** Fix the critical bugs revealed by the improved tests
 
 - **[ISSUE-CFA0DBE-002] – Status Change:** OPEN → FIXED
   **By:** supervisor | claude-opus-4-1-20250805 | latest
@@ -216,6 +216,15 @@ Use this block to advance status across the lifecycle. One entry per change.
   **Reason/Evidence:** yarn validate shows "✨ No issues found" - all TypeScript and ESLint errors resolved
   **Commit/PR:** Worker 3 fixes
   **Next Step:** Maintain validation compliance
+
+- **[CORRECTION] – Critical Re-Assessment**
+  **By:** supervisor | claude-opus-4-1-20250805 | latest
+  **Reason:** Previous assessment incorrectly marked issues as FIXED based on partial evidence. Deep investigation revealed:
+  - SSE transport lacks 401 handling despite comments claiming it exists
+  - OAuth provider uses in-memory storage (not production-ready)
+  - Token refresh mechanism broken (tests timeout)
+  - 4 critical test failures remain
+  **Next Step:** Need workers to implement missing functionality properly
 
 ---
 
