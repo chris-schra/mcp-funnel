@@ -6,6 +6,7 @@ registry. This feature provides tools to search for available servers and retrie
 ## Overview
 
 The registry integration provides two primary capabilities:
+
 - **Server Discovery**: Search the MCP registry to find servers matching your needs
 - **Installation Guidance**: Get detailed configuration snippets and instructions for any server
 
@@ -16,18 +17,21 @@ The registry integration provides two primary capabilities:
 Search the MCP registry for servers by keywords.
 
 **Parameters:**
+
 - `keywords` (required): Space-separated keywords to search for in server names, descriptions, and tool names
 - `registry` (optional): Registry ID or URL to search within a specific registry
   - Use `"official"` for the main MCP registry
   - Or provide a full registry URL
 
 **Example Usage:**
+
 ```
 search_registry_tools keywords="github code review"
 search_registry_tools keywords="github" registry="official"
 ```
 
 **Returns:** Minimal server information optimized for token efficiency:
+
 - Server name
 - Brief description
 - Registry ID (for retrieving full details)
@@ -39,18 +43,21 @@ search_registry_tools keywords="github" registry="official"
 Retrieve detailed installation instructions and configuration for a specific server.
 
 **Parameters:**
+
 - `registryId` (required): The server identifier, which can be:
   - A server name (e.g., "github-mcp-server")
   - A UUID (e.g., "a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d")
   - The registry ID from search results
 
 **Example Usage:**
+
 ```
 get_server_install_info registryId="github-mcp-server"
 get_server_install_info registryId="a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d"
 ```
 
 **Returns:** Complete installation information:
+
 - Server name and description
 - Configuration snippet ready to add to your `.mcp-funnel.json`
 - Installation instructions specific to the package type
@@ -64,7 +71,9 @@ Configurations are automatically generated based on the server's package type.
 ### Supported Package Types
 
 #### NPM Packages
+
 Servers distributed via npm are configured with the `npx` command:
+
 ```json
 {
   "name": "example-npm-server",
@@ -74,7 +83,9 @@ Servers distributed via npm are configured with the `npx` command:
 ```
 
 #### Python Packages (PyPI)
+
 Python servers use `uvx` for execution:
+
 ```json
 {
   "name": "example-python-server",
@@ -84,7 +95,9 @@ Python servers use `uvx` for execution:
 ```
 
 #### OCI Containers
+
 Container-based servers run via Docker:
+
 ```json
 {
   "name": "example-container-server",
@@ -94,7 +107,9 @@ Container-based servers run via Docker:
 ```
 
 #### Remote Servers
+
 Remote servers are accessed via HTTP/HTTPS:
+
 ```json
 {
   "name": "example-remote-server",
@@ -111,6 +126,7 @@ Note: Headers can include environment variable references using `${VAR_NAME}` sy
 ## Usage Workflow
 
 1. **Search for servers** using relevant keywords:
+
    ```
    search_registry_tools keywords="filesystem git"
    ```
@@ -118,6 +134,7 @@ Note: Headers can include environment variable references using `${VAR_NAME}` sy
 2. **Review search results** to find servers matching your needs
 
 3. **Get installation details** using the registry ID:
+
    ```
    get_server_install_info registryId="server-id-from-search"
    ```
@@ -129,11 +146,13 @@ Note: Headers can include environment variable references using `${VAR_NAME}` sy
 ## Example: Complete Installation Flow
 
 ### Step 1: Search for GitHub-related servers
+
 ```
 > search_registry_tools keywords="github"
 ```
 
 Response:
+
 ```
 Found 3 servers matching your search:
 
@@ -153,11 +172,13 @@ Found 3 servers matching your search:
 ```
 
 ### Step 2: Get installation info for a specific server
+
 ```
 > get_server_install_info registryId="github-mcp-server"
 ```
 
 Response:
+
 ```json
 {
   "name": "github-mcp-server",
@@ -182,7 +203,9 @@ Response:
 ```
 
 ### Step 3: Add to configuration
+
 Add the `configSnippet` to your `.mcp-funnel.json`:
+
 ```json
 {
   "servers": [
@@ -213,6 +236,7 @@ The registry system respects server-specified runtime hints, allowing flexibilit
 ```
 
 Supported runtime customizations:
+
 - **NPM**: Can use `npx`, `node`, `yarn dlx`, `pnpm dlx`, etc.
 - **Python**: Can use `uvx`, `pipx`, `poetry run`, `python -m`, etc.
 - **OCI**: Can use `docker`, `podman`, etc.
@@ -234,6 +258,7 @@ Servers can specify required and optional environment variables:
 ```
 
 Environment variables support:
+
 - Variable substitution using `${VAR_NAME}` syntax
 - Required vs optional flags (metadata in server definition)
 - Secret marking for sensitive values
@@ -253,15 +278,19 @@ The system automatically detects UUIDs and uses the optimal API endpoint for ret
 The registry integration is built with extensibility in mind, featuring:
 
 ### Singleton Pattern
+
 The `RegistryContext` class implements a singleton pattern to ensure consistent state and shared resources across all registry operations.
 
 ### Caching Layer (TODO)
+
 The architecture includes a caching abstraction layer with a pluggable interface. Currently uses a no-op implementation for MVP, with plans for real caching in Phase 2 to reduce API calls and improve response times.
 
 ### Configuration Management
+
 A flexible configuration system supports multiple package types and generates appropriate configuration snippets for each.
 
 ### Token Efficiency
+
 Search results return minimal information to reduce token usage, with full details available on demand via `get_server_install_info`.
 
 ## Error Handling
@@ -269,17 +298,20 @@ Search results return minimal information to reduce token usage, with full detai
 The registry system implements a robust two-layer error handling architecture:
 
 ### Client Layer
+
 - Throws detailed errors with specific error messages
 - Preserves full error context for debugging
 - Provides clear status codes and error descriptions
 
 ### Context Layer
+
 - Catches errors from individual registry clients
 - Continues operation even if some registries fail
 - Aggregates errors and provides graceful degradation
 - Returns partial results when available
 
 This architecture ensures:
+
 - Network failures don't crash the system
 - Multiple registries can be queried with partial success
 - Invalid registry IDs return clear "not found" messages
@@ -288,9 +320,11 @@ This architecture ensures:
 ## Registry API
 
 The system connects to the official MCP registry at:
+
 - Primary endpoint: `https://registry.modelcontextprotocol.io`
 
 The registry API provides:
+
 - Server search with keyword matching
 - Individual server detail retrieval
 - Package distribution information
@@ -307,16 +341,19 @@ The registry API provides:
 ## Troubleshooting
 
 ### No search results
+
 - Try broader keywords
 - Check spelling and terminology
 - Ensure network connectivity to the registry
 
 ### Server not found by ID
+
 - Verify the registry ID from search results
 - The server may have been removed from the registry
 - Try searching again with related keywords
 
 ### Configuration not working
+
 - Ensure all required environment variables are set
 - Check that the package manager (npm/pip/docker) is installed
 - Verify network access to package repositories
@@ -325,7 +362,7 @@ The registry API provides:
 ## Current Limitations
 
 - Configuration changes require manual editing of `.mcp-funnel.json`
-- After adding or modifying servers in `.mcp-funnel.json`, you need to restart the mcp-funnel proxy process 
+- After adding or modifying servers in `.mcp-funnel.json`, you need to restart the mcp-funnel proxy process
   for changes to take effect (the proxy doesn't hot-reload configuration)
 - The current implementation uses a no-op cache (NoOpCache) that doesn't actually store anything -
   all registry API calls fetch fresh data every time

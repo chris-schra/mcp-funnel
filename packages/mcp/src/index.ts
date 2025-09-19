@@ -19,7 +19,11 @@ import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
 import { SearchRegistryTools } from './tools/search-registry-tools/index.js';
 import { GetServerInstallInfo } from './tools/get-server-install-info/index.js';
-import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
+import {
+  discoverCommands,
+  type ICommand,
+  type IMCPProxy,
+} from '@mcp-funnel/commands-core';
 import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -245,7 +249,7 @@ export class PrefixedStdioClientTransport {
   }
 }
 
-export class MCPProxy {
+export class MCPProxy implements IMCPProxy {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
@@ -353,6 +357,10 @@ export class MCPProxy {
             (enabledCommands.length === 0 ||
               enabledCommands.includes(command.name))
           ) {
+            // Set proxy reference for server dependency support
+            if (typeof command.setProxy === 'function') {
+              command.setProxy(this);
+            }
             const mcpDefs = command.getMCPDefinitions();
             const isSingle = mcpDefs.length === 1;
             const singleMatchesCommand =
@@ -442,6 +450,10 @@ export class MCPProxy {
                 (enabledCommands.length === 0 ||
                   enabledCommands.includes(chosen.name))
               ) {
+                // Set proxy reference for server dependency support
+                if (typeof chosen.setProxy === 'function') {
+                  chosen.setProxy(this);
+                }
                 // Reuse registration logic
                 const mcpDefs = chosen.getMCPDefinitions();
                 const isSingle = mcpDefs.length === 1;
@@ -805,6 +817,24 @@ export class MCPProxy {
 
   get registry() {
     return this.toolRegistry;
+  }
+
+  /**
+   * Check if a server is configured in the proxy configuration
+   * @param name Server name to check
+   */
+  hasServerConfigured(name: string): boolean {
+    // Check in _normalizedServers array which contains all configured servers
+    return this._normalizedServers.some((server) => server.name === name);
+  }
+
+  /**
+   * Check if a server is currently connected and available
+   * @param name Server name to check
+   */
+  isServerConnected(name: string): boolean {
+    // Check if server exists in connectedServers Map
+    return this.connectedServers.has(name);
   }
 }
 

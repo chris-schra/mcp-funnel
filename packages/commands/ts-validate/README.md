@@ -285,7 +285,7 @@ The command respects your project's configuration files:
   - TypeScript is resolved per tsconfig.json group from the tsconfig's directory when available and compatible; otherwise the bundled TypeScript is used.
 - Compatibility policy for local toolchains (same-major preference):
   - Prettier: >= 3.0.0 < 4.0.0
-  - ESLint:   >= 9.0.0 < 10.0.0
+  - ESLint: >= 9.0.0 < 10.0.0
   - TypeScript: >= 5.0.0 < 6.0.0
 - If no compatible local version is found, the bundled dependency included with this command is used.
 - The JSON summary includes `toolStatuses` entries with `origin` (local|bundled) and `version` when available, plus `reason` when a tool is skipped (e.g., `no-eslint-config`, `no-tsconfig`, `no-ts-files`).

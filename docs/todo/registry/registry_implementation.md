@@ -56,7 +56,7 @@ export class MemoryCache implements IRegistryCache {
 export class MCPRegistryClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly cache: IRegistryCache = new NoOpCache()
+    private readonly cache: IRegistryCache = new NoOpCache(),
   ) {}
 
   async searchServers(keywords: string): Promise<ServerDetail[]> {
@@ -69,7 +69,9 @@ export class MCPRegistryClient {
     }
 
     // Fetch from registry
-    const response = await fetch(`${this.baseUrl}/search?q=${encodeURIComponent(keywords)}`);
+    const response = await fetch(
+      `${this.baseUrl}/search?q=${encodeURIComponent(keywords)}`,
+    );
     if (!response.ok) {
       throw new Error(`Registry error: ${response.status}`);
     }
@@ -168,7 +170,10 @@ export interface IConfigManager {
   readConfig(): Promise<ProxyConfig>;
   addServer(server: ServerConfig): Promise<void>;
   removeServer(serverName: string): Promise<void>;
-  updateServer(serverName: string, updates: Partial<ServerConfig>): Promise<void>;
+  updateServer(
+    serverName: string,
+    updates: Partial<ServerConfig>,
+  ): Promise<void>;
 }
 
 // MVP: Read-only implementation
@@ -182,14 +187,20 @@ export class ReadOnlyConfigManager implements IConfigManager {
 
   async addServer(server: ServerConfig): Promise<void> {
     // MVP: Just return the config to show user
-    console.log('Add this to your .mcp-funnel.json:', JSON.stringify(server, null, 2));
+    console.log(
+      'Add this to your .mcp-funnel.json:',
+      JSON.stringify(server, null, 2),
+    );
   }
 
   async removeServer(serverName: string): Promise<void> {
     console.log(`Remove "${serverName}" from your .mcp-funnel.json`);
   }
 
-  async updateServer(serverName: string, updates: Partial<ServerConfig>): Promise<void> {
+  async updateServer(
+    serverName: string,
+    updates: Partial<ServerConfig>,
+  ): Promise<void> {
     console.log(`Update "${serverName}" in your .mcp-funnel.json:`, updates);
   }
 }
@@ -218,19 +229,21 @@ export class RegistryContext {
       cache?: IRegistryCache;
       tempServerManager?: ITemporaryServerManager;
       configManager?: IConfigManager;
-    } = {}
+    } = {},
   ) {
     // MVP defaults: No-op implementations
     this.cache = options.cache || new NoOpCache();
-    this.tempServerManager = options.tempServerManager || new TemporaryServerTracker();
-    this.configManager = options.configManager || new ReadOnlyConfigManager(config.configPath);
+    this.tempServerManager =
+      options.tempServerManager || new TemporaryServerTracker();
+    this.configManager =
+      options.configManager || new ReadOnlyConfigManager(config.configPath);
 
     // Initialize registry clients
     this.registryClients = new Map();
     for (const registryUrl of config.registries || []) {
       this.registryClients.set(
         registryUrl,
-        new MCPRegistryClient(registryUrl, this.cache)
+        new MCPRegistryClient(registryUrl, this.cache),
       );
     }
   }
@@ -238,7 +251,9 @@ export class RegistryContext {
   static getInstance(config?: ProxyConfig, options?: any): RegistryContext {
     if (!RegistryContext.instance) {
       if (!config) {
-        throw new Error('RegistryContext must be initialized with config on first access');
+        throw new Error(
+          'RegistryContext must be initialized with config on first access',
+        );
       }
       RegistryContext.instance = new RegistryContext(config, options);
     }
@@ -310,11 +325,11 @@ export class SearchRegistryTools extends BaseCoreTool {
 
     return {
       found: servers.length > 0,
-      servers: servers.map(s => ({
+      servers: servers.map((s) => ({
         name: s.name,
         description: s.description,
-        registryId: s.id
-      }))
+        registryId: s.id,
+      })),
     };
   }
 }
@@ -337,7 +352,7 @@ export class GetServerInstallInfo extends BaseCoreTool {
     return {
       name: server.name,
       configSnippet: this.generateConfigSnippet(server),
-      instructions: this.generateInstructions(server)
+      instructions: this.generateInstructions(server),
     };
   }
 }
@@ -352,7 +367,7 @@ To enable Phase 2 features, just swap implementations:
 const registryContext = new RegistryContext(config, {
   cache: new MemoryCache(),
   tempServerManager: new TemporaryServerManager(),
-  configManager: new ConfigFileManager(configPath)
+  configManager: new ConfigFileManager(configPath),
 });
 ```
 
