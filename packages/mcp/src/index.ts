@@ -818,6 +818,24 @@ export class MCPProxy implements IMCPProxy {
   get registry() {
     return this.toolRegistry;
   }
+
+  /**
+   * Check if a server is configured in the proxy configuration
+   * @param name Server name to check
+   */
+  hasServerConfigured(name: string): boolean {
+    // Check in _normalizedServers array which contains all configured servers
+    return this._normalizedServers.some((server) => server.name === name);
+  }
+
+  /**
+   * Check if a server is currently connected and available
+   * @param name Server name to check
+   */
+  isServerConnected(name: string): boolean {
+    // Check if server exists in connectedServers Map
+    return this.connectedServers.has(name);
+  }
 }
 
 // Export for library usage
