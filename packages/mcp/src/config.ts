@@ -286,6 +286,15 @@ export const ProxyConfigSchema = z.object({
         .describe('List of tool names to enable, empty means all'),
     })
     .optional(),
+  autoReconnect: z
+    .object({
+      enabled: z.boolean().default(true),
+      maxAttempts: z.number().default(10),
+      initialDelayMs: z.number().default(1000),
+      backoffMultiplier: z.number().default(2),
+      maxDelayMs: z.number().default(60000),
+    })
+    .optional(),
 });
 
 export type TargetServer = z.infer<typeof TargetServerSchema>;
