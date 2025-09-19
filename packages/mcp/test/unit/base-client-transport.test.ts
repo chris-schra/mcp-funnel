@@ -375,7 +375,7 @@ describe('BaseClientTransport', () => {
 
       // Simulate error response
       const errorResponse = {
-        jsonrpc: '2.0',
+        jsonrpc: '2.0' as const,
         id: 'error-test',
         error: {
           code: -32600,

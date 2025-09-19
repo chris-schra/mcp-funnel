@@ -7,11 +7,14 @@ import {
   validateAuthConfig,
   createAuthMiddleware,
   validateWebSocketAuth,
-  type InboundAuthConfig,
+  // type InboundAuthConfig, // Unused import
   type InboundBearerAuthConfig,
   type InboundNoAuthConfig,
 } from '../../src/auth/index.js';
 import type { IncomingMessage } from 'node:http';
+
+// Helper type for mocking Hono context in tests
+type MockContext = Partial<import('hono').Context>;
 
 describe('Authentication System', () => {
   describe('BearerTokenValidator', () => {
@@ -24,11 +27,11 @@ describe('Authentication System', () => {
       const validator = new BearerTokenValidator(config);
 
       // Mock Hono context
-      const mockContext = {
+      const mockContext: MockContext = {
         req: {
           header: vi.fn().mockReturnValue('Bearer valid-token-123'),
         },
-      } as any;
+      };
 
       const result = await validator.validateRequest(mockContext);
 
@@ -49,7 +52,7 @@ describe('Authentication System', () => {
         req: {
           header: vi.fn().mockReturnValue('Bearer invalid-token'),
         },
-      } as any;
+      } satisfies MockContext;
 
       const result = await validator.validateRequest(mockContext);
 
@@ -69,7 +72,7 @@ describe('Authentication System', () => {
         req: {
           header: vi.fn().mockReturnValue(undefined),
         },
-      } as any;
+      } satisfies MockContext;
 
       const result = await validator.validateRequest(mockContext);
 
@@ -89,7 +92,7 @@ describe('Authentication System', () => {
         req: {
           header: vi.fn().mockReturnValue('Basic dXNlcjpwYXNz'), // Basic auth instead of Bearer
         },
-      } as any;
+      } satisfies MockContext;
 
       const result = await validator.validateRequest(mockContext);
 
@@ -111,7 +114,7 @@ describe('Authentication System', () => {
         req: {
           header: vi.fn().mockReturnValue('Bearer '),
         },
-      } as any;
+      } satisfies MockContext;
 
       const result = await validator.validateRequest(mockContext);
 
@@ -166,7 +169,7 @@ describe('Authentication System', () => {
         req: {
           header: vi.fn().mockReturnValue(undefined),
         },
-      } as any;
+      } satisfies MockContext;
 
       const result = await validator.validateRequest(mockContext);
 
@@ -200,7 +203,7 @@ describe('Authentication System', () => {
     });
 
     it('should reject config without type', () => {
-      const invalidConfig = {} as any;
+      const invalidConfig = {} as unknown as InboundBearerAuthConfig;
 
       expect(() => validateAuthConfig(invalidConfig)).toThrow(
         'Authentication configuration must specify a type',
@@ -210,7 +213,7 @@ describe('Authentication System', () => {
     it('should reject bearer config without tokens', () => {
       const invalidConfig = {
         type: 'bearer',
-      } as any;
+      } satisfies MockContext;
 
       expect(() => validateAuthConfig(invalidConfig)).toThrow(
         'Bearer authentication requires a tokens array',
@@ -231,7 +234,7 @@ describe('Authentication System', () => {
     it('should reject unsupported auth type', () => {
       const invalidConfig = {
         type: 'unsupported',
-      } as any;
+      } satisfies MockContext;
 
       expect(() => validateAuthConfig(invalidConfig)).toThrow(
         'Unsupported authentication type: unsupported',
@@ -266,7 +269,7 @@ describe('Authentication System', () => {
     it('should throw error for unsupported type', () => {
       const config = {
         type: 'unsupported',
-      } as any;
+      } satisfies MockContext;
 
       expect(() => createAuthValidator(config)).toThrow(
         'Unsupported authentication type: unsupported',

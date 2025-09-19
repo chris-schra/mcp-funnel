@@ -6,8 +6,8 @@ import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 
 // Mock MCPProxy for testing
-const createMockMCPProxy = (): MCPProxy =>
-  ({
+const createMockMCPProxy = (): MCPProxy => {
+  const mockProxy: Partial<MCPProxy> = {
     server: {
       connect: vi.fn(),
       sendToolListChanged: vi.fn(),
@@ -23,7 +23,11 @@ const createMockMCPProxy = (): MCPProxy =>
       exposeCoreTools: [],
     },
     completeOAuthFlow: vi.fn(),
-  }) as Partial<MCPProxy> as MCPProxy;
+  };
+
+  // Return as MCPProxy - this is a test mock with only the needed properties
+  return mockProxy as MCPProxy;
+};
 
 describe('Server Authentication Integration', () => {
   let server: Server | null;

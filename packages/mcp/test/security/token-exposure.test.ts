@@ -83,7 +83,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
       // Trigger the connection
       try {
         await transport.start();
-      } catch (error) {
+      } catch (_error) {
         // Connection might fail, but we still want to check URL construction
       }
 
@@ -94,6 +94,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
         // by creating a minimal test that focuses on URL construction
 
         // Use reflection to access the private method if possible
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transportAny = transport as any;
         if (transportAny.buildAuthenticatedConnection) {
           const result = await transportAny.buildAuthenticatedConnection();
@@ -151,7 +152,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
 
       try {
         await transport.start();
-      } catch (error) {
+      } catch (_error) {
         // Connection might fail, but we can still check the options
       }
 
@@ -174,11 +175,12 @@ describe('Security: Auth Token Exposure Prevention', () => {
 
       try {
         await transport.start();
-      } catch (error) {
+      } catch (_error) {
         // Ignore connection errors
       }
 
       // Test the method directly if possible
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
       if (transportAny.buildAuthenticatedConnection) {
         const result = await transportAny.buildAuthenticatedConnection();
@@ -209,11 +211,12 @@ describe('Security: Auth Token Exposure Prevention', () => {
 
       try {
         await transport.start();
-      } catch (error) {
+      } catch (_error) {
         // Ignore connection errors
       }
 
       // Test the method directly
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
       if (transportAny.buildAuthenticatedConnection) {
         const result = await transportAny.buildAuthenticatedConnection();
@@ -237,6 +240,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
       });
 
       // Test the method directly
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
       if (transportAny.createAuthenticatedFetch) {
         const authHeaders = { Authorization: 'Bearer test-token-456' };
@@ -279,6 +283,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
       });
 
       // Test URL building directly
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
       if (transportAny.buildAuthenticatedConnection) {
         const result = await transportAny.buildAuthenticatedConnection();
@@ -305,7 +310,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
 
     it('should verify the fix by comparing with old vulnerable pattern', async () => {
       // This test demonstrates what the old code would have done vs new code
-      const authToken = 'Bearer secret-vulnerable-token';
+      const _authToken = 'Bearer secret-vulnerable-token';
 
       // OLD VULNERABLE PATTERN (what we fixed):
       // const vulnerableUrl = new URL('https://api.example.com/events');
@@ -318,6 +323,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
         authProvider: mockAuthProvider,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
       if (transportAny.buildAuthenticatedConnection) {
         const result = await transportAny.buildAuthenticatedConnection();

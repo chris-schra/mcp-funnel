@@ -290,11 +290,7 @@ describe('OAuth Utils', () => {
     });
 
     it('should not match malformed environment variable syntax', () => {
-      const malformedCases = [
-        '$VAR',
-        '${VAR',
-        'VAR}',
-      ];
+      const malformedCases = ['$VAR', '${VAR', 'VAR}'];
 
       malformedCases.forEach((malformed) => {
         const result = resolveEnvVar(malformed);

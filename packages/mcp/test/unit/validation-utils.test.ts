@@ -177,7 +177,14 @@ describe('ValidationUtils', () => {
     });
 
     it('should throw for missing required fields', () => {
-      const config = { clientId: 'id', tokenUrl: 'https://token.com' };
+      const config: {
+        clientId: string;
+        tokenUrl: string;
+        clientSecret?: string;
+      } = {
+        clientId: 'id',
+        tokenUrl: 'https://token.com',
+      };
       expect(() => {
         ValidationUtils.validateRequired(config, [
           'clientId',
@@ -188,7 +195,9 @@ describe('ValidationUtils', () => {
     });
 
     it('should include context in error messages', () => {
-      const config = { clientId: 'id' };
+      const config: { clientId?: string; clientSecret?: string } = {
+        clientId: 'id',
+      };
       expect(() => {
         ValidationUtils.validateRequired(
           config,

@@ -63,7 +63,9 @@ export async function validateWebSocketAuth(
 
     // Use the existing validator - cast to Context type to satisfy interface
     // This is safe because our mock implements all the methods the validators actually use
-    const result = await validator.validateRequest(mockContext as any);
+    const result = await validator.validateRequest(
+      mockContext as unknown as import('hono').Context,
+    );
 
     return {
       isAuthenticated: result.isAuthenticated,

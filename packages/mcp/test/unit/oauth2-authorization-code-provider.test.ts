@@ -306,14 +306,15 @@ describe('OAuth2AuthCodeProvider', () => {
         providerAny.pendingAuthFlows.size > 0
       ) {
         // Get the first pending auth flow to simulate timeout
-        const [state, pendingAuth] = providerAny.pendingAuthFlows
-          .entries()
-          .next().value;
-        clearTimeout(pendingAuth.timeout);
-        pendingAuth.reject(
-          new Error('Authorization timeout - please try again'),
-        );
-        providerAny.pendingAuthFlows.delete(state);
+        const firstEntry = providerAny.pendingAuthFlows.entries().next().value;
+        if (firstEntry) {
+          const [state, pendingAuth] = firstEntry;
+          clearTimeout(pendingAuth.timeout);
+          pendingAuth.reject(
+            new Error('Authorization timeout - please try again'),
+          );
+          providerAny.pendingAuthFlows.delete(state);
+        }
       }
 
       await expect(promise).rejects.toThrow('Authorization timeout');

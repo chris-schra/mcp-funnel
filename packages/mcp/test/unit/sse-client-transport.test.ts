@@ -546,7 +546,8 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
         timeout: 5000,
       });
 
-      // Access private methods for testing (using any cast for testing purposes)
+      // Access private methods for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
 
       // Create a mock EventSource to test bound handlers
@@ -567,9 +568,9 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
       expect(transportAny.boundHandlers.error).toBeDefined();
 
       // Store references to verify they're the same
-      const storedOpenHandler = transportAny.boundHandlers.open;
-      const storedMessageHandler = transportAny.boundHandlers.message;
-      const storedErrorHandler = transportAny.boundHandlers.error;
+      const _storedOpenHandler = transportAny.boundHandlers.open;
+      const _storedMessageHandler = transportAny.boundHandlers.message;
+      const _storedErrorHandler = transportAny.boundHandlers.error;
 
       // Call removeEventSourceListeners
       transportAny.removeEventSourceListeners();
@@ -594,6 +595,7 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
         timeout: 5000,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
 
       // Simulate multiple connection cycles
@@ -636,6 +638,7 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
         timeout: 5000,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
 
       // Set up a mock EventSource
@@ -667,6 +670,7 @@ describe('SSEClientTransport - SSE-Specific Tests', () => {
         timeout: 5000,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transportAny = transport as any;
 
       // Set up bound handlers without EventSource
