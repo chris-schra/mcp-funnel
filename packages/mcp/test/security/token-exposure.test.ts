@@ -19,7 +19,10 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Track EventSource constructor calls
-const eventSourceConstructorCalls: Array<{ url: string; options: Record<string, unknown> }> = [];
+const eventSourceConstructorCalls: Array<{
+  url: string;
+  options: Record<string, unknown>;
+}> = [];
 
 // Mock EventSource - simple version that just tracks construction
 class MockEventSource {

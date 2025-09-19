@@ -292,15 +292,23 @@ describe('OAuth2AuthCodeProvider', () => {
 
       // Force cleanup of pending auth to simulate timeout
       const providerAny = provider as unknown as {
-        pendingAuthFlows?: Map<string, {
-          timeout: NodeJS.Timeout;
-          reject: (error: Error) => void;
-        }>;
+        pendingAuthFlows?: Map<
+          string,
+          {
+            timeout: NodeJS.Timeout;
+            reject: (error: Error) => void;
+          }
+        >;
       };
 
-      if (providerAny.pendingAuthFlows && providerAny.pendingAuthFlows.size > 0) {
+      if (
+        providerAny.pendingAuthFlows &&
+        providerAny.pendingAuthFlows.size > 0
+      ) {
         // Get the first pending auth flow to simulate timeout
-        const [state, pendingAuth] = providerAny.pendingAuthFlows.entries().next().value;
+        const [state, pendingAuth] = providerAny.pendingAuthFlows
+          .entries()
+          .next().value;
         clearTimeout(pendingAuth.timeout);
         pendingAuth.reject(
           new Error('Authorization timeout - please try again'),

@@ -1,14 +1,8 @@
 import { Hono } from 'hono';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { randomUUID } from 'node:crypto';
 import type { MCPProxy } from 'mcp-funnel';
-// TODO: These types may be needed for future iterations of proxying
-// import type {
-//   JSONRPCMessage,
-//   MessageExtraInfo,
-// } from '@modelcontextprotocol/sdk/types.js';
 
 type Variables = {
   mcpProxy: MCPProxy;
@@ -17,98 +11,108 @@ type Variables = {
 export const streamableRoute = new Hono<{ Variables: Variables }>();
 
 /**
- * Global storage for the StreamableHTTP transport and bridge server
+ * Global storage for the StreamableHTTP transport and MCPProxy
  */
 interface StreamableHTTPBridge {
   transport: StreamableHTTPServerTransport;
-  server: Server;
   mcpProxy: MCPProxy;
+  isConnected: boolean;
 }
 
 let globalStreamableBridge: StreamableHTTPBridge | null = null;
+let initializationPromise: Promise<StreamableHTTPBridge> | null = null;
 
 /**
  * Initialize the StreamableHTTP bridge
- * Creates a dedicated MCP server for StreamableHTTP and bridges it to the MCPProxy
+ * Connects the StreamableHTTP transport to the MCPProxy's existing server
  */
 async function initializeStreamableBridge(
   mcpProxy: MCPProxy,
 ): Promise<StreamableHTTPBridge> {
-  if (globalStreamableBridge) {
+  // Return existing bridge if connected
+  if (globalStreamableBridge && globalStreamableBridge.isConnected) {
     return globalStreamableBridge;
   }
 
-  // Create a new MCP Server instance specifically for StreamableHTTP
-  const streamableServer = new Server(
-    { name: 'mcp-funnel-streamable', version: '0.0.1' },
-    {
-      capabilities: {
-        tools: { listChanged: true },
-        resources: { listChanged: true, subscribe: true },
-        prompts: { listChanged: true },
-      },
-    },
-  );
-
-  // TODO: For now, we'll create a basic server that forwards requests to MCPProxy
-  // This is a simplified approach - in a full implementation we would need to
-  // properly proxy all the request handlers from the MCPProxy server
-
-  // For MVP, let the server handle basic initialization and expose MCPProxy tools
-  // The request forwarding will be handled at the transport level
-
-  // Create the StreamableHTTP transport
-  const transport = new StreamableHTTPServerTransport({
-    // Generate secure session IDs for stateful connections
-    sessionIdGenerator: () => randomUUID(),
-
-    // Session lifecycle callbacks
-    onsessioninitialized: async (sessionId: string) => {
-      console.info(`StreamableHTTP session initialized: ${sessionId}`);
-    },
-
-    onsessionclosed: async (sessionId: string) => {
-      console.info(`StreamableHTTP session closed: ${sessionId}`);
-    },
-
-    // Prefer SSE streaming over JSON responses for better real-time experience
-    enableJsonResponse: false,
-
-    // DNS rebinding protection - allow localhost and any host for development
-    // In production, this should be configured with specific allowed hosts
-    allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0'],
-    allowedOrigins: ['http://localhost:3456', 'https://localhost:3456'],
-    enableDnsRebindingProtection: false, // Disabled for development, enable in production
-  });
-
-  try {
-    // Connect the StreamableHTTP transport to the bridge server
-    await streamableServer.connect(transport);
-
-    console.info('StreamableHTTP transport connected to bridge server');
-
-    const bridge = {
-      transport,
-      server: streamableServer,
-      mcpProxy,
-    };
-
-    globalStreamableBridge = bridge;
-    return bridge;
-  } catch (error) {
-    console.error('Failed to create StreamableHTTP bridge:', error);
-    throw error;
+  // Prevent race conditions - if already initializing, wait for that
+  if (initializationPromise) {
+    return initializationPromise;
   }
+
+  // Start initialization with race condition protection
+  initializationPromise = (async () => {
+    try {
+      // The MCPProxy in web server mode is initialized but NOT started with any transport,
+      // which is perfect - we can connect StreamableHTTP without conflicts.
+      // If using MCPProxy standalone, it should be started with { transport: "streamable-http" }
+      // option to prevent stdio from being connected.
+
+      // Create the StreamableHTTP transport
+      const transport = new StreamableHTTPServerTransport({
+        // Generate secure session IDs for stateful connections
+        sessionIdGenerator: () => randomUUID(),
+
+        // Session lifecycle callbacks
+        onsessioninitialized: async (sessionId: string) => {
+          console.info(`StreamableHTTP session initialized: ${sessionId}`);
+        },
+
+        onsessionclosed: async (sessionId: string) => {
+          console.info(`StreamableHTTP session closed: ${sessionId}`);
+        },
+
+        // Prefer SSE streaming over JSON responses for better real-time experience
+        enableJsonResponse: false,
+
+        // DNS rebinding protection - allow localhost and any host for development
+        // In production, this should be configured with specific allowed hosts
+        allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0'],
+        allowedOrigins: ['http://localhost:3456', 'https://localhost:3456'],
+        enableDnsRebindingProtection: false, // Disabled for development, enable in production
+      });
+
+      try {
+        // Connect the StreamableHTTP transport to the MCPProxy's existing server
+        // This gives StreamableHTTP clients full access to all MCPProxy tools and functionality
+        // NOTE: MCP SDK likely only supports one transport at a time. If this fails,
+        // it might be because another transport is already connected.
+        await mcpProxy.server.connect(transport);
+
+        console.info('StreamableHTTP transport connected to MCPProxy server');
+
+        const bridge: StreamableHTTPBridge = {
+          transport,
+          mcpProxy,
+          isConnected: true,
+        };
+
+        globalStreamableBridge = bridge;
+        return bridge;
+      } catch (error) {
+        console.error('Failed to create StreamableHTTP bridge:', error);
+        // If connection fails, it might be because stdio is already connected
+        // Make sure MCPProxy is started with { transport: "streamable-http" } option
+        throw error;
+      }
+    } finally {
+      // Clear the promise to allow retry on failure
+      initializationPromise = null;
+    }
+  })();
+
+  return initializationPromise;
 }
 
 /**
  * StreamableHTTP MCP endpoint
  * Handles GET (SSE streams), POST (JSON-RPC messages), and DELETE (session termination)
  *
- * This endpoint implements the MCP Streamable HTTP transport specification:
- * - GET: Establishes SSE stream for real-time communication
- * - POST: Sends JSON-RPC messages
+ * This endpoint exposes the MCPProxy server via the MCP Streamable HTTP transport:
+ * - GET: Establishes SSE stream for real-time communication with MCPProxy
+ * - POST: Sends JSON-RPC messages to MCPProxy's tools
  * - DELETE: Terminates sessions
+ *
+ * All MCPProxy tools and functionality are available through this transport
  */
 streamableRoute.all('/mcp', async (c) => {
   const mcpProxy = c.get('mcpProxy');
@@ -186,9 +190,9 @@ streamableRoute.get('/health', (c) => {
  *
  * Base URL: /api/streamable/mcp
  *
- * This endpoint exposes the MCP (Model Context Protocol) server through the
- * StreamableHTTP transport, which supports both Server-Sent Events (SSE)
- * streaming and direct JSON responses.
+ * This endpoint exposes the full MCPProxy server (with all aggregated tools from
+ * multiple MCP servers) through the StreamableHTTP transport, which supports both
+ * Server-Sent Events (SSE) streaming and direct JSON responses.
  *
  * Supported HTTP Methods:
  * ----------------------
@@ -238,7 +242,7 @@ streamableRoute.get('/health', (c) => {
  * Usage Examples:
  * --------------
  *
- * Connect StreamableHTTP client (from Task 9):
+ * Connect StreamableHTTP client to access all MCPProxy tools:
  * ```typescript
  * import { StreamableHTTPClientTransport } from 'mcp-funnel';
  *
@@ -248,6 +252,7 @@ streamableRoute.get('/health', (c) => {
  * });
  *
  * await transport.start();
+ * // Now you have access to all MCPProxy aggregated tools!
  * ```
  *
  * Direct HTTP requests:
