@@ -319,12 +319,6 @@ describe('Server Dependency System', () => {
       expect(result).toEqual({ configured: false });
       expect(mockProxy.hasServerConfigured).toHaveBeenCalledWith('github');
     });
-
-    test.skip('should handle servers in disconnected state', async () => {
-      // This test is not applicable to requireServerConfigured
-      // as it only checks configuration, not connection status
-      // See requireServerConnected tests for connection-related testing
-    });
   });
 
   describe('requireServerConnected method', () => {
@@ -508,7 +502,7 @@ describe('Server Dependency System', () => {
   });
 
   describe('Type definitions', () => {
-    test.skip('should validate ServerDependency interface', () => {
+    test('should validate ServerDependency interface', () => {
       const validDependency: ServerDependency = {
         aliases: ['github', 'gh'],
         ensureToolsExposed: true,
@@ -518,7 +512,7 @@ describe('Server Dependency System', () => {
       expect(typeof validDependency.ensureToolsExposed).toBe('boolean');
     });
 
-    test.skip('should validate ServerRequirementResult type', () => {
+    test('should validate ServerRequirementResult type', () => {
       const configuredResult: ServerRequirementResult = { configured: true };
       const notConfiguredResult: ServerRequirementResult = {
         configured: false,
@@ -530,7 +524,7 @@ describe('Server Dependency System', () => {
       expect(undefinedResult).toBeUndefined();
     });
 
-    test.skip('should allow optional ensureToolsExposed in ServerDependency', () => {
+    test('should allow optional ensureToolsExposed in ServerDependency', () => {
       const dependencyWithoutFlag: ServerDependency = {
         aliases: ['github'],
         // ensureToolsExposed is optional
@@ -607,7 +601,7 @@ describe('Server Dependency System', () => {
       }
     });
 
-    test.skip('should demonstrate extensibility for future enhancements', () => {
+    test('should demonstrate extensibility for future enhancements', () => {
       // This test validates that the current design can be extended
       // Future ServerRequirementResult could include additional fields like:
       // { configured: true, connected: true, toolsExposed: boolean, serverVersion: string }

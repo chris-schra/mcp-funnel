@@ -259,10 +259,10 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 
 **DO NOT** proceed to next phase until:
 
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
