@@ -226,6 +226,24 @@ Use this block to advance status across the lifecycle. One entry per change.
   - 4 critical test failures remain
   **Next Step:** Need workers to implement missing functionality properly
 
+- **[ISSUE-CFA0DBE-006] – Status Change:** FIXED → FIXED (REVALIDATED)
+  **By:** codex | gpt-5-codex | f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+  **Reason/Evidence:** Confirmed disconnect handling via `setupDisconnectHandling` and `handleServerDisconnection` hooking transports and cleaning state (`packages/mcp/src/index.ts:478`, `packages/mcp/src/index.ts:526`, `packages/mcp/src/index.ts:629`). confidence: 0.85 (E2).
+  **Commit/PR:** f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+  **Next Step:** Consider future reconnect backoff when requirements emerge.
+
+- **[ISSUE-8C0AF61-006] – Status Change:** PARTIALLY_IMPLEMENTED → FIXED
+  **By:** codex | gpt-5-codex | f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+  **Reason/Evidence:** Inbound auth middleware guards streamable HTTP + WebSocket paths (`packages/server/src/index.ts:41`, `packages/server/src/index.ts:78`, `packages/server/src/index.ts:128`); rejection responses handled in middleware and validator (`packages/server/src/auth/middleware/auth-middleware.ts:21`, `packages/server/src/auth/implementations/bearer-token-validator.ts:30`). Integration tests capture expected 401/200 flows (`packages/server/test/integration/auth-integration.test.ts:55`, `packages/server/test/integration/auth-integration.test.ts:355`, `packages/server/test/integration/auth-integration.test.ts:536`), though local run failed with sandbox EPERM on ::1. confidence: 0.75 (E2).
+  **Commit/PR:** f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+  **Next Step:** Document sandbox limitation and ensure deployment config binds to allowed interfaces.
+
+- **[ISSUE-8C0AF61-006] – Status Change:** FIXED → FIXED (TEST-VERIFIED)
+  **By:** codex | gpt-5-codex | f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+  **Reason/Evidence:** `yarn vitest run packages/server/test/integration/auth-integration.test.ts` passed 13 tests, exercising bearer-protected HTTP + WebSocket flows (`packages/server/test/integration/auth-integration.test.ts:55-799`) with expected 200/401 responses; auth middleware emitted success/failure logs. Evidence upgraded to E4.
+  **Commit/PR:** Test run against HEAD f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+  **Next Step:** Monitor StreamableHTTP transport 500 (`StreamableHTTP request handling error: res.writeHead is not a function`) for SDK follow-up, unrelated to auth gate.
+
 ---
 
 ### ISSUE-8C0AF61-001 EventSource Token Leakage Not Fixed
@@ -869,6 +887,7 @@ Implement logic to handle server disconnects. This could involve:
 #### Agent Notes (do not delete prior notes)
 - gemini | gemini-1.5-pro | review-2: Found during code review.
 - codex | gpt-5-codex | 8c0af61: TODO persists at packages/mcp/src/index.ts:529-537 with no disconnect handling elsewhere; `disconnectedServers` map never populated. Keeping OPEN. confidence: 0.7 (E2)
+- codex | gpt-5-codex | revalidation-20250120 | f795a91: Verified transport disconnect handling via `setupDisconnectHandling` and `handleServerDisconnection` removing clients and updating maps (`packages/mcp/src/index.ts:478`, `packages/mcp/src/index.ts:526`, `packages/mcp/src/index.ts:629`). confidence: 0.85 (E2).
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** gemini | **Model:** gemini-1.5-pro | **Run:** review-2 | **Commit:** cfa0dbe
@@ -885,6 +904,13 @@ Implement logic to handle server disconnects. This could involve:
     - [x] Classified **Assumption vs Evidence**: E2
     - [x] Proposed or refined fix
     - [ ] Set/updated **Status**
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** revalidation-20250120 | **Commit:** f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [ ] Proposed or refined fix
+    - [x] Set/updated **Status**
 
 ### ISSUE-8C0AF61-006 Missing Inbound OAuth Enforcement
 - **Status:** OPEN
@@ -916,6 +942,8 @@ Add integration tests that hit `/api/streamable/mcp` with and without valid cred
 #### Agent Notes (do not delete prior notes)
 - codex | gpt-5-codex | 8c0af61: Identified during follow-up review; inbound security path remains unimplemented.
 - codex | gpt-5-codex | 8c0af61: Revalidated that `/api/streamable/mcp` forwards requests without auth checks (packages/server/src/api/streamable.ts:66-140; packages/server/src/index.ts:31-44). Issue still OPEN pending inbound enforcement. confidence: 0.85 (E2)
+- codex | gpt-5-codex | revalidation-20250120 | f795a91: Confirmed inbound auth middleware enforces bearer tokens on HTTP and WebSocket paths (`packages/server/src/index.ts:41`, `packages/server/src/index.ts:78`, `packages/server/src/index.ts:128`); middleware + validator reject invalid headers (`packages/server/src/auth/middleware/auth-middleware.ts:21`, `packages/server/src/auth/implementations/bearer-token-validator.ts:30`). Attempted `yarn vitest run packages/server/test/integration/auth-integration.test.ts` but sandbox denied listen on ::1 (EPERM). confidence: 0.75 (E2).
+- codex | gpt-5-codex | runtime-20250919 | f795a91: Re-ran `yarn vitest run packages/server/test/integration/auth-integration.test.ts` with 13/13 passing; logs show auth middleware granting/denying requests as expected and WebSocket validator enforcing bearer headers. Residual `StreamableHTTP request handling error: res.writeHead is not a function` remains post-auth (SDK quirk) but does not bypass authentication. confidence: 0.8 (E4).
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** codex | **Model:** gpt-5-codex | **Run:** review-20250112 | **Commit:** 8c0af61
@@ -932,3 +960,17 @@ Add integration tests that hit `/api/streamable/mcp` with and without valid cred
     - [x] Classified **Assumption vs Evidence**: E2
     - [x] Proposed or refined fix
     - [ ] Set/updated **Status**
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** revalidation-20250120 | **Commit:** f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [x] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [ ] Proposed or refined fix
+    - [x] Set/updated **Status**
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** runtime-20250919 | **Commit:** f795a91b5c5dbcae6b2aeac559778d8613e1f71b
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [x] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E4
+    - [ ] Proposed or refined fix
+    - [x] Set/updated **Status**
