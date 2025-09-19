@@ -3,6 +3,7 @@
  * Validates Bearer tokens in Authorization headers against configured tokens
  */
 
+import { timingSafeEqual } from 'crypto';
 import type { Context } from 'hono';
 import type {
   IInboundAuthValidator,
@@ -25,7 +26,7 @@ import type {
  * - Validates token format before comparison
  */
 export class BearerTokenValidator implements IInboundAuthValidator {
-  private readonly validTokens: Set<string>;
+  private readonly validTokens: string[];
 
   constructor(config: InboundBearerAuthConfig) {
     if (!config.tokens || config.tokens.length === 0) {
@@ -35,17 +36,17 @@ export class BearerTokenValidator implements IInboundAuthValidator {
     }
 
     // Resolve environment variables and validate tokens
-    this.validTokens = new Set();
+    this.validTokens = [];
     for (const token of config.tokens) {
       const resolvedToken = this.resolveEnvironmentVariables(token);
       if (!resolvedToken || resolvedToken.trim().length === 0) {
         throw new Error('Bearer tokens cannot be empty or only whitespace');
       }
-      this.validTokens.add(resolvedToken.trim());
+      this.validTokens.push(resolvedToken.trim());
     }
 
     console.info(
-      `Initialized bearer token validator with ${this.validTokens.size} tokens`,
+      `Initialized bearer token validator with ${this.validTokens.length} tokens`,
     );
   }
 
@@ -113,9 +114,23 @@ export class BearerTokenValidator implements IInboundAuthValidator {
    * Uses constant-time comparison to prevent timing attacks
    */
   private isValidToken(token: string): boolean {
-    // Use Set.has() which is optimized for membership testing
-    // For additional security, we could implement constant-time comparison
-    return this.validTokens.has(token);
+    const tokenBuffer = Buffer.from(token);
+
+    for (const validToken of this.validTokens) {
+      const validBuffer = Buffer.from(validToken);
+
+      // Skip if lengths don't match (length check is not timing-sensitive)
+      if (tokenBuffer.length !== validBuffer.length) {
+        continue;
+      }
+
+      // Use constant-time comparison
+      if (timingSafeEqual(tokenBuffer, validBuffer)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

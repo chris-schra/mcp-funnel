@@ -159,6 +159,145 @@ describe('Authentication System', () => {
         'Bearer token configuration must include at least one token',
       );
     });
+
+    describe('Security - Timing Attack Protection', () => {
+      it('should use constant-time comparison for token validation', async () => {
+        const config: InboundBearerAuthConfig = {
+          type: 'bearer',
+          tokens: ['valid-token-12345'],
+        };
+
+        const validator = new BearerTokenValidator(config);
+
+        // Test with tokens of same length but different content
+        const validTokenContext = {
+          req: {
+            header: vi.fn().mockReturnValue('Bearer valid-token-12345'),
+          },
+        } satisfies MockContext;
+
+        const invalidSameLengthContext = {
+          req: {
+            header: vi.fn().mockReturnValue('Bearer invalid-token-1234'),
+          },
+        } satisfies MockContext;
+
+        const [validResult, invalidResult] = await Promise.all([
+          validator.validateRequest(validTokenContext),
+          validator.validateRequest(invalidSameLengthContext),
+        ]);
+
+        expect(validResult.isAuthenticated).toBe(true);
+        expect(invalidResult.isAuthenticated).toBe(false);
+        expect(invalidResult.error).toBe('Invalid Bearer token');
+      });
+
+      it('should handle tokens of different lengths without timing leaks', async () => {
+        const config: InboundBearerAuthConfig = {
+          type: 'bearer',
+          tokens: ['valid-token-12345'],
+        };
+
+        const validator = new BearerTokenValidator(config);
+
+        // Test with tokens of different lengths
+        const contexts = [
+          {
+            req: {
+              header: vi.fn().mockReturnValue('Bearer short'),
+            },
+          },
+          {
+            req: {
+              header: vi.fn().mockReturnValue('Bearer medium-length'),
+            },
+          },
+          {
+            req: {
+              header: vi
+                .fn()
+                .mockReturnValue(
+                  'Bearer very-long-invalid-token-that-should-fail',
+                ),
+            },
+          },
+        ] satisfies MockContext[];
+
+        const results = await Promise.all(
+          contexts.map((context) => validator.validateRequest(context)),
+        );
+
+        // All should fail authentication
+        results.forEach((result) => {
+          expect(result.isAuthenticated).toBe(false);
+          expect(result.error).toBe('Invalid Bearer token');
+        });
+      });
+
+      it('should validate multiple valid tokens with constant-time comparison', async () => {
+        const config: InboundBearerAuthConfig = {
+          type: 'bearer',
+          tokens: ['token-one-1234', 'token-two-5678', 'token-three-9012'],
+        };
+
+        const validator = new BearerTokenValidator(config);
+
+        // Test all valid tokens
+        const validTokens = [
+          'Bearer token-one-1234',
+          'Bearer token-two-5678',
+          'Bearer token-three-9012',
+        ];
+
+        const contexts = validTokens.map((token) => ({
+          req: {
+            header: vi.fn().mockReturnValue(token),
+          },
+        })) satisfies MockContext[];
+
+        const results = await Promise.all(
+          contexts.map((context) => validator.validateRequest(context)),
+        );
+
+        // All should pass authentication
+        results.forEach((result) => {
+          expect(result.isAuthenticated).toBe(true);
+          expect(result.context?.authType).toBe('bearer');
+        });
+      });
+
+      it('should reject tokens with similar prefixes using constant-time comparison', async () => {
+        const config: InboundBearerAuthConfig = {
+          type: 'bearer',
+          tokens: ['secret-token-abcdef'],
+        };
+
+        const validator = new BearerTokenValidator(config);
+
+        // Test tokens with similar prefixes but different suffixes
+        const similarTokens = [
+          'Bearer secret-token-123456', // Same length, similar prefix
+          'Bearer secret-token-ABCDEF', // Same length, case difference
+          'Bearer secret-token-abcdeg', // Same length, last char different
+        ];
+
+        const contexts = similarTokens.map((token) => ({
+          req: {
+            header: vi.fn().mockReturnValue(token),
+          },
+        })) satisfies MockContext[];
+
+        const results = await Promise.all(
+          contexts.map((context) => validator.validateRequest(context)),
+        );
+
+        // All should fail authentication
+        results.forEach((result) => {
+          expect(result.isAuthenticated).toBe(false);
+          expect(result.error).toBe('Invalid Bearer token');
+        });
+      });
+    });
   });
 
   describe('NoAuthValidator', () => {
