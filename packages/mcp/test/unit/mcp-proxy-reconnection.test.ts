@@ -105,18 +105,22 @@ describe('MCPProxy Reconnection Logic', () => {
   });
 
   describe('Manual Reconnection', () => {
-    beforeEach(async () => {
-      // Initialize the proxy to set up initial server states
-      await mcpProxy.initialize();
-    });
-
     it('should successfully reconnect a disconnected server', async () => {
+      // Initialize with failing connections to keep servers disconnected
+      mockClient.connect.mockRejectedValue(
+        new Error('Initial connection failed'),
+      );
+      await mcpProxy.initialize();
+
+      // Reset the mock for successful reconnection
+      mockClient.connect.mockResolvedValue(undefined);
+
       // Simulate a server that was previously connected but got disconnected
       const serverName = 'test-server';
 
       // First, establish that the server is disconnected
       const initialStatus = mcpProxy.getServerStatus(serverName);
-      expect(initialStatus.status).toBe('disconnected');
+      expect(initialStatus.status).toBe('disconnected'); // Should be 'disconnected' due to failed initial connection
 
       // Mock successful connection
       const mockStdioTransport = {
@@ -129,7 +133,10 @@ describe('MCPProxy Reconnection Logic', () => {
         '../../src/transports/implementations/stdio-client-transport.js'
       );
       vi.mocked(StdioClientTransport).mockImplementation(
-        () => mockStdioTransport as unknown as InstanceType<typeof StdioClientTransport>,
+        () =>
+          mockStdioTransport as unknown as InstanceType<
+            typeof StdioClientTransport
+          >,
       );
 
       // Set up event listeners to verify events are emitted
@@ -161,12 +168,12 @@ describe('MCPProxy Reconnection Logic', () => {
     });
 
     it('should throw error when trying to reconnect an already connected server', async () => {
+      // Initialize with successful connections
+      await mcpProxy.initialize();
+
       const serverName = 'test-server';
 
-      // First connect the server manually
-      await mcpProxy.reconnectServer(serverName);
-
-      // Verify it's connected
+      // Verify it's connected after initialization
       expect(mcpProxy.getServerStatus(serverName).status).toBe('connected');
 
       // Try to reconnect again - should throw
@@ -176,6 +183,7 @@ describe('MCPProxy Reconnection Logic', () => {
     });
 
     it('should throw error when trying to reconnect non-existent server', async () => {
+      await mcpProxy.initialize();
       const nonExistentServer = 'non-existent-server';
 
       await expect(mcpProxy.reconnectServer(nonExistentServer)).rejects.toThrow(
@@ -184,10 +192,16 @@ describe('MCPProxy Reconnection Logic', () => {
     });
 
     it('should handle reconnection failure gracefully', async () => {
+      // Initialize with failing connections to keep servers disconnected
+      mockClient.connect.mockRejectedValue(
+        new Error('Initial connection failed'),
+      );
+      await mcpProxy.initialize();
+
       const serverName = 'test-server';
       const connectionError = new Error('Connection failed');
 
-      // Mock failed connection
+      // Mock failed connection for reconnection attempt
       mockClient.connect.mockRejectedValueOnce(connectionError);
 
       // Attempt reconnection - should throw but not crash
@@ -202,10 +216,16 @@ describe('MCPProxy Reconnection Logic', () => {
     });
 
     it('should reset reconnection attempts counter on manual reconnection', async () => {
-      const serverName = 'test-server';
+      // Initialize with failing connections to keep servers disconnected
+      mockClient.connect.mockRejectedValue(
+        new Error('Initial connection failed'),
+      );
+      await mcpProxy.initialize();
 
-      // Simulate a server with failed reconnection attempts
-      // (In a real scenario, this would be set by automatic reconnection)
+      // Reset mock for successful reconnection
+      mockClient.connect.mockResolvedValue(undefined);
+
+      const serverName = 'test-server';
 
       // Manually reconnect
       await mcpProxy.reconnectServer(serverName);
@@ -217,13 +237,10 @@ describe('MCPProxy Reconnection Logic', () => {
   });
 
   describe('Manual Disconnection', () => {
-    beforeEach(async () => {
-      await mcpProxy.initialize();
-      // Connect a server first
-      await mcpProxy.reconnectServer('test-server');
-    });
-
     it('should successfully disconnect a connected server', async () => {
+      // Initialize with successful connections
+      await mcpProxy.initialize();
+
       const serverName = 'test-server';
 
       // Verify server is connected
@@ -251,6 +268,10 @@ describe('MCPProxy Reconnection Logic', () => {
     });
 
     it('should throw error when trying to disconnect a non-connected server', async () => {
+      // Initialize with failing connections to keep servers disconnected
+      mockClient.connect.mockRejectedValue(new Error('Connection failed'));
+      await mcpProxy.initialize();
+
       const serverName = 'api-server'; // Not connected
 
       await expect(mcpProxy.disconnectServer(serverName)).rejects.toThrow(
