@@ -427,7 +427,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
     it('should handle network errors gracefully', async () => {
       // Create transport pointing to non-existent server
       const transport = new SSEClientTransport({
-        url: 'http://localhost:99999/sse',
+        url: 'http://localhost:65535/sse',
         authProvider: {
           async getAuthHeaders() {
             return { Authorization: 'Bearer test-token' };
