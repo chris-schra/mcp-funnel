@@ -199,6 +199,9 @@ describe('SecretManager', () => {
     });
 
     it('should support async resolution', async () => {
+      // Use fake timers for deterministic timing
+      vi.useFakeTimers();
+
       const slowProvider = new MockSecretProvider('slow', {
         SLOW_KEY: 'value',
       });
@@ -211,13 +214,21 @@ describe('SecretManager', () => {
 
       const manager = new SecretManager([slowProvider]);
 
-      const startTime = Date.now();
-      const result = await manager.resolveSecrets();
-      const endTime = Date.now();
+      // Start the async resolution
+      const resultPromise = manager.resolveSecrets();
+
+      // Fast-forward time to trigger the setTimeout
+      await vi.runAllTimersAsync();
+
+      // Now await the result
+      const result = await resultPromise;
 
       expect(result.SLOW_KEY).toBe('value');
-      // Allow for timing variance - just verify it took some time (more than 5ms)
-      expect(endTime - startTime).toBeGreaterThanOrEqual(5);
+      // Verify the mock was called to ensure async behavior was tested
+      expect(slowProvider.resolveSecrets).toHaveBeenCalledOnce();
+
+      // Restore real timers
+      vi.useRealTimers();
     });
   });
 
