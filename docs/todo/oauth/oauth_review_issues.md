@@ -1093,4 +1093,138 @@ This architectural confusion makes the code harder to understand and maintain. I
     - [ ] Reproduced (or attempted) locally/in CI
     - [x] Classified **Assumption vs Evidence**: E2
     - [x] Proposed or refined fix
+    - [x] Set/updated **Status**---
+## Validation Updates (2025-02-19)
+
+- **[ISSUE-CFA0DBE-001] – Status Change:** PARTIALLY_FIXED → DISPROVEN  
+  **By:** codex | gpt-5-codex | 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Reason/Evidence:** Real OAuth integration and e2e suites now create live OAuth/SSE servers (`packages/mcp/test/integration/oauth-sse-e2e-integration.test.ts:53`, `packages/mcp/test/integration/oauth-integration.test.ts:32`) while mock helpers are scoped to unit coverage (`packages/mcp/test/unit/oauth-sse-integration-unit.test.ts:1`).  
+  **Commit/PR:** 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Next Step:** None
+
+- **[ISSUE-CFA0DBE-002] – Status Change:** FIXED → FIXED (CODE VERIFIED)  
+  **By:** codex | gpt-5-codex | 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Reason/Evidence:** `FinalizationRegistry` clears cleanup timers on GC (`packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:54`) and `destroy()` clears timers/pending states (`packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:358`).  
+  **Commit/PR:** 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Next Step:** Track follow-up to supply an unregister token.
+
+- **[ISSUE-CFA0DBE-003] – Status Change:** DISPROVEN → DISPROVEN (CODE VERIFIED 2025-02-19)  
+  **By:** codex | gpt-5-codex | 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Reason/Evidence:** Transports invoke factory helpers (e.g., `TransportError.protocolError` in `packages/mcp/src/transports/implementations/stdio-client-transport.ts:73`) and no implementation uses `new TransportError`.  
+  **Commit/PR:** 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Next Step:** None
+
+- **[ISSUE-CFA0DBE-004] – Status Change:** DISPROVEN → DISPROVEN (CODE VERIFIED 2025-02-19)  
+  **By:** codex | gpt-5-codex | 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Reason/Evidence:** `connectToTargetServers` builds `StdioClientTransport` for legacy paths and no `PrefixedStdioClientTransport` symbol remains (`packages/mcp/src/index.ts:617`).  
+  **Commit/PR:** 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Next Step:** None
+
+- **[ISSUE-CFA0DBE-005] – Status Change:** OPEN → FIXED  
+  **By:** codex | gpt-5-codex | 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Reason/Evidence:** OAuth server exposes `/authorize` and `/token` endpoints backed by `OAuthProvider` (`packages/server/src/api/oauth.ts:113`, `packages/server/src/api/oauth.ts:184`, `packages/server/src/oauth/oauth-provider.ts:80`).  
+  **Commit/PR:** 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Next Step:** Add production-grade storage/consent sources later.
+
+- **[ISSUE-CFA0DBE-006] – Status Change:** FIXED → FIXED (CODE VERIFIED 2025-02-19)  
+  **By:** codex | gpt-5-codex | 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Reason/Evidence:** Disconnect handling wraps transport `onclose`/`onerror` and updates server registries (`packages/mcp/src/index.ts:478`, `packages/mcp/src/index.ts:526`).  
+  **Commit/PR:** 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Next Step:** Optional future reconnection work remains noted in code.
+
+- **[ISSUE-8C0AF61-006] – Status Change:** FIXED (TEST-VERIFIED) → OPEN  
+  **By:** codex | gpt-5-codex | 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Reason/Evidence:** Inbound auth middleware only runs when configuration supplies `inboundAuth` (`packages/server/src/index.ts:41`, `packages/server/src/index.ts:79`); the dev entry point starts the server without it (`packages/server/src/dev.ts:43`), leaving default deployments unauthenticated.  
+  **Commit/PR:** 58aedf2068881e90f9011e04822bd13e4139f691  
+  **Next Step:** Require inbound auth by default or document mandatory configuration.
+
+### ISSUE-CFA0DBE-001 – Agent Update (codex | 2025-02-19)
+#### Agent Notes (do not delete prior notes)
+- codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: Integration/e2e suites now start live OAuth + SSE servers via `createTestOAuthServer`/`createTestSSEServer` (`packages/mcp/test/integration/oauth-sse-e2e-integration.test.ts:53`, `packages/mcp/test/integration/oauth-integration.test.ts:32`), and mock coverage is limited to the unit-only suite (`packages/mcp/test/unit/oauth-sse-integration-unit.test.ts:1`, `packages/mcp/test/unit/oauth-sse-integration-unit.test.ts:72`). confidence: 0.85 (E2).
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### ISSUE-CFA0DBE-002 – Agent Update (codex | 2025-02-19)
+#### Agent Notes (do not delete prior notes)
+- codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: Constructor registration with a `FinalizationRegistry` clears cleanup timers on GC (`packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:54`, `packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:103`) and `destroy()` handles manual shutdown plus pending state cleanup (`packages/mcp/src/auth/implementations/oauth2-authorization-code.ts:358`). `cleanupRegistry.unregister(this)` currently lacks a token, so unregister is a no-op but interval cleanup still occurs. confidence: 0.8 (E2).
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### ISSUE-CFA0DBE-003 – Agent Update (codex | 2025-02-19)
+#### Agent Notes (do not delete prior notes)
+- codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: Transport implementations create errors via factory helpers (`TransportError.protocolError` in `packages/mcp/src/transports/implementations/stdio-client-transport.ts:73`), and no `new TransportError` calls remain in transport code. confidence: 0.8 (E2).
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### ISSUE-CFA0DBE-004 – Agent Update (codex | 2025-02-19)
+#### Agent Notes (do not delete prior notes)
+- codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: Legacy connection path instantiates `StdioClientTransport` directly with no alternate stdio class present (`packages/mcp/src/index.ts:617`); `rg` finds no `PrefixedStdioClientTransport`. confidence: 0.75 (E2).
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### ISSUE-CFA0DBE-005 – Agent Update (codex | 2025-02-19)
+#### Agent Notes (do not delete prior notes)
+- codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: OAuth API exposes `/authorize`, `/token`, `/register`, `/revoke`, and callback flows wired to `OAuthProvider` (`packages/server/src/api/oauth.ts:113`, `packages/server/src/api/oauth.ts:184`, `packages/server/src/api/oauth.ts:230`, `packages/server/src/api/oauth.ts:268`, `packages/server/src/oauth/oauth-provider.ts:80`). confidence: 0.8 (E2).
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### ISSUE-CFA0DBE-006 – Agent Update (codex | 2025-02-19)
+#### Agent Notes (do not delete prior notes)
+- codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: Disconnect handling now wraps `onclose`/`onerror` and cleans up server maps (`packages/mcp/src/index.ts:478`, `packages/mcp/src/index.ts:526`); reconnection remains TODO but no dangling state persists. confidence: 0.75 (E2).
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### ISSUE-8C0AF61-006 – Agent Update (codex | 2025-02-19)
+#### Agent Notes (do not delete prior notes)
+- codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: Inbound auth middleware is gated behind runtime configuration (`packages/server/src/index.ts:41`, `packages/server/src/index.ts:79`), and the dev entry point starts without inbound auth (`packages/server/src/dev.ts:43`), so default deployments remain unauthenticated despite helper APIs/tests. confidence: 0.7 (E2).
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
     - [x] Set/updated **Status**
