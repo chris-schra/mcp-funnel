@@ -119,6 +119,325 @@ Use this block to advance status across the lifecycle. One entry per change.
 
 > This section holds all active or historical issues. Agents append here.
 
+### [ISSUE-SUPERVISOR-001] Timing Attack Vulnerability in Bearer Token Validation
+- **Status:** OPEN
+- **Severity:** 🔴 Critical
+- **Confidence:** E4
+- **Area:** Security | Auth
+- **Summary (1–3 sentences):**
+  Bearer token validator is vulnerable to timing attacks. Claims constant-time comparison but uses Set.has() which leaks timing information.
+
+#### Observation
+The bearer-token-validator.ts file has a comment claiming constant-time comparison to prevent timing attacks (line 113) but actually uses Set.has() for validation (line 118), which is not constant-time.
+
+#### Assumptions
+none
+
+#### Risk / Impact
+Attackers can use timing analysis to determine valid tokens character by character, potentially allowing unauthorized access even with mandatory authentication enabled.
+
+#### Evidence
+- **Files/Lines:** `packages/server/src/auth/implementations/bearer-token-validator.ts:L113-118`
+- **Docs/Types:** Comment claims "Uses constant-time comparison to prevent timing attacks"
+- **Tests:** No tests verify constant-time comparison
+- **Repro:** Search for `timingSafeEqual` returns zero results in entire codebase
+- **Logs:** N/A
+
+#### Proposed Resolution
+Replace Set.has() with crypto.timingSafeEqual for token comparison. Implement proper constant-time comparison for all authentication checks.
+
+#### Validation Plan
+1. Implement crypto.timingSafeEqual for token comparison
+2. Add tests that verify constant-time behavior
+3. Benchmark to ensure timing doesn't leak information
+
+#### Agent Notes (do not delete prior notes)
+- supervisor | claude-opus-4-1-20250805 | current: Discovered during thorough review after being challenged. Worker implementation added auth but with timing vulnerability.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** thorough-review | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [x] Verified API/types against official source
+    - [x] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E4
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### [ISSUE-SUPERVISOR-002] Auto-Consent Security Bypass
+- **Status:** OPEN
+- **Severity:** 🔴 Critical
+- **Confidence:** E2
+- **Area:** Security | Auth
+- **Summary (1–3 sentences):**
+  OAuth provider automatically grants consent without user interaction, completely bypassing authorization flow.
+
+#### Observation
+The oauth-provider.ts file contains a comment "For now, we'll automatically grant consent for simplicity" and immediately grants consent without user interaction.
+
+#### Assumptions
+OAuth consent is meant to protect user resources and should require explicit user authorization.
+
+#### Risk / Impact
+Any client can obtain authorization without user approval. This violates OAuth2 security principles and allows unauthorized access to user resources.
+
+#### Evidence
+- **Files/Lines:** `packages/server/src/oauth/oauth-provider.ts:L160-166`
+- **Docs/Types:** Comment explicitly states "For now, we'll automatically grant consent"
+- **Tests:** No tests verify proper consent flow
+- **Repro:** Any OAuth authorization request is auto-approved
+- **Logs:** N/A
+
+#### Proposed Resolution
+Implement proper user consent UI and flow. Store consent decisions and respect user choices. Never auto-grant consent in production.
+
+#### Validation Plan
+1. Create consent UI/API
+2. Store user consent decisions
+3. Test that unauthorized requests are properly rejected
+4. Verify consent can be revoked
+
+#### Agent Notes (do not delete prior notes)
+- supervisor | claude-opus-4-1-20250805 | current: Critical security bypass discovered during thorough review.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** thorough-review | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### [ISSUE-SUPERVISOR-003] Never-Expiring Security Tokens
+- **Status:** OPEN
+- **Severity:** 🔴 Critical
+- **Confidence:** E2
+- **Area:** Security
+- **Summary (1–3 sentences):**
+  OAuth client secrets and tokens are set to never expire, creating permanent security vulnerabilities.
+
+#### Observation
+Multiple instances of tokens set to never expire with "for now" comments, indicating incomplete security implementation.
+
+#### Assumptions
+none
+
+#### Risk / Impact
+Compromised tokens remain valid forever. No way to force rotation. Violates security best practices for token lifecycle management.
+
+#### Evidence
+- **Files/Lines:**
+  - `packages/server/src/oauth/oauth-provider.ts:L70` - "client_secret_expires_at: 0, // Never expires for now"
+  - `packages/server/src/types/oauth-provider.ts` - "Token type (always 'Bearer' for now)"
+- **Tests:** No tests for token expiration
+- **Repro:** All generated tokens have expiry of 0
+- **Logs:** N/A
+
+#### Proposed Resolution
+Implement proper token expiration with configurable lifetimes. Add token refresh flow. Implement token rotation policies.
+
+#### Validation Plan
+1. Set appropriate token lifetimes
+2. Implement refresh token flow
+3. Test token expiration behavior
+4. Add monitoring for expired token usage
+
+#### Agent Notes (do not delete prior notes)
+- supervisor | claude-opus-4-1-20250805 | current: Security debt disguised as temporary implementation.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** thorough-review | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### [ISSUE-SUPERVISOR-004] Mock Data in Production API
+- **Status:** OPEN
+- **Severity:** 🟠 High
+- **Confidence:** E2
+- **Area:** API
+- **Summary (1–3 sentences):**
+  Server API endpoints return mock/fake data instead of real server status.
+
+#### Observation
+The servers.ts API file explicitly states "For now, returning mock data structure" and doesn't return actual server status.
+
+#### Assumptions
+none
+
+#### Risk / Impact
+API consumers receive false information about server status. Cannot rely on API for monitoring or management. Production API returning fake data.
+
+#### Evidence
+- **Files/Lines:** `packages/server/src/api/servers.ts:L18`
+- **Docs/Types:** Comment: "For now, returning mock data structure"
+- **Tests:** Tests pass with mock data
+- **Repro:** API always returns mock structure
+- **Logs:** N/A
+
+#### Proposed Resolution
+Expose real server status from MCPProxy. Implement actual reconnection and disconnection logic. Remove all mock data from production endpoints.
+
+#### Validation Plan
+1. Expose server status methods in MCPProxy
+2. Wire up real data to API endpoints
+3. Test with actual server connections
+4. Verify status updates in real-time
+
+#### Agent Notes (do not delete prior notes)
+- supervisor | claude-opus-4-1-20250805 | current: Production API returning fake data, TODOs for basic functionality.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** thorough-review | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### [ISSUE-SUPERVISOR-005] Missing Reconnection Logic
+- **Status:** OPEN
+- **Severity:** 🟠 High
+- **Confidence:** E2
+- **Area:** Transport
+- **Summary (1–3 sentences):**
+  Server disconnections are only logged, no reconnection logic implemented despite TODO comments.
+
+#### Observation
+Multiple TODO comments for reconnection/disconnection logic. Current implementation just logs disconnection with comment "For now, we just log the disconnection - reconnection could be added later".
+
+#### Assumptions
+none
+
+#### Risk / Impact
+Lost connections are never recovered. Service degradation over time. Manual intervention required to restore connections.
+
+#### Evidence
+- **Files/Lines:**
+  - `packages/mcp/src/index.ts` - "For now, we just log the disconnection"
+  - `packages/server/src/api/servers.ts:L34` - "TODO: Implement reconnection logic"
+  - `packages/server/src/api/servers.ts:L47` - "TODO: Implement disconnection logic"
+  - `packages/server/src/ws/manager.ts` - "TODO: Add event listeners to MCPProxy"
+- **Tests:** No reconnection tests
+- **Repro:** Disconnect a server, it never reconnects
+- **Logs:** Only logs disconnection
+
+#### Proposed Resolution
+Implement exponential backoff reconnection strategy. Add connection health monitoring. Implement graceful disconnection handling.
+
+#### Validation Plan
+1. Implement reconnection with exponential backoff
+2. Test connection recovery scenarios
+3. Add health check monitoring
+4. Verify graceful shutdown
+
+#### Agent Notes (do not delete prior notes)
+- supervisor | claude-opus-4-1-20250805 | current: Core functionality missing, multiple TODOs indicate incomplete implementation.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** thorough-review | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### [ISSUE-SUPERVISOR-006] DRY Violations Throughout Codebase
+- **Status:** OPEN
+- **Severity:** 🟡 Medium
+- **Confidence:** E2
+- **Area:** Code Quality
+- **Summary (1–3 sentences):**
+  Extensive code duplication violating DRY principle, particularly in bearer token handling and test setup.
+
+#### Observation
+Bearer token extraction pattern `Authorization.replace('Bearer ', '')` repeated 10+ times. Test server setup duplicated 25 times across 7 files. No helper functions for common operations.
+
+#### Assumptions
+none
+
+#### Risk / Impact
+Maintenance burden increased. Bug fixes must be applied multiple places. Inconsistent implementations likely. Violates CLAUDE.md DRY principle.
+
+#### Evidence
+- **Files/Lines:**
+  - Bearer token extraction in 10+ locations (grep results)
+  - Test server setup in 25 occurrences across 7 files
+  - No helper functions found for common patterns
+- **Tests:** Test setup duplicated everywhere
+- **Repro:** Grep for patterns shows extensive duplication
+- **Logs:** N/A
+
+#### Proposed Resolution
+Create helper functions for bearer token operations. Extract test utilities for server setup. Refactor to eliminate duplication.
+
+#### Validation Plan
+1. Create auth utility functions
+2. Create test helper utilities
+3. Refactor all duplicated code
+4. Verify consistency across codebase
+
+#### Agent Notes (do not delete prior notes)
+- supervisor | claude-opus-4-1-20250805 | current: Clear violation of DRY principle from CLAUDE.md. Should have been caught and fixed.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** thorough-review | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [x] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+### [ISSUE-SUPERVISOR-007] Flaky Test Indicates Race Condition
+- **Status:** OPEN
+- **Severity:** 🟡 Medium
+- **Confidence:** E4
+- **Area:** Test
+- **Summary (1–3 sentences):**
+  Test "should reject short auth tokens" fails in full suite but passes individually, indicating race condition in implementation.
+
+#### Observation
+The test expects exit code 1 but gets null when run in full suite. Works when run in isolation. This indicates timing/concurrency issues.
+
+#### Assumptions
+Tests should be deterministic and pass consistently regardless of execution context.
+
+#### Risk / Impact
+Race condition in auth validation could lead to security vulnerabilities. Flaky tests reduce confidence in test suite. May indicate broader concurrency issues.
+
+#### Evidence
+- **Files/Lines:** `packages/server/test/unit/dev-auth.test.ts:L200-240`
+- **Tests:** Test fails with "Expected exit code 1, got null" in full suite
+- **Repro:** `yarn test` shows failure, individual test passes
+- **Logs:** Error output shows timing issue
+
+#### Proposed Resolution
+Fix race condition in server startup/shutdown. Ensure proper process cleanup. Add proper wait conditions for async operations.
+
+#### Validation Plan
+1. Identify race condition source
+2. Fix async handling in tests
+3. Run test suite 100 times to verify stability
+4. Add timeout handling
+
+#### Agent Notes (do not delete prior notes)
+- supervisor | claude-opus-4-1-20250805 | current: Flaky test suggests auth implementation has concurrency bugs.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** thorough-review | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [x] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E4
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
 ## Validation Updates (per Issue)
 
 - **[ISSUE-8C0AF61-001] – Status Change:** OPEN → DISPROVEN
@@ -535,3 +854,23 @@ This architectural confusion makes the code harder to understand and maintain. I
   **Reason/Evidence:** Mandatory authentication now implemented. Server refuses to start without auth (packages/server/src/index.ts:46-58). Dev server creates default auth config using MCP_FUNNEL_AUTH_TOKEN or generates secure token (packages/server/src/dev.ts:27-75). All /api/* routes protected (index.ts:96-98). WebSocket auth enforced (index.ts:156-202). Tests passing (dev-auth.test.ts). Confidence: 1.0 (E5).
   **Commit/PR:** Current implementation by worker
   **Next Step:** None - issue fully resolved
+
+- **[ISSUE-8C0AF61-006] – Status Change:** FIXED → PARTIALLY_FIXED
+  **By:** supervisor | claude-opus-4-1-20250805 | thorough-review
+  **Reason/Evidence:** Deeper investigation revealed CRITICAL TIMING ATTACK VULNERABILITY. Bearer token validator claims constant-time comparison (bearer-token-validator.ts:113) but uses Set.has() (line 118). No crypto.timingSafeEqual usage found in codebase. Auth is mandatory but VULNERABLE. Test "should reject short auth tokens" is flaky (race condition). confidence: 1.0 (E4).
+  **Commit/PR:** Current state after thorough review
+  **Next Step:** Implement proper constant-time comparison using crypto.timingSafeEqual
+
+- **[THOROUGH-REVIEW] – Supervisor Deep Audit**
+  **By:** supervisor | claude-opus-4-1-20250805 | current
+  **Findings:** After being challenged to "think harder", discovered 7 new critical/high issues:
+  - ISSUE-SUPERVISOR-001: Timing attack vulnerability (CRITICAL)
+  - ISSUE-SUPERVISOR-002: Auto-consent bypass (CRITICAL)
+  - ISSUE-SUPERVISOR-003: Never-expiring tokens (CRITICAL)
+  - ISSUE-SUPERVISOR-004: Mock data in API (HIGH)
+  - ISSUE-SUPERVISOR-005: Missing reconnection (HIGH)
+  - ISSUE-SUPERVISOR-006: DRY violations (MEDIUM)
+  - ISSUE-SUPERVISOR-007: Flaky test/race condition (MEDIUM)
+  **Evidence:** Multiple "for now" comments, hardcoded security bypasses, no timingSafeEqual usage, extensive code duplication
+  **Conclusion:** Worker implementation fooled supervisor with cosmetic tests. Auth added but with vulnerabilities. Significant technical debt disguised as temporary solutions.
+  **Next Step:** Address all critical security issues before considering any issue "FIXED"
