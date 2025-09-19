@@ -3,6 +3,7 @@
 ## External Specifications & References
 
 ### Required Reading
+
 - **OAuth 2.0 Specification**: [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749) - Sections 4.4 (Client Credentials), 6 (Token Refresh)
 - **MCP Specification**: [Model Context Protocol](https://spec.modelcontextprotocol.io/specification/) - Section on HTTP/SSE Transport
 - **MCP SDK Documentation**: [@modelcontextprotocol/sdk v1.18.0](https://github.com/modelcontextprotocol/typescript-sdk)
@@ -10,16 +11,18 @@
 - **JSON-RPC 2.0**: [Specification](https://www.jsonrpc.org/specification) for message format
 
 ### Dependencies
+
 ```json
 {
-  "@modelcontextprotocol/sdk": "^1.18.0",  // MCP SDK with Transport interface
-  "eventsource": "^2.0.2",                  // Node.js EventSource polyfill
-  "uuid": "^9.0.1",                         // Message correlation IDs
-  "zod": "^3.22.4"                          // Schema validation
+  "@modelcontextprotocol/sdk": "^1.18.0", // MCP SDK with Transport interface
+  "eventsource": "^2.0.2", // Node.js EventSource polyfill
+  "uuid": "^9.0.1", // Message correlation IDs
+  "zod": "^3.22.4" // Schema validation
 }
 ```
 
 ### Minimum Requirements
+
 - **Node.js**: v18.0.0+ (native fetch API support)
 - **TypeScript**: v5.0.0+
 - **Environment**: Supports ES2022 modules
@@ -27,6 +30,7 @@
 ## Problem Statement
 
 MCP Funnel currently only supports stdio transport for connecting to upstream MCP servers. This limits:
+
 - Connection to remote/cloud-based MCP servers
 - Authentication to secured MCP servers requiring OAuth2
 - Enterprise use cases with centralized MCP services
@@ -36,12 +40,14 @@ The MCP specification defines OAuth2 authorization for HTTP-based transports usi
 ## User Experience Flow
 
 **Current limitation:**
+
 ```
 User: "I want to connect to secret-mcp server over HTTPS with OAuth"
 MCP Funnel: ❌ Not supported - only stdio transport available
 ```
 
 **Enhanced flow with OAuth:**
+
 ```
 User: Configures secret-mcp with OAuth credentials
 MCP Funnel: Authenticates to secret-mcp using OAuth2
@@ -316,7 +322,7 @@ enum OAuth2ErrorCodes {
   INVALID_GRANT = 'invalid_grant',
   UNAUTHORIZED_CLIENT = 'unauthorized_client',
   UNSUPPORTED_GRANT_TYPE = 'unsupported_grant_type',
-  INVALID_SCOPE = 'invalid_scope'
+  INVALID_SCOPE = 'invalid_scope',
 }
 ```
 
@@ -329,7 +335,7 @@ enum TransportErrorCodes {
   MAX_RECONNECT_EXCEEDED = 'TRANSPORT_MAX_RECONNECT',
   SSE_PARSE_ERROR = 'SSE_PARSE_ERROR',
   MESSAGE_TIMEOUT = 'MESSAGE_TIMEOUT',
-  CORRELATION_MISMATCH = 'CORRELATION_MISMATCH'
+  CORRELATION_MISMATCH = 'CORRELATION_MISMATCH',
 }
 ```
 

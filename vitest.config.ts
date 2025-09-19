@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 // force vitest to use CI mode to avoid watch mode
-process.env.CI = "true";
+process.env.CI = 'true';
 
 export default defineConfig({
   // @ts-expect-error type mismatch in packages

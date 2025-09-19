@@ -3,13 +3,16 @@
 ## Implementation Status Overview
 
 ### Phase 2.1: OAuth2 Authorization Code Flow
+
 **Server Integration:**
+
 - [x] OAuth callback route in packages/server (`/api/oauth/callback`)
 - [x] Hono server integration with MCPProxy
 - [x] HTML success/error pages with auto-close
 - [x] Route added to main server (`app.route('/api/oauth', oauthRoute)`)
 
 **OAuth2AuthCodeProvider:**
+
 - [x] Complete RFC 6749 + RFC 7636 PKCE implementation
 - [x] PKCE challenge/verifier generation
 - [x] Browser authorization URL output (console-based)
@@ -18,13 +21,16 @@
 - [x] **Fix broken unit tests (syntax errors)** ✅ COMPLETED
 
 **MCPProxy Integration:**
+
 - [x] `completeOAuthFlow` method implemented
 - [x] Factory method for OAuth2AuthCodeProvider creation
 - [x] Support for both connected/disconnected servers
 - [x] Automatic reconnection after OAuth completion
 
 ### Phase 2.2: Secure Token Storage (Keychain)
+
 **Implementation:**
+
 - [x] KeychainTokenStorage class with OS commands
 - [x] Cross-platform support (macOS security, Windows cmdkey, Linux files)
 - [x] TokenStorageFactory with auto-detection
@@ -32,12 +38,15 @@
 - [x] **Fix failing unit tests (mocking issues)** ✅ COMPLETED
 
 **Integration:**
+
 - [x] Used in OAuth2ClientCredentialsProvider
 - [x] Used in OAuth2AuthCodeProvider
 - [x] Environment-based selection logic
 
 ### Phase 2.3: WebSocket Transport
+
 **Client-side Implementation:**
+
 - [ ] **WebSocket client transport class (`websocket-client-transport.ts`)**
 - [ ] **WebSocket transport type in configuration schemas**
 - [ ] **Integration in transport factory (`createTransportImplementation`)**
@@ -45,40 +54,50 @@
 - [ ] **Reconnection logic (reuse from SSE patterns)**
 
 **Server-side (Ready):**
+
 - [x] WebSocketServer setup in packages/server
 - [x] WebSocketManager for handling connections
 - [x] `/ws` endpoint configured
 - [x] Tool execution over WebSocket implemented
 
 ### Phase 2.4: Security Enhancements
+
 **Audit Logging:**
+
 - [x] OAuth event logging in existing logger
 - [x] Authentication attempt tracking
 - [x] Token refresh logging
 
 **Rate Limiting:**
+
 - [ ] **Simple in-memory rate limiter implementation**
 - [ ] **Integration with auth providers**
 
 ### Phase 2.5: Testing & Documentation
+
 **Unit Tests:**
+
 - [x] OAuth2AuthCodeProvider tests ✅ COMPLETED
 - [x] KeychainTokenStorage tests ✅ COMPLETED
 - [ ] **WebSocket client transport tests**
 - [ ] **Integration tests for complete OAuth flow**
 
 **Quality Issues:**
+
 - [x] **Fix TypeScript/ESLint validation errors** ✅ COMPLETED
 - [x] **Fix console.log violations in OAuth2AuthCodeProvider** ✅ COMPLETED
 - [x] **Fix require() import violations** ✅ COMPLETED
 
 **Summary:**
+
 - **Completed:** OAuth2 authorization code flow implementation, keychain storage, server infrastructure, unit tests, quality fixes
 - **Remaining:** WebSocket client transport, rate limiting
 - **Critical blockers:** None - all test and validation issues resolved, ready for WebSocket implementation
 
 ## Your responsibility
+
 **BEFORE** creating tasks, keep in mind:
+
 - you need to assess the current state first
 - make sure to detect existing packages (recursively, use a scan for package.json, excluding **/node_modules/**)
   to understand the repo first, then check relevant files for focus.
@@ -121,6 +140,7 @@ This document outlines the implementation approach for Phase 2 OAuth enhancement
 ## Design Principle: Extend, Don't Add
 
 **CRITICAL**: Phase 2 must leverage existing infrastructure:
+
 - Use existing Hono server in `packages/server` for OAuth callbacks
 - Extend existing WebSocket infrastructure (already in packages/server)
 - Build on top of Phase 1's IAuthProvider and ITokenStorage interfaces
@@ -150,6 +170,7 @@ yarn add -D @types/keytar
 ### Phase 2.1: OAuth2 Authorization Code Flow ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - [ ] You **MUST** tick the checklist boxes for Phase 1 (OAuth Client Credentials)
 - [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
 - [ ] **Fix critical blockers:** OAuth2 authorization code provider test syntax errors
@@ -159,6 +180,7 @@ yarn add -D @types/keytar
 #### Integration with Existing Infrastructure:
 
 1. **Extend packages/server with OAuth callback route**:
+
    ```typescript
    // packages/server/src/api/oauth.ts
    import { Hono } from 'hono';
@@ -174,7 +196,9 @@ yarn add -D @types/keytar
      await mcpProxy.completeOAuthFlow(state, code);
 
      // Return success page or redirect
-     return c.html('<html><body>Authorization successful! You can close this window.</body></html>');
+     return c.html(
+       '<html><body>Authorization successful! You can close this window.</body></html>',
+     );
    });
 
    // In packages/server/src/index.ts - add route
@@ -182,6 +206,7 @@ yarn add -D @types/keytar
    ```
 
 2. **OAuth2AuthCodeProvider in packages/mcp**:
+
    ```typescript
    // packages/mcp/src/auth/implementations/oauth2-authorization-code.ts
    export class OAuth2AuthCodeProvider implements IAuthProvider {
@@ -199,12 +224,15 @@ yarn add -D @types/keytar
        const challenge = generatePKCEChallenge(verifier);
 
        // Store pending auth
-       this.pendingAuth = { state, verifier, /* ... */ };
+       this.pendingAuth = { state, verifier /* ... */ };
 
        // Build auth URL
        const authUrl = new URL(this.config.authUrl);
        authUrl.searchParams.set('client_id', this.config.clientId);
-       authUrl.searchParams.set('redirect_uri', 'http://localhost:3456/api/oauth/callback');
+       authUrl.searchParams.set(
+         'redirect_uri',
+         'http://localhost:3456/api/oauth/callback',
+       );
        authUrl.searchParams.set('state', state);
        authUrl.searchParams.set('code_challenge', challenge);
 
@@ -219,7 +247,10 @@ yarn add -D @types/keytar
          this.pendingAuth!.reject = reject;
 
          // Timeout after 5 minutes
-         setTimeout(() => reject(new Error('Authorization timeout')), 5 * 60 * 1000);
+         setTimeout(
+           () => reject(new Error('Authorization timeout')),
+           5 * 60 * 1000,
+         );
        });
      }
    }
@@ -231,12 +262,14 @@ yarn add -D @types/keytar
    - NO separate callback server needed
 
 **Key Points**:
+
 - ✅ Reuses existing Hono server (port 3456)
 - ✅ No Express, no additional web framework
 - ✅ Leverages existing MCPProxy connection
 - ✅ Simple console output instead of browser launching package
 
 **DO NOT** proceed to next phase until:
+
 - [x] **Fix OAuth2 authorization code provider test syntax errors** ✅ COMPLETED
 - [x] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
 - [x] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
@@ -249,6 +282,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 ### Phase 2.2: Secure Token Storage (Keychain) ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - [ ] You **MUST** tick the checklist boxes for previous phase
 - [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
 - [ ] **Fix critical blockers:** Keychain token storage test failures (mocking issues)
@@ -258,10 +292,14 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 #### Lightweight Approach:
 
 1. **OS Command Implementation**:
+
    ```typescript
    // packages/mcp/src/auth/implementations/keychain-token-storage.ts
    export class KeychainTokenStorage implements ITokenStorage {
-     private async executeCommand(cmd: string, args: string[]): Promise<string> {
+     private async executeCommand(
+       cmd: string,
+       args: string[],
+     ): Promise<string> {
        const { exec } = await import('child_process');
        return new Promise((resolve, reject) => {
          exec(`${cmd} ${args.join(' ')}`, (error, stdout) => {
@@ -279,22 +317,28 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
          // macOS: Use security command
          await this.executeCommand('security', [
            'add-generic-password',
-           '-a', key,
-           '-s', 'mcp-funnel',
-           '-w', value,
-           '-U'  // Update if exists
+           '-a',
+           key,
+           '-s',
+           'mcp-funnel',
+           '-w',
+           value,
+           '-U', // Update if exists
          ]);
        } else if (process.platform === 'win32') {
          // Windows: Use cmdkey
          await this.executeCommand('cmdkey', [
            '/generic:' + key,
            '/user:mcp-funnel',
-           '/pass:' + value
+           '/pass:' + value,
          ]);
        } else {
          // Linux: Fallback to file with user-only permissions
          const filePath = path.join(os.homedir(), '.mcp-funnel', 'tokens');
-         await fs.mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
+         await fs.mkdir(path.dirname(filePath), {
+           recursive: true,
+           mode: 0o700,
+         });
          await fs.writeFile(filePath, value, { mode: 0o600 });
        }
      }
@@ -304,7 +348,9 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 2. **Factory Pattern for Storage Selection**:
    ```typescript
    // Reuse existing pattern from TransportFactory
-   export function createTokenStorage(type: 'memory' | 'keychain' = 'keychain'): ITokenStorage {
+   export function createTokenStorage(
+     type: 'memory' | 'keychain' = 'keychain',
+   ): ITokenStorage {
      if (type === 'memory' || process.env.CI) {
        return new MemoryTokenStorage();
      }
@@ -313,12 +359,14 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
    ```
 
 **Key Points**:
+
 - ✅ Uses OS built-in commands (no keytar dependency)
 - ✅ Graceful fallback to encrypted file on Linux
 - ✅ CI/CD friendly with memory fallback
 - ✅ Implements existing ITokenStorage interface
 
 **DO NOT** proceed to next phase until:
+
 - [x] **Fix keychain token storage test failures (mocking issues)** ✅ COMPLETED
 - [x] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
 - [x] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES ✅ COMPLETED
@@ -331,6 +379,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 ### Phase 2.3: WebSocket Transport
 
 **BEFORE** starting this phase:
+
 - [x] You **MUST** tick the checklist boxes for previous phase ✅ COMPLETED
 - [x] You **MUST** make sure that all files modified by the workers and this file have been committed ✅ COMPLETED
 
@@ -339,6 +388,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 #### Leverage Existing Infrastructure:
 
 1. **Client-side transport only** (server already has WebSocket):
+
    ```typescript
    // packages/mcp/src/transports/implementations/websocket-client-transport.ts
    import { WebSocket } from 'ws';
@@ -351,7 +401,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
        const wsUrl = this.config.url.replace('http', 'ws');
 
        this.ws = new WebSocket(wsUrl, {
-         headers: await this.authProvider.getHeaders()
+         headers: await this.authProvider.getHeaders(),
        });
 
        // Reuse SSEClientTransport's reconnection logic
@@ -364,6 +414,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
    ```
 
 2. **Server-side is already ready**:
+
    ```typescript
    // packages/server already has this in src/index.ts:
    // - WebSocketServer setup
@@ -374,12 +425,14 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
    ```
 
 **Key Points**:
+
 - ✅ Client implementation only (server ready)
 - ✅ Reuses existing reconnection patterns from SSE
 - ✅ No new server infrastructure needed
 - ✅ WebSocket package already in packages/server
 
 **DO NOT** proceed to next phase until:
+
 - [ ] **Implement WebSocket client transport class (`websocket-client-transport.ts`)**
 - [ ] **Add WebSocket transport type to configuration schemas**
 - [ ] **Integrate WebSocket transport into transport factory**
@@ -392,9 +445,10 @@ You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-### Phase 2.4: Security Enhancements 
+### Phase 2.4: Security Enhancements
 
 **BEFORE** starting this phase:
+
 - [ ] You **MUST** tick the checklist boxes for previous phase
 - [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
 
@@ -403,6 +457,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 #### Extend Existing Systems:
 
 1. **Audit Logging** - Use existing logger:
+
    ```typescript
    // Extend existing logEvent from packages/mcp/src/logger.ts
    logEvent('auth:oauth_initiated', { provider, serverId });
@@ -411,6 +466,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
    ```
 
 2. **Rate Limiting** - Simple in-memory implementation:
+
    ```typescript
    // packages/mcp/src/auth/rate-limiter.ts
    class SimpleRateLimiter {
@@ -422,7 +478,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
        const maxAttempts = 5;
 
        const attempts = this.attempts.get(key) || [];
-       const recentAttempts = attempts.filter(t => now - t < window);
+       const recentAttempts = attempts.filter((t) => now - t < window);
 
        if (recentAttempts.length >= maxAttempts) {
          return false;
@@ -436,11 +492,13 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
    ```
 
 **Key Points**:
+
 - ✅ Uses existing logging infrastructure
 - ✅ Simple, effective rate limiting without new dependencies
 - ✅ Follows existing error handling patterns
 
 **DO NOT** proceed to next phase until:
+
 - [ ] **Implement simple in-memory rate limiter**
 - [ ] **Integrate rate limiting with auth providers**
 - [ ] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES
@@ -454,6 +512,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 ### Phase 2.5: Testing & Documentation ❌ **PARTIALLY STARTED**
 
 **BEFORE** starting this phase:
+
 - [ ] You **MUST** tick the checklist boxes for previous phase
 - [ ] You **MUST** make sure that all files modified by the workers and this file have been committed
 - [ ] **Fix critical blockers:** All validation errors and test failures from previous phases
@@ -463,6 +522,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 #### Use Existing Test Patterns:
 
 1. **Unit Tests** - Add to existing test files:
+
    ```typescript
    // packages/mcp/test/unit/oauth2-auth-code.test.ts
    // Follow existing patterns from oauth2-client-credentials.test.ts
@@ -475,6 +535,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
    ```
 
 **DO NOT** proceed to next phase until:
+
 - [ ] **Add WebSocket client transport tests**
 - [ ] **Add integration tests for complete OAuth flow**
 - [ ] **Fix all TypeScript/ESLint validation errors**
@@ -503,6 +564,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 ### Incremental Enhancement
 
 1. **Phase 1 configs continue working**:
+
    ```typescript
    // This still works
    {
@@ -511,6 +573,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
    ```
 
 2. **Phase 2 adds new auth type**:
+
    ```typescript
    // New option available
    {
