@@ -25,14 +25,9 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { WebSocketClientTransport } from '../../src/transports/implementations/websocket-client-transport.js';
 import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
 import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import {
-  createTestOAuthServer,
-  TestOAuthServer,
-} from '../fixtures/test-oauth-server.js';
-import {
-  createTestWebSocketServer,
-  TestWebSocketServer,
-} from '../fixtures/test-websocket-server.js';
+import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
+import { TestWebSocketServer } from '../fixtures/test-websocket-server.js';
+import { setupOAuthAndWebSocketServers } from '../helpers/server-setup.js';
 import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCRequest,
@@ -52,39 +47,18 @@ describe.skipIf(!runIntegrationTests)(
     let wsEndpoint: string;
 
     beforeAll(async () => {
-      // Start real OAuth server
-      const oauthServerInfo = await createTestOAuthServer({
-        validClientId: 'ws-test-client',
-        validClientSecret: 'ws-test-secret',
-        tokenLifetime: 3600,
-      });
+      const { oauthServerInfo, wsServerInfo } =
+        await setupOAuthAndWebSocketServers({
+          clientId: 'ws-test-client',
+          clientSecret: 'ws-test-secret',
+          tokenLifetime: 3600,
+          requireAuth: true,
+        });
 
       oauthServer = oauthServerInfo.server;
       oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
-
-      // Start real WebSocket server with OAuth authentication
-      const wsServerInfo = await createTestWebSocketServer({
-        requireAuth: true,
-      });
-
       wsServer = wsServerInfo.server;
       wsEndpoint = wsServerInfo.wsEndpoint;
-
-      // Verify servers are accessible
-      try {
-        const [oauthHealth, wsHealth] = await Promise.all([
-          fetch(`${oauthServerInfo.url}/health`),
-          fetch(`${wsServerInfo.url}/health`),
-        ]);
-
-        if (!oauthHealth.ok || !wsHealth.ok) {
-          throw new Error('Server health checks failed');
-        }
-      } catch (error) {
-        throw new Error(
-          `Cannot reach test servers: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
     }, 30000);
 
     beforeEach(() => {

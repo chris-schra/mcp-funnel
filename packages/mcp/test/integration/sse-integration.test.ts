@@ -24,14 +24,9 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { SSEClientTransport } from '../../src/transports/implementations/sse-client-transport.js';
 import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
 import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import {
-  createTestOAuthServer,
-  TestOAuthServer,
-} from '../fixtures/test-oauth-server.js';
-import {
-  createTestSSEServer,
-  TestSSEServer,
-} from '../fixtures/test-sse-server.js';
+import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
+import { TestSSEServer } from '../fixtures/test-sse-server.js';
+import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
 import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCRequest,
@@ -49,40 +44,17 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
   let sseEndpoint: string;
 
   beforeAll(async () => {
-    // Start real OAuth server
-    const oauthServerInfo = await createTestOAuthServer({
-      validClientId: 'sse-test-client',
-      validClientSecret: 'sse-test-secret',
+    const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
+      clientId: 'sse-test-client',
+      clientSecret: 'sse-test-secret',
       tokenLifetime: 3600,
+      requireAuth: true,
     });
 
     oauthServer = oauthServerInfo.server;
     oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
-
-    // Start real SSE server with OAuth authentication
-    const sseServerInfo = await createTestSSEServer({
-      requireAuth: true,
-      // Will be set dynamically based on acquired tokens
-    });
-
     sseServer = sseServerInfo.server;
     sseEndpoint = sseServerInfo.sseEndpoint;
-
-    // Verify servers are accessible
-    try {
-      const [oauthHealth, sseHealth] = await Promise.all([
-        fetch(`${oauthServerInfo.url}/health`),
-        fetch(`${sseServerInfo.url}/health`),
-      ]);
-
-      if (!oauthHealth.ok || !sseHealth.ok) {
-        throw new Error('Server health checks failed');
-      }
-    } catch (error) {
-      throw new Error(
-        `Cannot reach test servers: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
   }, 30000);
 
   beforeEach(() => {
