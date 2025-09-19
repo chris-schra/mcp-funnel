@@ -23,6 +23,22 @@ const createMockMCPProxy = (): MCPProxy => {
       exposeCoreTools: [],
     },
     completeOAuthFlow: vi.fn(),
+    // Add EventEmitter methods for WebSocketManager
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+    once: vi.fn(),
+    removeListener: vi.fn(),
+    removeAllListeners: vi.fn(),
+    addListener: vi.fn(),
+    setMaxListeners: vi.fn(),
+    getMaxListeners: vi.fn().mockReturnValue(10),
+    listeners: vi.fn().mockReturnValue([]),
+    listenerCount: vi.fn().mockReturnValue(0),
+    eventNames: vi.fn().mockReturnValue([]),
+    rawListeners: vi.fn().mockReturnValue([]),
+    prependListener: vi.fn(),
+    prependOnceListener: vi.fn(),
   };
 
   // Return as MCPProxy - this is a test mock with only the needed properties
