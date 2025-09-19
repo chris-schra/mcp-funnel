@@ -247,6 +247,58 @@ You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
+Phase 5: Enable Tool Invocation from Commands
+
+You **MUST** tick the checklist boxes for previous phase before continuing.
+
+**CRITICAL GAP IDENTIFIED:**
+Commands can check server dependencies but cannot actually USE those servers' tools.
+This phase adds the missing capability for commands to invoke tools from dependent servers.
+
+**Implementation Tasks:**
+
+1. **Add tool invocation method to IMCPProxy interface** (packages/commands/core/src/interfaces.ts):
+   - Add `callServerTool(serverName: string, toolName: string, args: Record<string, unknown>): Promise<CallToolResult>`
+   - Document that this allows commands to invoke tools from other connected servers
+
+2. **Implement callServerTool in MCPProxy** (packages/mcp/src/index.ts):
+   - Check if server is connected
+   - Format tool name as `${serverName}__${toolName}`
+   - Delegate to existing handleCallToolRequest method
+   - Return error if server not connected or tool not found
+
+3. **Implement stub in CLIProxy** (packages/mcp/src/commands/run.ts):
+   - Return error indicating tool invocation not available in CLI mode
+   - Suggest running via MCP mode for full functionality
+
+4. **Add protected helper method in BaseCommand** (packages/commands/core/src/base-command.ts):
+   - `callDependencyTool(serverName: string, toolName: string, args: Record<string, unknown>)`
+   - Check proxy exists, delegate to proxy.callServerTool
+   - Provide helpful error messages
+
+5. **Write comprehensive tests** (packages/commands/core/src/__tests__/server-dependency.test.ts):
+   - Test successful tool invocation
+   - Test error handling for disconnected servers
+   - Test error handling in CLI mode
+   - Test invalid server/tool names
+
+**DO NOT** proceed to next phase until:
+
+- [ ] callServerTool method added to IMCPProxy interface
+- [ ] MCPProxy implementation delegates to handleCallToolRequest correctly
+- [ ] CLIProxy returns appropriate error for CLI mode
+- [ ] BaseCommand helper method provides good developer experience
+- [ ] Tests cover all scenarios
+- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn validate packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] `yarn test packages/commands/core` passes WITHOUT ANY ERRORS OR ISSUES
+- [ ] you did a thorough review using code-reasoning tool
+
+You **MUST** run above commands **ALWAYS** from package root.
+
+You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
+
 Phase 6: Unskip & Run Tests
 
 You **MUST** tick the checklist boxes for previous phase before continuing.
