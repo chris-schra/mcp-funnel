@@ -510,8 +510,13 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
       expect(jsonRpcReceived).toBeDefined();
       expect(jsonRpcReceived.jsonrpc).toBe('2.0');
       expect(jsonRpcReceived.result).toBeDefined();
-      expect((jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools).toHaveLength(1);
-      expect((jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools[0].name).toBe('test_tool');
+      expect(
+        (jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools,
+      ).toHaveLength(1);
+      expect(
+        (jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools[0]
+          .name,
+      ).toBe('test_tool');
 
       await transport.close();
     }, 15000);

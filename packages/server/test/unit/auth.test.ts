@@ -94,7 +94,9 @@ describe('Authentication System', () => {
       const result = await validator.validateRequest(mockContext);
 
       expect(result.isAuthenticated).toBe(false);
-      expect(result.error).toBe('Invalid Authorization header format. Expected: Bearer <token>');
+      expect(result.error).toBe(
+        'Invalid Authorization header format. Expected: Bearer <token>',
+      );
     });
 
     it('should reject empty bearer token', async () => {
@@ -139,7 +141,9 @@ describe('Authentication System', () => {
         tokens: ['${UNDEFINED_TOKEN}'],
       };
 
-      expect(() => new BearerTokenValidator(config)).toThrow('Environment variable UNDEFINED_TOKEN is not defined');
+      expect(() => new BearerTokenValidator(config)).toThrow(
+        'Environment variable UNDEFINED_TOKEN is not defined',
+      );
     });
 
     it('should throw error for empty token configuration', () => {
@@ -148,7 +152,9 @@ describe('Authentication System', () => {
         tokens: [],
       };
 
-      expect(() => new BearerTokenValidator(config)).toThrow('Bearer token configuration must include at least one token');
+      expect(() => new BearerTokenValidator(config)).toThrow(
+        'Bearer token configuration must include at least one token',
+      );
     });
   });
 
@@ -196,7 +202,9 @@ describe('Authentication System', () => {
     it('should reject config without type', () => {
       const invalidConfig = {} as any;
 
-      expect(() => validateAuthConfig(invalidConfig)).toThrow('Authentication configuration must specify a type');
+      expect(() => validateAuthConfig(invalidConfig)).toThrow(
+        'Authentication configuration must specify a type',
+      );
     });
 
     it('should reject bearer config without tokens', () => {
@@ -204,7 +212,9 @@ describe('Authentication System', () => {
         type: 'bearer',
       } as any;
 
-      expect(() => validateAuthConfig(invalidConfig)).toThrow('Bearer authentication requires a tokens array');
+      expect(() => validateAuthConfig(invalidConfig)).toThrow(
+        'Bearer authentication requires a tokens array',
+      );
     });
 
     it('should reject bearer config with empty tokens array', () => {
@@ -213,7 +223,9 @@ describe('Authentication System', () => {
         tokens: [],
       };
 
-      expect(() => validateAuthConfig(invalidConfig)).toThrow('Bearer authentication requires at least one token');
+      expect(() => validateAuthConfig(invalidConfig)).toThrow(
+        'Bearer authentication requires at least one token',
+      );
     });
 
     it('should reject unsupported auth type', () => {
@@ -221,7 +233,9 @@ describe('Authentication System', () => {
         type: 'unsupported',
       } as any;
 
-      expect(() => validateAuthConfig(invalidConfig)).toThrow('Unsupported authentication type: unsupported');
+      expect(() => validateAuthConfig(invalidConfig)).toThrow(
+        'Unsupported authentication type: unsupported',
+      );
     });
   });
 
@@ -254,7 +268,9 @@ describe('Authentication System', () => {
         type: 'unsupported',
       } as any;
 
-      expect(() => createAuthValidator(config)).toThrow('Unsupported authentication type: unsupported');
+      expect(() => createAuthValidator(config)).toThrow(
+        'Unsupported authentication type: unsupported',
+      );
     });
   });
 
@@ -279,7 +295,7 @@ describe('Authentication System', () => {
 
       const res = await app.request('/test', {
         headers: {
-          'Authorization': 'Bearer valid-token',
+          Authorization: 'Bearer valid-token',
         },
       });
 
@@ -302,14 +318,16 @@ describe('Authentication System', () => {
 
       const res = await app.request('/test', {
         headers: {
-          'Authorization': 'Bearer invalid-token',
+          Authorization: 'Bearer invalid-token',
         },
       });
 
       expect(res.status).toBe(401);
       const data = await res.json();
       expect(data.error).toBe('Unauthorized');
-      expect(res.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
+      expect(res.headers.get('WWW-Authenticate')).toBe(
+        'Bearer realm="MCP Proxy API"',
+      );
     });
 
     it('should reject requests without authentication', async () => {
@@ -361,7 +379,7 @@ describe('Authentication System', () => {
 
       const mockRequest = {
         headers: {
-          'authorization': 'Bearer valid-ws-token',
+          authorization: 'Bearer valid-ws-token',
         },
         url: '/ws',
         method: 'GET',
@@ -383,7 +401,7 @@ describe('Authentication System', () => {
 
       const mockRequest = {
         headers: {
-          'authorization': 'Bearer invalid-ws-token',
+          authorization: 'Bearer invalid-ws-token',
         },
         url: '/ws',
         method: 'GET',

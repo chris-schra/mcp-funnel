@@ -4,23 +4,24 @@ import type { MCPProxy } from 'mcp-funnel';
 import { WebSocket } from 'ws';
 
 // Mock MCPProxy for testing
-const createMockMCPProxy = (): MCPProxy => ({
-  server: {
-    connect: vi.fn(),
-    sendToolListChanged: vi.fn(),
-  },
-  clients: new Map(),
-  toolDefinitionCache: new Map(),
-  toolMapping: new Map(),
-  dynamicallyEnabledTools: new Set(),
-  config: {
-    servers: [],
-    hideTools: [],
-    exposeTools: [],
-    exposeCoreTools: [],
-  },
-  completeOAuthFlow: vi.fn(),
-} as any);
+const createMockMCPProxy = (): MCPProxy =>
+  ({
+    server: {
+      connect: vi.fn(),
+      sendToolListChanged: vi.fn(),
+    },
+    clients: new Map(),
+    toolDefinitionCache: new Map(),
+    toolMapping: new Map(),
+    dynamicallyEnabledTools: new Set(),
+    config: {
+      servers: [],
+      hideTools: [],
+      exposeTools: [],
+      exposeCoreTools: [],
+    },
+    completeOAuthFlow: vi.fn(),
+  }) as any;
 
 describe('Server Authentication Integration', () => {
   let server: any;
@@ -58,29 +59,39 @@ describe('Server Authentication Integration', () => {
       await startWebServer(mcpProxy, options);
 
       // Test authenticated request
-      const authResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
-        headers: {
-          'Authorization': 'Bearer test-auth-token-123',
+      const authResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+        {
+          headers: {
+            Authorization: 'Bearer test-auth-token-123',
+          },
         },
-      });
+      );
 
       expect(authResponse.status).toBe(200);
       const authData = await authResponse.json();
       expect(authData.status).toBe('ok');
 
       // Test unauthenticated request
-      const noAuthResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`);
+      const noAuthResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+      );
       expect(noAuthResponse.status).toBe(401);
       const noAuthData = await noAuthResponse.json();
       expect(noAuthData.error).toBe('Unauthorized');
-      expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
+      expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe(
+        'Bearer realm="MCP Proxy API"',
+      );
 
       // Test invalid token
-      const invalidAuthResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
-        headers: {
-          'Authorization': 'Bearer invalid-token',
+      const invalidAuthResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+        {
+          headers: {
+            Authorization: 'Bearer invalid-token',
+          },
         },
-      });
+      );
       expect(invalidAuthResponse.status).toBe(401);
     });
 
@@ -101,7 +112,7 @@ describe('Server Authentication Integration', () => {
       await new Promise<void>((resolve, reject) => {
         const authWs = new WebSocket(`ws://localhost:${testPort}/ws`, {
           headers: {
-            'Authorization': 'Bearer test-ws-token-456',
+            Authorization: 'Bearer test-ws-token-456',
           },
         });
 
@@ -127,7 +138,11 @@ describe('Server Authentication Integration', () => {
 
         noAuthWs.on('open', () => {
           noAuthWs.close();
-          reject(new Error('Unauthenticated WebSocket connection should have failed'));
+          reject(
+            new Error(
+              'Unauthenticated WebSocket connection should have failed',
+            ),
+          );
         });
 
         noAuthWs.on('error', () => {
@@ -157,13 +172,17 @@ describe('Server Authentication Integration', () => {
       await startWebServer(mcpProxy, options);
 
       // Health endpoint should be unprotected
-      const healthResponse = await fetch(`http://localhost:${testPort}/api/health`);
+      const healthResponse = await fetch(
+        `http://localhost:${testPort}/api/health`,
+      );
       expect(healthResponse.status).toBe(200);
       const healthData = await healthResponse.json();
       expect(healthData.status).toBe('ok');
 
       // OAuth callback should be unprotected
-      const oauthResponse = await fetch(`http://localhost:${testPort}/api/oauth/callback?error=access_denied`);
+      const oauthResponse = await fetch(
+        `http://localhost:${testPort}/api/oauth/callback?error=access_denied`,
+      );
       expect(oauthResponse.status).toBe(400); // Expected error response, but not auth-related
     });
   });
@@ -180,10 +199,14 @@ describe('Server Authentication Integration', () => {
       await startWebServer(mcpProxy, options);
 
       // All endpoints should be accessible
-      const streamableResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`);
+      const streamableResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+      );
       expect(streamableResponse.status).toBe(200);
 
-      const healthResponse = await fetch(`http://localhost:${testPort}/api/health`);
+      const healthResponse = await fetch(
+        `http://localhost:${testPort}/api/health`,
+      );
       expect(healthResponse.status).toBe(200);
 
       // WebSocket connections should work without auth
@@ -219,10 +242,14 @@ describe('Server Authentication Integration', () => {
       await startWebServer(mcpProxy, options);
 
       // All endpoints should be accessible
-      const streamableResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`);
+      const streamableResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+      );
       expect(streamableResponse.status).toBe(200);
 
-      const healthResponse = await fetch(`http://localhost:${testPort}/api/health`);
+      const healthResponse = await fetch(
+        `http://localhost:${testPort}/api/health`,
+      );
       expect(healthResponse.status).toBe(200);
     });
   });
@@ -245,19 +272,25 @@ describe('Server Authentication Integration', () => {
       await startWebServer(mcpProxy, options);
 
       // Test with environment-resolved token
-      const envTokenResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
-        headers: {
-          'Authorization': 'Bearer env-resolved-auth-token',
+      const envTokenResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+        {
+          headers: {
+            Authorization: 'Bearer env-resolved-auth-token',
+          },
         },
-      });
+      );
       expect(envTokenResponse.status).toBe(200);
 
       // Test with static token
-      const staticTokenResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
-        headers: {
-          'Authorization': 'Bearer static-token',
+      const staticTokenResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+        {
+          headers: {
+            Authorization: 'Bearer static-token',
+          },
         },
-      });
+      );
       expect(staticTokenResponse.status).toBe(200);
 
       // Clean up
@@ -275,7 +308,9 @@ describe('Server Authentication Integration', () => {
       };
 
       // Should throw during server startup
-      await expect(startWebServer(mcpProxy, options)).rejects.toThrow('Environment variable UNDEFINED_TOKEN is not defined');
+      await expect(startWebServer(mcpProxy, options)).rejects.toThrow(
+        'Environment variable UNDEFINED_TOKEN is not defined',
+      );
     });
   });
 
@@ -291,7 +326,9 @@ describe('Server Authentication Integration', () => {
       };
 
       // Should throw during server startup
-      await expect(startWebServer(mcpProxy, options)).rejects.toThrow('Bearer authentication requires at least one token');
+      await expect(startWebServer(mcpProxy, options)).rejects.toThrow(
+        'Bearer authentication requires at least one token',
+      );
     });
 
     it('should handle malformed authorization headers gracefully', async () => {
@@ -308,15 +345,20 @@ describe('Server Authentication Integration', () => {
       await startWebServer(mcpProxy, options);
 
       // Test with malformed header
-      const malformedResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
-        headers: {
-          'Authorization': 'Basic dXNlcjpwYXNz', // Basic auth instead of Bearer
+      const malformedResponse = await fetch(
+        `http://localhost:${testPort}/api/streamable/health`,
+        {
+          headers: {
+            Authorization: 'Basic dXNlcjpwYXNz', // Basic auth instead of Bearer
+          },
         },
-      });
+      );
 
       expect(malformedResponse.status).toBe(401);
       const data = await malformedResponse.json();
-      expect(data.message).toBe('Invalid Authorization header format. Expected: Bearer <token>');
+      expect(data.message).toBe(
+        'Invalid Authorization header format. Expected: Bearer <token>',
+      );
     });
   });
 });
