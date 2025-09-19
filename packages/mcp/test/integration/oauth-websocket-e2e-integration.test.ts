@@ -25,14 +25,9 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { WebSocketClientTransport } from '../../src/transports/implementations/websocket-client-transport.js';
 import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
 import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import {
-  createTestOAuthServer,
-  TestOAuthServer,
-} from '../fixtures/test-oauth-server.js';
-import {
-  createTestWebSocketServer,
-  TestWebSocketServer,
-} from '../fixtures/test-websocket-server.js';
+import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
+import { TestWebSocketServer } from '../fixtures/test-websocket-server.js';
+import { setupOAuthAndWebSocketServers } from '../helpers/server-setup.js';
 import type {
   JSONRPCResponse,
   JSONRPCRequest,
@@ -51,32 +46,18 @@ describe.skipIf(!runIntegrationTests)(
     let wsEndpoint: string;
 
     beforeAll(async () => {
-      // Start both servers
-      const [oauthServerInfo, wsServerInfo] = await Promise.all([
-        createTestOAuthServer({
-          validClientId: 'e2e-ws-client',
-          validClientSecret: 'e2e-ws-secret',
+      const { oauthServerInfo, wsServerInfo } =
+        await setupOAuthAndWebSocketServers({
+          clientId: 'e2e-ws-client',
+          clientSecret: 'e2e-ws-secret',
           tokenLifetime: 3600,
-        }),
-        createTestWebSocketServer({
           requireAuth: true,
-        }),
-      ]);
+        });
 
       oauthServer = oauthServerInfo.server;
       oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
       wsServer = wsServerInfo.server;
       wsEndpoint = wsServerInfo.wsEndpoint;
-
-      // Verify both servers are ready
-      const [oauthHealth, wsHealth] = await Promise.all([
-        fetch(`${oauthServerInfo.url}/health`),
-        fetch(`${wsServerInfo.url}/health`),
-      ]);
-
-      if (!oauthHealth.ok || !wsHealth.ok) {
-        throw new Error('Server health checks failed during setup');
-      }
     }, 30000);
 
     beforeEach(() => {

@@ -24,14 +24,9 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { SSEClientTransport } from '../../src/transports/implementations/sse-client-transport.js';
 import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
 import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import {
-  createTestOAuthServer,
-  TestOAuthServer,
-} from '../fixtures/test-oauth-server.js';
-import {
-  createTestSSEServer,
-  TestSSEServer,
-} from '../fixtures/test-sse-server.js';
+import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
+import { TestSSEServer } from '../fixtures/test-sse-server.js';
+import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
 import type {
   JSONRPCResponse,
   JSONRPCMessage,
@@ -49,32 +44,17 @@ describe.skipIf(!runIntegrationTests)(
     let sseEndpoint: string;
 
     beforeAll(async () => {
-      // Start both servers
-      const [oauthServerInfo, sseServerInfo] = await Promise.all([
-        createTestOAuthServer({
-          validClientId: 'e2e-integration-client',
-          validClientSecret: 'e2e-integration-secret',
-          tokenLifetime: 3600,
-        }),
-        createTestSSEServer({
-          requireAuth: true,
-        }),
-      ]);
+      const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
+        clientId: 'e2e-integration-client',
+        clientSecret: 'e2e-integration-secret',
+        tokenLifetime: 3600,
+        requireAuth: true,
+      });
 
       oauthServer = oauthServerInfo.server;
       oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
       sseServer = sseServerInfo.server;
       sseEndpoint = sseServerInfo.sseEndpoint;
-
-      // Verify both servers are ready
-      const [oauthHealth, sseHealth] = await Promise.all([
-        fetch(`${oauthServerInfo.url}/health`),
-        fetch(`${sseServerInfo.url}/health`),
-      ]);
-
-      if (!oauthHealth.ok || !sseHealth.ok) {
-        throw new Error('Server health checks failed during setup');
-      }
     }, 30000);
 
     beforeEach(() => {
