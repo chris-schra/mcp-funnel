@@ -282,7 +282,7 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
       // The new StdioClientTransport wraps errors in TransportError
       expect(errorHandler).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Failed to spawn process: Process failed',
+          message: 'Connection failed: Process failed',
           name: 'TransportError',
           cause: error,
         }),

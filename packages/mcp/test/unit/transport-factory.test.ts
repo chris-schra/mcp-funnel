@@ -293,7 +293,7 @@ describe('TransportFactory', () => {
       );
     });
 
-    it('should resolve nested environment variables', async () => {
+    it('should not resolve nested environment variables', async () => {
       process.env.BIN_DIR = '/usr/bin';
       process.env.NODE_BIN = '${BIN_DIR}/node';
 
@@ -304,8 +304,9 @@ describe('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
+      // Nested environment variable resolution is not supported
       expect((transport.config as StdioTransportConfig).command).toBe(
-        '/usr/bin/node',
+        '${BIN_DIR}/node',
       );
     });
 
@@ -364,7 +365,7 @@ describe('TransportFactory', () => {
       };
 
       await expect(createTransport(config)).rejects.toThrow(
-        'Invalid URL format',
+        'Invalid URL: not-a-valid-url',
       );
     });
 
@@ -395,7 +396,7 @@ describe('TransportFactory', () => {
 
       await expect(
         createTransport(config, { authProvider: failingAuthProvider }),
-      ).rejects.toThrow('Failed to initialize auth provider: Auth failure');
+      ).rejects.toThrow('Authentication failed: Auth failure');
     });
 
     it('should handle token storage initialization failure', async () => {

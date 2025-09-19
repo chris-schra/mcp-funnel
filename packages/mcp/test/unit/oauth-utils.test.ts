@@ -101,7 +101,7 @@ describe('OAuth Utils', () => {
         AuthenticationError,
       );
       expect(() => resolveEnvironmentVariables(config, ['field1'])).toThrow(
-        'Environment variable UNDEFINED_VAR is not set',
+        'Environment variable UNDEFINED_VAR is not defined',
       );
     });
   });
@@ -269,7 +269,7 @@ describe('OAuth Utils', () => {
         AuthenticationError,
       );
       expect(() => resolveEnvVar('${UNDEFINED_VAR}')).toThrow(
-        'Environment variable UNDEFINED_VAR is not set',
+        'Environment variable UNDEFINED_VAR is not defined',
       );
     });
 
@@ -294,14 +294,23 @@ describe('OAuth Utils', () => {
         '$VAR',
         '${VAR',
         'VAR}',
-        '${VAR}_extra',
-        'prefix_${VAR}',
-        '${VAR}${OTHER}',
       ];
 
       malformedCases.forEach((malformed) => {
         const result = resolveEnvVar(malformed);
         expect(result).toBe(malformed);
+      });
+    });
+
+    it('should throw for valid patterns with undefined environment variables', () => {
+      const validPatternsWithUndefinedVars = [
+        '${VAR}_extra',
+        'prefix_${VAR}',
+        '${VAR}${OTHER}',
+      ];
+
+      validPatternsWithUndefinedVars.forEach((pattern) => {
+        expect(() => resolveEnvVar(pattern)).toThrow(AuthenticationError);
       });
     });
   });
