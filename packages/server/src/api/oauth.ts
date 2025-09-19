@@ -1,11 +1,264 @@
 import { Hono } from 'hono';
 import type { MCPProxy } from 'mcp-funnel';
+import { OAuthProvider } from '../oauth/oauth-provider.js';
+import { MemoryOAuthStorage } from '../oauth/storage/memory-oauth-storage.js';
+import { MemoryUserConsentService } from '../oauth/services/memory-consent-service.js';
+import type { OAuthProviderConfig } from '../types/oauth-provider.js';
+import {
+  createOAuthErrorResponse,
+  createTokenResponse,
+} from '../oauth/utils/oauth-utils.js';
 
 type Variables = {
   mcpProxy: MCPProxy;
 };
 
 export const oauthRoute = new Hono<{ Variables: Variables }>();
+
+// Initialize OAuth provider (in production, this should be done at app level)
+const oauthConfig: OAuthProviderConfig = {
+  issuer: process.env.OAUTH_ISSUER || 'http://localhost:3000',
+  baseUrl: process.env.OAUTH_BASE_URL || 'http://localhost:3000/api/oauth',
+  defaultTokenExpiry: 3600, // 1 hour
+  defaultCodeExpiry: 600, // 10 minutes
+  supportedScopes: ['read', 'write', 'admin'],
+  requirePkce: true,
+  issueRefreshTokens: true,
+};
+
+const storage = new MemoryOAuthStorage();
+const consentService = new MemoryUserConsentService();
+const oauthProvider = new OAuthProvider(storage, consentService, oauthConfig);
+
+// Placeholder for user authentication - in production, integrate with your auth system
+function getCurrentUserId(c: {
+  req: { header: (name: string) => string | undefined };
+}): string | null {
+  // This is a simplified implementation
+  // In production, extract from session, JWT, or other auth mechanism
+  return c.req.header('X-User-ID') || 'test-user-123';
+}
+
+/**
+ * OAuth 2.0 Authorization Server Metadata (RFC 8414)
+ * GET /.well-known/oauth-authorization-server
+ */
+oauthRoute.get('/.well-known/oauth-authorization-server', async (c) => {
+  const metadata = oauthProvider.getMetadata();
+  return c.json(metadata);
+});
+
+/**
+ * Client Registration endpoint (RFC 7591)
+ * POST /register
+ */
+oauthRoute.post('/register', async (c) => {
+  try {
+    const body = await c.req.json();
+
+    // Basic validation
+    if (
+      !body.redirect_uris ||
+      !Array.isArray(body.redirect_uris) ||
+      body.redirect_uris.length === 0
+    ) {
+      return c.json(
+        {
+          error: 'invalid_request',
+          error_description:
+            'redirect_uris is required and must be a non-empty array',
+        },
+        400,
+      );
+    }
+
+    const client = await oauthProvider.registerClient({
+      client_name: body.client_name,
+      redirect_uris: body.redirect_uris,
+      grant_types: body.grant_types,
+      response_types: body.response_types,
+      scope: body.scope,
+    });
+
+    // Don't expose sensitive fields in response
+    const response = {
+      client_id: client.client_id,
+      client_secret: client.client_secret,
+      client_id_issued_at: client.client_id_issued_at,
+      client_secret_expires_at: client.client_secret_expires_at,
+      client_name: client.client_name,
+      redirect_uris: client.redirect_uris,
+      grant_types: client.grant_types,
+      response_types: client.response_types,
+      scope: client.scope,
+    };
+
+    return c.json(response, 201);
+  } catch (error) {
+    console.error('Client registration error:', error);
+    return c.json(
+      {
+        error: 'server_error',
+        error_description: 'Internal server error',
+      },
+      500,
+    );
+  }
+});
+
+/**
+ * OAuth 2.0 Authorization endpoint (RFC 6749)
+ * GET /authorize
+ */
+oauthRoute.get('/authorize', async (c) => {
+  try {
+    // Get user ID (in production, ensure user is authenticated)
+    const userId = getCurrentUserId(c);
+    if (!userId) {
+      // Redirect to login page
+      return c.redirect('/login?redirect=' + encodeURIComponent(c.req.url));
+    }
+
+    const params = {
+      response_type: c.req.query('response_type'),
+      client_id: c.req.query('client_id'),
+      redirect_uri: c.req.query('redirect_uri'),
+      scope: c.req.query('scope'),
+      state: c.req.query('state'),
+      code_challenge: c.req.query('code_challenge'),
+      code_challenge_method: c.req.query('code_challenge_method'),
+    };
+
+    const result = await oauthProvider.handleAuthorizationRequest(
+      params,
+      userId,
+    );
+
+    if (!result.success) {
+      // Build error redirect URI
+      const redirectUri = new URL(params.redirect_uri || 'about:blank');
+      redirectUri.searchParams.set('error', result.error!.error);
+      if (result.error!.error_description) {
+        redirectUri.searchParams.set(
+          'error_description',
+          result.error!.error_description,
+        );
+      }
+      if (params.state) {
+        redirectUri.searchParams.set('state', params.state);
+      }
+      return c.redirect(redirectUri.toString());
+    }
+
+    // Build success redirect URI
+    const redirectUri = new URL(result.redirectUri!);
+    redirectUri.searchParams.set('code', result.authorizationCode!);
+    if (result.state) {
+      redirectUri.searchParams.set('state', result.state);
+    }
+
+    return c.redirect(redirectUri.toString());
+  } catch (error) {
+    console.error('Authorization error:', error);
+    const redirectUri = c.req.query('redirect_uri');
+    if (redirectUri) {
+      const errorRedirect = new URL(redirectUri);
+      errorRedirect.searchParams.set('error', 'server_error');
+      errorRedirect.searchParams.set(
+        'error_description',
+        'Internal server error',
+      );
+      if (c.req.query('state')) {
+        errorRedirect.searchParams.set('state', c.req.query('state')!);
+      }
+      return c.redirect(errorRedirect.toString());
+    }
+    return c.text('Internal server error', 500);
+  }
+});
+
+/**
+ * OAuth 2.0 Token endpoint (RFC 6749)
+ * POST /token
+ */
+oauthRoute.post('/token', async (c) => {
+  try {
+    const body = await c.req.parseBody();
+
+    const params = {
+      grant_type: body.grant_type as string,
+      code: body.code as string,
+      redirect_uri: body.redirect_uri as string,
+      client_id: body.client_id as string,
+      client_secret: body.client_secret as string,
+      code_verifier: body.code_verifier as string,
+      refresh_token: body.refresh_token as string,
+      scope: body.scope as string,
+    };
+
+    const result = await oauthProvider.handleTokenRequest(params);
+
+    if (!result.success) {
+      const errorResponse = createOAuthErrorResponse(result.error!);
+      return c.json(
+        errorResponse.body,
+        errorResponse.status as 400 | 401 | 403 | 500,
+      );
+    }
+
+    const tokenResponse = createTokenResponse(
+      result.tokenResponse! as unknown as Record<string, unknown>,
+    );
+    return c.json(tokenResponse.body, tokenResponse.status as 200);
+  } catch (error) {
+    console.error('Token endpoint error:', error);
+    const errorResponse = createOAuthErrorResponse(
+      {
+        error: 'server_error',
+        error_description: 'Internal server error',
+      },
+      500,
+    );
+    return c.json(errorResponse.body, errorResponse.status as 500);
+  }
+});
+
+/**
+ * OAuth 2.0 Token Revocation endpoint (RFC 7009)
+ * POST /revoke
+ */
+oauthRoute.post('/revoke', async (c) => {
+  try {
+    const body = await c.req.parseBody();
+
+    const token = body.token as string;
+    const clientId = body.client_id as string;
+
+    if (!token || !clientId) {
+      return c.json(
+        {
+          error: 'invalid_request',
+          error_description: 'Missing required parameters',
+        },
+        400,
+      );
+    }
+
+    await oauthProvider.revokeToken(token, clientId);
+
+    // RFC 7009 specifies that successful revocation returns 200 with empty body
+    return c.text('', 200);
+  } catch (error) {
+    console.error('Token revocation error:', error);
+    return c.json(
+      {
+        error: 'server_error',
+        error_description: 'Internal server error',
+      },
+      500,
+    );
+  }
+});
 
 /**
  * OAuth2 Authorization Code callback route
