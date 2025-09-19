@@ -98,90 +98,98 @@ export async function startWebServer(
     app.use('/*', serveStatic({ root: staticPath }));
   }
 
-  // Create HTTP server with Hono
-  const server = serve(
-    {
-      fetch: app.fetch,
-      port,
-      hostname: host,
-      createServer,
-    },
-    () => {
-      console.info(`🚀 Web UI server running at http://${host}:${port}`);
-    },
-  );
+  // Create HTTP server with Hono and wait for it to be listening
+  return new Promise((resolve, reject) => {
+    const server = serve(
+      {
+        fetch: app.fetch,
+        port,
+        hostname: host,
+        createServer,
+      },
+      (serverInfo) => {
+        console.info(
+          `🚀 Web UI server running at http://${host}:${serverInfo?.port || port}`,
+        );
+        resolve(server);
+      },
+    );
 
-  // Setup WebSocket server
-  const wss = new WebSocketServer({ noServer: true });
-  const wsManager = new WebSocketManager(mcpProxy);
+    // Handle server errors
+    server.on('error', (error) => {
+      console.error('❌ Server startup failed:', error);
+      reject(error);
+    });
 
-  server.on('upgrade', async (request, socket, head) => {
-    if (request.url === '/ws') {
-      // Validate authentication for WebSocket connections if configured
-      if (authValidator) {
-        try {
-          const authResult = await validateWebSocketAuth(
-            request,
-            authValidator,
-          );
-          if (!authResult.isAuthenticated) {
-            console.warn('WebSocket authentication failed:', {
-              ip: request.socket.remoteAddress,
-              userAgent: request.headers['user-agent'],
-              error: authResult.error,
-              timestamp: new Date().toISOString(),
-            });
+    // Setup WebSocket server
+    const wss = new WebSocketServer({ noServer: true });
+    const wsManager = new WebSocketManager(mcpProxy);
 
-            // Send 401 Unauthorized and close connection
+    server.on('upgrade', async (request, socket, head) => {
+      if (request.url === '/ws') {
+        // Validate authentication for WebSocket connections if configured
+        if (authValidator) {
+          try {
+            const authResult = await validateWebSocketAuth(
+              request,
+              authValidator,
+            );
+            if (!authResult.isAuthenticated) {
+              console.warn('WebSocket authentication failed:', {
+                ip: request.socket.remoteAddress,
+                userAgent: request.headers['user-agent'],
+                error: authResult.error,
+                timestamp: new Date().toISOString(),
+              });
+
+              // Send 401 Unauthorized and close connection
+              socket.write(
+                'HTTP/1.1 401 Unauthorized\r\n' +
+                  'Content-Type: application/json\r\n' +
+                  'Connection: close\r\n' +
+                  '\r\n' +
+                  JSON.stringify({
+                    error: 'Unauthorized',
+                    message:
+                      authResult.error ||
+                      'Authentication required for WebSocket connection',
+                    timestamp: new Date().toISOString(),
+                  }),
+              );
+              socket.destroy();
+              return;
+            }
+          } catch (error) {
+            console.error('WebSocket authentication error:', error);
             socket.write(
-              'HTTP/1.1 401 Unauthorized\r\n' +
+              'HTTP/1.1 500 Internal Server Error\r\n' +
                 'Content-Type: application/json\r\n' +
                 'Connection: close\r\n' +
                 '\r\n' +
                 JSON.stringify({
-                  error: 'Unauthorized',
-                  message:
-                    authResult.error ||
-                    'Authentication required for WebSocket connection',
+                  error: 'Internal Server Error',
+                  message: 'Authentication system error',
                   timestamp: new Date().toISOString(),
                 }),
             );
             socket.destroy();
             return;
           }
-        } catch (error) {
-          console.error('WebSocket authentication error:', error);
-          socket.write(
-            'HTTP/1.1 500 Internal Server Error\r\n' +
-              'Content-Type: application/json\r\n' +
-              'Connection: close\r\n' +
-              '\r\n' +
-              JSON.stringify({
-                error: 'Internal Server Error',
-                message: 'Authentication system error',
-                timestamp: new Date().toISOString(),
-              }),
-          );
-          socket.destroy();
-          return;
         }
+
+        // Authentication passed or not required, proceed with WebSocket upgrade
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
+      } else {
+        socket.destroy();
       }
+    });
 
-      // Authentication passed or not required, proceed with WebSocket upgrade
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-      });
-    } else {
-      socket.destroy();
-    }
+    wss.on('connection', (ws) => {
+      wsManager.handleConnection(ws);
+    });
   });
-
-  wss.on('connection', (ws) => {
-    wsManager.handleConnection(ws);
-  });
-
-  // Server already listening via hono's serve(). Resolve immediately.
-  return Promise.resolve();
 }
 
 // Type augmentation for Hono context

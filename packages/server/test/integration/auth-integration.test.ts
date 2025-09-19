@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { startWebServer, type ServerOptions } from '../../src/index.js';
 import type { MCPProxy } from 'mcp-funnel';
 import { WebSocket } from 'ws';
+import type { Server } from 'http';
+import type { AddressInfo } from 'net';
 
 // Mock MCPProxy for testing
 const createMockMCPProxy = (): MCPProxy =>
@@ -21,15 +23,17 @@ const createMockMCPProxy = (): MCPProxy =>
       exposeCoreTools: [],
     },
     completeOAuthFlow: vi.fn(),
-  }) as any;
+  }) as Partial<MCPProxy> as MCPProxy;
 
 describe('Server Authentication Integration', () => {
-  let server: any;
+  let server: Server | null;
   let mcpProxy: MCPProxy;
-  const testPort = 3457; // Use different port for testing
+  let testPort: number;
 
   beforeEach(() => {
     mcpProxy = createMockMCPProxy();
+    server = null;
+    testPort = 0; // Will be set after server starts
   });
 
   afterEach(async () => {
@@ -47,7 +51,7 @@ describe('Server Authentication Integration', () => {
   describe('Bearer Token Authentication', () => {
     it('should protect streamable endpoints with bearer auth', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'bearer',
@@ -56,7 +60,12 @@ describe('Server Authentication Integration', () => {
       };
 
       // Start server with auth
-      await startWebServer(mcpProxy, options);
+      server = await startWebServer(mcpProxy, options);
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
+        throw new Error('Failed to get server port');
+      }
+      testPort = address.port;
 
       // Test authenticated request
       const authResponse = await fetch(
@@ -97,7 +106,7 @@ describe('Server Authentication Integration', () => {
 
     it('should protect WebSocket connections with bearer auth', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'bearer',
@@ -106,7 +115,12 @@ describe('Server Authentication Integration', () => {
       };
 
       // Start server with auth
-      await startWebServer(mcpProxy, options);
+      server = await startWebServer(mcpProxy, options);
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
+        throw new Error('Failed to get server port');
+      }
+      testPort = address.port;
 
       // Test authenticated WebSocket connection
       await new Promise<void>((resolve, reject) => {
@@ -160,7 +174,7 @@ describe('Server Authentication Integration', () => {
 
     it('should allow unprotected endpoints without auth', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'bearer',
@@ -169,7 +183,12 @@ describe('Server Authentication Integration', () => {
       };
 
       // Start server with auth
-      await startWebServer(mcpProxy, options);
+      server = await startWebServer(mcpProxy, options);
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
+        throw new Error('Failed to get server port');
+      }
+      testPort = address.port;
 
       // Health endpoint should be unprotected
       const healthResponse = await fetch(
@@ -190,13 +209,18 @@ describe('Server Authentication Integration', () => {
   describe('No Authentication', () => {
     it('should allow all requests when no auth is configured', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         // No inboundAuth configured
       };
 
       // Start server without auth
-      await startWebServer(mcpProxy, options);
+      server = await startWebServer(mcpProxy, options);
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
+        throw new Error('Failed to get server port');
+      }
+      testPort = address.port;
 
       // All endpoints should be accessible
       const streamableResponse = await fetch(
@@ -231,7 +255,7 @@ describe('Server Authentication Integration', () => {
 
     it('should allow all requests with explicit no-auth config', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'none',
@@ -239,7 +263,12 @@ describe('Server Authentication Integration', () => {
       };
 
       // Start server with explicit no-auth
-      await startWebServer(mcpProxy, options);
+      server = await startWebServer(mcpProxy, options);
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
+        throw new Error('Failed to get server port');
+      }
+      testPort = address.port;
 
       // All endpoints should be accessible
       const streamableResponse = await fetch(
@@ -260,7 +289,7 @@ describe('Server Authentication Integration', () => {
       process.env.TEST_AUTH_TOKEN = 'env-resolved-auth-token';
 
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'bearer',
@@ -269,7 +298,12 @@ describe('Server Authentication Integration', () => {
       };
 
       // Start server with auth
-      await startWebServer(mcpProxy, options);
+      server = await startWebServer(mcpProxy, options);
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
+        throw new Error('Failed to get server port');
+      }
+      testPort = address.port;
 
       // Test with environment-resolved token
       const envTokenResponse = await fetch(
@@ -299,7 +333,7 @@ describe('Server Authentication Integration', () => {
 
     it('should fail startup with undefined environment variables', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'bearer',
@@ -317,7 +351,7 @@ describe('Server Authentication Integration', () => {
   describe('Error Handling', () => {
     it('should fail startup with invalid auth configuration', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'bearer',
@@ -333,7 +367,7 @@ describe('Server Authentication Integration', () => {
 
     it('should handle malformed authorization headers gracefully', async () => {
       const options: ServerOptions = {
-        port: testPort,
+        port: 0, // Use dynamic port allocation
         host: 'localhost',
         inboundAuth: {
           type: 'bearer',
@@ -342,7 +376,12 @@ describe('Server Authentication Integration', () => {
       };
 
       // Start server with auth
-      await startWebServer(mcpProxy, options);
+      server = await startWebServer(mcpProxy, options);
+      const address = server.address() as AddressInfo | null;
+      if (!address) {
+        throw new Error('Failed to get server port');
+      }
+      testPort = address.port;
 
       // Test with malformed header
       const malformedResponse = await fetch(
