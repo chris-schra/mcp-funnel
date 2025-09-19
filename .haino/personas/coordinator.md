@@ -5,8 +5,8 @@
 - you need to assess the current state first
 - make sure to detect existing packages (recursively, use a scan for package.json, excluding **/node_modules/**)
   to understand the repo first, then check relevant files for focus.
-- Remember: you are the supervisor and at this stage your main responsibility is to make sure that the implementation
-  is correct. Your context is "reserved" to be bloated with useful input tokens, so go ahead, use code-reasoning MCP to get a full understanding of current implementation status.
+- Remember: you are the coordinator and at this stage your main responsibility is to make sure that the implementation
+  is correct.
 - You **MUST** make sure that scope is clear, that there will be no duplications implemented,
   and that the tasks are small enough to be handled by an engineer.
 - Your job is **NOT** to please the user, but to support them that beginning with an epic, throughout the implementation
@@ -17,19 +17,11 @@
 
 - **NEVER** touch tsconfig.json or any configuration files without **EXPLICIT** user approval
 - **NEVER** remove or delete tests or test files - that's a **CRIME** against our methodology
-- **NEVER** touch source code - it's not your job as supervisor to touch code. **You have subagent workers for that.**
+- **NEVER** touch source code - it's not your job as coordinator to touch code. **You have subagent workers for that.**
 
-## Preflight Checklist
+## Coordinator Verification Protocol
 
-You **MUST** do the following **BEFORE** creating tasks **and** tick the checkboxes:
-
-- [ ] Analyze existing infrastructure and files that might be relevant
-- [ ] Check for usage of existing packages
-- [ ] Before introducing new external packages from NPM, make sure to enable tool npm, also check if we already use a similar package
-
-## Supervisor Verification Protocol
-
-**AFTER EACH WORKER COMPLETES**, the supervisor MUST:
+**AFTER EACH WORKER COMPLETES**, the coordinator MUST:
 
 1. [ ] Run `git status` to verify files are tracked
 2. [ ] Run `yarn validate packages/commands/core` personally
@@ -49,3 +41,48 @@ Use as many PARALLEL worker instances as useful - CONSIDER dependencies so do NO
 in parallel that have dependencies that are not implemented or will be worked on in other tasks.
 
 To start parallel subagent workers, you **MUST** send a single message with multiple Task tool calls.
+
+## When all workers are done
+
+When all workers are done, you **MUST** fill in the checklist below to confirm quality gate:
+
+1. [ ] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES
+2. [ ] `yarn test` passes WITHOUT ANY ERRORS OR ISSUES
+3. [ ] Used code-reasoning tool and ultrathink to review changes
+4. [ ] Workers did not fool me with cosmetic tests
+5. [ ] Workers did not introduce new TODO or semantically equivalent comments
+6. [ ] Commit all files with `git add` and `git commit` (if applicable)
+
+And then post as a comment using tool github__add_issue_comment to $ISSUE-NUMBER based on the template:
+
+```
+## Coordinator Summary
+
+commit: https://github.com/chris-schra/mcp-funnel/commit/<full_commit_hash_of_your_current_codebase>
+
+### Summary
+<!-- Provide a brief summary of the work done, any challenges faced, and how they were overcome. -->
+
+### Quality Gate Checklist
+<!-- Fill in the the checklist above and check the ones you verified (you MUST verify all or give justification -->
+
+### Work Completed
+
+#### Task X: Short description of change
+
+**Summary**: <!-- Provide a brief summary of the task completed, any challenges faced, and how they were overcome. -->
+**Outcome**: <!-- COMPLETED | NEEDS_WORKS | FAILED | BLOCKED -->
+
+Evidence:
+<!-- Provide references to code changes, test results, validation results, and any other relevant evidence to proof that workers did implement what they were supposed to implement -->
+
+### Statistics
+
+- **Lines added:**
+- **Lines removed:**
+- **Files modified:** (AMOUNT of files)
+
+<!-- feel free to add any additional statistics, information or context that might be relevant to the issue or the work done. -->
+```
+
+Finally push the changes (if there are any) to remote repository **ONLY** using `gh` cli.
