@@ -101,10 +101,10 @@ export abstract class BaseCommand implements ICommand {
   }
 
   /**
-   * Check if a server dependency is satisfied and optionally expose its tools.
-   * Following SEAMS principle - minimal implementation that can be extended.
+   * Check if a server dependency is configured in .mcp-funnel.json
+   * This only checks configuration, not connection status.
    */
-  protected async requireServer(
+  protected async requireServerConfigured(
     dependency: ServerDependency,
   ): Promise<ServerRequirementResult> {
     const proxy = this.getProxy();
@@ -113,45 +113,44 @@ export abstract class BaseCommand implements ICommand {
     }
 
     // Check if any alias matches a configured server
-    // For now, just check if server exists in proxy's target servers
-    // The actual implementation will be enhanced in Phase 4
-    // when MCPProxy gets the necessary methods
+    const isConfigured = dependency.aliases.some((alias) =>
+      proxy.hasServerConfigured(alias),
+    );
 
-    try {
-      // Temporary implementation - will be enhanced in Phase 4
-      // when MCPProxy gets the necessary methods
-      const targetServers = proxy.getTargetServers?.();
-      if (!targetServers) {
-        return undefined;
-      }
+    return { configured: isConfigured };
+  }
 
-      const connectedServers = targetServers.connected || [];
-      const serverNames = connectedServers.map(([name]) => name);
-
-      const isConfigured = dependency.aliases.some((alias) =>
-        serverNames.includes(alias),
-      );
-
-      if (isConfigured && dependency.ensureToolsExposed) {
-        // Find the matching server name
-        const matchingAlias = dependency.aliases.find((alias) =>
-          serverNames.includes(alias),
-        );
-
-        if (matchingAlias && proxy.registry?.enableTools) {
-          // Enable tools for this server
-          proxy.registry.enableTools(
-            [`${matchingAlias}__*`],
-            'server-dependency',
-          );
-        }
-      }
-
-      return { configured: isConfigured };
-    } catch {
-      // If proxy doesn't have expected shape, return undefined
+  /**
+   * Check if a server dependency is satisfied and optionally expose its tools.
+   * Following SEAMS principle - minimal implementation that can be extended.
+   */
+  protected async requireServerConnected(
+    dependency: ServerDependency,
+  ): Promise<ServerRequirementResult> {
+    const proxy = this.getProxy();
+    if (!proxy) {
       return undefined;
     }
+
+    // Check if any alias matches a connected server
+    const isConnected = dependency.aliases.some((alias) =>
+      proxy.isServerConnected(alias),
+    );
+
+    if (isConnected && dependency.ensureToolsExposed) {
+      const matchingAlias = dependency.aliases.find((alias) =>
+        proxy.isServerConnected(alias),
+      );
+
+      if (matchingAlias && proxy.registry?.enableTools) {
+        proxy.registry.enableTools(
+          [`${matchingAlias}__*`],
+          'server-dependency',
+        );
+      }
+    }
+
+    return { configured: isConnected };
   }
 
   /**

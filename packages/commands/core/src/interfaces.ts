@@ -134,6 +134,18 @@ export interface IMCPProxy {
   };
 
   /**
+   * Check if a server is configured (exists in configuration)
+   * @param name Server name or alias to check
+   */
+  hasServerConfigured(name: string): boolean;
+
+  /**
+   * Check if a server is currently connected
+   * @param name Server name or alias to check
+   */
+  isServerConnected(name: string): boolean;
+
+  /**
    * Registry for managing tool exposure
    */
   registry?: {
