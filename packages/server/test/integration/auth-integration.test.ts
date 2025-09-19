@@ -176,7 +176,7 @@ describe('Server Authentication Integration', () => {
       });
     });
 
-    it('should allow unprotected endpoints without auth', async () => {
+    it('should now protect all API endpoints including health with auth', async () => {
       const options: ServerOptions = {
         port: 0, // Use dynamic port allocation
         host: 'localhost',
@@ -194,67 +194,116 @@ describe('Server Authentication Integration', () => {
       }
       testPort = address.port;
 
-      // Health endpoint should be unprotected
-      const healthResponse = await fetch(
+      // Health endpoint now requires auth for security
+      const healthNoAuthResponse = await fetch(
         `http://localhost:${testPort}/api/health`,
       );
-      expect(healthResponse.status).toBe(200);
-      const healthData = await healthResponse.json();
-      expect(healthData.status).toBe('ok');
+      expect(healthNoAuthResponse.status).toBe(401);
 
-      // OAuth callback should be unprotected
-      const oauthResponse = await fetch(
+      const healthAuthResponse = await fetch(
+        `http://localhost:${testPort}/api/health`,
+        {
+          headers: {
+            Authorization: 'Bearer test-token',
+          },
+        },
+      );
+      expect(healthAuthResponse.status).toBe(200);
+      const healthData = await healthAuthResponse.json();
+      expect(healthData.status).toBe('ok');
+      expect(healthData.authenticated).toBe(true);
+
+      // OAuth endpoints also now require auth
+      const oauthNoAuthResponse = await fetch(
         `http://localhost:${testPort}/api/oauth/callback?error=access_denied`,
       );
-      expect(oauthResponse.status).toBe(400); // Expected error response, but not auth-related
+      expect(oauthNoAuthResponse.status).toBe(401);
+
+      const oauthAuthResponse = await fetch(
+        `http://localhost:${testPort}/api/oauth/callback?error=access_denied`,
+        {
+          headers: {
+            Authorization: 'Bearer test-token',
+          },
+        },
+      );
+      expect(oauthAuthResponse.status).toBe(400); // Expected error response, but not auth-related
     });
   });
 
-  describe('No Authentication', () => {
-    it('should allow all requests when no auth is configured', async () => {
+  describe('Mandatory Authentication (Security Fix)', () => {
+    it('should REFUSE to start when no auth is configured (SECURITY FIX)', async () => {
       const options: ServerOptions = {
         port: 0, // Use dynamic port allocation
         host: 'localhost',
-        // No inboundAuth configured
+        // No inboundAuth configured - this should now FAIL
       };
 
-      // Start server without auth
-      server = await startWebServer(mcpProxy, options);
-      const address = server.address() as AddressInfo | null;
-      if (!address) {
-        throw new Error('Failed to get server port');
+      // Server should refuse to start without auth for security
+      await expect(startWebServer(mcpProxy, options)).rejects.toThrow(
+        'Inbound authentication is mandatory. Provide auth config or set DISABLE_INBOUND_AUTH=true.',
+      );
+    });
+
+    it('should allow opt-out via DISABLE_INBOUND_AUTH environment variable', async () => {
+      // Test the explicit opt-out mechanism for development/testing
+      const originalEnv = process.env.DISABLE_INBOUND_AUTH;
+      process.env.DISABLE_INBOUND_AUTH = 'true';
+
+      try {
+        const options: ServerOptions = {
+          port: 0,
+          host: 'localhost',
+          inboundAuth: {
+            type: 'none',
+          },
+        };
+
+        // Server should start with explicit no-auth config
+        server = await startWebServer(mcpProxy, options);
+        const address = server.address() as AddressInfo | null;
+        if (!address) {
+          throw new Error('Failed to get server port');
+        }
+        testPort = address.port;
+
+        // All endpoints should be accessible when auth is explicitly disabled
+        const streamableResponse = await fetch(
+          `http://localhost:${testPort}/api/streamable/health`,
+        );
+        expect(streamableResponse.status).toBe(200);
+
+        const healthResponse = await fetch(
+          `http://localhost:${testPort}/api/health`,
+        );
+        expect(healthResponse.status).toBe(200);
+
+        // WebSocket connections should work without auth when disabled
+        await new Promise<void>((resolve, reject) => {
+          const ws = new WebSocket(`ws://localhost:${testPort}/ws`);
+
+          ws.on('open', () => {
+            ws.close();
+            resolve();
+          });
+
+          ws.on('error', (error) => {
+            reject(new Error(`WebSocket connection failed: ${error.message}`));
+          });
+
+          setTimeout(() => {
+            ws.close();
+            reject(new Error('WebSocket connection timeout'));
+          }, 5000);
+        });
+      } finally {
+        // Restore original environment
+        if (originalEnv !== undefined) {
+          process.env.DISABLE_INBOUND_AUTH = originalEnv;
+        } else {
+          delete process.env.DISABLE_INBOUND_AUTH;
+        }
       }
-      testPort = address.port;
-
-      // All endpoints should be accessible
-      const streamableResponse = await fetch(
-        `http://localhost:${testPort}/api/streamable/health`,
-      );
-      expect(streamableResponse.status).toBe(200);
-
-      const healthResponse = await fetch(
-        `http://localhost:${testPort}/api/health`,
-      );
-      expect(healthResponse.status).toBe(200);
-
-      // WebSocket connections should work without auth
-      await new Promise<void>((resolve, reject) => {
-        const ws = new WebSocket(`ws://localhost:${testPort}/ws`);
-
-        ws.on('open', () => {
-          ws.close();
-          resolve();
-        });
-
-        ws.on('error', (error) => {
-          reject(new Error(`WebSocket connection failed: ${error.message}`));
-        });
-
-        setTimeout(() => {
-          ws.close();
-          reject(new Error('WebSocket connection timeout'));
-        }, 5000);
-      });
     });
 
     it('should allow all requests with explicit no-auth config', async () => {
@@ -619,11 +668,21 @@ describe('Server Authentication Integration', () => {
       // Authentication should pass (not 401), even if MCP layer has issues
       expect(mcpAuthResponse.status).not.toBe(401);
 
-      // 5. Verify unprotected endpoints remain accessible
-      const healthResponse = await fetch(
+      // 5. Verify health endpoint now requires authentication too
+      const healthNoAuthResponse = await fetch(
         `http://localhost:${testPort}/api/health`,
       );
-      expect(healthResponse.status).toBe(200);
+      expect(healthNoAuthResponse.status).toBe(401);
+
+      const healthAuthResponse = await fetch(
+        `http://localhost:${testPort}/api/health`,
+        {
+          headers: {
+            Authorization: 'Bearer end-to-end-test-token',
+          },
+        },
+      );
+      expect(healthAuthResponse.status).toBe(200);
 
       // 6. Verify WebSocket authentication
       await new Promise<void>((resolve, reject) => {

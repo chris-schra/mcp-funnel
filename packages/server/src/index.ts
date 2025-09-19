@@ -24,7 +24,11 @@ export interface ServerOptions {
   port?: number;
   host?: string;
   staticPath?: string;
-  /** Configuration for inbound authentication to the proxy server */
+  /**
+   * Configuration for inbound authentication to the proxy server
+   * Authentication is MANDATORY by default for security.
+   * Set DISABLE_INBOUND_AUTH=true environment variable to disable (DEV ONLY)
+   */
   inboundAuth?: InboundAuthConfig;
 }
 
@@ -38,23 +42,41 @@ export async function startWebServer(
 ) {
   const { port = 3456, host = '0.0.0.0', staticPath, inboundAuth } = options;
 
-  // Setup authentication if configured
+  // Authentication is MANDATORY for security
+  if (!inboundAuth) {
+    console.error(
+      '❌ SECURITY ERROR: No authentication configuration provided!',
+    );
+    console.error(
+      '❌ Server cannot start without authentication for security.',
+    );
+    console.error(
+      '💡 Use DISABLE_INBOUND_AUTH=true environment variable to disable (DEV ONLY).',
+    );
+    throw new Error(
+      'Inbound authentication is mandatory. Provide auth config or set DISABLE_INBOUND_AUTH=true.',
+    );
+  }
+
+  // Setup authentication - always required
   let authMiddleware = null;
   let authValidator = null;
-  if (inboundAuth) {
-    try {
-      validateAuthConfig(inboundAuth);
-      authValidator = createAuthValidator(inboundAuth);
-      authMiddleware = createAuthMiddleware(authValidator);
+  try {
+    validateAuthConfig(inboundAuth);
+    authValidator = createAuthValidator(inboundAuth);
+    authMiddleware = createAuthMiddleware(authValidator);
+
+    if (inboundAuth.type === 'none') {
+      console.warn(
+        '🚨 WARNING: Authentication is DISABLED - this is insecure!',
+      );
+      console.warn('🚨 WARNING: Only use for development/testing purposes.');
+    } else {
       console.info(`✅ Inbound authentication enabled: ${inboundAuth.type}`);
-    } catch (error) {
-      console.error('❌ Failed to setup inbound authentication:', error);
-      throw error;
     }
-  } else {
-    console.warn(
-      '⚠️  No inbound authentication configured - proxy endpoints are open',
-    );
+  } catch (error) {
+    console.error('❌ Failed to setup inbound authentication:', error);
+    throw error;
   }
 
   const app = new Hono<{ Variables: Variables }>();
@@ -69,26 +91,30 @@ export async function startWebServer(
     await next();
   });
 
-  // API routes
+  // Apply authentication middleware to ALL API routes for security
+  // Only skip auth for health check endpoint
+  if (authMiddleware) {
+    app.use('/api/*', authMiddleware);
+  }
+
+  // API routes - now all protected by authentication middleware
   app.route('/api/servers', serversRoute);
   app.route('/api/tools', toolsRoute);
   app.route('/api/config', configRoute);
   app.route('/api/oauth', oauthRoute);
-
-  // Apply authentication middleware to streamable routes if configured
-  if (authMiddleware) {
-    app.use('/api/streamable/*', authMiddleware);
-  }
   app.route('/api/streamable', streamableRoute);
 
   app.route('/app', appRoute);
 
-  // Health check
+  // Health check endpoint - intentionally placed AFTER auth middleware setup
+  // This means /api/health will also require authentication for security
+  // To allow unauthenticated health checks, move this BEFORE the auth middleware
   app.get('/api/health', (c) => {
     return c.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       version: '0.0.1',
+      authenticated: true, // Indicates this response required authentication
     });
   });
 
@@ -127,54 +153,52 @@ export async function startWebServer(
 
     server.on('upgrade', async (request, socket, head) => {
       if (request.url === '/ws') {
-        // Validate authentication for WebSocket connections if configured
-        if (authValidator) {
-          try {
-            const authResult = await validateWebSocketAuth(
-              request,
-              authValidator,
-            );
-            if (!authResult.isAuthenticated) {
-              console.warn('WebSocket authentication failed:', {
-                ip: request.socket.remoteAddress,
-                userAgent: request.headers['user-agent'],
-                error: authResult.error,
-                timestamp: new Date().toISOString(),
-              });
+        // Validate authentication for WebSocket connections - ALWAYS required
+        try {
+          const authResult = await validateWebSocketAuth(
+            request,
+            authValidator,
+          );
+          if (!authResult.isAuthenticated) {
+            console.warn('WebSocket authentication failed:', {
+              ip: request.socket.remoteAddress,
+              userAgent: request.headers['user-agent'],
+              error: authResult.error,
+              timestamp: new Date().toISOString(),
+            });
 
-              // Send 401 Unauthorized and close connection
-              socket.write(
-                'HTTP/1.1 401 Unauthorized\r\n' +
-                  'Content-Type: application/json\r\n' +
-                  'Connection: close\r\n' +
-                  '\r\n' +
-                  JSON.stringify({
-                    error: 'Unauthorized',
-                    message:
-                      authResult.error ||
-                      'Authentication required for WebSocket connection',
-                    timestamp: new Date().toISOString(),
-                  }),
-              );
-              socket.destroy();
-              return;
-            }
-          } catch (error) {
-            console.error('WebSocket authentication error:', error);
+            // Send 401 Unauthorized and close connection
             socket.write(
-              'HTTP/1.1 500 Internal Server Error\r\n' +
+              'HTTP/1.1 401 Unauthorized\r\n' +
                 'Content-Type: application/json\r\n' +
                 'Connection: close\r\n' +
                 '\r\n' +
                 JSON.stringify({
-                  error: 'Internal Server Error',
-                  message: 'Authentication system error',
+                  error: 'Unauthorized',
+                  message:
+                    authResult.error ||
+                    'Authentication required for WebSocket connection',
                   timestamp: new Date().toISOString(),
                 }),
             );
             socket.destroy();
             return;
           }
+        } catch (error) {
+          console.error('WebSocket authentication error:', error);
+          socket.write(
+            'HTTP/1.1 500 Internal Server Error\r\n' +
+              'Content-Type: application/json\r\n' +
+              'Connection: close\r\n' +
+              '\r\n' +
+              JSON.stringify({
+                error: 'Internal Server Error',
+                message: 'Authentication system error',
+                timestamp: new Date().toISOString(),
+              }),
+          );
+          socket.destroy();
+          return;
         }
 
         // Authentication passed or not required, proceed with WebSocket upgrade
