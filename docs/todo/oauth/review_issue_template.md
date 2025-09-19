@@ -36,6 +36,14 @@ Agents should strive to upgrade evidence quality with each pass.
 
 ---
 
+## Common pitfalls to avoid
+
+- **Interfaces / types**: Do not assume types/interfaces are wrong without verification:
+  - for internal types or interfaces, check the exported type or interface in actual file (imported by call-site)
+  - for external types or interfaces, check the exports in package in node_modules (in repo root and in node_modules - if applicable - of the current package in our monorepo)
+
+---
+
 ## New Issue Intake (Use verbatim for newly discovered issues)
 
 ### [ISSUE-ID] Title
