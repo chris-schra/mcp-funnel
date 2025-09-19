@@ -112,11 +112,3 @@ Use this block to advance status across the lifecycle. One entry per change.
 4. **If you dispute a claim:** Add a **counterfinding** in Agent Notes, cite stronger evidence, and suggest a status change.
 5. **If you fix something:** Add a **Validation Update** with commit/PR and propose `IN_PROGRESS` → `FIXED`.
 6. **If disproven:** Add evidence and move `Status` to `DISPROVEN`; keep the record.
-
----
-
-# Current Issues
-
-> This section holds all active or historical issues. Agents append here.
-
----

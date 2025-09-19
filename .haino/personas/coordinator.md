@@ -44,6 +44,8 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 
 ## When all workers are done
 
+### Quality Gate
+
 When all workers are done, you **MUST** fill in the checklist below to confirm quality gate:
 
 1. [ ] `yarn validate` passes WITHOUT ANY ERRORS OR ISSUES
@@ -52,6 +54,26 @@ When all workers are done, you **MUST** fill in the checklist below to confirm q
 4. [ ] Workers did not fool me with cosmetic tests
 5. [ ] Workers did not introduce new TODO or semantically equivalent comments
 6. [ ] Commit all files with `git add` and `git commit` (if applicable)
+
+### Self-Assessment and Self-Challenge
+
+- [ ] think harder, nothing false-fixed and no cosmetic test coverage? And AFTERWARD:
+- [ ] think harder, no SEAMS or DRY violations? And AFTERWARD:
+- [ ] think harder, no TODO comments or comments similar to "todo", "for now", "in a real implementation"?
+
+Answer the questionnaire using code-reasoning (at least one sentence, max 4 sentences):
+```
+1. **I'm sure that there are no false-fixed or cosmetic test coverage issues, because:** 
+(answer here)
+
+2. **I guarantee 100% that there are no SEAMS or DRY violations, because:** 
+(answer here)
+
+3. **I confirm that there are no TODO comments or similar, because:** 
+(answer here)
+
+Signed by: [Your Model], Coordinator
+```
 
 And then post as a comment using tool github__add_issue_comment to $ISSUE-NUMBER based on the template:
 
@@ -73,8 +95,11 @@ commit: https://github.com/chris-schra/mcp-funnel/commit/<full_commit_hash_of_yo
 **Summary**: <!-- Provide a brief summary of the task completed, any challenges faced, and how they were overcome. -->
 **Outcome**: <!-- COMPLETED | NEEDS_WORKS | FAILED | BLOCKED -->
 
-Evidence:
+**Evidence**:
 <!-- Provide references to code changes, test results, validation results, and any other relevant evidence to proof that workers did implement what they were supposed to implement -->
+
+### Coordinator's Guarantee
+<!-- Provide your questionaire here. -->
 
 ### Statistics
 
