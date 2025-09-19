@@ -21,6 +21,9 @@ const oauthConfig: OAuthProviderConfig = {
   baseUrl: process.env.OAUTH_BASE_URL || 'http://localhost:3000/api/oauth',
   defaultTokenExpiry: 3600, // 1 hour
   defaultCodeExpiry: 600, // 10 minutes
+  defaultClientSecretExpiry: 31536000, // 1 year in seconds
+  defaultRefreshTokenExpiry: 2592000, // 30 days in seconds
+  requireTokenRotation: false,
   supportedScopes: ['read', 'write', 'admin'],
   requirePkce: true,
   issueRefreshTokens: true,
