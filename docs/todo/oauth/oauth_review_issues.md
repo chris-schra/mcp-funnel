@@ -542,6 +542,7 @@ Create true integration tests that:
 - claude | claude-opus-4-1-20250805 | cfa0dbe: Discovered during comprehensive code review. Tests violate principle of not testing mocks.
 - codex | gpt-5-codex | 8c0af61: Confirmed the so-called e2e suite still mocks OAuth + SSE (`packages/mcp/test/e2e/oauth-sse-integration.test.ts:1-134`); recommending real network-backed integration coverage. Status stays OPEN. confidence: 0.8 (E2)
 - claude | claude-opus-4-1-20250805 | 8c0af61: Confirmed issue. E2E tests mock EventSource (L26-34), mockFetch (L37-38), MockOAuthServer (L43-110), and MockSSEServer (L121-130). Violates CLAUDE.md principle against testing mocks. Status remains OPEN. Evidence: packages/mcp/test/e2e/oauth-sse-integration.test.ts:26-130. confidence: 0.95 (E4)
+- gemini | gemini-pro | 20250919: Confirmed that `packages/mcp/test/integration/oauth-sse-e2e-integration.test.ts` uses mock servers (`createTestOAuthServer`, `createTestSSEServer`) and is therefore not a true end-to-end test. In contrast, `packages/server/test/integration/auth-integration.test.ts` is a good example of an integration test as it starts a real server and uses `fetch` to make network requests.
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** claude | **Model:** claude-opus-4-1-20250805 | **Run:** phase4-final-review | **Commit:** cfa0dbe
@@ -559,6 +560,13 @@ Create true integration tests that:
     - [x] Proposed or refined fix
     - [ ] Set/updated **Status**
 - **Agent:** claude | **Model:** claude-opus-4-1-20250805 | **Run:** triage-20250119 | **Commit:** 8c0af61
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E4
+    - [ ] Proposed or refined fix
+    - [ ] Set/updated **Status**
+- **Agent:** gemini | **Model:** gemini-pro | **Run:** 20250919-oauth-review
     - [x] Read code at all referenced locations
     - [ ] Verified API/types against official source
     - [ ] Reproduced (or attempted) locally/in CI
@@ -1022,3 +1030,67 @@ Add integration tests that hit `/api/streamable/mcp` with and without valid cred
   **Reason/Evidence:** MCP Transport interface at transport.d.ts:L41 specifies Promise<void> by design. Working as intended per MCP specification.
   **Commit/PR:** Current implementation
   **Next Step:** No fix needed - follows MCP specification
+
+- **[ISSUE-CFA0DBE-001] – Status Change:** OPEN → PARTIALLY_FIXED
+  **By:** supervisor | claude-opus-4-1-20250805 | thorough-review-correction
+  **Reason/Evidence:** Real integration tests ADDED (packages/mcp/test/integration/) BUT mocked tests STILL EXIST (packages/mcp/test/unit/oauth-sse-integration-unit.test.ts:L47 MockOAuthServer, L41 mockFetch). Only 50% fixed - violates CLAUDE.md principle. Workers created new tests but didn't fix existing mocked tests.
+  **Commit/PR:** Current implementation
+  **Next Step:** Either remove mocked tests or justify their existence
+
+- **[CORRECTION] – Thorough Re-Assessment After Challenge**
+  **By:** supervisor | claude-opus-4-1-20250805 | thorough-review
+  **Reason:** Initial assessment was not thorough. After being challenged to "think harder", discovered:
+  - Worker 1 made cosmetic test fixes (simplified tests to avoid timeouts, not fix them)
+  - Worker 2 created new integration tests but didn't fix existing mocked tests
+  - ISSUE-CFA0DBE-001 is only PARTIALLY_FIXED, not FIXED
+  - Test timeouts were avoided, not properly resolved
+  **Evidence:** packages/mcp/test/unit/oauth-sse-integration-unit.test.ts still contains mocks
+  **Next Step:** Properly address test timeout root causes and mocked test issues
+
+---
+
+### [ISSUE-GEMINI-001] Conflicting OAuth Responsibilities in `packages/server/src/api/oauth.ts`
+- **Status:** OPEN
+- **Severity:** 🟡 Medium
+- **Confidence:** E2
+- **Area:** Auth | API
+- **Summary (1–3 sentences):**
+  The file `packages/server/src/api/oauth.ts` appears to have conflicting responsibilities. It implements endpoints for acting as an OAuth 2.0 provider (`/authorize`, `/token`), but also contains a `/callback` endpoint which is characteristic of an OAuth 2.0 client. This suggests a design confusion and creates redundancy.
+
+#### Observation
+The `oauth.ts` file in the server API implements a full set of OAuth provider endpoints. However, it also includes a `/callback` route that calls `mcpProxy.completeOAuthFlow(state, code)`. This method is used when the application is acting as a client, completing an authentication flow initiated with an external provider.
+
+#### Assumptions
+- The server's primary role in this context is to act as an OAuth provider for incoming CLI tools, not as a client to another provider.
+- The `/callback` endpoint is a remnant of a previous design or a misunderstanding of the architectural separation.
+
+#### Risk / Impact
+This architectural confusion makes the code harder to understand and maintain. It could lead to incorrect assumptions by developers and potentially introduce bugs if the two conflicting roles are not handled carefully. It also creates dead or redundant code if the server is never intended to act as an OAuth client in this way.
+
+#### Evidence
+- **Files/Lines:**
+  - `packages/server/src/api/oauth.ts:307-439` (The `/callback` endpoint implementation)
+  - `packages/server/src/api/oauth.ts:113-295` (The `/authorize` and `/token` provider endpoint implementations)
+  - `packages/mcp/src/auth/implementations/oauth2-authorization-code.ts` (The client-side implementation that should be responsible for handling callbacks)
+
+#### Proposed Resolution
+1.  Clarify the intended role of the `mcp-funnel-server`.
+2.  If the server is only intended to be an OAuth provider, remove the `/callback` endpoint from `packages/server/src/api/oauth.ts`. The client-side callback handling is already managed by the `OAuth2AuthCodeProvider`.
+3.  If the server is intended to act as both a client and a provider, this should be clearly documented and the code should be structured to better separate these two concerns.
+
+#### Validation Plan
+1.  Review the architectural design documents for the `mcp-funnel-server`.
+2.  If the `/callback` endpoint is removed, run all existing tests to ensure that no functionality is broken.
+3.  Manually test the OAuth flow to confirm that authentication still works as expected.
+
+#### Agent Notes (do not delete prior notes)
+- gemini | gemini-pro | 20250919: Discovered during a review of the OAuth implementation. The file mixes client and provider responsibilities.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** gemini | **Model:** gemini-pro | **Run:** 20250919-oauth-review
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
