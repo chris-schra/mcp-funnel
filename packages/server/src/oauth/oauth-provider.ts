@@ -67,7 +67,9 @@ export class OAuthProvider {
       response_types: metadata.response_types || [ResponseTypes.CODE],
       scope: metadata.scope,
       client_id_issued_at: getCurrentTimestamp(),
-      client_secret_expires_at: 0, // Never expires for now
+      client_secret_expires_at:
+        getCurrentTimestamp() +
+        (this.config.defaultClientSecretExpiry || 31536000), // 1 year default
     };
 
     await this.storage.saveClient(client);
@@ -356,7 +358,9 @@ export class OAuthProvider {
         client_id,
         user_id: authCode.user_id,
         scopes: authCode.scopes,
-        expires_at: 0, // Never expires for now
+        expires_at:
+          getCurrentTimestamp() +
+          (this.config.defaultRefreshTokenExpiry || 2592000), // 30 days default
         created_at: getCurrentTimestamp(),
       };
 
@@ -477,6 +481,12 @@ export class OAuthProvider {
     };
 
     await this.storage.saveAccessToken(accessToken);
+
+    // TODO: Implement refresh token rotation if this.config.requireTokenRotation is enabled
+    // This would involve:
+    // 1. Generating a new refresh token to replace the current one
+    // 2. Invalidating the old refresh token
+    // 3. Including the new refresh token in the response
 
     const tokenResponse: TokenResponse = {
       access_token: accessToken.token,
