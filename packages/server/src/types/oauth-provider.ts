@@ -159,6 +159,8 @@ export interface OAuthError {
   error_description?: string;
   /** URI with error information */
   error_uri?: string;
+  /** URI where user can provide consent (for consent_required errors) */
+  consent_uri?: string;
 }
 
 /**
@@ -251,6 +253,7 @@ export const OAuthErrorCodes = {
   UNSUPPORTED_RESPONSE_TYPE: 'unsupported_response_type',
   SERVER_ERROR: 'server_error',
   TEMPORARILY_UNAVAILABLE: 'temporarily_unavailable',
+  CONSENT_REQUIRED: 'consent_required',
 } as const;
 
 /**

@@ -156,13 +156,15 @@ export class OAuthProvider {
     );
 
     if (!hasConsent) {
-      // In a real implementation, this would redirect to a consent page
-      // For now, we'll automatically grant consent for simplicity
-      await this.consentService.recordUserConsent(
-        userId,
-        client_id,
-        requestedScopes,
-      );
+      return {
+        success: false,
+        error: {
+          error: OAuthErrorCodes.CONSENT_REQUIRED,
+          error_description:
+            'User consent is required for the requested scopes',
+          consent_uri: `/api/oauth/consent?client_id=${encodeURIComponent(client_id)}&scope=${encodeURIComponent(scope || '')}&state=${state || ''}`,
+        },
+      };
     }
 
     // Generate authorization code

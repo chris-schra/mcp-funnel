@@ -81,6 +81,16 @@ describe('OAuthProvider', () => {
     });
 
     it('should handle valid authorization request successfully', async () => {
+      const userId = 'user123';
+      const scopes = ['read'];
+
+      // Record user consent first
+      await consentService.recordUserConsent(
+        userId,
+        testClient.client_id,
+        scopes,
+      );
+
       const params = {
         response_type: 'code',
         client_id: testClient.client_id,
@@ -93,7 +103,7 @@ describe('OAuthProvider', () => {
 
       const result = await oauthProvider.handleAuthorizationRequest(
         params,
-        'user123',
+        userId,
       );
 
       expect(result.success).toBe(true);
@@ -216,6 +226,68 @@ describe('OAuthProvider', () => {
       expect(result.error?.error).toBe(OAuthErrorCodes.INVALID_REQUEST);
       expect(result.error?.error_description).toContain('PKCE');
     });
+
+    it('should return consent_required error when user has not consented', async () => {
+      const params = {
+        response_type: 'code',
+        client_id: testClient.client_id,
+        redirect_uri: 'http://localhost:8080/callback',
+        scope: 'read write',
+        state: 'test-state-456',
+        code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        code_challenge_method: 'S256',
+      };
+
+      // Clear any existing consent to ensure no consent exists
+      await consentService.clear();
+
+      const result = await oauthProvider.handleAuthorizationRequest(
+        params,
+        'new-user-789',
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.error).toBe(OAuthErrorCodes.CONSENT_REQUIRED);
+      expect(result.error?.error_description).toBe(
+        'User consent is required for the requested scopes',
+      );
+      expect(result.error?.consent_uri).toBe(
+        `/api/oauth/consent?client_id=${encodeURIComponent(testClient.client_id)}&scope=${encodeURIComponent('read write')}&state=test-state-456`,
+      );
+    });
+
+    it('should succeed when user has already consented to the scopes', async () => {
+      const userId = 'consented-user-123';
+      const scopes = ['read'];
+
+      // Record user consent first
+      await consentService.recordUserConsent(
+        userId,
+        testClient.client_id,
+        scopes,
+      );
+
+      const params = {
+        response_type: 'code',
+        client_id: testClient.client_id,
+        redirect_uri: 'http://localhost:8080/callback',
+        scope: 'read',
+        state: 'test-state-789',
+        code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        code_challenge_method: 'S256',
+      };
+
+      const result = await oauthProvider.handleAuthorizationRequest(
+        params,
+        userId,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.authorizationCode).toBeDefined();
+      expect(result.redirectUri).toBe('http://localhost:8080/callback');
+      expect(result.state).toBe('test-state-789');
+      expect(result.error).toBeUndefined();
+    });
   });
 
   describe('Token Request - Authorization Code Grant', () => {
@@ -227,6 +299,12 @@ describe('OAuthProvider', () => {
         client_name: 'Test Client',
         redirect_uris: ['http://localhost:8080/callback'],
       });
+
+      // Record user consent first
+      await consentService.recordUserConsent('user123', testClient.client_id, [
+        'read',
+        'write',
+      ]);
 
       // Create authorization code
       const authResult = await oauthProvider.handleAuthorizationRequest(
@@ -360,6 +438,12 @@ describe('OAuthProvider', () => {
         redirect_uris: ['http://localhost:8080/callback'],
       });
 
+      // Record user consent first
+      await consentService.recordUserConsent('user123', testClient.client_id, [
+        'read',
+        'write',
+      ]);
+
       // Get tokens first
       const authResult = await oauthProvider.handleAuthorizationRequest(
         {
@@ -457,6 +541,11 @@ describe('OAuthProvider', () => {
         redirect_uris: ['http://localhost:8080/callback'],
       });
 
+      // Record user consent first
+      await consentService.recordUserConsent('user123', testClient.client_id, [
+        'read',
+      ]);
+
       // Get access token
       const authResult = await oauthProvider.handleAuthorizationRequest(
         {
@@ -510,6 +599,11 @@ describe('OAuthProvider', () => {
         client_name: 'Test Client',
         redirect_uris: ['http://localhost:8080/callback'],
       });
+
+      // Record user consent first
+      await consentService.recordUserConsent('user123', testClient.client_id, [
+        'read',
+      ]);
 
       // Get tokens
       const authResult = await oauthProvider.handleAuthorizationRequest(
