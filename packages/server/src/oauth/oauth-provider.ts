@@ -482,12 +482,6 @@ export class OAuthProvider {
 
     await this.storage.saveAccessToken(accessToken);
 
-    // TODO: Implement refresh token rotation if this.config.requireTokenRotation is enabled
-    // This would involve:
-    // 1. Generating a new refresh token to replace the current one
-    // 2. Invalidating the old refresh token
-    // 3. Including the new refresh token in the response
-
     const tokenResponse: TokenResponse = {
       access_token: accessToken.token,
       token_type: 'Bearer',
