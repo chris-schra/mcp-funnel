@@ -57,6 +57,8 @@ export {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../.logs');
 
+type ManualReconnectionTracker = Map<string, Promise<void>>;
+
 /**
  * Simple wrapper class for the transport factory function to provide dependency injection.
  */
@@ -153,6 +155,7 @@ export class MCPProxy extends EventEmitter {
   private connectionTimestamps = new Map<string, string>();
   private transports = new Map<string, Transport>();
   private reconnectionManagers = new Map<string, ReconnectionManager>();
+  private manualReconnections: ManualReconnectionTracker = new Map();
 
   constructor(config: ProxyConfig) {
     super();
@@ -869,6 +872,12 @@ export class MCPProxy extends EventEmitter {
       throw new Error(`Server '${name}' is already connected`);
     }
 
+    if (this.manualReconnections.has(name)) {
+      throw new Error(
+        `Manual reconnection already in progress for server '${name}'`,
+      );
+    }
+
     // Find the server in disconnectedServers
     const disconnectedServer = this.disconnectedServers.get(name);
     if (!disconnectedServer) {
@@ -879,36 +888,43 @@ export class MCPProxy extends EventEmitter {
     const serverConfig = { ...disconnectedServer };
     delete (serverConfig as { error?: string }).error;
 
-    // Emit server reconnecting event
-    this.emit('server.reconnecting', {
-      serverName: name,
-      status: 'reconnecting',
-      timestamp: new Date().toISOString(),
-    });
+    const reconnectionPromise = (async () => {
+      try {
+        // Emit server reconnecting event
+        this.emit('server.reconnecting', {
+          serverName: name,
+          status: 'reconnecting',
+          timestamp: new Date().toISOString(),
+        });
 
-    // Reset the ReconnectionManager if it exists
-    const reconnectionManager = this.reconnectionManagers.get(name);
-    if (reconnectionManager) {
-      reconnectionManager.reset();
-    }
+        // Reset the ReconnectionManager if it exists
+        const reconnectionManager = this.reconnectionManagers.get(name);
+        if (reconnectionManager) {
+          reconnectionManager.reset();
+        }
 
-    try {
-      await this.connectToSingleServer(serverConfig);
-      console.error(`[proxy] Successfully reconnected to: ${name}`);
-      logEvent('info', 'server:reconnected', { name });
-    } catch (error) {
-      // Add error info back to disconnected server
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.disconnectedServers.set(name, {
-        ...disconnectedServer,
-        error: errorMessage,
-      });
+        await this.connectToSingleServer(serverConfig);
+        console.error(`[proxy] Successfully reconnected to: ${name}`);
+        logEvent('info', 'server:reconnected', { name });
+      } catch (error) {
+        // Add error info back to disconnected server
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.disconnectedServers.set(name, {
+          ...disconnectedServer,
+          error: errorMessage,
+        });
 
-      console.error(`[proxy] Failed to reconnect to ${name}:`, error);
-      logError('server:reconnect_failed', error, { name });
-      throw error;
-    }
+        console.error(`[proxy] Failed to reconnect to ${name}:`, error);
+        logError('server:reconnect_failed', error, { name });
+        throw error;
+      } finally {
+        this.manualReconnections.delete(name);
+      }
+    })();
+
+    this.manualReconnections.set(name, reconnectionPromise);
+    await reconnectionPromise;
   }
 
   /**

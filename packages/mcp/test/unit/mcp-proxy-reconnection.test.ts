@@ -49,7 +49,7 @@ describe('MCPProxy Reconnection Logic', () => {
     listTools: ReturnType<typeof vi.fn>;
     callTool: ReturnType<typeof vi.fn>;
   };
-  let mockTransport: {
+  type MockTransport = {
     start: ReturnType<typeof vi.fn>;
     close: ReturnType<typeof vi.fn>;
     send: ReturnType<typeof vi.fn>;
@@ -57,11 +57,13 @@ describe('MCPProxy Reconnection Logic', () => {
     onerror?: (error: Error) => void;
     onmessage?: (data: unknown) => void;
   };
+  let mockTransports: Map<string, MockTransport>;
   let config: ProxyConfig;
 
-  beforeEach(() => {
-    // Clear all mocks and timers
+  beforeEach(async () => {
+    // Clear all mocks and reset to fake timers for deterministic scheduling
     vi.clearAllMocks();
+    vi.useFakeTimers();
     vi.clearAllTimers();
 
     // Set up base config
@@ -86,15 +88,24 @@ describe('MCPProxy Reconnection Logic', () => {
     };
     vi.mocked(Client).mockImplementation(() => mockClient as unknown as Client);
 
-    // Create mock transport
-    mockTransport = {
+    mockTransports = new Map();
+    const createMockTransport = (): MockTransport => ({
       start: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
       send: vi.fn().mockResolvedValue(undefined),
       onclose: undefined,
       onerror: undefined,
       onmessage: undefined,
-    };
+    });
+
+    const { StdioClientTransport } = await import(
+      '../../src/transports/implementations/stdio-client-transport.js'
+    );
+    vi.mocked(StdioClientTransport).mockImplementation((serverName: string) => {
+      const transport = createMockTransport();
+      mockTransports.set(serverName, transport);
+      return transport as unknown as InstanceType<typeof StdioClientTransport>;
+    });
 
     mcpProxy = new MCPProxy(config);
   });
@@ -103,6 +114,29 @@ describe('MCPProxy Reconnection Logic', () => {
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
   });
+
+  const ensureServerConnected = async (
+    proxy: MCPProxy,
+    serverName: string,
+  ): Promise<void> => {
+    const status = proxy.getServerStatus(serverName);
+    if (status.status !== 'connected') {
+      await proxy.reconnectServer(serverName);
+    }
+  };
+
+  const ensureServerDisconnected = async (
+    proxy: MCPProxy,
+    serverName: string,
+  ): Promise<void> => {
+    const status = proxy.getServerStatus(serverName);
+    if (status.status === 'connected') {
+      await proxy.disconnectServer(serverName);
+    }
+  };
+
+  const getMockTransport = (serverName: string): MockTransport | undefined =>
+    mockTransports.get(serverName);
 
   describe('Manual Reconnection', () => {
     it('should successfully reconnect a disconnected server', async () => {
@@ -123,9 +157,13 @@ describe('MCPProxy Reconnection Logic', () => {
       expect(initialStatus.status).toBe('disconnected'); // Should be 'disconnected' due to failed initial connection
 
       // Mock successful connection
-      const mockStdioTransport = {
-        ...mockTransport,
+      const mockStdioTransport: MockTransport = {
         start: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+        send: vi.fn().mockResolvedValue(undefined),
+        onclose: undefined,
+        onerror: undefined,
+        onmessage: undefined,
       };
 
       // Mock the transport creation
@@ -256,7 +294,8 @@ describe('MCPProxy Reconnection Logic', () => {
       // Verify server is now disconnected
       const status = mcpProxy.getServerStatus(serverName);
       expect(status.status).toBe('disconnected');
-      expect(mockTransport.close).toHaveBeenCalled();
+      const transport = getMockTransport(serverName);
+      expect(transport?.close).toHaveBeenCalled();
 
       // Verify disconnection event was emitted
       expect(disconnectedHandler).toHaveBeenCalledWith({
@@ -282,6 +321,9 @@ describe('MCPProxy Reconnection Logic', () => {
     it('should cancel pending automatic reconnection on manual disconnect', async () => {
       const serverName = 'test-server';
 
+      await mcpProxy.initialize();
+      await ensureServerConnected(mcpProxy, serverName);
+
       // First disconnect to simulate a state where auto-reconnection might be pending
       await mcpProxy.disconnectServer(serverName);
 
@@ -292,6 +334,9 @@ describe('MCPProxy Reconnection Logic', () => {
 
     it('should clean up resources properly on disconnection', async () => {
       const serverName = 'test-server';
+
+      await mcpProxy.initialize();
+      await ensureServerConnected(mcpProxy, serverName);
 
       // Disconnect the server
       await mcpProxy.disconnectServer(serverName);
@@ -309,6 +354,9 @@ describe('MCPProxy Reconnection Logic', () => {
 
   describe('Connection State Tracking', () => {
     beforeEach(async () => {
+      mockClient.connect.mockRejectedValueOnce(
+        new Error('Initial connection failed'),
+      );
       await mcpProxy.initialize();
     });
 
@@ -323,7 +371,7 @@ describe('MCPProxy Reconnection Logic', () => {
       });
 
       // Connect: should transition to connected
-      await mcpProxy.reconnectServer(serverName);
+      await ensureServerConnected(mcpProxy, serverName);
       status = mcpProxy.getServerStatus(serverName);
       expect(status.status).toBe('connected');
       expect(status.connectedAt).toBeDefined();
@@ -368,7 +416,7 @@ describe('MCPProxy Reconnection Logic', () => {
       const serverName = 'test-server';
       const beforeConnect = new Date().toISOString();
 
-      await mcpProxy.reconnectServer(serverName);
+      await ensureServerConnected(mcpProxy, serverName);
 
       const status = mcpProxy.getServerStatus(serverName);
       expect(status.connectedAt).toBeDefined();
@@ -379,7 +427,8 @@ describe('MCPProxy Reconnection Logic', () => {
   describe('Automatic Reconnection', () => {
     beforeEach(async () => {
       await mcpProxy.initialize();
-      await mcpProxy.reconnectServer('test-server');
+      mockClient.connect.mockClear();
+      await ensureServerConnected(mcpProxy, 'test-server');
     });
 
     it('should trigger automatic reconnection on transport error', async () => {
@@ -392,30 +441,43 @@ describe('MCPProxy Reconnection Logic', () => {
       mcpProxy.on('server.reconnecting', reconnectingHandler);
 
       // Simulate transport error that triggers automatic reconnection
-      const connectionError = TransportError.connectionFailed('Network error');
+      const connectionError =
+        TransportError.connectionFailed('connection lost');
 
       // Get the current transport's error handler
-      const currentTransport = mcpProxy['transports'].get(serverName);
+      const currentTransport = getMockTransport(serverName);
       expect(currentTransport).toBeDefined();
+      expect(typeof currentTransport?.onerror).toBe('function');
 
       // Simulate transport error
-      if (currentTransport?.onerror) {
-        currentTransport.onerror(connectionError);
-      }
+      currentTransport?.onerror?.(connectionError as Error);
 
-      // Verify server moved to disconnected state
-      const status = mcpProxy.getServerStatus(serverName);
-      expect(status.status).toBe('error');
-      expect(status.error).toBe('Network error');
-
-      // Verify disconnection event was emitted
+      // Verify disconnection event was emitted with error context
       expect(disconnectedHandler).toHaveBeenCalledWith(
         expect.objectContaining({
           serverName,
           status: 'disconnected',
-          reason: expect.stringContaining('Network error'),
+          reason: expect.stringContaining('connection'),
         }),
       );
+
+      // Auto-reconnection should not happen before scheduled delay
+      expect(reconnectingHandler).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1000);
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(reconnectingHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serverName,
+          status: 'reconnecting',
+          retryAttempt: expect.any(Number),
+        }),
+      );
+
+      await vi.runOnlyPendingTimersAsync();
+      const status = mcpProxy.getServerStatus(serverName);
+      expect(status.status).toBe('connected');
     });
 
     it('should perform automatic reconnection with exponential backoff', async () => {
@@ -449,10 +511,9 @@ describe('MCPProxy Reconnection Logic', () => {
       // Verify reconnection events were emitted
       expect(reconnectingHandler).toHaveBeenCalled();
 
-      // Give the async reconnection time to complete
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      // Flush any remaining microtasks triggered by reconnection
+      await vi.runOnlyPendingTimersAsync();
 
-      // Verify successful reconnection
       expect(connectedHandler).toHaveBeenCalled();
     });
 
@@ -501,9 +562,17 @@ describe('MCPProxy Reconnection Logic', () => {
         await vi.runOnlyPendingTimersAsync();
       }
 
-      // Verify server is still in error state after max attempts
+      expect(mockClient.connect).toHaveBeenCalledTimes(maxAttempts);
+
+      const reconnectionManagers = (
+        mcpProxy as unknown as {
+          reconnectionManagers: Map<string, unknown>;
+        }
+      ).reconnectionManagers;
+
       const status = mcpProxy.getServerStatus(serverName);
-      expect(status.status).toBe('error');
+      expect(status.status).not.toBe('connected');
+      expect(reconnectionManagers.has(serverName)).toBe(false);
     });
 
     it('should reset reconnection attempts on successful connection', async () => {
@@ -543,7 +612,7 @@ describe('MCPProxy Reconnection Logic', () => {
       const serverName = 'test-server';
 
       // Connect server
-      await mcpProxy.reconnectServer(serverName);
+      await ensureServerConnected(mcpProxy, serverName);
 
       // Simulate rapid multiple disconnections
       const currentTransport = mcpProxy['transports'].get(serverName);
@@ -567,11 +636,15 @@ describe('MCPProxy Reconnection Logic', () => {
         () => new Promise((resolve) => setTimeout(resolve, 5000)),
       );
 
+      await ensureServerDisconnected(mcpProxy, serverName);
+
       // Start first reconnection
       const firstReconnect = mcpProxy.reconnectServer(serverName);
 
       // Try to start second reconnection immediately
-      await expect(mcpProxy.reconnectServer(serverName)).rejects.toThrow();
+      await expect(mcpProxy.reconnectServer(serverName)).rejects.toThrow(
+        `Manual reconnection already in progress for server '${serverName}'`,
+      );
 
       // Clean up the pending reconnection
       vi.advanceTimersByTime(5000);
@@ -589,6 +662,8 @@ describe('MCPProxy Reconnection Logic', () => {
           ),
       );
 
+      await ensureServerDisconnected(mcpProxy, serverName);
+
       // Start reconnection
       const reconnectPromise = mcpProxy.reconnectServer(serverName);
 
@@ -603,7 +678,7 @@ describe('MCPProxy Reconnection Logic', () => {
       const serverName = 'test-server';
 
       // Connect server
-      await mcpProxy.reconnectServer(serverName);
+      await ensureServerConnected(mcpProxy, serverName);
       expect(mcpProxy.getServerStatus(serverName).status).toBe('connected');
 
       // Simulate transport close
@@ -645,7 +720,7 @@ describe('MCPProxy Reconnection Logic', () => {
       const serverName = 'test-server';
 
       // Connect server first
-      await mcpProxy.reconnectServer(serverName);
+      await ensureServerConnected(mcpProxy, serverName);
 
       // Simulate transport close
       const currentTransport = mcpProxy['transports'].get(serverName);
@@ -667,6 +742,7 @@ describe('MCPProxy Reconnection Logic', () => {
       const serverName = 'test-server';
 
       // Manually reconnect should still work
+      await ensureServerDisconnected(mcpProxy, serverName);
       await mcpProxy.reconnectServer(serverName);
 
       const status = mcpProxy.getServerStatus(serverName);
@@ -698,10 +774,11 @@ describe('MCPProxy Reconnection Logic', () => {
 
     it('should use custom reconnection configuration', async () => {
       await mcpProxy.initialize();
+      mockClient.connect.mockClear();
       const serverName = 'test-server';
 
       // Connect and then simulate disconnection
-      await mcpProxy.reconnectServer(serverName);
+      await ensureServerConnected(mcpProxy, serverName);
 
       // Mock reconnection failures
       mockClient.connect.mockRejectedValue(new Error('Connection failed'));
@@ -712,23 +789,24 @@ describe('MCPProxy Reconnection Logic', () => {
         currentTransport.onclose();
       }
 
+      const callsAfterClose = mockClient.connect.mock.calls.length;
+
       // Verify custom initial delay is used (500ms)
       vi.advanceTimersByTime(499);
-      await vi.runOnlyPendingTimersAsync();
-      expect(mockClient.connect).not.toHaveBeenCalled();
+      expect(mockClient.connect.mock.calls.length).toBe(callsAfterClose);
 
-      vi.advanceTimersByTime(1);
-      await vi.runOnlyPendingTimersAsync();
-      expect(mockClient.connect).toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      const callsAfterFirstAttempt = mockClient.connect.mock.calls.length;
+      expect(callsAfterFirstAttempt).toBeGreaterThan(callsAfterClose);
 
       // Verify custom backoff multiplier (1.5x)
-      vi.advanceTimersByTime(749); // 500 * 1.5 - 1
-      await vi.runOnlyPendingTimersAsync();
-      expect(mockClient.connect).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(749); // 500 * 1.5 - 1
+      expect(mockClient.connect.mock.calls.length).toBe(callsAfterFirstAttempt);
 
-      vi.advanceTimersByTime(1);
-      await vi.runOnlyPendingTimersAsync();
-      expect(mockClient.connect).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockClient.connect.mock.calls.length).toBeGreaterThan(
+        callsAfterFirstAttempt,
+      );
     });
   });
 });

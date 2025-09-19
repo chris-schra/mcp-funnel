@@ -135,10 +135,10 @@ describe('OAuth Security Tests', () => {
       const stateMatch2 = consoleOutput2.match(/state=([^&\s]+)/);
       const state2 = stateMatch2![1];
 
-
-
       // Set up expectation for the timeout BEFORE advancing timers
-      const timeoutExpectation = expect(refreshPromise2).rejects.toThrow("Authorization timeout - please try again");
+      const timeoutExpectation = expect(refreshPromise2).rejects.toThrow(
+        'Authorization timeout - please try again',
+      );
 
       // Advance time past 10 minutes (state expiry) - this will trigger the rejection
       await vi.advanceTimersByTimeAsync(11 * 60 * 1000);
@@ -147,7 +147,9 @@ describe('OAuth Security Tests', () => {
       await timeoutExpectation;
 
       // Trying to complete the flow with expired state should also fail
-      await expect(provider2.completeOAuthFlow(state2, 'test-code')).rejects.toThrow('Invalid or expired OAuth state');
+      await expect(
+        provider2.completeOAuthFlow(state2, 'test-code'),
+      ).rejects.toThrow('Invalid or expired OAuth state');
 
       provider2.destroy();
     });
@@ -538,7 +540,9 @@ describe('OAuth Security Tests', () => {
       const state = stateMatch![1];
 
       // Set up expectation for timeout BEFORE advancing timers
-      const timeoutExpectation = expect(promise1).rejects.toThrow('Authorization timeout - please try again');
+      const timeoutExpectation = expect(promise1).rejects.toThrow(
+        'Authorization timeout - please try again',
+      );
 
       // Advance time past expiration - this will trigger the rejection
       await vi.advanceTimersByTimeAsync(11 * 60 * 1000); // 11 minutes
