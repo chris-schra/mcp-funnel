@@ -3,7 +3,7 @@
  * Verifies that mandatory authentication is properly implemented in the development server
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 
@@ -185,7 +185,9 @@ describe('Development Server Mandatory Authentication', () => {
       testPort = await waitForServerReady(serverProcess);
 
       // Verify security warnings are displayed
-      expect(capturedOutput).toContain('WARNING: Inbound authentication is DISABLED');
+      expect(capturedOutput).toContain(
+        'WARNING: Inbound authentication is DISABLED',
+      );
       expect(capturedOutput).toContain('This is a security risk');
 
       // Test that no auth is required

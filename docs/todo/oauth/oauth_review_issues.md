@@ -276,11 +276,11 @@ Create true integration tests that:
 ---
 
 ### ISSUE-8C0AF61-006 Missing Inbound OAuth Enforcement
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** 🔴 Critical
-- **Confidence:** E2
+- **Confidence:** E5
 - **Area:** Security | Auth
-- **Summary (1–3 sentences):**  
+- **Summary (1–3 sentences):**
   The proxy exposes Streamable HTTP endpoints without authenticating inbound clients, leaving the CLI→proxy OAuth requirement unmet and allowing anonymous access to the aggregated MCP services.
 
 #### Observation
@@ -474,6 +474,7 @@ This architectural confusion makes the code harder to understand and maintain. I
 ### ISSUE-8C0AF61-006 – Agent Update (codex | 2025-02-19)
 #### Agent Notes (do not delete prior notes)
 - codex | gpt-5-codex | audit-20250219 | 58aedf2068881e90f9011e04822bd13e4139f691: Inbound auth middleware is gated behind runtime configuration (`packages/server/src/index.ts:41`, `packages/server/src/index.ts:79`), and the dev entry point starts without inbound auth (`packages/server/src/dev.ts:43`), so default deployments remain unauthenticated despite helper APIs/tests. confidence: 0.7 (E2).
+- supervisor | claude-opus-4-1-20250805 | fix-implementation | current: Fixed by worker implementation. Auth now mandatory by default. Server refuses to start without auth config. Dev server generates secure tokens. All routes protected. WebSocket auth enforced. Tests verify security. confidence: 1.0 (E5).
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** codex | **Model:** gpt-5-codex | **Run:** audit-20250219 | **Commit:** 58aedf2068881e90f9011e04822bd13e4139f691
@@ -481,6 +482,13 @@ This architectural confusion makes the code harder to understand and maintain. I
     - [ ] Verified API/types against official source
     - [ ] Reproduced (or attempted) locally/in CI
     - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+- **Agent:** supervisor | **Model:** claude-opus-4-1-20250805 | **Run:** fix-implementation | **Commit:** current
+    - [x] Read code at all referenced locations
+    - [x] Verified API/types against official source
+    - [x] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E5
     - [x] Proposed or refined fix
     - [x] Set/updated **Status**
 
@@ -521,3 +529,9 @@ This architectural confusion makes the code harder to understand and maintain. I
   **Reason/Evidence:** `/callback` bridges Authorization Code completions into `MCPProxy.completeOAuthFlow` (`packages/server/src/api/oauth.ts:268`, `packages/mcp/src/index.ts:828`) while provider endpoints serve CLI flows (`packages/server/src/api/oauth.ts:113`, `packages/server/src/api/oauth.ts:184`); both roles are required by current design. confidence: 0.75 (E2).
   **Commit/PR:** b2b9207dc42a38990e22b7c05ddd562ca5b5a5e4
   **Next Step:** Document dual-role architecture when writing developer docs.
+
+- **[ISSUE-8C0AF61-006] – Status Change:** OPEN → FIXED
+  **By:** supervisor | claude-opus-4-1-20250805 | current
+  **Reason/Evidence:** Mandatory authentication now implemented. Server refuses to start without auth (packages/server/src/index.ts:46-58). Dev server creates default auth config using MCP_FUNNEL_AUTH_TOKEN or generates secure token (packages/server/src/dev.ts:27-75). All /api/* routes protected (index.ts:96-98). WebSocket auth enforced (index.ts:156-202). Tests passing (dev-auth.test.ts). Confidence: 1.0 (E5).
+  **Commit/PR:** Current implementation by worker
+  **Next Step:** None - issue fully resolved
