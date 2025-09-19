@@ -51,26 +51,105 @@ describe('Development Server Mandatory Authentication', () => {
   let serverProcess: ChildProcess | null = null;
   let testPort: number;
 
+  beforeEach(async () => {
+    // Verify no lingering tsx processes from previous tests
+    const { spawn } = await import('node:child_process');
+    const psProcess = spawn('ps', ['aux']);
+    let output = '';
+
+    psProcess.stdout?.on('data', (data) => {
+      output += data.toString();
+    });
+
+    await new Promise<void>((resolve) => {
+      psProcess.on('exit', () => {
+        const tsxProcesses = output
+          .split('\n')
+          .filter(
+            (line) => line.includes('tsx') && line.includes('dev.ts'),
+          ).length;
+
+        if (tsxProcesses > 0) {
+          console.warn(
+            `Found ${tsxProcesses} lingering tsx dev.ts processes before test`,
+          );
+        }
+        resolve();
+      });
+    });
+  });
+
   afterEach(async () => {
     if (serverProcess) {
-      serverProcess.kill('SIGTERM');
-      // Wait for process to exit
-      await new Promise<void>((resolve) => {
-        if (serverProcess) {
-          serverProcess.on('exit', () => {
+      const pid = serverProcess.pid;
+      const isProcessAlive = () => {
+        if (!pid) return false;
+        try {
+          // This will throw if process doesn't exist
+          process.kill(pid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      // Check if process is still alive before trying to kill it
+      if (isProcessAlive()) {
+        // Set up exit listener BEFORE sending kill signal to avoid race condition
+        const exitPromise = new Promise<void>((resolve) => {
+          if (serverProcess) {
+            serverProcess.on('exit', (code, signal) => {
+              console.debug(
+                `Process ${pid} exited with code ${code}, signal ${signal}`,
+              );
+              resolve();
+            });
+
+            // Also handle error events
+            serverProcess.on('error', (error) => {
+              console.debug(`Process ${pid} error: ${error.message}`);
+              resolve();
+            });
+          } else {
             resolve();
-          });
-          // Force kill if it doesn't exit gracefully
+          }
+        });
+
+        // Now send the kill signal
+        try {
+          serverProcess.kill('SIGTERM');
+        } catch (error) {
+          console.debug(`Error sending SIGTERM to process ${pid}: ${error}`);
+        }
+
+        // Wait for process to exit with timeout
+        const timeoutPromise = new Promise<void>((resolve) => {
           setTimeout(() => {
-            if (serverProcess && !serverProcess.killed) {
-              serverProcess.kill('SIGKILL');
+            if (serverProcess && pid && isProcessAlive()) {
+              console.debug(`Force killing process ${pid} after timeout`);
+              try {
+                serverProcess.kill('SIGKILL');
+              } catch (error) {
+                console.debug(`Error force killing process ${pid}: ${error}`);
+              }
             }
             resolve();
           }, 2000);
-        } else {
-          resolve();
-        }
-      });
+        });
+
+        // Wait for either exit or timeout
+        await Promise.race([exitPromise, timeoutPromise]);
+      } else {
+        console.debug(`Process ${pid} already terminated`);
+      }
+
+      // Final verification that process is terminated
+      if (pid && isProcessAlive()) {
+        console.warn(`Process ${pid} still exists after cleanup attempt`);
+      } else {
+        console.debug(`Process ${pid} successfully terminated`);
+      }
+
       serverProcess = null;
     }
   });
