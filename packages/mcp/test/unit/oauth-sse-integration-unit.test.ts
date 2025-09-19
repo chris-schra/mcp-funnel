@@ -1,15 +1,20 @@
 /**
- * End-to-End OAuth + SSE Integration Tests
+ * UNIT TESTS: OAuth + SSE Integration with Mocks
  *
- * Tests OAuth authentication integrated with SSE transport using OAuth2ClientCredentialsProvider
- * which doesn't require human interaction, making it suitable for automated testing.
+ * IMPORTANT: These are UNIT TESTS using mocks, not true integration tests.
+ * They test the interaction between OAuth providers and SSE transport using
+ * mocked dependencies to ensure predictable, fast, and reliable testing.
  *
- * Tests integration aspects:
- * 1. OAuth token acquisition and usage
- * 2. Token refresh during active connection
- * 3. 401 handling and retry
- * 4. Connection recovery with auth
- * 5. Multiple concurrent authenticated connections
+ * For true integration tests that make real network calls, see:
+ * - packages/mcp/test/integration/oauth-integration.test.ts
+ * - packages/mcp/test/integration/sse-integration.test.ts
+ *
+ * These unit tests verify:
+ * 1. OAuth provider and SSE transport integration logic
+ * 2. Token acquisition and header passing mechanisms
+ * 3. Error handling flows with mocked responses
+ * 4. Connection management with controlled scenarios
+ * 5. Concurrent connection handling with shared auth
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -109,7 +114,7 @@ class MockOAuthServer {
   }
 }
 
-describe('OAuth + SSE Integration E2E Tests', () => {
+describe('OAuth + SSE Integration Unit Tests (Mocked)', () => {
   let mockSSEServer: MockSSEServer;
   let mockOAuthServer: MockOAuthServer;
   let serverInfo: { url: string; port: number };
