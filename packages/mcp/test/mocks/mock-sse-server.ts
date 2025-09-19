@@ -14,6 +14,7 @@
 import express, { type Express, type Request, type Response } from 'express';
 import { createServer, type Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
+import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 
 export interface MockSSEServerConfig {
   port?: number;
@@ -322,7 +323,8 @@ export class MockSSEServer {
       const authHeader = req.headers.authorization;
       const authQuery = req.query.auth as string;
 
-      const providedToken = authHeader?.replace('Bearer ', '') || authQuery;
+      const providedToken =
+        (authHeader ? extractBearerToken(authHeader) : null) || authQuery;
 
       if (
         this.shouldSimulateAuthFailure ||
@@ -399,7 +401,7 @@ export class MockSSEServer {
     // Auth validation for POST requests
     if (this.config.requireAuth) {
       const authHeader = req.headers.authorization;
-      const providedToken = authHeader?.replace('Bearer ', '');
+      const providedToken = authHeader ? extractBearerToken(authHeader) : null;
 
       if (
         this.shouldSimulateAuthFailure ||
