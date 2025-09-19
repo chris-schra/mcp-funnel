@@ -58,28 +58,34 @@ describe('OAuth2AuthCodeProvider', () => {
       const invalidConfig = { ...mockConfig, clientId: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow('OAuth2 client ID is required');
+      }).toThrow(
+        'OAuth2 Authorization Code config: Missing required field: clientId',
+      );
     });
 
     it('should throw error for missing auth URL', () => {
       const invalidConfig = { ...mockConfig, authorizationEndpoint: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow('OAuth2 authorization URL is required');
+      }).toThrow(/OAuth2 Authorization Code config: Missing required field/);
     });
 
     it('should throw error for missing token URL', () => {
       const invalidConfig = { ...mockConfig, tokenEndpoint: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow('OAuth2 token URL is required');
+      }).toThrow(
+        'OAuth2 Authorization Code config: Missing required field: tokenEndpoint',
+      );
     });
 
     it('should throw error for missing redirect URI', () => {
       const invalidConfig = { ...mockConfig, redirectUri: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow('OAuth2 redirect URI is required');
+      }).toThrow(
+        'OAuth2 Authorization Code config: Missing required field: redirectUri',
+      );
     });
 
     it('should throw error for invalid URLs', () => {
@@ -89,7 +95,7 @@ describe('OAuth2AuthCodeProvider', () => {
       };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow('OAuth2 URLs must be valid URLs');
+      }).toThrow(/Invalid URL format: not-a-url/);
     });
 
     it('should resolve environment variables in config', () => {
@@ -107,7 +113,7 @@ describe('OAuth2AuthCodeProvider', () => {
       const envConfig = { ...mockConfig, clientId: '${MISSING_VAR}' };
       expect(() => {
         new OAuth2AuthCodeProvider(envConfig, mockStorage);
-      }).toThrow('Environment variable MISSING_VAR is not set');
+      }).toThrow('Environment variable MISSING_VAR is not defined');
     });
   });
 
