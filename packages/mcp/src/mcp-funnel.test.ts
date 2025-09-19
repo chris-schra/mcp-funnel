@@ -608,9 +608,7 @@ describe('MCPProxy', () => {
 
       it('should return false for unconfigured servers', () => {
         const config: ProxyConfig = {
-          servers: [
-            { name: 'github', command: 'echo' },
-          ],
+          servers: [{ name: 'github', command: 'echo' }],
         };
 
         const proxy = new MCPProxy(config, './.mcp-funnel.json');
@@ -638,9 +636,7 @@ describe('MCPProxy', () => {
     describe('isServerConnected', () => {
       it('should return false for servers before connection', () => {
         const config: ProxyConfig = {
-          servers: [
-            { name: 'github', command: 'echo' },
-          ],
+          servers: [{ name: 'github', command: 'echo' }],
         };
 
         const proxy = new MCPProxy(config, './.mcp-funnel.json');
@@ -650,9 +646,7 @@ describe('MCPProxy', () => {
 
       it('should return true for servers after successful connection', async () => {
         const config: ProxyConfig = {
-          servers: [
-            { name: 'github', command: 'echo' },
-          ],
+          servers: [{ name: 'github', command: 'echo' }],
         };
 
         const proxy = new MCPProxy(config, './.mcp-funnel.json');
@@ -663,9 +657,7 @@ describe('MCPProxy', () => {
 
       it('should return false for unconfigured servers', async () => {
         const config: ProxyConfig = {
-          servers: [
-            { name: 'github', command: 'echo' },
-          ],
+          servers: [{ name: 'github', command: 'echo' }],
         };
 
         const proxy = new MCPProxy(config, './.mcp-funnel.json');

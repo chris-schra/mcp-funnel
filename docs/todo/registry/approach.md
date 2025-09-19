@@ -1,5 +1,7 @@
 ## Your responsibility
+
 **BEFORE** creating tasks, keep in mind:
+
 - you need to assess the current state first
 - make sure to detect existing packages (recursively, use a scan for package.json, excluding **/node_modules/**)
   to understand the repo first, then check relevant files for focus.
@@ -20,6 +22,7 @@
 ## Supervisor Verification Protocol
 
 **AFTER EACH WORKER COMPLETES**, the supervisor MUST:
+
 1. [ ] Run `git status` to verify files are tracked
 2. [ ] Run `yarn validate packages/mcp` personally
 3. [ ] Run `yarn test packages/mcp` personally
@@ -29,20 +32,19 @@
 7. [ ] Update task checkboxes in this document
 8. [ ] Only then proceed to dependent tasks
 
-
 ## Before starting
 
 **BEFORE** starting a new phase, you **MUST** create tasks that are optimized for parallel work,
 so it should be **NO** work on the same files in parallel.
-Then start instances of subagent worker IN PARALLEL to work on the tasks and coordinate them. 
-Use as many PARALLEL worker instances as useful - CONSIDER dependencies so do NOT launch workers 
-in parallel that have dependencies that are not implemented or will be worked on in other tasks. 
+Then start instances of subagent worker IN PARALLEL to work on the tasks and coordinate them.
+Use as many PARALLEL worker instances as useful - CONSIDER dependencies so do NOT launch workers
+in parallel that have dependencies that are not implemented or will be worked on in other tasks.
 
 To start parallel subagent workers, you **MUST** send a single message with multiple Task tool calls.
 
 ## Iteration Plan:
 
-For each phase, 
+For each phase,
 
 Phase 1: Interfaces & Types
 
@@ -57,6 +59,7 @@ Phase 1: Interfaces & Types
   - if types or interfaces have more than 5 lines, they need dedicated files, and those need to be exported via packages/mcp/src/registry/index.ts
 
 **DO NOT** proceed to next phase until:
+
 - [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
 - [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -79,6 +82,7 @@ You **MUST** tick the checklist boxes for previous phase before continuing.
 - All tests initially skipped but validate against types
 
 **DO NOT** proceed to next phase until:
+
 - [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
 - [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -93,16 +97,17 @@ Phase 3: Implementation
 You **MUST** tick the checklist boxes for previous phase before continuing.
 
 - No-op implementations for extension points:
-    - NoOpCache (always returns null)
-    - TemporaryServerTracker (logs but doesn't spawn)
-    - ReadOnlyConfigManager (logs config changes)
+  - NoOpCache (always returns null)
+  - TemporaryServerTracker (logs but doesn't spawn)
+  - ReadOnlyConfigManager (logs config changes)
 - Core implementations:
-    - MCPRegistryClient with search and getServer methods
-    - RegistryContext singleton with shared cache
-    - Two tools: SearchRegistryTools and GetServerInstallInfo
-    - Config generation logic for npm/pypi/oci/remotes
+  - MCPRegistryClient with search and getServer methods
+  - RegistryContext singleton with shared cache
+  - Two tools: SearchRegistryTools and GetServerInstallInfo
+  - Config generation logic for npm/pypi/oci/remotes
 
 **DO NOT** proceed to next phase until:
+
 - [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
 - [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
@@ -128,6 +133,7 @@ Key Implementation Details:
 - MVP focus: No actual spawning, no config writes, just discovery and guidance
 
 **DO NOT** proceed to next phase until:
+
 - [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
 - [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
 - [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES

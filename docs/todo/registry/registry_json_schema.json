@@ -7,10 +7,7 @@
     "Repository": {
       "type": "object",
       "description": "Repository metadata for the MCP server source code. Enables users and security experts to inspect the code, improving transparency.",
-      "required": [
-        "url",
-        "source"
-      ],
+      "required": ["url", "source"],
       "properties": {
         "url": {
           "type": "string",
@@ -37,11 +34,7 @@
     },
     "Server": {
       "type": "object",
-      "required": [
-        "name",
-        "description",
-        "version"
-      ],
+      "required": ["name", "description", "version"],
       "properties": {
         "name": {
           "type": "string",
@@ -85,12 +78,7 @@
     "Package": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "registry_type",
-        "identifier",
-        "version",
-        "transport"
-      ],
+      "required": ["registry_type", "identifier", "version", "transport"],
       "properties": {
         "registry_type": {
           "type": "string",
@@ -101,12 +89,22 @@
           "type": "string",
           "format": "uri",
           "description": "Base URL of the package registry",
-          "examples": ["https://registry.npmjs.org", "https://pypi.org", "https://docker.io", "https://api.nuget.org", "https://github.com", "https://gitlab.com"]
+          "examples": [
+            "https://registry.npmjs.org",
+            "https://pypi.org",
+            "https://docker.io",
+            "https://api.nuget.org",
+            "https://github.com",
+            "https://gitlab.com"
+          ]
         },
         "identifier": {
           "type": "string",
           "description": "Package identifier - either a package name (for registries) or URL (for direct downloads)",
-          "examples": ["@modelcontextprotocol/server-brave-search", "https://github.com/example/releases/download/v1.0.0/package.mcpb"]
+          "examples": [
+            "@modelcontextprotocol/server-brave-search",
+            "https://github.com/example/releases/download/v1.0.0/package.mcpb"
+          ]
         },
         "version": {
           "type": "string",
@@ -126,12 +124,7 @@
         "runtime_hint": {
           "type": "string",
           "description": "A hint to help clients determine the appropriate runtime for the package. This field should be provided when `runtime_arguments` are present.",
-          "examples": [
-            "npx",
-            "uvx",
-            "docker",
-            "dnx"
-          ]
+          "examples": ["npx", "uvx", "docker", "dnx"]
         },
         "transport": {
           "anyOf": [
@@ -184,12 +177,7 @@
         "format": {
           "type": "string",
           "description": "Specifies the input format. Supported values include `filepath`, which should be interpreted as a file on the user's filesystem.\n\nWhen the input is converted to a string, booleans should be represented by the strings \"true\" and \"false\", and numbers should be represented as decimal values.",
-          "enum": [
-            "string",
-            "number",
-            "boolean",
-            "filepath"
-          ],
+          "enum": ["string", "number", "boolean", "filepath"],
           "default": "string"
         },
         "value": {
@@ -242,15 +230,11 @@
         },
         {
           "type": "object",
-          "required": [
-            "type"
-          ],
+          "required": ["type"],
           "properties": {
             "type": {
               "type": "string",
-              "enum": [
-                "positional"
-              ],
+              "enum": ["positional"],
               "example": "positional"
             },
             "value_hint": {
@@ -266,14 +250,10 @@
           },
           "anyOf": [
             {
-              "required": [
-                "value_hint"
-              ]
+              "required": ["value_hint"]
             },
             {
-              "required": [
-                "value"
-              ]
+              "required": ["value"]
             }
           ]
         }
@@ -287,16 +267,11 @@
         },
         {
           "type": "object",
-          "required": [
-            "type",
-            "name"
-          ],
+          "required": ["type", "name"],
           "properties": {
             "type": {
               "type": "string",
-              "enum": [
-                "named"
-              ],
+              "enum": ["named"],
               "example": "named"
             },
             "name": {
@@ -320,9 +295,7 @@
         },
         {
           "type": "object",
-          "required": [
-            "name"
-          ],
+          "required": ["name"],
           "properties": {
             "name": {
               "type": "string",
@@ -346,15 +319,11 @@
     },
     "StdioTransport": {
       "type": "object",
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "stdio"
-          ],
+          "enum": ["stdio"],
           "description": "Transport type",
           "example": "stdio"
         }
@@ -362,16 +331,11 @@
     },
     "StreamableHttpTransport": {
       "type": "object",
-      "required": [
-        "type",
-        "url"
-      ],
+      "required": ["type", "url"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "streamable-http"
-          ],
+          "enum": ["streamable-http"],
           "description": "Transport type",
           "example": "streamable-http"
         },
@@ -391,16 +355,11 @@
     },
     "SseTransport": {
       "type": "object",
-      "required": [
-        "type",
-        "url"
-      ],
+      "required": ["type", "url"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "sse"
-          ],
+          "enum": ["sse"],
           "description": "Transport type",
           "example": "sse"
         },
