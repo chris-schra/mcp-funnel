@@ -28,6 +28,7 @@ import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-
 import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 import { TestWebSocketServer } from '../fixtures/test-websocket-server.js';
 import { setupOAuthAndWebSocketServers } from '../helpers/server-setup.js';
+import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCResponse,
   JSONRPCRequest,
@@ -85,7 +86,7 @@ describe.skipIf(!runIntegrationTests)(
         expect(authHeaders.Authorization).toMatch(/^Bearer test-access-/);
 
         // Step 3: Configure WebSocket server to accept the token
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         // Step 4: Create WebSocket transport with OAuth integration
@@ -134,7 +135,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Set up authenticated connection
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         const transport = new WebSocketClientTransport({
@@ -221,7 +222,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Get initial token and establish connection
         let authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         const transport = new WebSocketClientTransport({
@@ -250,7 +251,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Force token refresh by making a request
         authHeaders = await authProvider.getHeaders();
-        const newToken = authHeaders.Authorization.replace('Bearer ', '');
+        const newToken = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(newToken);
 
         // Verify new token is different and connection remains active
@@ -337,7 +338,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Get shared token
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         // Create multiple transports sharing the same auth provider
@@ -388,7 +389,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Get initial token
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         const transport = new WebSocketClientTransport({
@@ -429,7 +430,7 @@ describe.skipIf(!runIntegrationTests)(
         );
 
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         const transport = new WebSocketClientTransport({
@@ -471,7 +472,7 @@ describe.skipIf(!runIntegrationTests)(
         );
 
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         const transport = new WebSocketClientTransport({
@@ -556,7 +557,7 @@ describe.skipIf(!runIntegrationTests)(
         );
 
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         wsServer.setValidToken(token);
 
         const transport = new WebSocketClientTransport({

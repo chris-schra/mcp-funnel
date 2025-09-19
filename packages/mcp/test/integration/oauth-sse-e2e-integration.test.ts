@@ -27,6 +27,7 @@ import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-
 import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 import { TestSSEServer } from '../fixtures/test-sse-server.js';
 import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
+import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCResponse,
   JSONRPCMessage,
@@ -82,7 +83,7 @@ describe.skipIf(!runIntegrationTests)(
         expect(authHeaders.Authorization).toMatch(/^Bearer test-access-/);
 
         // Step 3: Configure SSE server to accept the token
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(token);
 
         // Step 4: Create SSE transport with OAuth integration
@@ -131,7 +132,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Set up authenticated connection
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(token);
 
         const transport = new SSEClientTransport({
@@ -194,7 +195,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Get initial token and establish connection
         let authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(token);
 
         const transport = new SSEClientTransport({
@@ -223,7 +224,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Force token refresh by making a request
         authHeaders = await authProvider.getHeaders();
-        const newToken = authHeaders.Authorization.replace('Bearer ', '');
+        const newToken = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(newToken);
 
         // Verify new token is different and connection remains active
@@ -309,7 +310,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Get shared token
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(token);
 
         // Create multiple transports sharing the same auth provider
@@ -360,7 +361,7 @@ describe.skipIf(!runIntegrationTests)(
 
         // Get initial token
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(token);
 
         const transport = new SSEClientTransport({
@@ -401,7 +402,7 @@ describe.skipIf(!runIntegrationTests)(
         );
 
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(token);
 
         const transport = new SSEClientTransport({
@@ -443,7 +444,7 @@ describe.skipIf(!runIntegrationTests)(
         );
 
         const authHeaders = await authProvider.getHeaders();
-        const token = authHeaders.Authorization.replace('Bearer ', '');
+        const token = extractBearerToken(authHeaders.Authorization)!;
         sseServer.setValidToken(token);
 
         const transport = new SSEClientTransport({
