@@ -153,9 +153,29 @@ Rewrite tests to use real providers. Verify tests still pass and actually exerci
 
 #### Agent Notes (do not delete prior notes)
 - claude | opus-4.1 | de9467b - Extracted from PR #14 review comments by chris-schra
+- gemini | gemini-pro | 2a28ee2 - Verified. The tests use `MockSecretProvider` and do not test the real implementations.
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** claude | **Model:** opus-4.1 | **Run:** N/A | **Commit:** de9467b
+    - [x] Read code at all referenced locations
+    - [x] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** gemini | **Model:** gemini-pro | **Run:** N/A | **Commit:** 2a28ee2
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [ ] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+- codex | gpt-5-codex | 2a28ee2 - Confirmed all SecretManager specs exercise only MockSecretProvider implementations; no DotEnv/Process/Inline providers under test. Evidence: packages/mcp/src/secrets/secret-manager.test.ts:6-203. confidence: 0.7
+
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** N/A | **Commit:** 2a28ee2
     - [x] Read code at all referenced locations
     - [x] Verified API/types against official source
     - [ ] Reproduced (or attempted) locally/in CI
@@ -481,6 +501,16 @@ Refactor and verify all tests still pass. Check for behavior consistency.
     - [x] Proposed or refined fix
     - [x] Set/updated **Status**
 
+- codex | gpt-5-codex | 2a28ee2 - `resolveServerEnvironment` repeats SecretManager instantiation logic for default vs server providers, violating DRY. Evidence: packages/mcp/src/index.ts:576-606. Proposed helper to share provider resolution. confidence: 0.6
+
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** N/A | **Commit:** 2a28ee2
+    - [x] Read code at all referenced locations
+    - [x] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
 ---
 
 ### [ISSUE-DE9467B-009] Fake timer test making async test meaningless
@@ -515,9 +545,29 @@ Test with real async operations. Verify timing-sensitive behavior works correctl
 
 #### Agent Notes (do not delete prior notes)
 - claude | opus-4.1 | de9467b - Flaky test "fix" that removes test value
+- gemini | gemini-pro | 2a28ee2 - Verified. The test uses `vi.useFakeTimers()` which makes the async test synchronous.
 
 #### Agent Checklist (MANDATORY per agent)
 - **Agent:** claude | **Model:** opus-4.1 | **Run:** N/A | **Commit:** de9467b
+    - [x] Read code at all referenced locations
+    - [x] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** gemini | **Model:** gemini-pro | **Run:** N/A | **Commit:** 2a28ee2
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [ ] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+- codex | gpt-5-codex | 2a28ee2 - Async resolution spec swaps in vi.useFakeTimers and vi.runAllTimersAsync, so it never exercises real async scheduling paths. Evidence: packages/mcp/src/secrets/secret-manager.test.ts:201-219. Recommend rewriting with actual async/await flow. confidence: 0.65
+
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** N/A | **Commit:** 2a28ee2
     - [x] Read code at all referenced locations
     - [x] Verified API/types against official source
     - [ ] Reproduced (or attempted) locally/in CI
@@ -548,7 +598,7 @@ Poor observability in production. Difficult to track and debug issues. No struct
 - **Files/Lines:** `packages/mcp/src/services/secret-manager.ts:99`
 - **Docs/Types:** Uses console.error directly
 - **Tests:** No tests for error handling
-- **Repro (optional):** Trigger error in SecretManager
+-- **Repro (optional):** Trigger error in SecretManager
 - **Logs (optional):** N/A
 
 #### Proposed Resolution
@@ -564,6 +614,59 @@ Test error scenarios. Verify errors are properly logged and handled.
 - **Agent:** claude | **Model:** opus-4.1 | **Run:** N/A | **Commit:** de9467b
     - [x] Read code at all referenced locations
     - [x] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+- codex | gpt-5-codex | 2a28ee2 - SecretManager logs provider failures with console.error rather than proxy logging, leaving no structured telemetry or recovery hook. Evidence: packages/mcp/src/secrets/secret-manager.ts:98-102. Suggest routing through logging abstraction. confidence: 0.55
+
+- **Agent:** codex | **Model:** gpt-5-codex | **Run:** N/A | **Commit:** 2a28ee2
+    - [x] Read code at all referenced locations
+    - [x] Verified API/types against official source
+    - [ ] Reproduced (or attempted) locally/in CI
+    - [x] Classified **Assumption vs Evidence**: E2
+    - [x] Proposed or refined fix
+    - [x] Set/updated **Status**
+
+---
+
+### [ISSUE-2A28EE2-001] DRY violation in command discovery
+- **Status:** OPEN
+- **Severity:** 🟡 Medium
+- **Confidence:** E2
+- **Area:** API
+- **Summary (1–3 sentences):**
+  The command discovery logic in `packages/mcp/src/commands/run.ts` is duplicated for local and bundled commands. This violates the DRY principle and makes the code harder to maintain.
+
+#### Observation
+The code for discovering commands in `packages/commands` and bundled commands is duplicated. The logic is exactly the same, just the path is different.
+
+#### Assumptions
+none
+
+#### Risk / Impact
+Maintenance burden. Changes to the discovery logic need to be applied in two places, which can lead to inconsistencies.
+
+#### Evidence
+- **Files/Lines:** `packages/mcp/src/commands/run.ts:39-70`
+- **Docs/Types:** DRY principle
+- **Tests:** N/A
+- **Repro (optional):** Review the file `packages/mcp/src/commands/run.ts`
+
+#### Proposed Resolution
+Refactor the duplicated code into a function that takes a path and a registry as arguments.
+
+#### Validation Plan
+The refactoring should not change the behavior of the command discovery. All tests should still pass.
+
+#### Agent Notes (do not delete prior notes)
+- gemini | gemini-pro | 2a28ee2 - Found this issue while reviewing PR #14.
+
+#### Agent Checklist (MANDATORY per agent)
+- **Agent:** gemini | **Model:** gemini-pro | **Run:** N/A | **Commit:** 2a28ee2
+    - [x] Read code at all referenced locations
+    - [ ] Verified API/types against official source
     - [ ] Reproduced (or attempted) locally/in CI
     - [x] Classified **Assumption vs Evidence**: E2
     - [x] Proposed or refined fix
