@@ -7,6 +7,7 @@ import {
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
 import { type Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { EventEmitter } from 'events';
 import {
   ProxyConfig,
   normalizeExtendedServers,
@@ -17,6 +18,10 @@ import {
 } from './config.js';
 import { createTransport } from './transports/index.js';
 import { StdioClientTransport } from './transports/implementations/stdio-client-transport.js';
+import {
+  ReconnectionManager,
+  type ReconnectionConfig,
+} from './transports/utils/transport-utils.js';
 import {
   MemoryTokenStorage,
   OAuth2ClientCredentialsProvider,
@@ -128,7 +133,7 @@ export type ProxyStartOptions = {
   transport: 'stdio' | 'streamable-http';
 };
 
-export class MCPProxy {
+export class MCPProxy extends EventEmitter {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
@@ -147,8 +152,10 @@ export class MCPProxy {
   >();
   private connectionTimestamps = new Map<string, string>();
   private transports = new Map<string, Transport>();
+  private reconnectionManagers = new Map<string, ReconnectionManager>();
 
   constructor(config: ProxyConfig) {
+    super();
     this._config = config;
     this._normalizedServers = normalizeExtendedServers(config.servers);
     this.toolRegistry = new ToolRegistry(config);
@@ -550,6 +557,14 @@ export class MCPProxy {
         : targetServer;
 
       this.disconnectedServers.set(serverName, disconnectedServerInfo);
+
+      // Emit server disconnected event
+      this.emit('server.disconnected', {
+        serverName,
+        status: 'disconnected',
+        timestamp: new Date().toISOString(),
+        reason: errorMessage || reason,
+      });
     }
 
     // Clean up client reference and associated tracking data
@@ -566,9 +581,93 @@ export class MCPProxy {
     this.connectionTimestamps.delete(serverName);
     this.transports.delete(serverName);
 
-    // Consider automatic reconnection after a delay
-    // For now, we just log the disconnection - reconnection could be added later
-    // setTimeout(() => this.attemptReconnection(targetServer), 5000);
+    // Set up automatic reconnection if enabled and not manually disconnected
+    const autoReconnectConfig = this._config.autoReconnect;
+    const isAutoReconnectEnabled = autoReconnectConfig?.enabled !== false;
+    const isManualDisconnect = reason === 'manual_disconnect';
+
+    if (isAutoReconnectEnabled && !isManualDisconnect) {
+      // Create ReconnectionManager if it doesn't exist
+      if (!this.reconnectionManagers.has(serverName)) {
+        const reconnectionConfig: ReconnectionConfig = {
+          maxAttempts: autoReconnectConfig?.maxAttempts ?? 10,
+          initialDelayMs: autoReconnectConfig?.initialDelayMs ?? 1000,
+          backoffMultiplier: autoReconnectConfig?.backoffMultiplier ?? 2,
+          maxDelayMs: autoReconnectConfig?.maxDelayMs ?? 60000,
+        };
+
+        const reconnectionManager = new ReconnectionManager(
+          reconnectionConfig,
+          () => this.attemptReconnection(targetServer),
+          () => {
+            console.error(
+              `[proxy] Max reconnection attempts reached for ${serverName}`,
+            );
+            logEvent('error', 'server:max_reconnection_attempts', {
+              name: serverName,
+            });
+            // Clean up the reconnection manager
+            this.reconnectionManagers.delete(serverName);
+          },
+          'proxy:reconnection',
+        );
+
+        this.reconnectionManagers.set(serverName, reconnectionManager);
+      }
+
+      // Schedule the first reconnection attempt
+      const reconnectionManager = this.reconnectionManagers.get(serverName);
+      if (reconnectionManager) {
+        reconnectionManager.scheduleReconnection();
+      }
+    }
+  }
+
+  /**
+   * Attempt to reconnect to a disconnected server
+   * Used by ReconnectionManager for automatic reconnection
+   */
+  private async attemptReconnection(
+    targetServer: TargetServer | ExtendedTargetServerZod,
+  ): Promise<void> {
+    const serverName = targetServer.name;
+
+    // Get retry attempt number from reconnection manager
+    const reconnectionManager = this.reconnectionManagers.get(serverName);
+    const retryAttempt = reconnectionManager?.getAttemptCount() || 0;
+
+    // Emit server reconnecting event for automatic reconnection
+    this.emit('server.reconnecting', {
+      serverName,
+      status: 'reconnecting',
+      timestamp: new Date().toISOString(),
+      retryAttempt,
+    });
+
+    try {
+      await this.connectToSingleServer(targetServer);
+
+      // Reset the reconnection manager on successful connection
+      const reconnectionManager = this.reconnectionManagers.get(serverName);
+      if (reconnectionManager) {
+        reconnectionManager.reset();
+      }
+
+      console.error(`[proxy] Auto-reconnected to: ${serverName}`);
+      logEvent('info', 'server:auto_reconnected', { name: serverName });
+    } catch (error) {
+      console.error(
+        `[proxy] Auto-reconnection failed for ${serverName}:`,
+        error,
+      );
+      logError('server:auto_reconnect_failed', error, { name: serverName });
+
+      // Re-schedule reconnection - the ReconnectionManager will handle backoff
+      const reconnectionManager = this.reconnectionManagers.get(serverName);
+      if (reconnectionManager) {
+        reconnectionManager.scheduleReconnection();
+      }
+    }
   }
 
   /**
@@ -646,6 +745,13 @@ export class MCPProxy {
     console.error(`[proxy] Connected to: ${targetServer.name}`);
     logEvent('info', 'server:connect_success', {
       name: targetServer.name,
+    });
+
+    // Emit server connected event
+    this.emit('server.connected', {
+      serverName: targetServer.name,
+      status: 'connected',
+      timestamp: connectedAt,
     });
 
     // Discover tools from the newly connected server
@@ -773,6 +879,19 @@ export class MCPProxy {
     const serverConfig = { ...disconnectedServer };
     delete (serverConfig as { error?: string }).error;
 
+    // Emit server reconnecting event
+    this.emit('server.reconnecting', {
+      serverName: name,
+      status: 'reconnecting',
+      timestamp: new Date().toISOString(),
+    });
+
+    // Reset the ReconnectionManager if it exists
+    const reconnectionManager = this.reconnectionManagers.get(name);
+    if (reconnectionManager) {
+      reconnectionManager.reset();
+    }
+
     try {
       await this.connectToSingleServer(serverConfig);
       console.error(`[proxy] Successfully reconnected to: ${name}`);
@@ -805,6 +924,13 @@ export class MCPProxy {
     const targetServer = this.connectedServers.get(name)!;
     const client = this._clients.get(name);
     const transport = this.transports.get(name);
+
+    // Cancel any pending reconnection attempts
+    const reconnectionManager = this.reconnectionManagers.get(name);
+    if (reconnectionManager) {
+      reconnectionManager.cancel();
+      this.reconnectionManagers.delete(name);
+    }
 
     try {
       // Close the transport connection

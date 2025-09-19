@@ -64,6 +64,14 @@ export const WSEventSchema = z.discriminatedUnion('type', [
     }),
   }),
   z.object({
+    type: z.literal('server.reconnecting'),
+    payload: z.object({
+      serverName: z.string(),
+      timestamp: z.string(),
+      retryAttempt: z.number().optional(),
+    }),
+  }),
+  z.object({
     type: z.literal('tool.executing'),
     payload: z.object({
       toolName: z.string(),
