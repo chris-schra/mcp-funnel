@@ -261,6 +261,221 @@ oauthRoute.post('/revoke', async (c) => {
 });
 
 /**
+ * OAuth 2.0 Consent endpoint
+ * GET /consent - Retrieve consent request details
+ */
+oauthRoute.get('/consent', async (c) => {
+  try {
+    const clientId = c.req.query('client_id');
+    const scope = c.req.query('scope');
+    const state = c.req.query('state');
+
+    if (!clientId) {
+      return c.json(
+        {
+          error: 'invalid_request',
+          error_description: 'Missing required parameter: client_id',
+        },
+        400,
+      );
+    }
+
+    // Validate the client exists
+    const client = await storage.getClient(clientId);
+    if (!client) {
+      return c.json(
+        {
+          error: 'invalid_client',
+          error_description: 'Unknown client',
+        },
+        400,
+      );
+    }
+
+    // Parse requested scopes
+    const requestedScopes = scope ? scope.split(' ') : [];
+
+    // Filter to only supported scopes
+    const validScopes = requestedScopes.filter((s) =>
+      oauthConfig.supportedScopes.includes(s),
+    );
+
+    // Get user ID (in production, ensure user is authenticated)
+    const userId = getCurrentUserId(c);
+    if (!userId) {
+      return c.json(
+        {
+          error: 'unauthorized',
+          error_description: 'User authentication required',
+        },
+        401,
+      );
+    }
+
+    // Check if user has already consented
+    const hasConsented = await consentService.hasUserConsented(
+      userId,
+      clientId,
+      validScopes,
+    );
+
+    const response = {
+      client: {
+        client_id: client.client_id,
+        client_name: client.client_name,
+        redirect_uris: client.redirect_uris,
+      },
+      requested_scopes: validScopes,
+      supported_scopes: oauthConfig.supportedScopes,
+      has_consented: hasConsented,
+      state: state || null,
+    };
+
+    return c.json(response);
+  } catch (error) {
+    console.error('Consent endpoint error:', error);
+    return c.json(
+      {
+        error: 'server_error',
+        error_description: 'Internal server error',
+      },
+      500,
+    );
+  }
+});
+
+/**
+ * OAuth 2.0 Consent Processing endpoint
+ * POST /consent - Process user consent decision
+ */
+oauthRoute.post('/consent', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { client_id, scopes, decision, user_id } = body;
+
+    // Validate required parameters
+    if (!client_id || !decision || !user_id) {
+      return c.json(
+        {
+          error: 'invalid_request',
+          error_description:
+            'Missing required parameters: client_id, decision, user_id',
+        },
+        400,
+      );
+    }
+
+    if (!['approve', 'deny'].includes(decision)) {
+      return c.json(
+        {
+          error: 'invalid_request',
+          error_description: 'Decision must be either "approve" or "deny"',
+        },
+        400,
+      );
+    }
+
+    // Validate the client exists
+    const client = await storage.getClient(client_id);
+    if (!client) {
+      return c.json(
+        {
+          error: 'invalid_client',
+          error_description: 'Unknown client',
+        },
+        400,
+      );
+    }
+
+    // Validate scopes if provided
+    const requestedScopes = Array.isArray(scopes) ? scopes : [];
+    const validScopes = requestedScopes.filter((scope) =>
+      oauthConfig.supportedScopes.includes(scope),
+    );
+
+    if (decision === 'approve') {
+      if (validScopes.length > 0) {
+        await consentService.recordUserConsent(user_id, client_id, validScopes);
+      }
+
+      return c.json({
+        status: 'approved',
+        message: 'Consent recorded successfully',
+        consented_scopes: validScopes,
+      });
+    } else {
+      // Record denial (for now just return response, could store denial reasons later)
+      return c.json({
+        status: 'denied',
+        message: 'Consent denied by user',
+        error: 'access_denied',
+        error_description: 'The resource owner denied the request',
+      });
+    }
+  } catch (error) {
+    console.error('Consent processing error:', error);
+    return c.json(
+      {
+        error: 'server_error',
+        error_description: 'Internal server error',
+      },
+      500,
+    );
+  }
+});
+
+/**
+ * OAuth 2.0 Consent Revocation endpoint
+ * POST /consent/revoke - Revoke existing consent
+ */
+oauthRoute.post('/consent/revoke', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { client_id, user_id } = body;
+
+    // Validate required parameters
+    if (!client_id || !user_id) {
+      return c.json(
+        {
+          error: 'invalid_request',
+          error_description: 'Missing required parameters: client_id, user_id',
+        },
+        400,
+      );
+    }
+
+    // Validate the client exists
+    const client = await storage.getClient(client_id);
+    if (!client) {
+      return c.json(
+        {
+          error: 'invalid_client',
+          error_description: 'Unknown client',
+        },
+        400,
+      );
+    }
+
+    // Revoke consent
+    await consentService.revokeUserConsent(user_id, client_id);
+
+    return c.json({
+      status: 'success',
+      message: 'Consent revoked successfully',
+    });
+  } catch (error) {
+    console.error('Consent revocation error:', error);
+    return c.json(
+      {
+        error: 'server_error',
+        error_description: 'Internal server error',
+      },
+      500,
+    );
+  }
+});
+
+/**
  * OAuth2 Authorization Code callback route
  * Handles authorization code callback from OAuth providers
  * Integrates with existing MCPProxy OAuth flow completion
