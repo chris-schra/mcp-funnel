@@ -25,7 +25,6 @@ import {
   MockSSEServer,
   createMockSSEServer,
 } from '../mocks/mock-sse-server.js';
-import type { JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 import type { MockEventSource } from '../mocks/mock-eventsource';
 
 // Mock EventSource globally - must be before SSE imports
@@ -205,7 +204,9 @@ describe('OAuth + SSE Integration Unit Tests (Mocked)', () => {
       await authProvider.refresh();
 
       // Should have refreshed token
-      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(initialRefreshCount);
+      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(
+        initialRefreshCount,
+      );
     }, 15000);
 
     it('should handle authentication failures gracefully', async () => {
