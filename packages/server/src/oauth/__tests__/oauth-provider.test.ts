@@ -270,9 +270,24 @@ describe('OAuthProvider', () => {
       expect(result.error?.error_description).toBe(
         'User consent is required for the requested scopes',
       );
-      expect(result.error?.consent_uri).toBe(
-        `/api/oauth/consent?client_id=${encodeURIComponent(testClient.client_id)}&scope=${encodeURIComponent('read write')}&state=test-state-456`,
+      expect(result.error?.consent_uri).toBeDefined();
+      const consentUrl = new URL(
+        result.error?.consent_uri ?? '',
+        'http://localhost',
       );
+      expect(consentUrl.pathname).toBe('/api/oauth/consent');
+      expect(consentUrl.searchParams.get('client_id')).toBe(
+        testClient.client_id,
+      );
+      expect(consentUrl.searchParams.get('scope')).toBe('read write');
+      expect(consentUrl.searchParams.get('state')).toBe('test-state-456');
+      expect(consentUrl.searchParams.get('redirect_uri')).toBe(
+        'http://localhost:8080/callback',
+      );
+      expect(consentUrl.searchParams.get('code_challenge')).toBe(
+        'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+      );
+      expect(consentUrl.searchParams.get('code_challenge_method')).toBe('S256');
     });
 
     it('should succeed when user has already consented to the scopes', async () => {
@@ -577,6 +592,83 @@ describe('OAuthProvider', () => {
 
       expect(result.success).toBe(false);
       expect(result.error?.error).toBe(OAuthErrorCodes.INVALID_GRANT);
+    });
+
+    it('should rotate refresh token when rotation is required', async () => {
+      await storage.clear();
+      await consentService.clear();
+
+      config.requireTokenRotation = true;
+      oauthProvider = new OAuthProvider(storage, consentService, config);
+
+      const rotatingClient = await oauthProvider.registerClient({
+        client_name: 'Rotating Client',
+        redirect_uris: ['http://localhost:8080/callback'],
+      });
+
+      await consentService.recordUserConsent(
+        'user123',
+        rotatingClient.client_id,
+        ['read', 'write'],
+      );
+
+      const authResult = await oauthProvider.handleAuthorizationRequest(
+        {
+          response_type: 'code',
+          client_id: rotatingClient.client_id,
+          redirect_uri: 'http://localhost:8080/callback',
+          scope: 'read write',
+          code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+          code_challenge_method: 'S256',
+        },
+        'user123',
+      );
+
+      const initialTokenResult = await oauthProvider.handleTokenRequest({
+        grant_type: 'authorization_code',
+        code: authResult.authorizationCode!,
+        redirect_uri: 'http://localhost:8080/callback',
+        client_id: rotatingClient.client_id,
+        client_secret: rotatingClient.client_secret,
+        code_verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
+      });
+
+      const originalRefreshToken =
+        initialTokenResult.tokenResponse!.refresh_token!;
+
+      const rotationResult = await oauthProvider.handleTokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: originalRefreshToken,
+        client_id: rotatingClient.client_id,
+        client_secret: rotatingClient.client_secret,
+      });
+
+      expect(rotationResult.success).toBe(true);
+      expect(rotationResult.tokenResponse?.refresh_token).toBeDefined();
+      expect(rotationResult.tokenResponse?.refresh_token).not.toBe(
+        originalRefreshToken,
+      );
+
+      const storedOriginal =
+        await storage.getRefreshToken(originalRefreshToken);
+      expect(storedOriginal).toBeNull();
+
+      const rotatedRefreshToken = rotationResult.tokenResponse!.refresh_token!;
+      const storedRotated = await storage.getRefreshToken(rotatedRefreshToken);
+      expect(storedRotated).toBeDefined();
+      expect(storedRotated?.client_id).toBe(rotatingClient.client_id);
+      expect(storedRotated?.user_id).toBe('user123');
+      expect(storedRotated?.scopes).toEqual(['read', 'write']);
+
+      const reuseResult = await oauthProvider.handleTokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: originalRefreshToken,
+        client_id: rotatingClient.client_id,
+        client_secret: rotatingClient.client_secret,
+      });
+
+      expect(reuseResult.success).toBe(false);
+      expect(reuseResult.error?.error).toBe(OAuthErrorCodes.INVALID_GRANT);
     });
   });
 

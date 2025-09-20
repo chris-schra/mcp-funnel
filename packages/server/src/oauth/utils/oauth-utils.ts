@@ -231,6 +231,14 @@ export function validateClientCredentials(
     return !clientSecret;
   }
 
+  if (
+    typeof client.client_secret_expires_at === 'number' &&
+    client.client_secret_expires_at > 0 &&
+    isExpired(client.client_secret_expires_at)
+  ) {
+    return false;
+  }
+
   // Confidential clients must provide correct secret
   return client.client_secret === clientSecret;
 }

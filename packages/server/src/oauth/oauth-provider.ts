@@ -48,6 +48,35 @@ export class OAuthProvider {
     private config: OAuthProviderConfig,
   ) {}
 
+  private generateClientSecretMetadata(): {
+    client_secret: string;
+    client_secret_expires_at: number;
+  } {
+    const issuedAt = getCurrentTimestamp();
+    const expiresIn = this.config.defaultClientSecretExpiry ?? 31536000;
+    return {
+      client_secret: generateClientSecret(),
+      client_secret_expires_at: issuedAt + expiresIn,
+    };
+  }
+
+  private generateRefreshTokenRecord(
+    clientId: string,
+    userId: string,
+    scopes: string[],
+  ): RefreshToken {
+    const issuedAt = getCurrentTimestamp();
+    const expiresIn = this.config.defaultRefreshTokenExpiry ?? 2592000;
+    return {
+      token: generateRefreshToken(),
+      client_id: clientId,
+      user_id: userId,
+      scopes,
+      expires_at: issuedAt + expiresIn,
+      created_at: issuedAt,
+    };
+  }
+
   /**
    * Register a new OAuth client
    */
@@ -58,18 +87,19 @@ export class OAuthProvider {
     response_types?: string[];
     scope?: string;
   }): Promise<ClientRegistration> {
+    const { client_secret, client_secret_expires_at } =
+      this.generateClientSecretMetadata();
+
     const client: ClientRegistration = {
       client_id: generateClientId(),
-      client_secret: generateClientSecret(),
+      client_secret,
       client_name: metadata.client_name,
       redirect_uris: metadata.redirect_uris,
       grant_types: metadata.grant_types || [GrantTypes.AUTHORIZATION_CODE],
       response_types: metadata.response_types || [ResponseTypes.CODE],
       scope: metadata.scope,
       client_id_issued_at: getCurrentTimestamp(),
-      client_secret_expires_at:
-        getCurrentTimestamp() +
-        (this.config.defaultClientSecretExpiry || 31536000), // 1 year default
+      client_secret_expires_at,
     };
 
     await this.storage.saveClient(client);
@@ -158,13 +188,32 @@ export class OAuthProvider {
     );
 
     if (!hasConsent) {
+      const consentParams = new URLSearchParams({
+        client_id,
+      });
+      if (scope) {
+        consentParams.set('scope', scope);
+      }
+      if (state) {
+        consentParams.set('state', state);
+      }
+      if (redirect_uri) {
+        consentParams.set('redirect_uri', redirect_uri);
+      }
+      if (code_challenge) {
+        consentParams.set('code_challenge', code_challenge);
+      }
+      if (code_challenge_method) {
+        consentParams.set('code_challenge_method', code_challenge_method);
+      }
+
       return {
         success: false,
         error: {
           error: OAuthErrorCodes.CONSENT_REQUIRED,
           error_description:
             'User consent is required for the requested scopes',
-          consent_uri: `/api/oauth/consent?client_id=${encodeURIComponent(client_id)}&scope=${encodeURIComponent(scope || '')}&state=${state || ''}`,
+          consent_uri: `/api/oauth/consent?${consentParams.toString()}`,
         },
       };
     }
@@ -353,17 +402,11 @@ export class OAuthProvider {
     // Generate refresh token if enabled
     let refreshToken: RefreshToken | undefined;
     if (this.config.issueRefreshTokens) {
-      refreshToken = {
-        token: generateRefreshToken(),
+      refreshToken = this.generateRefreshTokenRecord(
         client_id,
-        user_id: authCode.user_id,
-        scopes: authCode.scopes,
-        expires_at:
-          getCurrentTimestamp() +
-          (this.config.defaultRefreshTokenExpiry || 2592000), // 30 days default
-        created_at: getCurrentTimestamp(),
-      };
-
+        authCode.user_id,
+        authCode.scopes,
+      );
       await this.storage.saveRefreshToken(refreshToken);
     }
 
@@ -489,6 +532,17 @@ export class OAuthProvider {
       scope: formatScopes(grantedScopes),
     };
 
+    if (this.config.requireTokenRotation && this.config.issueRefreshTokens) {
+      const rotatedRefreshToken = this.generateRefreshTokenRecord(
+        client_id,
+        refreshTokenData.user_id,
+        grantedScopes,
+      );
+      await this.storage.saveRefreshToken(rotatedRefreshToken);
+      await this.storage.deleteRefreshToken(refresh_token!);
+      tokenResponse.refresh_token = rotatedRefreshToken.token;
+    }
+
     return { success: true, tokenResponse };
   }
 
@@ -511,6 +565,60 @@ export class OAuthProvider {
     }
 
     return { valid: true, tokenData };
+  }
+
+  async rotateClientSecret(
+    clientId: string,
+    currentSecret: string,
+  ): Promise<{
+    success: boolean;
+    client?: ClientRegistration;
+    error?: OAuthError;
+  }> {
+    const client = await this.storage.getClient(clientId);
+
+    if (!client) {
+      return {
+        success: false,
+        error: {
+          error: OAuthErrorCodes.INVALID_CLIENT,
+          error_description: 'Invalid client_id',
+        },
+      };
+    }
+
+    if (!client.client_secret) {
+      return {
+        success: false,
+        error: {
+          error: OAuthErrorCodes.INVALID_CLIENT,
+          error_description: 'Client does not have a secret to rotate',
+        },
+      };
+    }
+
+    if (client.client_secret !== currentSecret) {
+      return {
+        success: false,
+        error: {
+          error: OAuthErrorCodes.INVALID_CLIENT,
+          error_description: 'Invalid client secret',
+        },
+      };
+    }
+
+    const { client_secret, client_secret_expires_at } =
+      this.generateClientSecretMetadata();
+
+    const updatedClient: ClientRegistration = {
+      ...client,
+      client_secret,
+      client_secret_expires_at,
+    };
+
+    await this.storage.saveClient(updatedClient);
+
+    return { success: true, client: updatedClient };
   }
 
   /**
