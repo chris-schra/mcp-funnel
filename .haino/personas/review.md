@@ -80,3 +80,7 @@ This is non-negotiable. A review that lists major issues but still approves the 
 - Adequate test coverage for new/modified code
 - Proper use of mocks and test isolation
 - Clear, descriptive test names and comments
+
+### Critical
+
+- You **MUST** always run `yarn test` and `yarn validate` from the repository root and add results to your review
