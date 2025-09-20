@@ -53,29 +53,71 @@ describe('Development Server Mandatory Authentication', () => {
 
   beforeEach(async () => {
     // Verify no lingering tsx processes from previous tests
-    const { spawn } = await import('node:child_process');
-    const psProcess = spawn('ps', ['aux']);
-    let output = '';
-
-    psProcess.stdout?.on('data', (data) => {
-      output += data.toString();
-    });
-
     await new Promise<void>((resolve) => {
-      psProcess.on('exit', () => {
-        const tsxProcesses = output
-          .split('\n')
-          .filter(
-            (line) => line.includes('tsx') && line.includes('dev.ts'),
-          ).length;
-
-        if (tsxProcesses > 0) {
-          console.warn(
-            `Found ${tsxProcesses} lingering tsx dev.ts processes before test`,
-          );
-        }
+      let psCheck: ChildProcess;
+      try {
+        psCheck = spawn('ps', ['aux']);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.debug(
+          `Skipping lingering tsx dev.ts process check: ${message}`,
+        );
         resolve();
-      });
+        return;
+      }
+
+      let resolved = false;
+      let output = '';
+
+      const cleanup = () => {
+        psCheck.stdout?.off('data', onData);
+        psCheck.off('exit', onExit);
+        psCheck.off('error', onError);
+      };
+
+      const resolveOnce = (handler: () => void) => {
+        if (resolved) {
+          return;
+        }
+        resolved = true;
+        cleanup();
+        handler();
+      };
+
+      const onData = (data: Buffer) => {
+        output += data.toString();
+      };
+
+      const onExit = () => {
+        resolveOnce(() => {
+          const tsxProcesses = output
+            .split('\n')
+            .filter(
+              (line) => line.includes('tsx') && line.includes('dev.ts'),
+            ).length;
+
+          if (tsxProcesses > 0) {
+            console.warn(
+              `Found ${tsxProcesses} lingering tsx dev.ts processes before test`,
+            );
+          }
+
+          resolve();
+        });
+      };
+
+      const onError = (error: Error) => {
+        resolveOnce(() => {
+          console.debug(
+            `Skipping lingering tsx dev.ts process check: ${error.message}`,
+          );
+          resolve();
+        });
+      };
+
+      psCheck.stdout?.on('data', onData);
+      psCheck.once('exit', onExit);
+      psCheck.once('error', onError);
     });
   });
 
