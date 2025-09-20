@@ -51,7 +51,6 @@ MCP Funnel:
 - **Dynamic Tool Discovery**: Experimental feature for reducing initial context usage (see limitations)
 - **Core Tools Mode**: Ultra-minimal context mode exposing only selected MCP Funnel tools with dynamic bridging (95%+ context reduction)
 
-
 ## 💡 Why Use MCP Funnel?
 
 ### The Context Problem
@@ -116,7 +115,7 @@ Or to "speak" with chat:
 </details>
 
 ```
-> /context 
+> /context
   ⎿  ⛁ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Context Usage
      ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-opus-4-1-20250805 • 42k/200k tokens (21%)
      ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ MCP tools: 25.4k tokens (12.7%)
@@ -141,14 +140,14 @@ Or to "speak" with chat:
 ⏺ I'll help you discover the code reasoning tool.
 
 ⏺ mcp-funnel - discover_tools_by_words (MCP)(words: "reasoning", enable: false)
-  ⎿  Found 1 tools:                                                                                                                                                                                                                                                                                           
+  ⎿  Found 1 tools:
      ○ code-reasoning__code-reasoning: 🧠 A detailed tool for dynamic and reflective problem-solving through sequential thinking.
      … +29 lines (ctrl+o to expand)
 
 ⏺ Found it! The code-reasoning__code-reasoning tool is available for detailed code analysis and reasoning. Let me enable it:
 
 ⏺ mcp-funnel - load_toolset (MCP)(tools: ["code-reasoning__code-reasoning"])
-  ⎿  Loaded 1 tools matching specified patterns                                                                                                                                                                                                                                                               
+  ⎿  Loaded 1 tools matching specified patterns
 ⏺ The code reasoning tool is now enabled. It provides:
   - Dynamic problem-solving through sequential thinking
   - Ability to branch and explore alternatives
@@ -165,8 +164,6 @@ Or to "speak" with chat:
 - MCP servers you want to proxy (installed separately)
 
 ## 🔧 Installation
-
-
 
 ## ⚙️ Configuration
 
@@ -230,10 +227,10 @@ Create a `.mcp-funnel.json` file in your project directory:
 ### Configuration Options
 
 - **servers**: Record of MCP servers to connect to (server name as key)
-    - Key: Server name (used as tool prefix)
-    - `command`: Command to execute
-    - `args`: Command arguments (optional)
-    - `env`: Environment variables (optional)
+  - Key: Server name (used as tool prefix)
+  - `command`: Command to execute
+  - `args`: Command arguments (optional)
+  - `env`: Environment variables (optional)
 - **alwaysVisibleTools**: Patterns for tools that are always exposed, bypassing discovery mode (optional)
 - **exposeTools**: Include patterns for external tools to expose (optional)
 - **hideTools**: Exclude patterns for external tools to hide (optional)
@@ -431,7 +428,6 @@ Runtime flow:
 - Search: `discover_tools_by_words` with keywords (e.g., "context7").
 - Enable: `load_toolset` with explicit tool names or patterns (e.g., ["context7__resolve_library_id", "context7__get-library-docs"]).
 - Call: Use the enabled tools normally.
-
 
 ## 🚀 Core Tools Mode (Ultra-Low Context)
 
