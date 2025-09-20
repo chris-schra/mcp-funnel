@@ -15,6 +15,8 @@ import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
+import { SearchRegistryTools } from './tools/search-registry-tools/index.js';
+import { GetServerInstallInfo } from './tools/get-server-install-info/index.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
 import { writeFileSync, mkdirSync, appendFileSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
@@ -245,6 +247,7 @@ export class MCPProxy {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
+  private _configPath: string;
   private _normalizedServers: TargetServer[];
   private toolRegistry: ToolRegistry;
   private coreTools: Map<string, ICoreTool> = new Map();
@@ -255,8 +258,9 @@ export class MCPProxy {
     TargetServer & { error?: string }
   >();
 
-  constructor(config: ProxyConfig) {
+  constructor(config: ProxyConfig, configPath: string) {
     this._config = config;
+    this._configPath = configPath;
     this._normalizedServers = normalizeServers(config.servers);
     this.toolRegistry = new ToolRegistry(config);
 
@@ -303,6 +307,8 @@ export class MCPProxy {
       new GetToolSchema(),
       new BridgeToolRequest(),
       new LoadToolset(),
+      new SearchRegistryTools(),
+      new GetServerInstallInfo(),
     ];
 
     for (const tool of tools) {
@@ -487,6 +493,7 @@ export class MCPProxy {
           .map((t) => t.fullName),
       ),
       config: this._config,
+      configPath: this._configPath,
       enableTools: (toolNames: string[]) => {
         this.toolRegistry.enableTools(toolNames, 'discovery');
         for (const toolName of toolNames) {

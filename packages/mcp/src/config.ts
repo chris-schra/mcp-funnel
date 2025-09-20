@@ -75,6 +75,13 @@ export const ProxyConfigSchema = z.object({
   hideTools: z.array(z.string()).optional(),
   exposeCoreTools: z.array(z.string()).optional(),
   toolsets: z.record(z.string(), z.array(z.string())).optional(),
+  // Registry URLs for MCP server discovery
+  registries: z.array(z.string()).optional(),
+  registrySettings: z
+    .object({
+      autoSearch: z.boolean().default(true),
+    })
+    .optional(),
   // If true, bridge_tool_request may resolve unprefixed tool names to a unique
   // fully-prefixed match (e.g., "echo" -> "mockserver__echo"). Defaults to false.
   allowShortToolNames: z.boolean().optional(),
