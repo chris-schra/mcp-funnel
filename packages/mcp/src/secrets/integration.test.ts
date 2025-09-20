@@ -192,7 +192,9 @@ describe('SecretManager Integration Tests', () => {
       const secrets = await manager.resolveSecrets();
 
       // Assert
-      const expectedPath = process.env.PATH ? `/usr/local/app/bin:${process.env.PATH}` : '/usr/local/app/bin:';
+      const expectedPath = process.env.PATH
+        ? `/usr/local/app/bin:${process.env.PATH}`
+        : '/usr/local/app/bin:';
 
       expect(secrets).toEqual({
         APP_HOME: '/usr/local/app',

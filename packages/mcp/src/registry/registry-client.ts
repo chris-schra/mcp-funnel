@@ -94,6 +94,12 @@ export class MCPRegistryClient {
   /** Cache instance for storing API responses */
   private readonly cache: IRegistryCache<unknown>;
 
+  /** Tracks in-flight server detail fetches to deduplicate concurrent requests */
+  private readonly inflightServerRequests = new Map<
+    string,
+    Promise<RegistryServer | null>
+  >();
+
   /** Default TTL for cache entries (1 hour in milliseconds) */
   private static readonly DEFAULT_CACHE_TTL = 3600000;
 
@@ -267,81 +273,31 @@ export class MCPRegistryClient {
   async getServer(identifier: string): Promise<RegistryServer | null> {
     const cacheKey = `${this.baseUrl}:server:${identifier}`;
 
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      console.info(`[MCPRegistryClient] Cache hit for server: ${identifier}`);
+      return cached as RegistryServer;
+    }
+
+    const existingRequest = this.inflightServerRequests.get(cacheKey);
+    if (existingRequest) {
+      return existingRequest;
+    }
+
+    const inflightPromise = this.fetchServerDetails(identifier);
+    this.inflightServerRequests.set(cacheKey, inflightPromise);
+
     try {
-      // Check cache first
-      const cached = await this.cache.get(cacheKey);
-      if (cached) {
-        console.info(`[MCPRegistryClient] Cache hit for server: ${identifier}`);
-        return cached as RegistryServer;
-      }
+      const server = await inflightPromise;
 
-      console.info(
-        `[MCPRegistryClient] Cache miss, fetching server: ${identifier}`,
-      );
-
-      // Check if identifier is a UUID (case-insensitive)
-      const isUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          identifier,
+      if (server) {
+        await this.cache.set(
+          cacheKey,
+          server,
+          MCPRegistryClient.DEFAULT_CACHE_TTL,
         );
-
-      let server: RegistryServer | null = null;
-
-      if (isUuid) {
-        // Direct GET endpoint for UUIDs
-        console.info(
-          `[MCPRegistryClient] Using direct API endpoint for UUID: ${identifier}`,
-        );
-        const response = (await fetch(
-          `${this.baseUrl}/v0/servers/${identifier}`,
-          {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
-          },
-        )) as RegistryResponse<RegistryServer>;
-
-        if (response.ok) {
-          server = await response.json();
-        } else if (response.status === 404) {
-          console.info(`[MCPRegistryClient] Server not found: ${identifier}`);
-          return null;
-        } else {
-          const error = new Error(
-            `Registry server fetch failed: ${response.status} ${response.statusText}`,
-          );
-          console.error(`[MCPRegistryClient] Direct API error:`, error.message);
-          throw error;
-        }
-      } else {
-        // Search by name for non-UUIDs
-        console.info(`[MCPRegistryClient] Searching by name: ${identifier}`);
-        const searchResults = await this.searchServers(identifier);
-
-        // Look for exact name match (case-insensitive)
-        server =
-          searchResults.find(
-            (s) => s.name.toLowerCase() === identifier.toLowerCase(),
-          ) || null;
       }
 
-      if (!server) {
-        console.info(`[MCPRegistryClient] Server not found: ${identifier}`);
-        return null;
-      }
-
-      // Store in cache with TTL
-      await this.cache.set(
-        cacheKey,
-        server,
-        MCPRegistryClient.DEFAULT_CACHE_TTL,
-      );
-
-      console.info(
-        `[MCPRegistryClient] Server details retrieved for: ${identifier} (matched: ${server.name})`,
-      );
       return server;
     } catch (error) {
       console.error(
@@ -351,6 +307,74 @@ export class MCPRegistryClient {
       throw error instanceof Error
         ? error
         : new Error('Unknown server fetch error');
+    } finally {
+      this.inflightServerRequests.delete(cacheKey);
     }
+  }
+
+  private async fetchServerDetails(
+    identifier: string,
+  ): Promise<RegistryServer | null> {
+    console.info(
+      `[MCPRegistryClient] Cache miss, fetching server: ${identifier}`,
+    );
+
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        identifier,
+      );
+
+    if (isUuid) {
+      console.info(
+        `[MCPRegistryClient] Using direct API endpoint for UUID: ${identifier}`,
+      );
+      const response = (await fetch(
+        `${this.baseUrl}/v0/servers/${identifier}`,
+        {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        },
+      )) as RegistryResponse<RegistryServer>;
+
+      if (response.ok) {
+        const server = await response.json();
+        console.info(
+          `[MCPRegistryClient] Server details retrieved for: ${identifier} (matched: ${server.name})`,
+        );
+        return server;
+      }
+
+      if (response.status === 404) {
+        console.info(`[MCPRegistryClient] Server not found: ${identifier}`);
+        return null;
+      }
+
+      const error = new Error(
+        `Registry server fetch failed: ${response.status} ${response.statusText}`,
+      );
+      console.error(`[MCPRegistryClient] Direct API error:`, error.message);
+      throw error;
+    }
+
+    console.info(`[MCPRegistryClient] Searching by name: ${identifier}`);
+    const searchResults = await this.searchServers(identifier);
+
+    const server =
+      searchResults.find(
+        (s) => s.name.toLowerCase() === identifier.toLowerCase(),
+      ) || null;
+
+    if (!server) {
+      console.info(`[MCPRegistryClient] Server not found: ${identifier}`);
+      return null;
+    }
+
+    console.info(
+      `[MCPRegistryClient] Server details retrieved for: ${identifier} (matched: ${server.name})`,
+    );
+    return server;
   }
 }

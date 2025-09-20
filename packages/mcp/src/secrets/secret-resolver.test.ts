@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { resolveSecretsFromConfig, clearSecretManagerCache } from './secret-resolver.js';
+import {
+  resolveSecretsFromConfig,
+  clearSecretManagerCache,
+} from './secret-resolver.js';
 import type { SecretProviderConfig } from './provider-configs.js';
 
 function createDotEnvConfig(path: string, name?: string): SecretProviderConfig {
