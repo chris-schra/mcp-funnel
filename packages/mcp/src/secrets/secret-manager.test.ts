@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -11,7 +11,10 @@ import { DotEnvProvider } from './dotenv-provider.js';
 import { BaseSecretProvider } from './base-provider.js';
 
 class ThrowingProvider extends BaseSecretProvider {
-  constructor(name: string, private readonly error: Error) {
+  constructor(
+    name: string,
+    private readonly error: Error,
+  ) {
     super(name);
   }
 
@@ -137,7 +140,9 @@ describe('SecretManager', () => {
     });
 
     it('should return false when removing non-existent provider', () => {
-      const manager = new SecretManager([createInlineProvider({ API_KEY: 'x' })]);
+      const manager = new SecretManager([
+        createInlineProvider({ API_KEY: 'x' }),
+      ]);
 
       const removed = manager.removeProvider('missing');
       expect(removed).toBe(false);
@@ -189,8 +194,14 @@ describe('SecretManager', () => {
     });
 
     it('should handle provider precedence (later overrides earlier)', async () => {
-      const first = createInlineProvider({ SHARED_KEY: 'first', ONLY_FIRST: 'one' });
-      const second = createInlineProvider({ SHARED_KEY: 'second', ONLY_SECOND: 'two' });
+      const first = createInlineProvider({
+        SHARED_KEY: 'first',
+        ONLY_FIRST: 'one',
+      });
+      const second = createInlineProvider({
+        SHARED_KEY: 'second',
+        ONLY_SECOND: 'two',
+      });
       const manager = new SecretManager([first, second]);
 
       const result = await manager.resolveSecrets();
@@ -243,15 +254,37 @@ describe('SecretManager', () => {
   });
 
   describe('Caching tests', () => {
-    it('should provide cache clearing functionality', () => {
-      const manager = new SecretManager([createInlineProvider({ KEY: 'value' })]);
+    it('should provide cache clearing functionality', async () => {
+      const provider = createInlineProvider({ KEY: 'value' });
+      const resolveSpy = vi.spyOn(provider, 'resolveSecrets');
+      const manager = new SecretManager([provider], undefined, {
+        cacheTtl: 500,
+      });
 
-      expect(() => manager.clearCache()).not.toThrow();
+      const firstResolution = await manager.resolveSecrets();
+      const cacheInfoBeforeClear = manager.getCacheInfo();
+
+      expect(firstResolution).toEqual({ KEY: 'value' });
+      expect(resolveSpy).toHaveBeenCalledTimes(1);
+      expect(cacheInfoBeforeClear).not.toBeNull();
+      expect(cacheInfoBeforeClear?.valid).toBe(true);
+      expect(cacheInfoBeforeClear?.ttl).toBe(500);
+
+      manager.clearCache();
+      // Clearing should collapse the cache seam so alternate transports can rehydrate consistently.
+      expect(manager.getCacheInfo()).toBeNull();
+
+      const secondResolution = await manager.resolveSecrets();
+
+      expect(secondResolution).toEqual({ KEY: 'value' });
+      expect(resolveSpy).toHaveBeenCalledTimes(2);
     });
 
     it('should support cached resolution lifecycle', async () => {
       const provider = createInlineProvider({ KEY: 'value' });
-      const manager = new SecretManager([provider], undefined, { cacheTtl: 1000 });
+      const manager = new SecretManager([provider], undefined, {
+        cacheTtl: 1000,
+      });
 
       const first = await manager.resolveSecrets();
       const infoAfterFirst = manager.getCacheInfo();
@@ -267,7 +300,9 @@ describe('SecretManager', () => {
     });
 
     it('should handle cache invalidation correctly', async () => {
-      const manager = new SecretManager([createInlineProvider({ KEY: 'value' })]);
+      const manager = new SecretManager([
+        createInlineProvider({ KEY: 'value' }),
+      ]);
 
       await manager.resolveSecrets();
       manager.clearCache();
@@ -280,7 +315,9 @@ describe('SecretManager', () => {
   describe('Registry integration tests', () => {
     it('should register providers in registry', () => {
       const inlineProvider = createInlineProvider({ KEY: 'value' });
-      const dotEnvPath = writeEnvFile(workDir, '.env.basic', ['DOT_KEY=dot-value']);
+      const dotEnvPath = writeEnvFile(workDir, '.env.basic', [
+        'DOT_KEY=dot-value',
+      ]);
       const dotEnvProvider = new DotEnvProvider({ path: dotEnvPath });
 
       registry.register('inline', inlineProvider);

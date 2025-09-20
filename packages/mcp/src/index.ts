@@ -891,8 +891,7 @@ export class MCPProxy implements IMCPProxy {
 
   private notifyToolListChanged(reason: string): void {
     void this._server.sendToolListChanged().catch((error) => {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
       console.error(
         `[proxy] Failed to send tools/list_changed (${reason}): ${message}`,
       );
