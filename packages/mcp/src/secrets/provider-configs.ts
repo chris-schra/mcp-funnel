@@ -11,7 +11,14 @@
  * Configuration for the dotenv secret provider.
  * Loads secrets from a .env file on the filesystem.
  */
-export interface DotEnvProviderConfig {
+interface ProviderConfigBase {
+  /**
+   * Optional provider identifier used for registration and diagnostics.
+   */
+  name?: string;
+}
+
+export interface DotEnvProviderConfig extends ProviderConfigBase {
   /** Provider type discriminator */
   type: 'dotenv';
   /** Provider-specific configuration */
@@ -34,7 +41,7 @@ export interface DotEnvProviderConfig {
  * Configuration for the process environment secret provider.
  * Loads secrets from the current process environment variables.
  */
-export interface ProcessEnvProviderConfig {
+export interface ProcessEnvProviderConfig extends ProviderConfigBase {
   /** Provider type discriminator */
   type: 'process';
   /** Provider-specific configuration */
@@ -65,7 +72,7 @@ export interface ProcessEnvProviderConfig {
  * Provides secrets directly as key-value pairs in the configuration.
  * Note: This provider should be used carefully as secrets are stored in plain text.
  */
-export interface InlineProviderConfig {
+export interface InlineProviderConfig extends ProviderConfigBase {
   /** Provider type discriminator */
   type: 'inline';
   /** Provider-specific configuration */

@@ -27,9 +27,18 @@ export type {
   SecretResolutionResult,
 } from './types.js';
 
+export { BaseSecretProvider } from './base-provider.js';
 export { SecretManager } from './secret-manager.js';
 export type { SecretManagerOptions } from './secret-manager.js';
 export { SecretProviderRegistry } from './secret-provider-registry.js';
+export type { ILogger, LogLevel } from './logger.js';
+export {
+  ConsoleLogger,
+  NoOpLogger,
+  defaultLogger,
+  setDefaultLogger,
+  createScopedLogger,
+} from './logger.js';
 export { ProcessEnvProvider } from './process-env-provider.js';
 export { InlineProvider } from './inline-provider.js';
 export { DotEnvProvider } from './dotenv-provider.js';
@@ -39,3 +48,5 @@ export {
   validateSecretProviderConfig,
 } from './provider-factory.js';
 export type { SecretProviderConfig } from './provider-configs.js';
+export { resolveSecretsFromConfig } from './secret-resolver.js';
+export type { ResolveSecretsOptions } from './secret-resolver.js';

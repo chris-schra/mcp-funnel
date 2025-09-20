@@ -589,4 +589,38 @@ describe('MCPProxy', () => {
       });
     });
   });
+
+  describe('isServerConnected', () => {
+    it('should return false for servers before connection', () => {
+      const config: ProxyConfig = {
+        servers: [{ name: 'github', command: 'echo' }],
+      };
+
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
+
+      expect(proxy.isServerConnected('github')).toBe(false);
+    });
+
+    it('should return true for servers after successful connection', async () => {
+      const config: ProxyConfig = {
+        servers: [{ name: 'github', command: 'echo' }],
+      };
+
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
+      await proxy.initialize();
+
+      expect(proxy.isServerConnected('github')).toBe(true);
+    });
+
+    it('should return false for unconfigured servers', async () => {
+      const config: ProxyConfig = {
+        servers: [{ name: 'github', command: 'echo' }],
+      };
+
+      const proxy = new MCPProxy(config, './.mcp-funnel.json');
+      await proxy.initialize();
+
+      expect(proxy.isServerConnected('nonexistent')).toBe(false);
+    });
+  });
 });
