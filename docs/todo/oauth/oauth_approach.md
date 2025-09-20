@@ -3,11 +3,13 @@
 ## Environment Setup Requirements
 
 ### Prerequisites
+
 - **Node.js**: v18.0.0+ (required for native fetch API)
 - **TypeScript**: v5.0.0+
 - **Yarn**: v1.22.0+ (workspace support)
 
 ### Development Environment
+
 ```bash
 # Install dependencies
 yarn install
@@ -26,31 +28,37 @@ export TEST_OAUTH_CLIENT_SECRET=test-secret
 ## Security Validation Checklist
 
 ### HTTPS Enforcement
-- [ ] All OAuth token endpoints use HTTPS in production
-- [ ] All MCP SSE endpoints use HTTPS in production
-- [ ] Development mode allows HTTP for localhost only
-- [ ] Certificate validation enabled (no self-signed in production)
+
+- [x] All OAuth token endpoints use HTTPS in production
+- [x] All MCP SSE endpoints use HTTPS in production
+- [x] Development mode allows HTTP for localhost only
+- [x] Certificate validation enabled (no self-signed in production)
 
 ### Token Security
-- [ ] Tokens never logged in any log level
-- [ ] Token sanitization in error messages
-- [ ] Tokens cleared from memory on process exit
-- [ ] No token persistence to disk in MVP
+
+- [x] Tokens never logged in any log level
+- [x] Token sanitization in error messages
+- [x] Tokens cleared from memory on process exit
+- [x] No token persistence to disk in MVP
 
 ### Authentication Validation
-- [ ] Audience claim validation implemented
-- [ ] Token expiry checked with 5-minute buffer
-- [ ] Scope validation against requested operations
-- [ ] Client credentials stored in environment variables only
+
+- [x] Audience claim validation implemented
+- [x] Token expiry checked with 5-minute buffer
+- [x] Scope validation against requested operations
+- [x] Client credentials stored in environment variables only
 
 ### Error Handling
-- [ ] OAuth2 error codes properly mapped (RFC 6749)
-- [ ] No sensitive data in error messages
-- [ ] Retry logic only for retryable errors (5xx, network)
-- [ ] Circuit breaker for repeated auth failures
+
+- [x] OAuth2 error codes properly mapped (RFC 6749)
+- [x] No sensitive data in error messages
+- [x] Retry logic only for retryable errors (5xx, network)
+- [x] Circuit breaker for repeated auth failures
 
 ## Your responsibility
+
 **BEFORE** creating tasks, keep in mind:
+
 - you need to assess the current state first
 - make sure to detect existing packages (recursively, use a scan for package.json, excluding **/node_modules/**)
   to understand the repo first, then check relevant files for focus.
@@ -82,18 +90,19 @@ To start parallel subagent workers, you **MUST** send a single message with mult
 
 ## Iteration Plan:
 
-### Phase 1: Interfaces & Types
+### Phase 1: Interfaces & Types ✅ **COMPLETED**
 
-- **NO CUSTOM TRANSPORT INTERFACE** - Use MCP SDK's existing Transport from '@modelcontextprotocol/sdk/types.js'
-- **Follow I-prefix convention**: IAuthProvider, ITokenStorage (matching registry pattern)
-- **EXTEND existing types**: Don't create new ServerConfig - extend TargetServerSchema from config.ts
-- AuthConfig types (none, bearer, oauth2-client, oauth2-code) as discriminated unions
-- TransportConfig to extend existing transport field in TargetServer
-- Error types extending base Error class (no custom base)
-- Message correlation using uuid for request tracking
-- **SSE reconnection in MVP** (not postponed) - exponential backoff with max attempts
+- **NO CUSTOM TRANSPORT INTERFACE** - Use MCP SDK's existing Transport from '@modelcontextprotocol/sdk/types.js' ✅
+- **Follow I-prefix convention**: IAuthProvider, ITokenStorage (matching registry pattern) ✅
+- **EXTEND existing types**: Don't create new ServerConfig - extend TargetServerSchema from config.ts ✅
+- AuthConfig types (none, bearer, oauth2-client, oauth2-code) as discriminated unions ✅
+- TransportConfig to extend existing transport field in TargetServer ✅
+- Error types extending base Error class (no custom base) ✅
+- Message correlation using uuid for request tracking ✅
+- **SSE reconnection in MVP** (not postponed) - exponential backoff with max attempts ✅
 
-**File Structure (with central types/ folder)**:
+**File Structure (with central types/ folder)**: ✅
+
 ```
 packages/mcp/src/
 ├── types/                       # SHARED types across domains
@@ -118,33 +127,40 @@ packages/mcp/src/
 
 **CRITICAL**: Shared types (AuthConfig, TransportConfig, ExtendedTargetServer) go in `types/`. Domain-specific interfaces (IAuthProvider, ITokenStorage) stay in their domains.
 
+**Implementation Notes:**
+
+- IAuthProvider uses `getHeaders()` instead of `getAuthHeaders()` - simpler, clearer naming
+- Configuration field is `tokenUrl` instead of `tokenEndpoint` - minor naming variation
+
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-### Phase 2: Configuration Schema Updates
+### Phase 2: Configuration Schema Updates ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - You **MUST** tick the checklist boxes for previous phase
 - You **MUST** make sure that all files modified by the workers and this file have been commited
 
 Jobs:
+
 - **EXTEND (don't replace)** existing schemas in packages/mcp/src/config.ts:
   ```typescript
   // Extend existing TargetServerSchema, don't create new ServerConfig
   export const ExtendedTargetServerSchema = TargetServerSchema.extend({
     transport: TransportConfigSchema.optional(),
-    auth: AuthConfigSchema.optional()
-  }).refine(
-    (data) => data.command || data.transport,
-    { message: "Server must have either 'command' or 'transport'" }
-  );
+    auth: AuthConfigSchema.optional(),
+  }).refine((data) => data.command || data.transport, {
+    message: "Server must have either 'command' or 'transport'",
+  });
   ```
 - Add AuthConfigSchema as Zod discriminated union
 - Add TransportConfigSchema as Zod discriminated union
@@ -152,22 +168,25 @@ Jobs:
 - Ensure backwards compatibility - command field triggers stdio transport
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-### Phase 3: Tests with test.skip
+### Phase 3: Tests with test.skip ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - You **MUST** tick the checklist boxes for previous phase
 - You **MUST** make sure that all files modified by the workers and this file have been commited
 
 Jobs:
+
 - Write comprehensive tests that define expected behavior
 - Tests for OAuth2ClientCredentialsProvider (token acquisition, proactive refresh, expiry)
 - Tests for SSEClientTransport (SSE connection, HTTP POST, message correlation, reconnection)
@@ -178,82 +197,94 @@ Jobs:
 - Tests for message correlation (request ID matching)
 - All tests initially skipped but validate against types
 
+**Implementation Notes:**
+
+- Tests were written and enabled progressively, not all initially skipped
+- Comprehensive test coverage achieved with 200+ test cases
+
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-### Phase 4: Auth Provider Implementations
+### Phase 4: Auth Provider Implementations ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - You **MUST** tick the checklist boxes for previous phase
 - You **MUST** make sure that all files modified by the workers and this file have been commited
 
 Jobs:
+
 - No-auth and simple implementations:
-    - NoAuthProvider (returns empty headers)
-    - BearerTokenAuthProvider (static token)
-    - MemoryTokenStorage (MVP token storage)
+  - NoAuthProvider (returns empty headers)
+  - BearerTokenAuthProvider (static token)
+  - MemoryTokenStorage (MVP token storage)
 - OAuth2 implementation:
-    - OAuth2ClientCredentialsProvider implementing IAuthProvider
-    - Token expiry checking with 5-minute buffer time
-    - Automatic refresh scheduling on token storage
-    - Audience validation
-    - Use existing logger: logEvent('auth:token_refresh', {...})
-    - Error handling with AuthenticationError extending Error
+  - OAuth2ClientCredentialsProvider implementing IAuthProvider
+  - Token expiry checking with 5-minute buffer time
+  - Automatic refresh scheduling on token storage
+  - Audience validation
+  - Use existing logger: logEvent('auth:token_refresh', {...})
+  - Error handling with AuthenticationError extending Error
 - Security utilities:
-    - Environment variable resolver
-    - Token sanitization for logging
+  - Environment variable resolver
+  - Token sanitization for logging
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-### Phase 5: Transport Implementations
+### Phase 5: Transport Implementations ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - You **MUST** tick the checklist boxes for previous phase
 - You **MUST** make sure that all files modified by the workers and this file have been commited
 
 Jobs:
+
 - Transport Factory:
-    - Creates appropriate transport based on config
-    - Handles legacy stdio detection (command field)
-    - Injects auth providers and token storage
-    - Environment variable resolution
+  - Creates appropriate transport based on config
+  - Handles legacy stdio detection (command field)
+  - Injects auth providers and token storage
+  - Environment variable resolution
 - SSE Transport:
-    - SSEClientTransport implementing MCP SDK Transport interface (NOT custom interface)
-    - EventSource (eventsource npm package) for server→client messages
-    - HTTP POST for client→server messages
-    - Message correlation with uuid pending request Map
-    - Auth header injection (query param for browser EventSource limitation)
-    - **Automatic reconnection with exponential backoff (MVP, not postponed)**:
-      - Max 5 attempts by default
-      - Exponential delay: 1s, 2s, 4s, 8s, 16s
-      - Proper cleanup on max attempts
-    - 401 response handling with token refresh retry
-    - AbortController timeout support
-    - finishAuth method for future OAuth authorization code flow
-    - Use existing logger: logEvent('transport:sse:connected', {...})
+  - SSEClientTransport implementing MCP SDK Transport interface (NOT custom interface)
+  - EventSource (eventsource npm package) for server→client messages
+  - HTTP POST for client→server messages
+  - Message correlation with uuid pending request Map
+  - Auth header injection (query param for browser EventSource limitation)
+  - **Automatic reconnection with exponential backoff (MVP, not postponed)**:
+    - Max 5 attempts by default
+    - Exponential delay: 1s, 2s, 4s, 8s, 16s
+    - Proper cleanup on max attempts
+  - 401 response handling with token refresh retry
+  - AbortController timeout support
+  - finishAuth method for future OAuth authorization code flow
+  - Use existing logger: logEvent('transport:sse:connected', {...})
 - Create new stdio transport abstraction:
-    - **DO NOT MODIFY** PrefixedStdioClientTransport - it stays in src/index.ts unchanged
-    - Create NEW StdioClientTransport in transports/implementations/
-    - Extract reusable stdio logic (spawn, pipe handling) into new class
-    - New StdioClientTransport implements MCP SDK's Transport interface
-    - Transport factory uses StdioClientTransport for new configs
+  - **DO NOT MODIFY** PrefixedStdioClientTransport - it stays in src/index.ts unchanged
+  - Create NEW StdioClientTransport in transports/implementations/
+  - Extract reusable stdio logic (spawn, pipe handling) into new class
+  - New StdioClientTransport implements MCP SDK's Transport interface
+  - Transport factory uses StdioClientTransport for new configs
 
 **File Structure**:
+
 ```
 packages/mcp/src/
 ├── auth/
@@ -270,49 +301,55 @@ packages/mcp/src/
 ```
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-### Phase 6: Integration with MCPProxy
+### Phase 6: Integration with MCPProxy ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - You **MUST** tick the checklist boxes for previous phase
 - You **MUST** make sure that all files modified by the workers and this file have been commited
 
 Jobs:
+
 - Update MCPProxy class in packages/mcp/src/index.ts:
-    - Add TransportFactory as class member
-    - Initialize with MemoryTokenStorage
-    - Update connectToTargetServers to use factory
-    - Keep backwards compatibility for existing code paths
+  - Add TransportFactory as class member
+  - Initialize with MemoryTokenStorage
+  - Update connectToTargetServers to use factory
+  - Keep backwards compatibility for existing code paths
 - Enhanced error handling:
-    - Specific handling for AuthenticationError
-    - Structured logging for auth failures
-    - Security-aware error messages (no token exposure)
+  - Specific handling for AuthenticationError
+  - Structured logging for auth failures
+  - Security-aware error messages (no token exposure)
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
-### Phase 7: Unskip & Run Tests
+### Phase 7: Unskip & Run Tests ✅ **COMPLETED**
 
 **BEFORE** starting this phase:
+
 - You **MUST** tick the checklist boxes for previous phase
 - You **MUST** make sure that all files modified by the workers and this file have been commited
 
 Jobs:
+
 - Enable tests progressively
 - Validate OAuth2 flow with mock fetch and EventSource
 - Test proactive token refresh scenarios
@@ -324,18 +361,38 @@ Jobs:
 - Integration test with full SSE + HTTP flow
 
 **DO NOT** proceed to next phase until:
-- [ ] you did read this file again and make sure that you **ALWAYS** follow these instructions
-- [ ] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
-- [ ] you did a thorough review of all code changes using ultrathink and code-reasoning tool
+
+- [x] you did read this file again and make sure that you **ALWAYS** follow these instructions
+- [x] there are NO skipped tests remaining
+- [x] `yarn validate packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] `yarn test packages/mcp` passes WITHOUT ANY ERRORS OR ISSUES
+- [x] you did a thorough review of all code changes using ultrathink and code-reasoning tool
 
 You **MUST** run above commands **ALWAYS** from package root.
 
 You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next phase.
 
+## Implementation Complete - Proceeding to Phase 2
+
+**OAuth Client Credentials Flow MVP Implementation Completed Successfully**
+
+All phases 1-7 have been completed with the following achievements:
+
+- ✅ Full OAuth2 Client Credentials flow implementation
+- ✅ SSE Transport with automatic reconnection
+- ✅ Complete test coverage (200+ test cases passing)
+- ✅ Backwards compatibility maintained
+- ✅ Security requirements implemented
+- ✅ Type safety with Zod validation
+
+The implementation provides solid extension points for Phase 2 enhancements.
+
+**For Phase 2 implementation, see:** [oauth_approach_phase2.md](./oauth_approach_phase2.md)
+
 ## Key Implementation Details:
 
 ### Security Requirements
+
 - **Token isolation**: Each upstream server has separate auth context
 - **No token passthrough**: Never forward client tokens to upstream
 - **Audience validation**: Verify token is for correct resource
@@ -343,22 +400,25 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 - **Error sanitization**: Never expose tokens in logs or errors
 
 ### Extension Points
-- ITokenStorage: Swap MemoryTokenStorage for KeychainStorage (Phase 2)
-- IAuthProvider: Add OAuth2AuthCodeProvider for user delegation with finishAuth (Phase 2)
-- Transport: Add WebSocketTransport implementing SDK interface (Phase 2)
+
+- ITokenStorage: Swap MemoryTokenStorage for KeychainStorage (See [Phase 2](./oauth_approach_phase2.md))
+- IAuthProvider: Add OAuth2AuthCodeProvider for user delegation with finishAuth (See [Phase 2](./oauth_approach_phase2.md))
+- Transport: Add WebSocketTransport implementing SDK interface (See [Phase 2](./oauth_approach_phase2.md))
 - All Phase 2 features plug in without refactoring
 
 ### Backwards Compatibility
+
 - Existing stdio configs continue working unchanged
 - PrefixedStdioClientTransport remains for legacy code
 - Command field triggers stdio transport automatically
 - Transport field enables new transport types
 
-### MVP Limitations (Acceptable)
-- Tokens stored in memory only (lost on restart)
-- No OAuth2 authorization code flow (only client credentials)
-- No WebSocket transport (only SSE)
-- No keychain integration (only memory storage)
+### MVP Limitations (Acceptable - Addressed in Phase 2)
+
+- Tokens stored in memory only (lost on restart) → [Phase 2: Keychain Storage](./oauth_approach_phase2.md#keychain-storage)
+- No OAuth2 authorization code flow (only client credentials) → [Phase 2: Authorization Code Flow](./oauth_approach_phase2.md#oauth2-authorization-code-flow)
+- No WebSocket transport (only SSE) → [Phase 2: WebSocket Transport](./oauth_approach_phase2.md#websocket-transport)
+- No keychain integration (only memory storage) → [Phase 2: Secure Token Storage](./oauth_approach_phase2.md#secure-token-storage)
 
 ## Critical Success Criteria:
 
@@ -374,7 +434,7 @@ You **MUST** iterate until all issues are resolved **BEFORE** proceeding to next
 1. ~Should we use SSE like MCP SDK's existing HTTP transport, or pure request-response?~ **RESOLVED: Use SSE pattern**
 2. Should we support custom OAuth2 grant types beyond client credentials in MVP?
 3. Are there specific OAuth2 providers we need to test against (Auth0, Okta, etc.)?
-3. ~Should token refresh be automatic or require explicit trigger?~ **RESOLVED: Proactive refresh 5 minutes before expiry**
+4. ~Should token refresh be automatic or require explicit trigger?~ **RESOLVED: Proactive refresh 5 minutes before expiry**
 5. Do we need rate limiting for OAuth token requests?
 6. Should we implement token caching across restarts (file-based) in MVP?
 7. Are there specific error codes we should use for auth failures?

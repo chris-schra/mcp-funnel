@@ -28,7 +28,11 @@ Build OAuth support following MCP SDK patterns with Server-Sent Events (SSE) for
 
 ```typescript
 // NO CUSTOM TRANSPORT INTERFACE - Use MCP SDK's Transport directly
-import { Transport, MessageExtraInfo, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import {
+  Transport,
+  MessageExtraInfo,
+  JSONRPCMessage,
+} from '@modelcontextprotocol/sdk/types.js';
 
 // SSEClientTransport implements SDK's Transport interface directly
 // This includes SSE reconnection with exponential backoff in MVP (not postponed)
@@ -58,7 +62,10 @@ export class SSEClientTransport implements Transport {
   onclose?: () => void;
 
   // OAuth-specific method (matches SDK's SSEClientTransport)
-  async finishAuth(params: URLSearchParams, headers: Record<string, string>): Promise<void> {
+  async finishAuth(
+    params: URLSearchParams,
+    headers: Record<string, string>,
+  ): Promise<void> {
     // Complete OAuth authorization code flow if needed
   }
 }
@@ -232,7 +239,7 @@ export class MemoryTokenStorage implements ITokenStorage {
     // Schedule proactive refresh (5 minutes before expiry)
     if (token.expiresAt) {
       const expiresInMs = token.expiresAt.getTime() - Date.now();
-      const refreshInMs = Math.max(0, expiresInMs - (5 * 60 * 1000));
+      const refreshInMs = Math.max(0, expiresInMs - 5 * 60 * 1000);
 
       if (refreshInMs > 0) {
         const timer = setTimeout(async () => {
@@ -298,23 +305,22 @@ export class MemoryTokenStorage implements ITokenStorage {
 
 ```typescript
 // packages/mcp/src/transports/transport-factory.ts
-import { Transport } from '@modelcontextprotocol/sdk/types.js';  // Use SDK Transport
+import { Transport } from '@modelcontextprotocol/sdk/types.js'; // Use SDK Transport
 import { IAuthProvider } from '../auth/interfaces/auth-provider.interface.js';
 import { ITokenStorage } from '../auth/interfaces/token-storage.interface.js';
-import { TargetServer } from '../config.js';  // Existing type
+import { TargetServer } from '../config.js'; // Existing type
 
 export class TransportFactory {
-  constructor(
-    private tokenStorage: ITokenStorage = new MemoryTokenStorage()
-  ) {}
+  constructor(private tokenStorage: ITokenStorage = new MemoryTokenStorage()) {}
 
-  async create(server: TargetServer): Promise<Transport> {  // Returns SDK Transport
+  async create(server: TargetServer): Promise<Transport> {
+    // Returns SDK Transport
     // Backwards compatibility: if 'command' exists, use stdio
     if (server.command) {
       return new StdioClientTransport(server.name, {
         command: server.command,
         args: server.args,
-        env: this.resolveEnvVars(server.env)
+        env: this.resolveEnvVars(server.env),
       });
     }
 
@@ -332,13 +338,9 @@ export class TransportFactory {
       case 'sse':
         const authProvider = await this.createAuthProvider(
           server.name,
-          config.auth
+          config.auth,
         );
-        return new SSEClientTransport(
-          server.name,
-          config,
-          authProvider
-        );
+        return new SSEClientTransport(server.name, config, authProvider);
 
       case 'websocket':
         // Future implementation
@@ -351,7 +353,7 @@ export class TransportFactory {
 
   private async createAuthProvider(
     serverId: string,
-    authConfig?: AuthConfig
+    authConfig?: AuthConfig,
   ): Promise<IAuthProvider> {
     if (!authConfig || authConfig.type === 'none') {
       return new NoAuthProvider();
@@ -367,10 +369,10 @@ export class TransportFactory {
         return new OAuth2ClientCredentialsProvider(
           {
             ...authConfig,
-            clientSecret
+            clientSecret,
           },
           serverId,
-          this.tokenStorage
+          this.tokenStorage,
         );
 
       case 'oauth2-code':
@@ -412,15 +414,23 @@ export class TransportFactory {
 
 ```typescript
 // packages/mcp/src/transports/implementations/sse-client-transport.ts
-import { Transport, MessageExtraInfo, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import {
+  Transport,
+  MessageExtraInfo,
+  JSONRPCMessage,
+} from '@modelcontextprotocol/sdk/types.js';
 import { IAuthProvider } from '../../auth/index.js';
 import { logEvent, logError } from '../../logger.js';
-import EventSource from 'eventsource';  // Node.js polyfill
+import EventSource from 'eventsource'; // Node.js polyfill
 import { v4 as uuidv4 } from 'uuid';
 
 // Error classes
 export class TransportError extends Error {
-  constructor(message: string, public code: string, public cause?: Error) {
+  constructor(
+    message: string,
+    public code: string,
+    public cause?: Error,
+  ) {
     super(message);
     this.name = 'TransportError';
   }
@@ -428,11 +438,14 @@ export class TransportError extends Error {
 
 export class SSEClientTransport implements Transport {
   private eventSource?: EventSource;
-  private pendingRequests = new Map<string | number, {
-    resolve: (response: any) => void;
-    reject: (error: Error) => void;
-    timeout?: NodeJS.Timeout;
-  }>();
+  private pendingRequests = new Map<
+    string | number,
+    {
+      resolve: (response: any) => void;
+      reject: (error: Error) => void;
+      timeout?: NodeJS.Timeout;
+    }
+  >();
   private connected = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -441,7 +454,7 @@ export class SSEClientTransport implements Transport {
   constructor(
     private serverName: string,
     private config: SSETransportConfig,
-    private authProvider: IAuthProvider
+    private authProvider: IAuthProvider,
   ) {
     this.reconnectDelay = config.reconnectDelay || 1000;
   }
@@ -457,7 +470,7 @@ export class SSEClientTransport implements Transport {
       if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
         throw new TransportError(
           'OAuth endpoints must use HTTPS in production',
-          'INSECURE_TRANSPORT'
+          'INSECURE_TRANSPORT',
         );
       }
 
@@ -476,7 +489,7 @@ export class SSEClientTransport implements Transport {
       // Create EventSource with auth
       this.eventSource = new EventSource(sseUrl.toString(), {
         headers: process.env.NODE_ENV === 'test' ? headers : undefined, // Headers only work in Node.js
-        withCredentials: true
+        withCredentials: true,
       });
 
       // Setup event handlers
@@ -485,7 +498,7 @@ export class SSEClientTransport implements Transport {
         this.reconnectAttempts = 0;
         logEvent('info', 'transport:sse:connected', {
           server: this.serverName,
-          url: sseUrl.toString()
+          url: sseUrl.toString(),
         });
       };
 
@@ -513,14 +526,14 @@ export class SSEClientTransport implements Transport {
         } catch (error) {
           logError('transport:sse:parse-error', error, {
             server: this.serverName,
-            data: event.data
+            data: event.data,
           });
         }
       };
 
       this.eventSource.onerror = (error) => {
         logError('transport:sse:error', error, {
-          server: this.serverName
+          server: this.serverName,
         });
 
         if (this.eventSource?.readyState === EventSource.CLOSED) {
@@ -547,11 +560,10 @@ export class SSEClientTransport implements Transport {
           }
         }, 100);
       });
-
     } catch (error) {
       logError('transport:sse:connection-failed', error, {
         server: this.serverName,
-        url: this.config.url
+        url: this.config.url,
       });
       throw error;
     }
@@ -559,10 +571,14 @@ export class SSEClientTransport implements Transport {
 
   private async handleReconnect(): Promise<void> {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logError('transport:sse:max-reconnect-exceeded', new Error('Max reconnection attempts exceeded'), {
-        server: this.serverName,
-        attempts: this.reconnectAttempts
-      });
+      logError(
+        'transport:sse:max-reconnect-exceeded',
+        new Error('Max reconnection attempts exceeded'),
+        {
+          server: this.serverName,
+          attempts: this.reconnectAttempts,
+        },
+      );
       if (this.onclose) {
         this.onclose();
       }
@@ -575,10 +591,10 @@ export class SSEClientTransport implements Transport {
     logEvent('info', 'transport:sse:reconnecting', {
       server: this.serverName,
       attempt: this.reconnectAttempts,
-      delay
+      delay,
     });
 
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
     try {
       await this.connect();
@@ -625,7 +641,7 @@ export class SSEClientTransport implements Transport {
       const err = error as Error;
       logError('transport:sse:send-failed', error, {
         server: this.serverName,
-        method: (message as any).method
+        method: (message as any).method,
       });
 
       // Handle auth errors with retry
@@ -636,7 +652,7 @@ export class SSEClientTransport implements Transport {
           return this.send(message);
         } catch (refreshError) {
           logError('transport:sse:auth-refresh-failed', refreshError, {
-            server: this.serverName
+            server: this.serverName,
           });
         }
       }
@@ -647,17 +663,17 @@ export class SSEClientTransport implements Transport {
 
   private async sendHttpRequest(
     message: JSONRPCMessage,
-    headers: Record<string, string>
+    headers: Record<string, string>,
   ): Promise<void> {
     const response = await this.fetchWithRetry(this.config.url, {
       method: 'POST',
       headers: {
         ...headers,
         'Content-Type': 'application/json',
-        ...this.config.headers
+        ...this.config.headers,
       },
       body: JSON.stringify(message),
-      timeout: this.config.timeout || 30000
+      timeout: this.config.timeout || 30000,
     });
 
     if (!response.ok) {
@@ -689,7 +705,10 @@ export class SSEClientTransport implements Transport {
   }
 
   // OAuth-specific method for authorization code flow
-  async finishAuth(params: URLSearchParams, headers: Record<string, string>): Promise<void> {
+  async finishAuth(
+    params: URLSearchParams,
+    headers: Record<string, string>,
+  ): Promise<void> {
     // Complete OAuth authorization code flow
     const authCode = params.get('code');
     if (!authCode) {
@@ -700,7 +719,7 @@ export class SSEClientTransport implements Transport {
     // This would typically be handled by an OAuth2AuthCodeProvider
     logEvent('info', 'transport:sse:oauth-callback', {
       server: this.serverName,
-      hasCode: !!authCode
+      hasCode: !!authCode,
     });
   }
 
@@ -711,7 +730,7 @@ export class SSEClientTransport implements Transport {
 
   private async fetchWithRetry(
     url: string,
-    options: RequestInit & { timeout?: number }
+    options: RequestInit & { timeout?: number },
   ): Promise<Response> {
     const { timeout = 30000, ...fetchOptions } = options;
 
@@ -722,7 +741,7 @@ export class SSEClientTransport implements Transport {
     try {
       const response = await fetch(url, {
         ...fetchOptions,
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
@@ -747,15 +766,17 @@ export class SSEClientTransport implements Transport {
   private shouldRetry(error: unknown): boolean {
     // Retry on network errors, not on auth errors
     const message = (error as Error).message;
-    return message.includes('network') ||
-           message.includes('ECONNREFUSED') ||
-           message.includes('timeout');
+    return (
+      message.includes('network') ||
+      message.includes('ECONNREFUSED') ||
+      message.includes('timeout')
+    );
   }
 
   private async retryWithBackoff(
     url: string,
     options: RequestInit & { timeout?: number },
-    attempt = 1
+    attempt = 1,
   ): Promise<Response> {
     const maxAttempts = this.config.retryConfig?.maxAttempts || 3;
     const baseDelay = this.config.retryConfig?.baseDelayMs || 1000;
@@ -765,7 +786,7 @@ export class SSEClientTransport implements Transport {
     }
 
     const delay = baseDelay * Math.pow(2, attempt - 1);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
     try {
       return await this.fetchWithRetry(url, options);
@@ -780,9 +801,15 @@ export class SSEClientTransport implements Transport {
 
 ```typescript
 // packages/mcp/src/auth/implementations/oauth2-client-credentials.ts
-import { IAuthProvider, TokenInfo } from '../interfaces/auth-provider.interface.js';
-import { ITokenStorage, StoredToken } from '../interfaces/token-storage.interface.js';
-import { logEvent, logError } from '../../logger.js';  // Use existing logger
+import {
+  IAuthProvider,
+  TokenInfo,
+} from '../interfaces/auth-provider.interface.js';
+import {
+  ITokenStorage,
+  StoredToken,
+} from '../interfaces/token-storage.interface.js';
+import { logEvent, logError } from '../../logger.js'; // Use existing logger
 import { OAuth2ClientCredentialsConfig } from '../interfaces/auth-config.interface.js';
 
 // Authentication error with OAuth2 error codes
@@ -791,7 +818,7 @@ export class AuthenticationError extends Error {
     message: string,
     public code: string,
     public isRetryable = false,
-    public oauthError?: string  // RFC 6749 error code
+    public oauthError?: string, // RFC 6749 error code
   ) {
     super(message);
     this.name = 'AuthenticationError';
@@ -804,7 +831,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
   constructor(
     private config: OAuth2ClientCredentialsConfig,
     private serverId: string,
-    private tokenStorage: ITokenStorage  // Using I-prefix interface
+    private tokenStorage: ITokenStorage, // Using I-prefix interface
   ) {
     // Register refresh callback for proactive refresh
     if ('setRefreshCallback' in tokenStorage) {
@@ -824,12 +851,12 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
     if (!token) {
       throw new AuthenticationError(
         'Failed to obtain access token',
-        'TOKEN_ACQUISITION_FAILED'
+        'TOKEN_ACQUISITION_FAILED',
       );
     }
 
     return {
-      'Authorization': `${token.tokenType} ${token.accessToken}`
+      Authorization: `${token.tokenType} ${token.accessToken}`,
     };
   }
 
@@ -841,7 +868,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
         throw new AuthenticationError(
           'Token endpoint must use HTTPS',
           'INSECURE_ENDPOINT',
-          false
+          false,
         );
       }
 
@@ -855,8 +882,8 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
           client_id: this.config.clientId,
           client_secret: this.config.clientSecret,
           ...(this.config.audience && { audience: this.config.audience }),
-          ...(this.config.scopes && { scope: this.config.scopes.join(' ') })
-        })
+          ...(this.config.scopes && { scope: this.config.scopes.join(' ') }),
+        }),
       });
 
       if (!response.ok) {
@@ -864,25 +891,32 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
         try {
           errorData = await response.json();
         } catch {
-          errorData = { error: 'unknown_error', error_description: await response.text() };
+          errorData = {
+            error: 'unknown_error',
+            error_description: await response.text(),
+          };
         }
 
         // Log auth failure using existing logger
-        logError('auth:token_request_failed', new Error(errorData.error_description || errorData.error), {
-          server: this.serverId,
-          oauthError: errorData.error,
-          status: response.status
-        });
+        logError(
+          'auth:token_request_failed',
+          new Error(errorData.error_description || errorData.error),
+          {
+            server: this.serverId,
+            oauthError: errorData.error,
+            status: response.status,
+          },
+        );
 
         throw new AuthenticationError(
           `OAuth2 token request failed: ${errorData.error_description || errorData.error}`,
           'TOKEN_REQUEST_FAILED',
-          response.status >= 500,  // Retry on server errors
-          errorData.error  // RFC 6749 error code
+          response.status >= 500, // Retry on server errors
+          errorData.error, // RFC 6749 error code
         );
       }
 
-      const data = await response.json() as {
+      const data = (await response.json()) as {
         access_token: string;
         token_type: string;
         expires_in: number;
@@ -892,9 +926,9 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
       const token: StoredToken = {
         accessToken: data.access_token,
         tokenType: data.token_type || 'Bearer',
-        expiresAt: new Date(Date.now() + (data.expires_in * 1000)),
+        expiresAt: new Date(Date.now() + data.expires_in * 1000),
         scopes: data.scope?.split(' '),
-        audience: this.config.audience
+        audience: this.config.audience,
       };
 
       await this.tokenStorage.store(this.serverId, token);
@@ -904,15 +938,14 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
         type: 'oauth2',
         expiresAt: token.expiresAt,
         scopes: token.scopes,
-        audience: token.audience
+        audience: token.audience,
       };
 
       // Log token acquisition using existing logger
       logEvent('info', 'auth:token_acquired', {
         server: this.serverId,
-        expiresIn: data.expires_in
+        expiresIn: data.expires_in,
       });
-
     } catch (error) {
       if (error instanceof AuthenticationError) {
         throw error;
@@ -920,7 +953,7 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
 
       throw new AuthenticationError(
         `Failed to refresh token: ${(error as Error).message}`,
-        'REFRESH_FAILED'
+        'REFRESH_FAILED',
       );
     }
   }
@@ -941,14 +974,14 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
     if (!token) {
       throw new AuthenticationError(
         'No token available for audience validation',
-        'TOKEN_NOT_FOUND'
+        'TOKEN_NOT_FOUND',
       );
     }
 
     if (token.audience !== audience) {
       throw new AuthenticationError(
         `Token audience mismatch. Expected: ${audience}, Got: ${token.audience}`,
-        'INVALID_AUDIENCE'
+        'INVALID_AUDIENCE',
       );
     }
   }
@@ -969,16 +1002,16 @@ export class OAuth2ClientCredentialsProvider implements IAuthProvider {
 ```typescript
 // packages/mcp/src/config.ts - EXTEND existing schemas, don't replace
 import { z } from 'zod';
-import { TargetServerSchema } from './config.js';  // Import existing
+import { TargetServerSchema } from './config.js'; // Import existing
 
 // Auth schemas
 const NoAuthSchema = z.object({
-  type: z.literal('none')
+  type: z.literal('none'),
 });
 
 const BearerAuthSchema = z.object({
   type: z.literal('bearer'),
-  token: z.string().min(1)
+  token: z.string().min(1),
 });
 
 const OAuth2ClientCredentialsSchema = z.object({
@@ -987,7 +1020,7 @@ const OAuth2ClientCredentialsSchema = z.object({
   clientSecret: z.string().min(1),
   tokenEndpoint: z.string().url(),
   audience: z.string().optional(),
-  scopes: z.array(z.string()).optional()
+  scopes: z.array(z.string()).optional(),
 });
 
 const OAuth2AuthCodeSchema = z.object({
@@ -996,28 +1029,28 @@ const OAuth2AuthCodeSchema = z.object({
   authorizationEndpoint: z.string().url(),
   tokenEndpoint: z.string().url(),
   redirectUri: z.string().url(),
-  scopes: z.array(z.string()).optional()
+  scopes: z.array(z.string()).optional(),
 });
 
 export const AuthConfigSchema = z.discriminatedUnion('type', [
   NoAuthSchema,
   BearerAuthSchema,
   OAuth2ClientCredentialsSchema,
-  OAuth2AuthCodeSchema
+  OAuth2AuthCodeSchema,
 ]);
 
 // Transport schemas
 const RetryConfigSchema = z.object({
   enabled: z.boolean().default(true),
   maxAttempts: z.number().min(1).max(10).default(3),
-  baseDelayMs: z.number().min(100).max(10000).default(1000)
+  baseDelayMs: z.number().min(100).max(10000).default(1000),
 });
 
 const StdioTransportSchema = z.object({
   type: z.literal('stdio'),
   command: z.string().min(1),
   args: z.array(z.string()).optional(),
-  env: z.record(z.string()).optional()
+  env: z.record(z.string()).optional(),
 });
 
 const SSETransportSchema = z.object({
@@ -1026,35 +1059,40 @@ const SSETransportSchema = z.object({
   auth: AuthConfigSchema.optional(),
   headers: z.record(z.string()).optional(),
   timeout: z.number().min(1000).max(300000).optional(),
-  retryConfig: RetryConfigSchema.optional()
+  retryConfig: RetryConfigSchema.optional(),
 });
 
 const WebSocketTransportSchema = z.object({
   type: z.literal('websocket'),
-  url: z.string().url().regex(/^wss?:\/\//),
+  url: z
+    .string()
+    .url()
+    .regex(/^wss?:\/\//),
   auth: AuthConfigSchema.optional(),
-  reconnectConfig: z.object({
-    enabled: z.boolean().default(true),
-    maxAttempts: z.number().default(5),
-    delayMs: z.number().default(1000)
-  }).optional()
+  reconnectConfig: z
+    .object({
+      enabled: z.boolean().default(true),
+      maxAttempts: z.number().default(5),
+      delayMs: z.number().default(1000),
+    })
+    .optional(),
 });
 
 export const TransportConfigSchema = z.discriminatedUnion('type', [
   StdioTransportSchema,
   SSETransportSchema,
-  WebSocketTransportSchema
+  WebSocketTransportSchema,
 ]);
 
 // EXTEND existing TargetServerSchema instead of creating new
 export const ExtendedTargetServerSchema = TargetServerSchema.extend({
   // Add new fields to existing schema
   transport: TransportConfigSchema.optional(),
-  auth: AuthConfigSchema.optional()
-}).refine(
-  (data) => data.command || data.transport,
-  { message: "Server must have either 'command' (legacy) or 'transport' configuration" }
-);
+  auth: AuthConfigSchema.optional(),
+}).refine((data) => data.command || data.transport, {
+  message:
+    "Server must have either 'command' (legacy) or 'transport' configuration",
+});
 
 // The existing TargetServerSchema already has:
 // - name: string
@@ -1070,7 +1108,7 @@ export const ExtendedTargetServerSchema = TargetServerSchema.extend({
 // packages/mcp/src/index.ts - Updated MCPProxy class
 import { TransportFactory } from './transports/transport-factory.js';
 import { MemoryTokenStorage } from './auth/implementations/memory-token-storage.js';
-import { logEvent, logError } from './logger.js';  // Use existing logger
+import { logEvent, logError } from './logger.js'; // Use existing logger
 
 export class MCPProxy {
   private transportFactory: TransportFactory;
@@ -1090,7 +1128,7 @@ export class MCPProxy {
           // Use existing logger pattern
           logEvent('info', 'server:connect_start', {
             name: targetServer.name,
-            transportType: targetServer.transport?.type || 'stdio'
+            transportType: targetServer.transport?.type || 'stdio',
           });
 
           const client = new Client({
@@ -1109,32 +1147,32 @@ export class MCPProxy {
           console.error(`[proxy] Connected to: ${targetServer.name}`);
           logEvent('info', 'server:connect_success', {
             name: targetServer.name,
-            transportType: targetServer.transport?.type || 'stdio'
+            transportType: targetServer.transport?.type || 'stdio',
           });
 
           return { name: targetServer.name, status: 'connected' as const };
         } catch (error) {
           console.error(
             `[proxy] Failed to connect to ${targetServer.name}:`,
-            error
+            error,
           );
 
           // Use existing logger with structured context
           if (error instanceof AuthenticationError) {
             logError('auth:failed', error, {
               name: targetServer.name,
-              code: error.code
+              code: error.code,
             });
           } else {
             logError('server:connection_failed', error, {
               name: targetServer.name,
-              transport: targetServer.transport?.type || 'stdio'
+              transport: targetServer.transport?.type || 'stdio',
             });
           }
 
           return { name: targetServer.name, status: 'failed' as const, error };
         }
-      }
+      },
     );
 
     const results = await Promise.allSettled(connectionPromises);
@@ -1167,20 +1205,20 @@ vi.mock('eventsource', () => {
       onmessage: null,
       onerror: null,
       // Simulate connection after creation
-      simulateOpen: function() {
+      simulateOpen: function () {
         this.readyState = 1; // OPEN
         if (this.onopen) this.onopen();
       },
-      simulateMessage: function(data: any) {
+      simulateMessage: function (data: any) {
         if (this.onmessage) {
           this.onmessage({ data: JSON.stringify(data) });
         }
       },
-      simulateError: function() {
+      simulateError: function () {
         this.readyState = 2; // CLOSED
         if (this.onerror) this.onerror(new Error('Connection failed'));
-      }
-    }))
+      },
+    })),
   };
 });
 
@@ -1204,19 +1242,19 @@ describe('SSEClientTransport', () => {
         clientId: 'test-client',
         clientSecret: 'test-secret',
         tokenEndpoint: 'https://auth.example.com/token',
-        audience: 'https://api.example.com'
+        audience: 'https://api.example.com',
       },
       'test-server',
-      tokenStorage
+      tokenStorage,
     );
 
     transport = new SSEClientTransport(
       'test-server',
       {
         type: 'sse',
-        url: 'https://api.example.com/mcp'
+        url: 'https://api.example.com/mcp',
       },
-      authProvider
+      authProvider,
     );
   });
 
@@ -1227,8 +1265,8 @@ describe('SSEClientTransport', () => {
       json: async () => ({
         access_token: 'test-token',
         token_type: 'Bearer',
-        expires_in: 3600
-      })
+        expires_in: 3600,
+      }),
     });
 
     // Mock MCP endpoint
@@ -1237,8 +1275,8 @@ describe('SSEClientTransport', () => {
       json: async () => ({
         jsonrpc: '2.0',
         result: {},
-        id: 1
-      })
+        id: 1,
+      }),
     });
 
     await transport.start();
@@ -1246,7 +1284,7 @@ describe('SSEClientTransport', () => {
       jsonrpc: '2.0',
       method: 'test',
       params: {},
-      id: 1
+      id: 1,
     });
 
     // Verify token was obtained
@@ -1254,8 +1292,8 @@ describe('SSEClientTransport', () => {
       'https://auth.example.com/token',
       expect.objectContaining({
         method: 'POST',
-        body: expect.stringContaining('grant_type=client_credentials')
-      })
+        body: expect.stringContaining('grant_type=client_credentials'),
+      }),
     );
 
     // Verify bearer token was used
@@ -1263,9 +1301,9 @@ describe('SSEClientTransport', () => {
       'https://api.example.com/mcp',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Authorization': 'Bearer test-token'
-        })
-      })
+          Authorization: 'Bearer test-token',
+        }),
+      }),
     );
   });
 
@@ -1275,7 +1313,7 @@ describe('SSEClientTransport', () => {
       accessToken: 'expired-token',
       tokenType: 'Bearer',
       expiresAt: new Date(Date.now() - 1000), // Expired
-      audience: 'https://api.example.com'
+      audience: 'https://api.example.com',
     });
 
     // Mock refresh
@@ -1284,8 +1322,8 @@ describe('SSEClientTransport', () => {
       json: async () => ({
         access_token: 'new-token',
         token_type: 'Bearer',
-        expires_in: 3600
-      })
+        expires_in: 3600,
+      }),
     });
 
     const headers = await authProvider.getAuthHeaders();
@@ -1298,7 +1336,7 @@ describe('SSEClientTransport', () => {
       accessToken: 'test-token',
       tokenType: 'Bearer',
       expiresAt: new Date(Date.now() + 3600000),
-      audience: 'https://api.example.com'
+      audience: 'https://api.example.com',
     });
 
     // Should not throw
@@ -1306,7 +1344,7 @@ describe('SSEClientTransport', () => {
 
     // Should throw for wrong audience
     await expect(
-      authProvider.validateAudience('https://wrong.example.com')
+      authProvider.validateAudience('https://wrong.example.com'),
     ).rejects.toThrow('Token audience mismatch');
   });
 
@@ -1315,7 +1353,7 @@ describe('SSEClientTransport', () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       status: 401,
-      statusText: 'Unauthorized'
+      statusText: 'Unauthorized',
     });
 
     // Token refresh
@@ -1324,8 +1362,8 @@ describe('SSEClientTransport', () => {
       json: async () => ({
         access_token: 'refreshed-token',
         token_type: 'Bearer',
-        expires_in: 3600
-      })
+        expires_in: 3600,
+      }),
     });
 
     // Retry succeeds
@@ -1334,15 +1372,15 @@ describe('SSEClientTransport', () => {
       json: async () => ({
         jsonrpc: '2.0',
         result: { success: true },
-        id: 1
-      })
+        id: 1,
+      }),
     });
 
     await transport.send({
       jsonrpc: '2.0',
       method: 'test',
       params: {},
-      id: 1
+      id: 1,
     });
 
     // Should have called fetch 3 times
@@ -1359,14 +1397,15 @@ describe('SSEClientTransport', () => {
 
 ```typescript
 // Browser EventSource - headers ignored
-new EventSource(url, { headers: { 'Authorization': 'Bearer token' } }); // ❌ Won't work
+new EventSource(url, { headers: { Authorization: 'Bearer token' } }); // ❌ Won't work
 
 // Node.js EventSource (eventsource package) - headers work
 import EventSource from 'eventsource';
-new EventSource(url, { headers: { 'Authorization': 'Bearer token' } }); // ✅ Works
+new EventSource(url, { headers: { Authorization: 'Bearer token' } }); // ✅ Works
 ```
 
 **Solution for Browser Compatibility**:
+
 ```typescript
 // Add token as query parameter for browser
 const sseUrl = new URL(config.url);
@@ -1375,13 +1414,14 @@ if (typeof window !== 'undefined') {
   sseUrl.searchParams.set('token', token);
 } else {
   // Node.js - can use headers
-  options.headers = { 'Authorization': `Bearer ${token}` };
+  options.headers = { Authorization: `Bearer ${token}` };
 }
 ```
 
 ### Message Correlation
 
 **UUID Generation**:
+
 ```typescript
 import { v4 as uuidv4 } from 'uuid';
 
@@ -1393,6 +1433,7 @@ message.id = message.id || correlationId;
 ### Security Considerations
 
 **HTTPS Validation**:
+
 ```typescript
 // Enforce HTTPS in production
 if (process.env.NODE_ENV === 'production' && !url.startsWith('https://')) {
@@ -1440,7 +1481,8 @@ packages/mcp/src/
 ```
 
 **Key Principle**: Types used across domains (AuthConfig, TransportConfig, ExtendedTargetServer) go in `types/`. Domain-specific interfaces (IAuthProvider, ITokenStorage) stay in their domains
-```
+
+````
 
 ## Migration Guide
 
@@ -1478,7 +1520,44 @@ packages/mcp/src/
     }
   }
 }
-```
+````
+
+## Operational Rotation Flows
+
+### Refresh Token Rotation
+
+- `OAuthProviderConfig.requireTokenRotation` toggles single-use refresh tokens.
+- When enabled, the `/token` endpoint returns a newly minted refresh token on every refresh grant and deletes the presented token immediately after issuing the response.
+- Default expirations:
+  - `defaultTokenExpiry` (access tokens) → 3,600 seconds (1 hour)
+  - `defaultRefreshTokenExpiry` → 2,592,000 seconds (30 days)
+- Recommended rollout: enable in environments where refresh tokens traverse untrusted networks or long-lived devices.
+- Coverage: the end-to-end behaviour is enforced in `packages/server/src/oauth/__tests__/oauth-provider.test.ts`.
+
+### Client Secret Rotation Endpoint
+
+- Path: `POST /api/oauth/clients/:clientId/rotate-secret`
+- Request body:
+
+  ```json
+  {
+    "client_secret": "<current secret value>"
+  }
+  ```
+
+- Success response: HTTP 200 with the updated client registration, including.
+  - `client_secret` → freshly generated secret value.
+  - `client_secret_expires_at` → Unix timestamp (seconds) extended by the configured default (31,536,000 seconds ≈ 1 year).
+- Failure scenarios:
+  - `401 invalid_client` when the supplied secret does not match or has expired.
+  - `400 invalid_request` when required parameters are missing.
+- Tests: `packages/server/src/api/__tests__/oauth-route.test.ts` covers rotate success and rejection paths.
+
+### Operator Playbook
+
+1. Monitor `client_secret_expires_at` and call the rotation endpoint proactively before expiry.
+2. Persist rotated secrets in a secure store (vault, keychain, secrets manager) and update dependent services immediately.
+3. Enable `requireTokenRotation` alongside short refresh expirations for high-risk tenants or devices.
 
 ## Security Checklist
 

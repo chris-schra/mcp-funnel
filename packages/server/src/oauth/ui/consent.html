@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorization Request - {{clientName}}</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .consent-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 480px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #f8f9fa;
+            padding: 24px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .app-icon {
+            width: 48px;
+            height: 48px;
+            background: #007bff;
+            border-radius: 8px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+
+        .header p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 24px;
+        }
+
+        .permission-request {
+            margin-bottom: 24px;
+        }
+
+        .permission-request h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .permission-list {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .permission-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+
+        .permission-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .permission-icon {
+            width: 20px;
+            height: 20px;
+            background: #28a745;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+            margin-top: 2px;
+        }
+
+        .permission-details h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 2px;
+        }
+
+        .permission-details p {
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        .user-info {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .user-info h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .user-info p {
+            font-size: 13px;
+            color: #1565c0;
+        }
+
+        .security-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .security-notice h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .security-notice h3::before {
+            content: "⚠️";
+            margin-right: 8px;
+        }
+
+        .security-notice p {
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .remember-choice {
+            margin-bottom: 24px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #007bff;
+        }
+
+        .checkbox-container label {
+            font-size: 14px;
+            color: #495057;
+            cursor: pointer;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-direction: column;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-1px);
+        }
+
+        .footer {
+            padding: 16px 24px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        @media (min-width: 480px) {
+            .button-group {
+                flex-direction: row;
+            }
+
+            .btn {
+                flex: 1;
+            }
+        }
+
+        @media (max-width: 479px) {
+            .consent-container {
+                margin: 10px;
+            }
+
+            .header, .content, .footer {
+                padding: 20px;
+            }
+        }
+
+        /* Accessibility improvements */
+        .btn:focus {
+            outline: 2px solid #007bff;
+            outline-offset: 2px;
+        }
+
+        .checkbox-container input[type="checkbox"]:focus {
+            outline: 2px solid #007bff;
+            outline-offset: 2px;
+        }
+
+        /* Loading state for buttons */
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="consent-container">
+        <div class="header">
+            <div class="app-icon" aria-hidden="true">
+                {{clientInitial}}
+            </div>
+            <h1>{{clientName}}</h1>
+            <p>wants to access your account</p>
+        </div>
+
+        <div class="content">
+            <div class="user-info">
+                <h3>Signing in as</h3>
+                <p>{{userEmail}}</p>
+            </div>
+
+            <div class="permission-request">
+                <h2>This application will be able to:</h2>
+                <div class="permission-list" role="list">
+                    {{#each scopes}}
+                    <div class="permission-item" role="listitem">
+                        <div class="permission-icon" aria-hidden="true">✓</div>
+                        <div class="permission-details">
+                            <h3>{{this.name}}</h3>
+                            <p>{{this.description}}</p>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+
+            <div class="security-notice">
+                <h3>Security Notice</h3>
+                <p>Only approve this request if you trust {{clientName}}. This application will have access to the permissions listed above.</p>
+            </div>
+
+            <form method="POST" action="{{actionUrl}}" id="consentForm">
+                <input type="hidden" name="client_id" value="{{clientId}}">
+                <input type="hidden" name="redirect_uri" value="{{redirectUri}}">
+                <input type="hidden" name="state" value="{{state}}">
+                <input type="hidden" name="scope" value="{{scopeString}}">
+                <input type="hidden" name="code_challenge" value="{{codeChallenge}}">
+                <input type="hidden" name="code_challenge_method" value="{{codeChallengeMethod}}">
+
+                <div class="remember-choice">
+                    <div class="checkbox-container">
+                        <input
+                            type="checkbox"
+                            id="remember"
+                            name="remember_decision"
+                            value="true"
+                            aria-describedby="remember-description"
+                        >
+                        <label for="remember">Remember my decision for this application</label>
+                    </div>
+                    <p id="remember-description" style="font-size: 12px; color: #6c757d; margin-top: 4px; margin-left: 24px;">
+                        You won't be asked again for these permissions from this application.
+                    </p>
+                </div>
+
+                <div class="button-group">
+                    <button
+                        type="submit"
+                        name="action"
+                        value="approve"
+                        class="btn btn-primary"
+                        aria-describedby="approve-description"
+                    >
+                        Allow Access
+                    </button>
+                    <button
+                        type="submit"
+                        name="action"
+                        value="deny"
+                        class="btn btn-secondary"
+                        aria-describedby="deny-description"
+                    >
+                        Deny
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="footer">
+            <p>This request is secured by OAuth 2.0. Your credentials are never shared with {{clientName}}.</p>
+        </div>
+    </div>
+
+    <script>
+        // Prevent double submission
+        document.getElementById('consentForm').addEventListener('submit', function(e) {
+            const buttons = this.querySelectorAll('button[type="submit"]');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+            });
+        });
+
+        // Add keyboard navigation improvements
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.type === 'checkbox') {
+                e.target.click();
+            }
+        });
+    </script>
+</body>
+</html>

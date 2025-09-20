@@ -14,7 +14,7 @@ type MockProcess = EventEmitter & {
 // Mock child_process
 vi.mock('child_process');
 
-describe('PrefixedStdioClientTransport', () => {
+describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', () => {
   let mockProcess: MockProcess;
   let stderrStream: PassThrough;
   let stdoutStream: PassThrough;
@@ -44,9 +44,11 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('Transport Creation', () => {
     it('should spawn process with correct arguments', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
-      const transport = new PrefixedStdioClientTransport('test-server', {
+      const transport = new StdioClientTransport('test-server', {
         command: 'npx',
         args: ['-y', '@test/mcp-server'],
         env: { TEST_VAR: 'value' },
@@ -67,13 +69,15 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('Stderr Prefixing', () => {
     it('should prefix stderr output with server name', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      const transport = new PrefixedStdioClientTransport('github', {
+      const transport = new StdioClientTransport('github', {
         command: 'test',
         args: [],
       });
@@ -98,13 +102,15 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should ignore empty lines in stderr', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      const transport = new PrefixedStdioClientTransport('memory', {
+      const transport = new StdioClientTransport('memory', {
         command: 'test',
         args: [],
       });
@@ -130,9 +136,11 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('MCP Message Handling', () => {
     it('should parse and forward valid JSON-RPC messages', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
-      const transport = new PrefixedStdioClientTransport('test', {
+      const transport = new StdioClientTransport('test', {
         command: 'test',
         args: [],
       });
@@ -156,13 +164,15 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should prefix non-JSON stdout as server logs', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      const transport = new PrefixedStdioClientTransport('filesystem', {
+      const transport = new StdioClientTransport('filesystem', {
         command: 'test',
         args: [],
       });
@@ -187,9 +197,11 @@ describe('PrefixedStdioClientTransport', () => {
 
   describe('Transport Methods', () => {
     it('should send messages through stdin', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
-      const transport = new PrefixedStdioClientTransport('test', {
+      const transport = new StdioClientTransport('test', {
         command: 'test',
         args: [],
       });
@@ -213,9 +225,11 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should throw error when sending before start', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
-      const transport = new PrefixedStdioClientTransport('test', {
+      const transport = new StdioClientTransport('test', {
         command: 'test',
         args: [],
       });
@@ -228,9 +242,11 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should handle process close event', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
-      const transport = new PrefixedStdioClientTransport('test', {
+      const transport = new StdioClientTransport('test', {
         command: 'test',
         args: [],
       });
@@ -246,9 +262,11 @@ describe('PrefixedStdioClientTransport', () => {
     });
 
     it('should handle process error event', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
-      const transport = new PrefixedStdioClientTransport('test', {
+      const transport = new StdioClientTransport('test', {
         command: 'test',
         args: [],
       });
@@ -261,13 +279,22 @@ describe('PrefixedStdioClientTransport', () => {
       const error = new Error('Process failed');
       mockProcess.emit('error', error);
 
-      expect(errorHandler).toHaveBeenCalledWith(error);
+      // The new StdioClientTransport wraps errors in TransportError
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Connection failed: Process failed',
+          name: 'TransportError',
+          cause: error,
+        }),
+      );
     });
 
     it('should kill process on close', async () => {
-      const { PrefixedStdioClientTransport } = await import('../../src');
+      const { StdioClientTransport } = await import(
+        '../../src/transports/implementations/stdio-client-transport.js'
+      );
 
-      const transport = new PrefixedStdioClientTransport('test', {
+      const transport = new StdioClientTransport('test', {
         command: 'test',
         args: [],
       });
