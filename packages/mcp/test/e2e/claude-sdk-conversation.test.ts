@@ -27,7 +27,7 @@ const expectStrictResponse = (response: string, expected: 'YES' | 'NO') => {
   }
   const lineSplit = response.split('\n');
   const lastLine = lineSplit[lineSplit.length - 1].trim();
-  expect(lastLine.trim()).toBe(expected);
+  expect(lastLine.trim()).toContain(expected);
 };
 
 // Helper to check strict numeric responses

@@ -65,10 +65,190 @@ export const ToolOverrideSchema = z.object({
     .optional(),
 });
 
+// Auth configuration schemas
+export const NoAuthConfigSchema = z.object({
+  type: z.literal('none'),
+});
+
+export const BearerAuthConfigSchema = z.object({
+  type: z.literal('bearer'),
+  token: z.string(),
+});
+
+// Base schema for OAuth2 client credentials
+const OAuth2ClientCredentialsBaseSchema = z.object({
+  type: z.literal('oauth2-client'),
+  clientId: z.string(),
+  clientSecret: z.string(),
+  tokenEndpoint: z.string(),
+  scope: z.string().optional(),
+  audience: z.string().optional(),
+});
+
+export const OAuth2ClientCredentialsConfigSchema = z.preprocess(
+  (input: unknown) => {
+    if (typeof input !== 'object' || input === null) return input;
+
+    const result = { ...input } as Record<string, unknown>;
+
+    // Handle tokenUrl/tokenEndpoint - prefer tokenEndpoint, convert tokenUrl to tokenEndpoint
+    if (result.tokenEndpoint) {
+      // Keep tokenEndpoint as-is, remove tokenUrl if it exists
+      delete result.tokenUrl;
+    } else if (result.tokenUrl) {
+      result.tokenEndpoint = result.tokenUrl;
+      delete result.tokenUrl;
+    }
+
+    // Handle scope/scopes - prefer scopes if both exist, convert array to string
+    if (result.scopes) {
+      if (Array.isArray(result.scopes)) {
+        result.scope = result.scopes.join(' ');
+      } else {
+        result.scope = result.scopes;
+      }
+      delete result.scopes;
+    }
+
+    return result;
+  },
+  OAuth2ClientCredentialsBaseSchema,
+);
+
+// Base schema for OAuth2 authorization code
+const OAuth2AuthCodeBaseSchema = z.object({
+  type: z.literal('oauth2-code'),
+  clientId: z.string(),
+  clientSecret: z.string().optional(),
+  authorizationEndpoint: z.string(),
+  tokenEndpoint: z.string(),
+  redirectUri: z.string(),
+  scope: z.string().optional(),
+  audience: z.string().optional(),
+});
+
+export const OAuth2AuthCodeConfigSchema = z.preprocess((input: unknown) => {
+  if (typeof input !== 'object' || input === null) return input;
+
+  const result = { ...input } as Record<string, unknown>;
+
+  // Handle authUrl/authorizationEndpoint - prefer authorizationEndpoint, convert authUrl to authorizationEndpoint
+  if (result.authorizationEndpoint) {
+    // Keep authorizationEndpoint as-is, remove authUrl if it exists
+    delete result.authUrl;
+  } else if (result.authUrl) {
+    result.authorizationEndpoint = result.authUrl;
+    delete result.authUrl;
+  }
+
+  // Handle tokenUrl/tokenEndpoint - prefer tokenEndpoint, convert tokenUrl to tokenEndpoint
+  if (result.tokenEndpoint) {
+    // Keep tokenEndpoint as-is, remove tokenUrl if it exists
+    delete result.tokenUrl;
+  } else if (result.tokenUrl) {
+    result.tokenEndpoint = result.tokenUrl;
+    delete result.tokenUrl;
+  }
+
+  // Handle scope/scopes - prefer scopes if both exist, convert array to string
+  if (result.scopes) {
+    if (Array.isArray(result.scopes)) {
+      result.scope = result.scopes.join(' ');
+    } else {
+      result.scope = result.scopes;
+    }
+    delete result.scopes;
+  }
+
+  return result;
+}, OAuth2AuthCodeBaseSchema);
+
+export const AuthConfigSchema = z.union([
+  NoAuthConfigSchema,
+  BearerAuthConfigSchema,
+  OAuth2ClientCredentialsConfigSchema,
+  OAuth2AuthCodeConfigSchema,
+]);
+
+// Transport configuration schemas
+export const StdioTransportConfigSchema = z.object({
+  type: z.literal('stdio'),
+  command: z.string(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+});
+
+export const SSETransportConfigSchema = z.object({
+  type: z.literal('sse'),
+  url: z.string(),
+  timeout: z.number().optional(),
+  reconnect: z
+    .object({
+      maxAttempts: z.number().optional(),
+      initialDelayMs: z.number().optional(),
+      maxDelayMs: z.number().optional(),
+      backoffMultiplier: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const WebSocketTransportConfigSchema = z.object({
+  type: z.literal('websocket'),
+  url: z.string(),
+  timeout: z.number().optional(),
+  reconnect: z
+    .object({
+      maxAttempts: z.number().optional(),
+      initialDelayMs: z.number().optional(),
+      maxDelayMs: z.number().optional(),
+      backoffMultiplier: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const TransportConfigSchema = z.discriminatedUnion('type', [
+  StdioTransportConfigSchema,
+  SSETransportConfigSchema,
+  WebSocketTransportConfigSchema,
+]);
+
+// Extended target server schema that includes auth and transport
+export const ExtendedTargetServerSchema = z
+  .object({
+    name: z.string(),
+    command: z.string().optional(), // Make optional to allow transport-only configs
+    args: z.array(z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
+    transport: TransportConfigSchema.optional(),
+    auth: AuthConfigSchema.optional(),
+  })
+  .refine((data) => data.command || data.transport, {
+    message: "Server must have either 'command' or 'transport'",
+  });
+
+// Extended target server without name (for record format)
+export const ExtendedTargetServerWithoutNameSchema = z
+  .object({
+    command: z.string().optional(), // Make optional to allow transport-only configs
+    args: z.array(z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
+    transport: TransportConfigSchema.optional(),
+    auth: AuthConfigSchema.optional(),
+  })
+  .refine((data) => data.command || data.transport, {
+    message: "Server must have either 'command' or 'transport'",
+  });
+
 export const ProxyConfigSchema = z.object({
   servers: z.union([
-    z.array(TargetServerSchema),
-    z.record(z.string(), TargetServerWithoutNameSchema),
+    z.array(z.union([TargetServerSchema, ExtendedTargetServerSchema])),
+    z.record(
+      z.string(),
+      z.union([
+        TargetServerWithoutNameSchema,
+        ExtendedTargetServerWithoutNameSchema,
+      ]),
+    ),
   ]),
   alwaysVisibleTools: z.array(z.string()).optional(),
   exposeTools: z.array(z.string()).optional(),
@@ -106,6 +286,15 @@ export const ProxyConfigSchema = z.object({
         .describe('List of tool names to enable, empty means all'),
     })
     .optional(),
+  autoReconnect: z
+    .object({
+      enabled: z.boolean().default(true),
+      maxAttempts: z.number().default(10),
+      initialDelayMs: z.number().default(1000),
+      backoffMultiplier: z.number().default(2),
+      maxDelayMs: z.number().default(60000),
+    })
+    .optional(),
 });
 
 export type TargetServer = z.infer<typeof TargetServerSchema>;
@@ -114,8 +303,52 @@ export type TargetServerWithoutName = z.infer<
   typeof TargetServerWithoutNameSchema
 >;
 export type ServersRecord = Record<string, TargetServerWithoutName>;
+export type ExtendedServersRecord = Record<
+  string,
+  ExtendedTargetServerWithoutNameZod
+>;
 export type ToolOverride = z.infer<typeof ToolOverrideSchema>;
 export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
+
+// OAuth and transport schema types (Zod-derived)
+export type NoAuthConfigZod = z.infer<typeof NoAuthConfigSchema>;
+export type BearerAuthConfigZod = z.infer<typeof BearerAuthConfigSchema>;
+export type OAuth2ClientCredentialsConfigZod = z.infer<
+  typeof OAuth2ClientCredentialsConfigSchema
+>;
+export type OAuth2AuthCodeConfigZod = z.infer<
+  typeof OAuth2AuthCodeConfigSchema
+>;
+export type AuthConfigZod = z.infer<typeof AuthConfigSchema>;
+export type StdioTransportConfigZod = z.infer<
+  typeof StdioTransportConfigSchema
+>;
+export type SSETransportConfigZod = z.infer<typeof SSETransportConfigSchema>;
+export type WebSocketTransportConfigZod = z.infer<
+  typeof WebSocketTransportConfigSchema
+>;
+export type TransportConfigZod = z.infer<typeof TransportConfigSchema>;
+export type ExtendedTargetServerZod = z.infer<
+  typeof ExtendedTargetServerSchema
+>;
+export type ExtendedTargetServerWithoutNameZod = z.infer<
+  typeof ExtendedTargetServerWithoutNameSchema
+>;
+
+// Main type exports (re-exported from types directory for consistency)
+export type {
+  AuthConfig,
+  NoAuthConfig,
+  BearerAuthConfig,
+  OAuth2ClientCredentialsConfig,
+  OAuth2AuthCodeConfig,
+  TransportConfig,
+  StdioTransportConfig,
+  SSETransportConfig,
+  WebSocketTransportConfig,
+  ExtendedTargetServer,
+  ExtendedTargetServerWithoutName,
+} from './types/index.js';
 
 /**
  * Normalizes server configurations from either array or record format into a standardized array format.
@@ -152,6 +385,32 @@ export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
 export function normalizeServers(
   servers: TargetServer[] | ServersRecord,
 ): TargetServer[] {
+  if (Array.isArray(servers)) {
+    return servers;
+  }
+
+  return Object.entries(servers).map(([name, server]) => ({
+    name,
+    ...server,
+  }));
+}
+
+/**
+ * Normalizes extended server configurations from either array or record format into a standardized array format.
+ *
+ * This function supports both legacy and extended server configurations:
+ * - Legacy: TargetServer configurations (command-based)
+ * - Extended: ExtendedTargetServer configurations (with auth and transport options)
+ *
+ * @param servers - Server configurations in either array or record format
+ * @returns Normalized array of server configurations with name property included
+ */
+export function normalizeExtendedServers(
+  servers:
+    | (TargetServer | ExtendedTargetServerZod)[]
+    | ServersRecord
+    | ExtendedServersRecord,
+): (TargetServer | ExtendedTargetServerZod)[] {
   if (Array.isArray(servers)) {
     return servers;
   }
