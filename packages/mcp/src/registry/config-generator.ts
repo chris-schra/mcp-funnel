@@ -145,7 +145,7 @@ function generateCommandArgsLines(
 ): { lines: string[]; hasEnvVars: boolean } {
   const lines: string[] = [];
   const command = pkg.runtime_hint || defaultCommand;
-  lines.push(`  "command": "${command}",`);
+  lines.push(`  "command": ${JSON.stringify(command)},`);
 
   let argsArray: string[];
   if (pkg.runtime_hint) {
@@ -161,13 +161,14 @@ function generateCommandArgsLines(
   }
 
   // Check if environment variables follow
-  const hasEnvVars =
+  const hasEnvVars = Boolean(
     pkg.environment_variables &&
-    pkg.environment_variables.some((env) => env.value !== undefined);
+      pkg.environment_variables.some((env) => env.value !== undefined),
+  );
   const argsComma = hasEnvVars ? ',' : '';
-  lines.push(`  "args": ["${argsArray.join('", "')}"]${argsComma}`);
+  lines.push(`  "args": ${JSON.stringify(argsArray)}${argsComma}`);
 
-  return { lines, hasEnvVars: hasEnvVars || false };
+  return { lines, hasEnvVars };
 }
 
 /**
@@ -194,16 +195,20 @@ export function generateInstallInstructions(server: RegistryServer): string {
     lines.push('Add the following to your MCP client configuration:');
     lines.push('');
     lines.push('```json');
-    lines.push(`"${server.name}": {`);
-    lines.push(`  "transport": "${remote.type}",`);
-    lines.push(`  "url": "${remote.url}"`);
-    if (remote.headers && remote.headers.length > 0) {
-      lines.push(',');
+    lines.push(`${JSON.stringify(server.name)}: {`);
+    lines.push(`  "transport": ${JSON.stringify(remote.type)},`);
+    const hasHeaders = Boolean(remote.headers && remote.headers.length > 0);
+    lines.push(
+      `  "url": ${JSON.stringify(remote.url)}${hasHeaders ? ',' : ''}`,
+    );
+    if (hasHeaders && remote.headers) {
       lines.push('  "headers": {');
       remote.headers.forEach((header, index, arr) => {
         const comma = index < arr.length - 1 ? ',' : '';
         // Use header.name as key and header.value as value
-        lines.push(`    "${header.name}": "${header.value || ''}"${comma}`);
+        lines.push(
+          `    ${JSON.stringify(header.name)}: ${JSON.stringify(header.value ?? '')}${comma}`,
+        );
       });
       lines.push('  }');
     }
@@ -264,7 +269,7 @@ export function generateInstallInstructions(server: RegistryServer): string {
     lines.push('Add the following to your MCP client configuration:');
     lines.push('');
     lines.push('```json');
-    lines.push(`"${server.name}": {`);
+    lines.push(`${JSON.stringify(server.name)}: {`);
 
     switch (pkg.registry_type) {
       case 'npm': {
@@ -307,7 +312,9 @@ export function generateInstallInstructions(server: RegistryServer): string {
         varsWithValues.forEach((envVar, index, arr) => {
           const comma = index < arr.length - 1 ? ',' : '';
           const value = envVar.value;
-          lines.push(`    "${envVar.name}": ${JSON.stringify(value)}${comma}`);
+          lines.push(
+            `    ${JSON.stringify(envVar.name)}: ${JSON.stringify(value)}${comma}`,
+          );
         });
         lines.push('  }');
       }

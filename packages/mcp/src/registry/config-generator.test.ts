@@ -610,6 +610,77 @@ describe('Config Generation', () => {
         expect(serverConfig.env.DEBUG).toBe('true');
       }
     });
+
+    it('should emit valid JSON when package arguments contain quotes', () => {
+      const server: RegistryServer = {
+        id: 'quoted-args-server',
+        name: 'Quoted Args Server',
+        description: 'Server with quoted package arguments',
+        packages: [
+          {
+            identifier: '@quote/server',
+            registry_type: 'npm',
+            package_arguments: ['--flag="value"'],
+          },
+        ],
+      };
+
+      const instructions = generateInstallInstructions(server);
+      const jsonMatch = instructions.match(/```json\n([\s\S]*?)\n```/);
+      expect(jsonMatch).toBeTruthy();
+
+      if (jsonMatch) {
+        const wrappedJson = `{${jsonMatch[1]}}`;
+
+        expect(() => JSON.parse(wrappedJson)).not.toThrow();
+
+        const parsed = JSON.parse(wrappedJson);
+        const serverConfig = parsed['Quoted Args Server'];
+        expect(serverConfig.command).toBe('npx');
+        expect(serverConfig.args).toEqual([
+          '-y',
+          '@quote/server',
+          '--flag="value"',
+        ]);
+      }
+    });
+
+    it('should emit valid JSON when remote headers contain quotes', () => {
+      const server: RegistryServer = {
+        id: 'quoted-headers-remote',
+        name: 'Quoted Headers Remote',
+        description: 'Remote server with quoted header values',
+        remotes: [
+          {
+            type: 'sse',
+            url: 'https://remote.example.com/mcp',
+            headers: [
+              { name: 'Authorization', value: 'Bearer "token"' },
+              { name: 'X-Custom-Header', value: 'Value with "quotes"' },
+            ],
+          },
+        ],
+      };
+
+      const instructions = generateInstallInstructions(server);
+      const jsonMatch = instructions.match(/```json\n([\s\S]*?)\n```/);
+      expect(jsonMatch).toBeTruthy();
+
+      if (jsonMatch) {
+        const wrappedJson = `{${jsonMatch[1]}}`;
+
+        expect(() => JSON.parse(wrappedJson)).not.toThrow();
+
+        const parsed = JSON.parse(wrappedJson);
+        const serverConfig = parsed['Quoted Headers Remote'];
+        expect(serverConfig.transport).toBe('sse');
+        expect(serverConfig.url).toBe('https://remote.example.com/mcp');
+        expect(serverConfig.headers.Authorization).toBe('Bearer "token"');
+        expect(serverConfig.headers['X-Custom-Header']).toBe(
+          'Value with "quotes"',
+        );
+      }
+    });
   });
 
   describe('generateInstallInstructions', () => {
