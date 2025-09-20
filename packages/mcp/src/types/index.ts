@@ -26,4 +26,5 @@ export type {
   BaseTargetServer,
   ExtendedTargetServer,
   ExtendedTargetServerWithoutName,
+  ServerStatus,
 } from './server.types.js';

@@ -55,3 +55,15 @@ export interface ExtendedTargetServerWithoutName {
   // Authentication configuration
   auth?: AuthConfig;
 }
+
+/**
+ * Runtime status information for an MCP target server.
+ * Provides a seam for other packages (e.g. the server API) without depending
+ * on web-specific schemas.
+ */
+export interface ServerStatus {
+  name: string;
+  status: 'connected' | 'disconnected' | 'error';
+  connectedAt?: string;
+  error?: string;
+}

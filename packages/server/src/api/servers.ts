@@ -2,6 +2,32 @@ import { Hono } from 'hono';
 import type { ServerStatus } from '../types/index.js';
 import type { MCPProxy } from 'mcp-funnel';
 
+const getKnownServerNames = (proxy: MCPProxy): string[] => {
+  const { connected, disconnected } = proxy.getTargetServers();
+  const seen = new Set<string>();
+  const names: string[] = [];
+
+  const add = (name: string) => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    names.push(name);
+  };
+
+  for (const [name] of connected) {
+    add(name);
+  }
+
+  for (const [name] of disconnected) {
+    add(name);
+  }
+
+  for (const name of proxy.clients.keys()) {
+    add(name);
+  }
+
+  return names;
+};
+
 type Variables = {
   mcpProxy: MCPProxy;
 };
@@ -12,16 +38,14 @@ serversRoute.get('/', async (c) => {
   const mcpProxy = c.get('mcpProxy');
 
   try {
-    // Get all servers from MCP proxy
     const servers: ServerStatus[] = [];
+    const serverNames = getKnownServerNames(mcpProxy);
 
-    // Get status for each server using getServerStatus method
-    for (const [name, _client] of mcpProxy.clients) {
+    for (const name of serverNames) {
       try {
-        const serverStatus = await mcpProxy.getServerStatus(name);
+        const serverStatus = mcpProxy.getServerStatus(name);
         servers.push(serverStatus);
       } catch (error) {
-        // If getting status fails, include server with error status
         servers.push({
           name,
           status: 'error',
@@ -47,20 +71,27 @@ serversRoute.post('/:name/reconnect', async (c) => {
   const mcpProxy = c.get('mcpProxy');
 
   try {
-    // Check if server exists in the configured servers
-    const hasServer =
-      mcpProxy.clients.has(name) ||
-      Array.from(mcpProxy.getTargetServers().disconnected).some(
-        ([serverName]) => serverName === name,
-      );
+    const knownServers = new Set(getKnownServerNames(mcpProxy));
 
-    if (!hasServer) {
+    if (!knownServers.has(name)) {
       return c.json(
         {
           error: 'Server not found',
           message: `Server '${name}' is not configured`,
         },
         404,
+      );
+    }
+
+    const currentStatus = mcpProxy.getServerStatus(name);
+    if (currentStatus.status === 'connected') {
+      return c.json(
+        {
+          success: false,
+          error: 'Reconnection not required',
+          message: `Server '${name}' is already connected`,
+        },
+        409,
       );
     }
 
@@ -88,8 +119,20 @@ serversRoute.delete('/:name', async (c) => {
   const mcpProxy = c.get('mcpProxy');
 
   try {
-    // Check if server is currently connected
-    if (!mcpProxy.clients.has(name)) {
+    const knownServers = new Set(getKnownServerNames(mcpProxy));
+
+    if (!knownServers.has(name)) {
+      return c.json(
+        {
+          error: 'Server not found',
+          message: `Server '${name}' is not configured`,
+        },
+        404,
+      );
+    }
+
+    const currentStatus = mcpProxy.getServerStatus(name);
+    if (currentStatus.status !== 'connected') {
       return c.json(
         {
           error: 'Server not connected',
@@ -98,8 +141,6 @@ serversRoute.delete('/:name', async (c) => {
         404,
       );
     }
-
-    // Attempt to disconnect the server
     await mcpProxy.disconnectServer(name);
 
     return c.json({

@@ -38,7 +38,7 @@ import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
-import { ServerStatus } from '../../server/src/types/index.js';
+import type { ServerStatus } from './types/index.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
 import { writeFileSync, mkdirSync, Dirent } from 'fs';
 import { resolve, join, dirname } from 'path';
@@ -1149,3 +1149,4 @@ export {
   normalizeExtendedServers,
 } from './config.js';
 export type { ProxyConfig, ServersRecord } from './config.js';
+export type { ServerStatus } from './types/index.js';
