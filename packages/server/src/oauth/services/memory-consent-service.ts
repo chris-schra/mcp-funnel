@@ -3,20 +3,82 @@
  * Tracks user consent for client applications and scopes
  */
 
-import type { IUserConsentService } from '../../types/oauth-provider.js';
+import type {
+  IUserConsentService,
+  RecordUserConsentOptions,
+  UserConsentScope,
+} from '../../types/oauth-provider.js';
 
-interface UserConsent {
+export interface MemoryUserConsentServiceOptions {
+  /** Default TTL (seconds) applied when a consent decision is not remembered */
+  defaultTtlSeconds?: number;
+  /** TTL when the caller asks to remember consent; null means no expiry */
+  rememberedTtlSeconds?: number | null;
+}
+
+type ConsentScopeRecord = UserConsentScope;
+
+interface ConsentBucket {
   userId: string;
   clientId: string;
-  scopes: string[];
-  consentedAt: number;
+  scopes: Map<string, ConsentScopeRecord>;
+}
+
+interface ConsentSummary {
+  userId: string;
+  clientId: string;
+  scopes: ConsentScopeRecord[];
 }
 
 export class MemoryUserConsentService implements IUserConsentService {
-  private consents = new Map<string, UserConsent>();
+  private readonly defaultTtlSeconds: number;
+  private readonly rememberedTtlSeconds: number | null;
+
+  private consents = new Map<string, ConsentBucket>();
+
+  constructor(options: MemoryUserConsentServiceOptions = {}) {
+    this.defaultTtlSeconds =
+      options.defaultTtlSeconds ?? 60 * 60; /* default 1 hour */
+    this.rememberedTtlSeconds =
+      options.rememberedTtlSeconds ?? 60 * 60 * 24 * 30; /* default 30 days */
+  }
 
   private getConsentKey(userId: string, clientId: string): string {
     return `${userId}:${clientId}`;
+  }
+
+  private resolveExpiry(
+    issuedAt: number,
+    options?: RecordUserConsentOptions,
+  ): number | null {
+    if (options?.ttlSeconds !== undefined) {
+      if (options.ttlSeconds <= 0) {
+        return issuedAt;
+      }
+      return issuedAt + options.ttlSeconds;
+    }
+
+    if (options?.remember) {
+      if (this.rememberedTtlSeconds === null) {
+        return null;
+      }
+      return issuedAt + this.rememberedTtlSeconds;
+    }
+
+    return issuedAt + this.defaultTtlSeconds;
+  }
+
+  private purgeExpiredScopes(bucket: ConsentBucket): void {
+    const now = Math.floor(Date.now() / 1000);
+    for (const [scope, record] of bucket.scopes) {
+      if (record.expiresAt !== null && record.expiresAt <= now) {
+        bucket.scopes.delete(scope);
+      }
+    }
+
+    if (bucket.scopes.size === 0) {
+      this.consents.delete(this.getConsentKey(bucket.userId, bucket.clientId));
+    }
   }
 
   async hasUserConsented(
@@ -25,55 +87,133 @@ export class MemoryUserConsentService implements IUserConsentService {
     scopes: string[],
   ): Promise<boolean> {
     const key = this.getConsentKey(userId, clientId);
-    const consent = this.consents.get(key);
+    const bucket = this.consents.get(key);
 
-    if (!consent) {
+    if (!bucket) {
       return false;
     }
 
-    // Check if all requested scopes are included in the consented scopes
-    return scopes.every((scope) => consent.scopes.includes(scope));
+    this.purgeExpiredScopes(bucket);
+
+    if (scopes.length === 0) {
+      return bucket.scopes.size > 0;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+
+    for (const scope of scopes) {
+      const record = bucket.scopes.get(scope);
+      if (!record) {
+        return false;
+      }
+
+      if (record.expiresAt !== null) {
+        if (record.expiresAt <= now) {
+          bucket.scopes.delete(scope);
+          if (bucket.scopes.size === 0) {
+            this.consents.delete(key);
+          }
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   async recordUserConsent(
     userId: string,
     clientId: string,
     scopes: string[],
+    options?: RecordUserConsentOptions,
   ): Promise<void> {
+    if (scopes.length === 0) {
+      return;
+    }
+
     const key = this.getConsentKey(userId, clientId);
-    const existingConsent = this.consents.get(key);
+    const bucket =
+      this.consents.get(key) ??
+      ({
+        userId,
+        clientId,
+        scopes: new Map<string, ConsentScopeRecord>(),
+      } as ConsentBucket);
 
-    // Merge with existing consented scopes
-    const allScopes = existingConsent
-      ? [...new Set([...existingConsent.scopes, ...scopes])]
-      : scopes;
+    const issuedAt = options?.consentedAt ?? Math.floor(Date.now() / 1000);
+    const expiresAt = this.resolveExpiry(issuedAt, options);
 
-    const consent: UserConsent = {
-      userId,
-      clientId,
-      scopes: allScopes,
-      consentedAt: Math.floor(Date.now() / 1000),
-    };
+    for (const scope of scopes) {
+      bucket.scopes.set(scope, {
+        scope,
+        consentedAt: issuedAt,
+        expiresAt,
+      });
+    }
 
-    this.consents.set(key, consent);
+    this.consents.set(key, bucket);
   }
 
-  async revokeUserConsent(userId: string, clientId: string): Promise<void> {
+  async revokeUserConsent(
+    userId: string,
+    clientId: string,
+    scopes?: string[],
+  ): Promise<void> {
     const key = this.getConsentKey(userId, clientId);
-    this.consents.delete(key);
+    if (!scopes || scopes.length === 0) {
+      this.consents.delete(key);
+      return;
+    }
+
+    const bucket = this.consents.get(key);
+    if (!bucket) {
+      return;
+    }
+
+    for (const scope of scopes) {
+      bucket.scopes.delete(scope);
+    }
+
+    if (bucket.scopes.size === 0) {
+      this.consents.delete(key);
+    }
   }
 
   // Development helpers
-  async getUserConsents(userId: string): Promise<UserConsent[]> {
-    return Array.from(this.consents.values()).filter(
-      (consent) => consent.userId === userId,
-    );
+  async getUserConsents(userId: string): Promise<ConsentSummary[]> {
+    const results: ConsentSummary[] = [];
+    for (const bucket of this.consents.values()) {
+      if (bucket.userId !== userId) {
+        continue;
+      }
+      this.purgeExpiredScopes(bucket);
+      if (bucket.scopes.size > 0) {
+        results.push({
+          userId: bucket.userId,
+          clientId: bucket.clientId,
+          scopes: Array.from(bucket.scopes.values()),
+        });
+      }
+    }
+    return results;
   }
 
-  async getClientConsents(clientId: string): Promise<UserConsent[]> {
-    return Array.from(this.consents.values()).filter(
-      (consent) => consent.clientId === clientId,
-    );
+  async getClientConsents(clientId: string): Promise<ConsentSummary[]> {
+    const results: ConsentSummary[] = [];
+    for (const bucket of this.consents.values()) {
+      if (bucket.clientId !== clientId) {
+        continue;
+      }
+      this.purgeExpiredScopes(bucket);
+      if (bucket.scopes.size > 0) {
+        results.push({
+          userId: bucket.userId,
+          clientId: bucket.clientId,
+          scopes: Array.from(bucket.scopes.values()),
+        });
+      }
+    }
+    return results;
   }
 
   async clear(): Promise<void> {

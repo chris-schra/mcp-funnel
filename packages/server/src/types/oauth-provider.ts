@@ -220,6 +220,24 @@ export interface IOAuthProviderStorage {
 /**
  * User consent interface
  */
+export interface UserConsentScope {
+  scope: string;
+  consentedAt: number;
+  expiresAt: number | null;
+}
+
+export interface RecordUserConsentOptions {
+  /**
+   * Persist consent beyond the default TTL. Implementations may map this to a longer
+   * expiration window or an indefinite consent depending on storage capabilities.
+   */
+  remember?: boolean;
+  /** Custom TTL in seconds for this consent decision */
+  ttlSeconds?: number;
+  /** When the consent was captured – defaults to current timestamp */
+  consentedAt?: number;
+}
+
 export interface IUserConsentService {
   /**
    * Check if user has already consented to the requested scopes
@@ -237,12 +255,17 @@ export interface IUserConsentService {
     userId: string,
     clientId: string,
     scopes: string[],
+    options?: RecordUserConsentOptions,
   ): Promise<void>;
 
   /**
    * Revoke user consent for a client
    */
-  revokeUserConsent(userId: string, clientId: string): Promise<void>;
+  revokeUserConsent(
+    userId: string,
+    clientId: string,
+    scopes?: string[],
+  ): Promise<void>;
 }
 
 /**
