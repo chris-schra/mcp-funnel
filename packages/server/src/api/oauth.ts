@@ -70,6 +70,14 @@ function coerceToString(value: unknown): string | undefined {
     return value;
   }
 
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value.toString();
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+
   if (Array.isArray(value)) {
     for (const entry of value) {
       const coerced = coerceToString(entry);
@@ -83,6 +91,10 @@ function coerceToString(value: unknown): string | undefined {
 }
 
 function parseBooleanFlag(value: unknown): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
   const normalized = coerceToString(value);
   if (!normalized) {
     return false;
@@ -111,6 +123,20 @@ function normalizeScopeInput(value: unknown): string[] {
 
   const single = coerceToString(value);
   return single ? parseScopes(single) : [];
+}
+
+function coerceToNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const str = coerceToString(value);
+  if (!str) {
+    return undefined;
+  }
+
+  const parsed = Number(str);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 /**
@@ -592,12 +618,11 @@ oauthRoute.post('/consent', async (c) => {
     const uniqueApprovedScopes = Array.from(new Set(filteredApprovedScopes));
 
     const rememberDecision = parseBooleanFlag(body.remember_decision);
-    const ttlSecondsRaw = coerceToString(body.ttl_seconds);
+    const ttlSecondsRaw = coerceToNumber(body.ttl_seconds);
     let ttlSeconds: number | undefined;
 
     if (ttlSecondsRaw !== undefined) {
-      const parsed = Number(ttlSecondsRaw);
-      if (!Number.isFinite(parsed) || parsed < 0) {
+      if (ttlSecondsRaw < 0) {
         const errorBody = {
           error: 'invalid_request',
           error_description: 'ttl_seconds must be a non-negative number',
@@ -606,7 +631,7 @@ oauthRoute.post('/consent', async (c) => {
           ? c.json(errorBody, 400)
           : c.text('Invalid ttl_seconds value', 400);
       }
-      ttlSeconds = parsed;
+      ttlSeconds = ttlSecondsRaw;
     }
 
     let redirectUri: string | undefined;

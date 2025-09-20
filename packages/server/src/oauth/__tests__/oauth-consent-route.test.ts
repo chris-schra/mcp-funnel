@@ -218,6 +218,64 @@ describe('OAuth consent HTTP endpoints', () => {
     expect(writeRedirect.searchParams.get('error')).toBe('consent_required');
   });
 
+  it('honours remember flag and custom TTL from JSON payloads', async () => {
+    const { clientId, redirectUri } = await registerClient('Remember App');
+    const userId = 'user-persistent-1';
+
+    const consentResponse = await oauthRoute.request('/consent', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-user-id': userId,
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        decision: 'approve',
+        scopes: ['read'],
+        redirect_uri: redirectUri,
+        remember_decision: true,
+        ttl_seconds: 3600,
+      }),
+    });
+
+    expect(consentResponse.status).toBe(200);
+    const consentBody = await readJson(
+      consentResponse,
+      z.object({
+        status: z.literal('approved'),
+        consented_scopes: z.array(z.string()),
+        remember: z.boolean().optional(),
+        ttl_seconds: z.number().nullable().optional(),
+      }),
+    );
+    expect(consentBody.remember).toBe(true);
+    expect(consentBody.ttl_seconds).toBe(3600);
+
+    const authorizeResponse = await oauthRoute.request(
+      `/authorize?${new URLSearchParams({
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: 'read',
+      }).toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-user-id': userId,
+        },
+      },
+    );
+
+    expect(authorizeResponse.status).toBe(302);
+    const authorizeLocation = authorizeResponse.headers.get('location');
+    expect(authorizeLocation).toBeTruthy();
+    const authorizeRedirect = new URL(
+      authorizeLocation ?? '',
+      'http://localhost',
+    );
+    expect(authorizeRedirect.searchParams.get('code')).toBeTruthy();
+  });
+
   it('revokes individual scopes and forces re-consent for revoked permissions', async () => {
     const { clientId, redirectUri } = await registerClient('Revoke App');
     const userId = 'user-revoke-1';
