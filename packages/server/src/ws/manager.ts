@@ -186,8 +186,47 @@ export class WebSocketManager {
   }
 
   private setupProxyEventListeners() {
-    // TODO: Add event listeners to MCPProxy for server connect/disconnect
-    // and tool list changes, then broadcast to WebSocket clients
+    if (!this.mcpProxy) {
+      console.warn(
+        '[ws] MCPProxy not available, skipping event listener setup',
+      );
+      return;
+    }
+
+    // Listen for server connection events
+    this.mcpProxy.on('server.connected', (data) => {
+      this.broadcast({
+        type: 'server.connected',
+        payload: {
+          serverName: data.serverName,
+          timestamp: data.timestamp,
+        },
+      });
+    });
+
+    // Listen for server disconnection events
+    this.mcpProxy.on('server.disconnected', (data) => {
+      this.broadcast({
+        type: 'server.disconnected',
+        payload: {
+          serverName: data.serverName,
+          timestamp: data.timestamp,
+          reason: data.reason,
+        },
+      });
+    });
+
+    // Listen for server reconnecting events
+    this.mcpProxy.on('server.reconnecting', (data) => {
+      this.broadcast({
+        type: 'server.reconnecting',
+        payload: {
+          serverName: data.serverName,
+          timestamp: data.timestamp,
+          retryAttempt: data.retryAttempt,
+        },
+      });
+    });
   }
 
   broadcast(event: WSEvent) {
