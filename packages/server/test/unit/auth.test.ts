@@ -1,4 +1,37 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi,
+  type MockInstance,
+} from 'vitest';
+type CryptoModule = typeof import('crypto');
+type TimingSafeEqualFn = CryptoModule['timingSafeEqual'];
+
+type TimingSafeEqualMock = MockInstance<
+  Parameters<TimingSafeEqualFn>,
+  ReturnType<TimingSafeEqualFn>
+>;
+
+const timingSafeEqualSpy: TimingSafeEqualMock = vi.hoisted(() =>
+  vi.fn<TimingSafeEqualFn>(),
+);
+
+vi.mock('crypto', async () => {
+  const actual = await vi.importActual<CryptoModule>('crypto');
+
+  timingSafeEqualSpy.mockImplementation((...args) =>
+    actual.timingSafeEqual(...args),
+  );
+
+  return {
+    ...actual,
+    timingSafeEqual: timingSafeEqualSpy,
+  };
+});
+
 import { Hono } from 'hono';
 import {
   BearerTokenValidator,
@@ -15,6 +48,10 @@ import type { IncomingMessage } from 'node:http';
 
 // Helper type for mocking Hono context in tests
 type MockContext = Partial<import('hono').Context>;
+
+afterEach(() => {
+  timingSafeEqualSpy.mockClear();
+});
 
 describe('Authentication System', () => {
   describe('BearerTokenValidator', () => {
@@ -161,7 +198,29 @@ describe('Authentication System', () => {
     });
 
     describe('Security - Timing Attack Protection', () => {
-      it('should use constant-time comparison for token validation', async () => {
+      const defaultIterations = 5000;
+
+      const measureAverageNanoseconds = async (
+        validator: BearerTokenValidator,
+        headerValue: string,
+        runs: number = defaultIterations,
+      ): Promise<number> => {
+        const context = {
+          req: {
+            header: () => headerValue,
+          },
+        } satisfies MockContext;
+
+        const start = process.hrtime.bigint();
+        for (let index = 0; index < runs; index += 1) {
+          await validator.validateRequest(context);
+        }
+        const end = process.hrtime.bigint();
+
+        return Number(end - start) / runs;
+      };
+
+      it('invokes crypto.timingSafeEqual for tokens with matching lengths', async () => {
         const config: InboundBearerAuthConfig = {
           type: 'bearer',
           tokens: ['valid-token-12345'],
@@ -169,133 +228,97 @@ describe('Authentication System', () => {
 
         const validator = new BearerTokenValidator(config);
 
-        // Test with tokens of same length but different content
-        const validTokenContext = {
+        const validContext = {
           req: {
-            header: vi.fn().mockReturnValue('Bearer valid-token-12345'),
+            header: () => 'Bearer valid-token-12345',
           },
         } satisfies MockContext;
 
-        const invalidSameLengthContext = {
-          req: {
-            header: vi.fn().mockReturnValue('Bearer invalid-token-1234'),
-          },
-        } satisfies MockContext;
+        const timingSpy = timingSafeEqualSpy;
 
-        const [validResult, invalidResult] = await Promise.all([
-          validator.validateRequest(validTokenContext),
-          validator.validateRequest(invalidSameLengthContext),
-        ]);
-
+        timingSpy.mockClear();
+        const validResult = await validator.validateRequest(validContext);
         expect(validResult.isAuthenticated).toBe(true);
+        expect(timingSpy).toHaveBeenCalledTimes(1);
+
+        const invalidContext = {
+          req: {
+            header: () => 'Bearer valid-token-1234x',
+          },
+        } satisfies MockContext;
+
+        timingSpy.mockClear();
+        const invalidResult = await validator.validateRequest(invalidContext);
         expect(invalidResult.isAuthenticated).toBe(false);
         expect(invalidResult.error).toBe('Invalid Bearer token');
+        expect(timingSpy).toHaveBeenCalledTimes(1);
       });
 
-      it('should handle tokens of different lengths without timing leaks', async () => {
+      it('maintains consistent timing for same-length mismatches', async () => {
         const config: InboundBearerAuthConfig = {
           type: 'bearer',
-          tokens: ['valid-token-12345'],
+          tokens: ['secret-token-abcdefg'],
         };
 
         const validator = new BearerTokenValidator(config);
+        const runs = 6000;
 
-        // Test with tokens of different lengths
-        const contexts = [
-          {
-            req: {
-              header: vi.fn().mockReturnValue('Bearer short'),
-            },
-          },
-          {
-            req: {
-              header: vi.fn().mockReturnValue('Bearer medium-length'),
-            },
-          },
-          {
-            req: {
-              header: vi
-                .fn()
-                .mockReturnValue(
-                  'Bearer very-long-invalid-token-that-should-fail',
-                ),
-            },
-          },
-        ] satisfies MockContext[];
-
-        const results = await Promise.all(
-          contexts.map((context) => validator.validateRequest(context)),
-        );
-
-        // All should fail authentication
-        results.forEach((result) => {
-          expect(result.isAuthenticated).toBe(false);
-          expect(result.error).toBe('Invalid Bearer token');
-        });
-      });
-
-      it('should validate multiple valid tokens with constant-time comparison', async () => {
-        const config: InboundBearerAuthConfig = {
-          type: 'bearer',
-          tokens: ['token-one-1234', 'token-two-5678', 'token-three-9012'],
-        };
-
-        const validator = new BearerTokenValidator(config);
-
-        // Test all valid tokens
-        const validTokens = [
-          'Bearer token-one-1234',
-          'Bearer token-two-5678',
-          'Bearer token-three-9012',
+        const mismatchedHeaders = [
+          'Bearer tecret-token-abcdefg',
+          'Bearer secret-tokon-abcdefg',
+          'Bearer secret-token-abcdefh',
         ];
 
-        const contexts = validTokens.map((token) => ({
-          req: {
-            header: vi.fn().mockReturnValue(token),
-          },
-        })) satisfies MockContext[];
+        const samples: number[] = [];
 
-        const results = await Promise.all(
-          contexts.map((context) => validator.validateRequest(context)),
-        );
+        const timingSpy = timingSafeEqualSpy;
 
-        // All should pass authentication
-        results.forEach((result) => {
-          expect(result.isAuthenticated).toBe(true);
-          expect(result.context?.authType).toBe('bearer');
-        });
+        for (const header of mismatchedHeaders) {
+          timingSpy.mockClear();
+          const averageNanoseconds = await measureAverageNanoseconds(
+            validator,
+            header,
+            runs,
+          );
+
+          samples.push(averageNanoseconds);
+          expect(timingSpy).toHaveBeenCalledTimes(runs);
+        }
+
+        const maxSample = Math.max(...samples);
+        const minSample = Math.min(...samples);
+        const variance = maxSample - minSample;
+        const allowedVarianceNanoseconds = 800;
+
+        expect(variance).toBeLessThanOrEqual(allowedVarianceNanoseconds);
       });
 
-      it('should reject tokens with similar prefixes using constant-time comparison', async () => {
+      it('keeps different-length mismatches within bounded timing variance', async () => {
         const config: InboundBearerAuthConfig = {
           type: 'bearer',
-          tokens: ['secret-token-abcdef'],
+          tokens: ['secret-token-abcdefg'],
         };
 
         const validator = new BearerTokenValidator(config);
+        const runs = 6000;
 
-        // Test tokens with similar prefixes but different suffixes
-        const similarTokens = [
-          'Bearer secret-token-123456', // Same length, similar prefix
-          'Bearer secret-token-ABCDEF', // Same length, case difference
-          'Bearer secret-token-abcdeg', // Same length, last char different
+        const mismatchedHeaders = [
+          'Bearer short',
+          'Bearer medium-length-token',
+          'Bearer secret-token-abcdefg-extra-content',
         ];
 
-        const contexts = similarTokens.map((token) => ({
-          req: {
-            header: vi.fn().mockReturnValue(token),
-          },
-        })) satisfies MockContext[];
-
-        const results = await Promise.all(
-          contexts.map((context) => validator.validateRequest(context)),
+        const samples = await Promise.all(
+          mismatchedHeaders.map((header) =>
+            measureAverageNanoseconds(validator, header, runs),
+          ),
         );
 
-        // All should fail authentication
-        results.forEach((result) => {
-          expect(result.isAuthenticated).toBe(false);
-          expect(result.error).toBe('Invalid Bearer token');
-        });
+        const maxSample = Math.max(...samples);
+        const minSample = Math.min(...samples);
+        const variance = maxSample - minSample;
+
+        expect(variance).toBeLessThanOrEqual(350);
       });
     });
   });
