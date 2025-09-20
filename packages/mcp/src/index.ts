@@ -156,6 +156,7 @@ export class MCPProxy extends EventEmitter {
   private transports = new Map<string, Transport>();
   private reconnectionManagers = new Map<string, ReconnectionManager>();
   private manualReconnections: ManualReconnectionTracker = new Map();
+  private manualDisconnectRequests = new Set<string>();
 
   constructor(config: ProxyConfig) {
     super();
@@ -543,10 +544,19 @@ export class MCPProxy extends EventEmitter {
   ): void {
     const serverName = targetServer.name;
 
-    console.error(`[proxy] Server disconnected: ${serverName} (${reason})`);
+    const manualDisconnectRequested =
+      this.manualDisconnectRequests.has(serverName);
+    const disconnectionReason =
+      reason === 'manual_disconnect' || manualDisconnectRequested
+        ? 'manual_disconnect'
+        : reason;
+
+    console.error(
+      `[proxy] Server disconnected: ${serverName} (${disconnectionReason})`,
+    );
     logEvent('info', 'server:disconnected', {
       name: serverName,
-      reason,
+      reason: disconnectionReason,
       error: errorMessage,
     });
 
@@ -566,7 +576,7 @@ export class MCPProxy extends EventEmitter {
         serverName,
         status: 'disconnected',
         timestamp: new Date().toISOString(),
-        reason: errorMessage || reason,
+        reason: errorMessage || disconnectionReason,
       });
     }
 
@@ -587,7 +597,7 @@ export class MCPProxy extends EventEmitter {
     // Set up automatic reconnection if enabled and not manually disconnected
     const autoReconnectConfig = this._config.autoReconnect;
     const isAutoReconnectEnabled = autoReconnectConfig?.enabled !== false;
-    const isManualDisconnect = reason === 'manual_disconnect';
+    const isManualDisconnect = disconnectionReason === 'manual_disconnect';
 
     if (isAutoReconnectEnabled && !isManualDisconnect) {
       // Create ReconnectionManager if it doesn't exist
@@ -623,6 +633,10 @@ export class MCPProxy extends EventEmitter {
       if (reconnectionManager) {
         reconnectionManager.scheduleReconnection();
       }
+    }
+
+    if (manualDisconnectRequested) {
+      this.manualDisconnectRequests.delete(serverName);
     }
   }
 
@@ -941,6 +955,8 @@ export class MCPProxy extends EventEmitter {
     const client = this._clients.get(name);
     const transport = this.transports.get(name);
 
+    this.manualDisconnectRequests.add(name);
+
     // Cancel any pending reconnection attempts
     const reconnectionManager = this.reconnectionManagers.get(name);
     if (reconnectionManager) {
@@ -973,6 +989,8 @@ export class MCPProxy extends EventEmitter {
       console.error(`[proxy] Error during disconnection from ${name}:`, error);
       logError('server:disconnect_failed', error, { name });
       throw error;
+    } finally {
+      this.manualDisconnectRequests.delete(name);
     }
   }
 

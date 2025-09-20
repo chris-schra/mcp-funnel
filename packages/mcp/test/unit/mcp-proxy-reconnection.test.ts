@@ -324,12 +324,21 @@ describe('MCPProxy Reconnection Logic', () => {
       await mcpProxy.initialize();
       await ensureServerConnected(mcpProxy, serverName);
 
+      mockClient.connect.mockClear();
+
       // First disconnect to simulate a state where auto-reconnection might be pending
       await mcpProxy.disconnectServer(serverName);
 
       // Verify disconnection cancels any pending reconnection
       const status = mcpProxy.getServerStatus(serverName);
       expect(status.status).toBe('disconnected');
+      expect(mcpProxy['reconnectionManagers'].has(serverName)).toBe(false);
+
+      // Advance time to ensure no automatic reconnection attempt is scheduled
+      vi.advanceTimersByTime(60000);
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(mockClient.connect).not.toHaveBeenCalled();
     });
 
     it('should clean up resources properly on disconnection', async () => {
