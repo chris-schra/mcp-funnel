@@ -1522,6 +1522,43 @@ packages/mcp/src/
 }
 ````
 
+## Operational Rotation Flows
+
+### Refresh Token Rotation
+
+- `OAuthProviderConfig.requireTokenRotation` toggles single-use refresh tokens.
+- When enabled, the `/token` endpoint returns a newly minted refresh token on every refresh grant and deletes the presented token immediately after issuing the response.
+- Default expirations:
+  - `defaultTokenExpiry` (access tokens) → 3,600 seconds (1 hour)
+  - `defaultRefreshTokenExpiry` → 2,592,000 seconds (30 days)
+- Recommended rollout: enable in environments where refresh tokens traverse untrusted networks or long-lived devices.
+- Coverage: the end-to-end behaviour is enforced in `packages/server/src/oauth/__tests__/oauth-provider.test.ts`.
+
+### Client Secret Rotation Endpoint
+
+- Path: `POST /api/oauth/clients/:clientId/rotate-secret`
+- Request body:
+
+  ```json
+  {
+    "client_secret": "<current secret value>"
+  }
+  ```
+
+- Success response: HTTP 200 with the updated client registration, including.
+  - `client_secret` → freshly generated secret value.
+  - `client_secret_expires_at` → Unix timestamp (seconds) extended by the configured default (31,536,000 seconds ≈ 1 year).
+- Failure scenarios:
+  - `401 invalid_client` when the supplied secret does not match or has expired.
+  - `400 invalid_request` when required parameters are missing.
+- Tests: `packages/server/src/api/__tests__/oauth-route.test.ts` covers rotate success and rejection paths.
+
+### Operator Playbook
+
+1. Monitor `client_secret_expires_at` and call the rotation endpoint proactively before expiry.
+2. Persist rotated secrets in a secure store (vault, keychain, secrets manager) and update dependent services immediately.
+3. Enable `requireTokenRotation` alongside short refresh expirations for high-risk tenants or devices.
+
 ## Security Checklist
 
 - [ ] Client secrets stored in environment variables only
