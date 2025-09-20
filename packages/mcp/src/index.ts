@@ -512,8 +512,11 @@ export class MCPProxy {
           await this._server.notification(notification as Notification);
         } catch (error) {
           // Server might not be connected in tests - log but don't throw
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error(`[proxy] Failed to send ${method} notification: ${errorMessage}`);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[proxy] Failed to send ${method} notification: ${errorMessage}`,
+          );
         }
       },
     };

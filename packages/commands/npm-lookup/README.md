@@ -155,10 +155,7 @@ To use the NPM command with MCP Funnel, add it to your `.mcp-funnel.json`:
     "enabled": true,
     "list": ["npm"]
   },
-  "exposeTools": [
-    "commands__npm_lookup",
-    "commands__npm_search"
-  ]
+  "exposeTools": ["commands__npm_lookup", "commands__npm_search"]
 }
 ```
 
