@@ -84,3 +84,4 @@ This is non-negotiable. A review that lists major issues but still approves the 
 ### Critical
 
 - You **MUST** always run `yarn test` and `yarn validate` from the repository root and add results to your review
+- If new issues were found, add each of them by using template "New Issue Intake"
