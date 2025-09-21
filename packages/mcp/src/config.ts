@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { SecretProviderConfig as _SecretProviderConfig } from './secrets/provider-configs.js';
 
 // Zod schema for secret provider configurations
 const DotEnvProviderConfigSchema = z.object({
@@ -47,58 +46,6 @@ export const TargetServerWithoutNameSchema = z.object({
   secretProviders: z.array(SecretProviderConfigSchema).optional(),
 });
 
-export const ToolOverrideSchema = z.object({
-  name: z.string().optional(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  inputSchema: z
-    .object({
-      strategy: z.enum(['replace', 'merge', 'deep-merge']).default('merge'),
-      properties: z
-        .record(
-          z.string(),
-          z.record(
-            z.string(),
-            z.union([
-              z.string(),
-              z.number(),
-              z.boolean(),
-              z.array(z.string()),
-              z.record(z.string(), z.string()),
-            ]),
-          ),
-        )
-        .optional(),
-      required: z.array(z.string()).optional(),
-      propertyOverrides: z
-        .record(
-          z.string(),
-          z.object({
-            description: z.string().optional(),
-            default: z
-              .union([z.string(), z.number(), z.boolean(), z.null()])
-              .optional(),
-            enum: z
-              .array(z.union([z.string(), z.number(), z.boolean()]))
-              .optional(),
-            type: z
-              .enum(['string', 'number', 'boolean', 'object', 'array'])
-              .optional(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  annotations: z
-    .object({
-      category: z.string().optional(),
-      tags: z.array(z.string()).optional(),
-      deprecated: z.boolean().optional(),
-      deprecationMessage: z.string().optional(),
-    })
-    .optional(),
-});
-
 export const ProxyConfigSchema = z.object({
   servers: z.union([
     z.array(TargetServerSchema),
@@ -128,15 +75,6 @@ export const ProxyConfigSchema = z.object({
         .describe('List of command names to enable, empty means all'),
     })
     .optional(),
-  toolOverrides: z.record(z.string(), ToolOverrideSchema).optional(),
-  overrideSettings: z
-    .object({
-      allowPreRegistration: z.boolean().default(false),
-      warnOnMissingTools: z.boolean().default(true),
-      applyToDynamic: z.boolean().default(true),
-      validateOverrides: z.boolean().default(true),
-    })
-    .optional(),
   defaultSecretProviders: z.array(SecretProviderConfigSchema).optional(),
   defaultPassthroughEnv: z.array(z.string()).optional(),
   // @deprecated Use 'commands' instead of 'developmentTools'
@@ -157,7 +95,6 @@ export type TargetServerWithoutName = z.infer<
   typeof TargetServerWithoutNameSchema
 >;
 export type ServersRecord = Record<string, TargetServerWithoutName>;
-export type ToolOverride = z.infer<typeof ToolOverrideSchema>;
 export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
 
 /**

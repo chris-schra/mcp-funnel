@@ -144,17 +144,17 @@ export class SecretManager {
    * @returns true if a provider was removed, false if no provider with that name was found
    */
   removeProvider(name: string): boolean {
-    const index = this.providers.findIndex(
-      (provider) => provider.getName() === name,
+    const originalLength = this.providers.length;
+    this.providers = this.providers.filter(
+      (provider) => provider.getName() !== name,
     );
 
-    if (index === -1) {
-      return false;
+    const removed = this.providers.length !== originalLength;
+    if (removed) {
+      this.invalidateCache();
     }
 
-    this.providers.splice(index, 1);
-    this.invalidateCache();
-    return true;
+    return removed;
   }
 
   /**

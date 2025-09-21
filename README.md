@@ -485,7 +485,7 @@ Load only environment variables that start with a specific prefix, useful for or
 }
 ```
 
-This configuration will pass through environment variables like `MCP_API_KEY`, `MCP_DATABASE_URL`, etc., while filtering out system variables for better security.
+This configuration will pass through environment variables like `MCP_API_KEY`, `MCP_DATABASE_URL`, etc., while filtering out system variables for better security. If you combine a prefix with an `allowlist`, make sure the allowlist entries include the full environment variable names (for example `MCP_API_KEY`), because the filtering occurs before the prefix is stripped.
 
 #### Combining Multiple Secret Providers
 
@@ -500,7 +500,12 @@ Chain multiple providers for flexible secret management, with later providers ta
       "secretProviders": [
         { "type": "dotenv", "config": { "path": ".env" } },
         { "type": "process", "config": { "allowlist": ["NODE_ENV", "DEBUG"] } },
-        { "type": "inline", "config": { "API_KEY": "static-value" } }
+        {
+          "type": "inline",
+          "config": {
+            "values": { "API_KEY": "static-value" }
+          }
+        }
       ]
     }
   }

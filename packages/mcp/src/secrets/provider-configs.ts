@@ -55,7 +55,10 @@ export interface ProcessEnvProviderConfig extends ProviderConfigBase {
     /**
      * Allowlist of specific environment variable names to include.
      * Takes precedence over prefix filtering when both are specified.
-     * @example ['API_KEY', 'DATABASE_URL']
+     * When used alongside {@link prefix}, the entries must contain the full
+     * environment key (for example `MCP_API_KEY`) because matching happens
+     * before the prefix is stripped.
+     * @example ['MCP_API_KEY', 'MCP_DATABASE_URL']
      */
     allowlist?: string[];
     /**

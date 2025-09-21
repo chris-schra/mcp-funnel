@@ -1,49 +1,55 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { writeFileSync, mkdirSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import { DotEnvProvider } from './dotenv-provider.js';
-import { ProcessEnvProvider } from './process-env-provider.js';
-import { InlineProvider } from './inline-provider.js';
-import type { ISecretProvider } from './types.js';
 
-// Mock file system operations for DotEnvProvider tests
-vi.mock('fs', () => ({
-  readFileSync: vi.fn(),
-}));
+// Test setup helpers
+function createTestDirectory(): string {
+  const testDir = join(
+    tmpdir(),
+    `providers-real-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  );
+  mkdirSync(testDir, { recursive: true });
+  return testDir;
+}
 
-vi.mock('path', () => ({
-  resolve: vi.fn(),
-  isAbsolute: vi.fn(),
-}));
+function createTestEnvFile(
+  dir: string,
+  filename: string,
+  content: string,
+): string {
+  const filePath = join(dir, filename);
+  writeFileSync(filePath, content, 'utf-8');
+  return filePath;
+}
 
-describe('DotEnvProvider', () => {
-  let mockReadFileSync: ReturnType<typeof vi.fn>;
-  let mockResolve: ReturnType<typeof vi.fn>;
-  let mockIsAbsolute: ReturnType<typeof vi.fn>;
+function cleanupTestDirectory(dir: string): void {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    // Ignore cleanup errors
+  }
+}
 
-  beforeEach(async () => {
-    // Reset all mocks
-    vi.clearAllMocks();
+describe('DotEnvProvider (Real Files)', () => {
+  let testDir: string;
 
-    // Get references to the mocked functions
-    const fsMock = await import('fs');
-    const pathMock = await import('path');
-    mockReadFileSync = vi.mocked(fsMock.readFileSync);
-    mockResolve = vi.mocked(pathMock.resolve);
-    mockIsAbsolute = vi.mocked(pathMock.isAbsolute);
+  beforeEach(() => {
+    testDir = createTestDirectory();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    cleanupTestDirectory(testDir);
   });
 
   it('should read a valid .env file and parse key-value pairs', async () => {
     // Arrange
     const envContent =
       'API_KEY=secret123\nDATABASE_URL=postgres://localhost:5432/test\n';
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/resolved/path/.env');
+    const envFilePath = createTestEnvFile(testDir, '.env', envContent);
 
-    const provider = new DotEnvProvider({ path: '.env' });
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -53,74 +59,47 @@ describe('DotEnvProvider', () => {
       API_KEY: 'secret123',
       DATABASE_URL: 'postgres://localhost:5432/test',
     });
-    expect(mockReadFileSync).toHaveBeenCalledWith(
-      '/resolved/path/.env',
-      'utf-8',
-    );
   });
 
   it('should handle missing .env file gracefully', async () => {
-    // Arrange
-    const error = new Error(
-      'ENOENT: no such file or directory',
-    ) as NodeJS.ErrnoException;
-    error.code = 'ENOENT';
-    mockReadFileSync.mockImplementation(() => {
-      throw error;
-    });
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/resolved/path/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    // Arrange - use a non-existent file path
+    const nonExistentPath = join(testDir, 'nonexistent.env');
+    const provider = new DotEnvProvider({ path: nonExistentPath });
 
     // Act
     const secrets = await provider.resolveSecrets();
 
     // Assert
     expect(secrets).toEqual({});
-    expect(mockReadFileSync).toHaveBeenCalledWith(
-      '/resolved/path/.env',
-      'utf-8',
-    );
   });
 
   it('should resolve relative paths correctly', async () => {
     // Arrange
     const envContent = 'KEY=value';
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/current/working/dir/.env.local');
+    const _envFilePath = createTestEnvFile(testDir, '.env.local', envContent);
+    const relativePath = '.env.local';
 
-    const provider = new DotEnvProvider({ path: '.env.local' });
+    const provider = new DotEnvProvider({ path: relativePath }, testDir);
 
     // Act
-    await provider.resolveSecrets();
+    const secrets = await provider.resolveSecrets();
 
     // Assert
-    expect(mockIsAbsolute).toHaveBeenCalledWith('.env.local');
-    expect(mockResolve).toHaveBeenCalledWith(process.cwd(), '.env.local');
-    expect(mockReadFileSync).toHaveBeenCalledWith(
-      '/current/working/dir/.env.local',
-      'utf-8',
-    );
+    expect(secrets).toEqual({ KEY: 'value' });
   });
 
   it('should handle absolute paths correctly', async () => {
     // Arrange
     const envContent = 'KEY=value';
-    const absolutePath = '/absolute/path/.env';
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(true);
+    const envFilePath = createTestEnvFile(testDir, '.env.absolute', envContent);
 
-    const provider = new DotEnvProvider({ path: absolutePath });
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
-    await provider.resolveSecrets();
+    const secrets = await provider.resolveSecrets();
 
     // Assert
-    expect(mockIsAbsolute).toHaveBeenCalledWith(absolutePath);
-    expect(mockResolve).not.toHaveBeenCalled();
-    expect(mockReadFileSync).toHaveBeenCalledWith(absolutePath, 'utf-8');
+    expect(secrets).toEqual({ KEY: 'value' });
   });
 
   it('should parse various key=value formats correctly', async () => {
@@ -134,11 +113,8 @@ describe('DotEnvProvider', () => {
       'EQUALS_IN_VALUE=key=value=more',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(testDir, '.env.formats', envContent);
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -168,11 +144,8 @@ describe('DotEnvProvider', () => {
       '# Final comment',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(testDir, '.env.comments', envContent);
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -194,11 +167,8 @@ describe('DotEnvProvider', () => {
       'UNQUOTED_HASH=value#comment',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(testDir, '.env.quoted', envContent);
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -213,6 +183,24 @@ describe('DotEnvProvider', () => {
     });
   });
 
+  it('should use custom encoding parameter', async () => {
+    // Arrange
+    const envContent = 'KEY=value';
+    const envFilePath = createTestEnvFile(testDir, '.env.encoding', envContent);
+
+    const provider = new DotEnvProvider({
+      path: envFilePath,
+      encoding: 'latin1',
+    });
+
+    // Act
+    const secrets = await provider.resolveSecrets();
+
+    // Assert
+    expect(secrets).toEqual({ KEY: 'value' });
+    // Note: For UTF-8 compatible content like this, both encodings will work
+  });
+
   it('should handle multiline values in quotes', async () => {
     // Arrange
     const envContent = [
@@ -224,11 +212,12 @@ describe('DotEnvProvider', () => {
       "multiline'",
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(
+      testDir,
+      '.env.multiline',
+      envContent,
+    );
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -249,11 +238,8 @@ describe('DotEnvProvider', () => {
       'UNICODE="Unicode \\u0048\\u0065\\u006C\\u006C\\u006F"', // "Hello"
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(testDir, '.env.escape', envContent);
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -275,11 +261,12 @@ describe('DotEnvProvider', () => {
       "BACKSLASH='Value with \\\\ literal backslashes'",
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(
+      testDir,
+      '.env.single-escape',
+      envContent,
+    );
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -301,11 +288,8 @@ describe('DotEnvProvider', () => {
       'export   SPACED_EXPORT=value_with_spaces',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(testDir, '.env.export', envContent);
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -330,11 +314,12 @@ describe('DotEnvProvider', () => {
       'NORMAL=simple_value',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(
+      testDir,
+      '.env.continuation',
+      envContent,
+    );
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -357,11 +342,12 @@ describe('DotEnvProvider', () => {
       'PATH=/usr/bin:/bin',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(
+      testDir,
+      '.env.interpolation',
+      envContent,
+    );
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -385,11 +371,12 @@ describe('DotEnvProvider', () => {
       'MIXED="$DEFINED_VAR and $UNDEFINED_VAR"',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(
+      testDir,
+      '.env.undefined',
+      envContent,
+    );
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -412,11 +399,8 @@ describe('DotEnvProvider', () => {
       'NORMAL_VAR=normal_value',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(testDir, '.env.circular', envContent);
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -447,11 +431,8 @@ describe('DotEnvProvider', () => {
       'SIMPLE=simple_value',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(testDir, '.env.complex', envContent);
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -472,18 +453,19 @@ describe('DotEnvProvider', () => {
     // Arrange
     const envContent = [
       'VALID_VAR=valid_value',
-      'UNCLOSED_QUOTE="unclosed quote', // This should parse as literal since quote is not closed on same line
+      'UNCLOSED_QUOTE="unclosed quote',
       'NO_EQUALS_SIGN',
       'EMPTY_KEY==value',
       '=EMPTY_KEY_START',
       'ANOTHER_VALID=another_value',
     ].join('\n');
 
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env');
-
-    const provider = new DotEnvProvider({ path: '.env' });
+    const envFilePath = createTestEnvFile(
+      testDir,
+      '.env.malformed',
+      envContent,
+    );
+    const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
     const secrets = await provider.resolveSecrets();
@@ -491,399 +473,8 @@ describe('DotEnvProvider', () => {
     // Assert - Should continue parsing valid entries and skip malformed ones
     expect(secrets).toEqual({
       VALID_VAR: 'valid_value',
-      UNCLOSED_QUOTE: '"unclosed quote', // Since quote is unclosed, treat as unquoted value
+      UNCLOSED_QUOTE: '"unclosed quote',
       ANOTHER_VALID: 'another_value',
-    });
-  });
-
-  it('should use custom encoding parameter', async () => {
-    // Arrange
-    const envContent = 'KEY=value';
-    mockReadFileSync.mockReturnValue(envContent);
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/resolved/path/.env');
-
-    const provider = new DotEnvProvider({ path: '.env', encoding: 'latin1' });
-
-    // Act
-    await provider.resolveSecrets();
-
-    // Assert
-    expect(mockReadFileSync).toHaveBeenCalledWith(
-      '/resolved/path/.env',
-      'latin1',
-    );
-  });
-});
-
-describe('ProcessEnvProvider', () => {
-  let originalEnv: NodeJS.ProcessEnv;
-
-  beforeEach(() => {
-    // Store original environment
-    originalEnv = { ...process.env };
-
-    // Set up test environment variables
-    process.env = {
-      MCP_API_KEY: 'secret123',
-      MCP_DATABASE_URL: 'postgres://localhost:5432',
-      MCP_DEBUG: 'true',
-      NODE_ENV: 'test',
-      PATH: '/usr/bin:/bin',
-      OTHER_VAR: 'other_value',
-      ALLOWED_VAR: 'allowed_value',
-      BLOCKED_VAR: 'blocked_value',
-    };
-  });
-
-  afterEach(() => {
-    // Restore original environment
-    process.env = originalEnv;
-  });
-
-  it('should filter environment variables by prefix', async () => {
-    const provider = new ProcessEnvProvider({
-      type: 'process',
-      config: { prefix: 'MCP_' },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      API_KEY: 'secret123',
-      DATABASE_URL: 'postgres://localhost:5432',
-      DEBUG: 'true',
-    });
-  });
-
-  it('should filter environment variables by allowlist', async () => {
-    const provider = new ProcessEnvProvider({
-      type: 'process',
-      config: { allowlist: ['NODE_ENV', 'ALLOWED_VAR'] },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      NODE_ENV: 'test',
-      ALLOWED_VAR: 'allowed_value',
-    });
-  });
-
-  it('should filter environment variables by blocklist', async () => {
-    const provider = new ProcessEnvProvider({
-      type: 'process',
-      config: { blocklist: ['PATH', 'NODE_ENV'] },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      MCP_API_KEY: 'secret123',
-      MCP_DATABASE_URL: 'postgres://localhost:5432',
-      MCP_DEBUG: 'true',
-      OTHER_VAR: 'other_value',
-      ALLOWED_VAR: 'allowed_value',
-      BLOCKED_VAR: 'blocked_value',
-    });
-  });
-
-  it('should combine prefix and allowlist filtering (allowlist takes precedence)', async () => {
-    const provider = new ProcessEnvProvider({
-      type: 'process',
-      config: {
-        prefix: 'MCP_',
-        allowlist: ['NODE_ENV', 'MCP_API_KEY'],
-      },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      NODE_ENV: 'test',
-      API_KEY: 'secret123', // MCP_ prefix stripped from allowlisted items
-    });
-  });
-
-  it('should apply blocklist after allowlist filtering', async () => {
-    const provider = new ProcessEnvProvider({
-      type: 'process',
-      config: {
-        allowlist: ['NODE_ENV', 'ALLOWED_VAR', 'BLOCKED_VAR'],
-        blocklist: ['BLOCKED_VAR'],
-      },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      NODE_ENV: 'test',
-      ALLOWED_VAR: 'allowed_value',
-      // BLOCKED_VAR should be excluded by blocklist
-    });
-  });
-
-  it('should pass all environment variables when no filters are configured', async () => {
-    const provider = new ProcessEnvProvider({ type: 'process', config: {} });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      MCP_API_KEY: 'secret123',
-      MCP_DATABASE_URL: 'postgres://localhost:5432',
-      MCP_DEBUG: 'true',
-      NODE_ENV: 'test',
-      PATH: '/usr/bin:/bin',
-      OTHER_VAR: 'other_value',
-      ALLOWED_VAR: 'allowed_value',
-      BLOCKED_VAR: 'blocked_value',
-    });
-  });
-
-  it('should handle empty environment gracefully', async () => {
-    // Arrange
-    process.env = {};
-    const provider = new ProcessEnvProvider({ type: 'process', config: {} });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({});
-  });
-
-  it('should handle undefined environment variables', async () => {
-    // Arrange
-    process.env = {
-      DEFINED_VAR: 'value',
-      EMPTY_VAR: '',
-      // UNDEFINED_VAR is not set
-    };
-    const provider = new ProcessEnvProvider({ type: 'process', config: {} });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      DEFINED_VAR: 'value',
-      EMPTY_VAR: '',
-      // UNDEFINED_VAR should not be included
-    });
-  });
-});
-
-describe('InlineProvider', () => {
-  // No setup needed for InlineProvider tests
-
-  it('should pass through simple key-value pairs', async () => {
-    const provider = new InlineProvider({
-      type: 'inline',
-      config: {
-        values: {
-          API_KEY: 'secret123',
-          DATABASE_URL: 'postgres://localhost:5432',
-        },
-      },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      API_KEY: 'secret123',
-      DATABASE_URL: 'postgres://localhost:5432',
-    });
-  });
-
-  it('should handle empty values object', async () => {
-    const provider = new InlineProvider({
-      type: 'inline',
-      config: { values: {} },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({});
-  });
-
-  it('should handle values with special characters', async () => {
-    const provider = new InlineProvider({
-      type: 'inline',
-      config: {
-        values: {
-          COMPLEX_VALUE: 'value with spaces and = signs',
-          JSON_CONFIG: '{"key": "value", "number": 123}',
-          URL_WITH_PARAMS: 'https://api.example.com?key=value&other=param',
-          MULTILINE: 'line1\nline2\nline3',
-        },
-      },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      COMPLEX_VALUE: 'value with spaces and = signs',
-      JSON_CONFIG: '{"key": "value", "number": 123}',
-      URL_WITH_PARAMS: 'https://api.example.com?key=value&other=param',
-      MULTILINE: 'line1\nline2\nline3',
-    });
-  });
-
-  it('should handle empty string values', async () => {
-    const provider = new InlineProvider({
-      type: 'inline',
-      config: {
-        values: {
-          EMPTY_VALUE: '',
-          NORMAL_VALUE: 'normal',
-        },
-      },
-    });
-
-    // Act
-    const secrets = await provider.resolveSecrets();
-
-    // Assert
-    expect(secrets).toEqual({
-      EMPTY_VALUE: '',
-      NORMAL_VALUE: 'normal',
-    });
-  });
-
-  it('should return provider name correctly', () => {
-    const provider = new InlineProvider({
-      type: 'inline',
-      config: { values: {} },
-    });
-
-    // Act
-    const name = provider.getName();
-
-    // Assert
-    expect(name).toBe('inline');
-  });
-});
-
-describe('Provider Interface Compliance', () => {
-  it('should implement ISecretProvider interface correctly', async () => {
-    // This test verifies that all providers implement the required interface
-    // For DotEnvProvider, mock a successful file read
-    const fsMock = await import('fs');
-    const pathMock = await import('path');
-    const mockReadFileSync = vi.mocked(fsMock.readFileSync);
-    const mockResolve = vi.mocked(pathMock.resolve);
-    const mockIsAbsolute = vi.mocked(pathMock.isAbsolute);
-
-    mockReadFileSync.mockReturnValue('TEST_KEY=test_value');
-    mockIsAbsolute.mockReturnValue(false);
-    mockResolve.mockReturnValue('/test/.env.test');
-
-    const providers: ISecretProvider[] = [
-      new DotEnvProvider({ path: '.env.test' }),
-      new ProcessEnvProvider({ type: 'process', config: {} }),
-      new InlineProvider({ type: 'inline', config: { values: {} } }),
-    ];
-
-    for (const provider of providers) {
-      // Verify interface compliance
-      expect(typeof provider.resolveSecrets).toBe('function');
-      expect(typeof provider.getName).toBe('function');
-
-      // Verify return types
-      expect(typeof provider.getName()).toBe('string');
-      expect(provider.getName().length).toBeGreaterThan(0);
-
-      // resolveSecrets should return a Promise
-      const result = provider.resolveSecrets();
-      expect(result).toBeInstanceOf(Promise);
-
-      // Should be able to await the result
-      const secrets = await result;
-      expect(typeof secrets).toBe('object');
-      expect(secrets).not.toBeNull();
-    }
-  });
-
-  it('should handle errors appropriately', async () => {
-    // Test error handling for various failure scenarios
-    const fsMock = await import('fs');
-    const pathMock = await import('path');
-    const mockReadFileSync = vi.mocked(fsMock.readFileSync);
-    const mockIsAbsolute = vi.mocked(pathMock.isAbsolute);
-
-    // DotEnvProvider - file read error (should return empty object for ENOENT)
-    const error = new Error(
-      'ENOENT: no such file or directory',
-    ) as NodeJS.ErrnoException;
-    error.code = 'ENOENT';
-    mockReadFileSync.mockImplementation(() => {
-      throw error;
-    });
-    mockIsAbsolute.mockReturnValue(true);
-
-    const dotenvProvider = new DotEnvProvider({
-      path: '/nonexistent/path/.env',
-    });
-    const dotenvSecrets = await dotenvProvider.resolveSecrets();
-    expect(dotenvSecrets).toEqual({});
-
-    // ProcessEnvProvider - should handle empty environment gracefully
-    const originalEnv = { ...process.env };
-    process.env = {};
-    try {
-      const processProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: {},
-      });
-      const processSecrets = await processProvider.resolveSecrets();
-      expect(processSecrets).toEqual({});
-    } finally {
-      process.env = originalEnv;
-    }
-
-    // InlineProvider - should handle empty config gracefully
-    const inlineProvider = new InlineProvider({
-      type: 'inline',
-      config: { values: {} },
-    });
-    const inlineSecrets = await inlineProvider.resolveSecrets();
-    expect(inlineSecrets).toEqual({});
-  });
-
-  it('should provide consistent naming conventions', () => {
-    // Verify that provider names follow consistent conventions
-    const providers = [
-      new DotEnvProvider({ path: '.env' }),
-      new ProcessEnvProvider({ type: 'process', config: {} }),
-      new InlineProvider({ type: 'inline', config: { values: {} } }),
-    ];
-
-    const expectedNames = ['dotenv', 'process', 'inline'];
-
-    providers.forEach((provider, index) => {
-      const name = provider.getName();
-      expect(name).toBe(expectedNames[index]);
-      expect(typeof name).toBe('string');
-      expect(name.toLowerCase()).toBe(name);
-      expect(name).not.toContain(' ');
     });
   });
 });

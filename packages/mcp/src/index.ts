@@ -510,7 +510,7 @@ export class MCPProxy {
 
     // Pre-populate registry with discovered tools
     try {
-      await this.discoverAllTools();
+      await this.populateToolCaches();
     } catch (error) {
       console.error('[proxy] Initial tool discovery failed:', error);
       logError('initial-tool-discovery', error);
@@ -912,24 +912,36 @@ export class MCPProxy {
     serverName: string,
     stateChange: ConnectionStateChange,
   ): void {
-    const targetServer = this.connectedServers.get(serverName);
+    const resolveTarget = (): TargetServer | undefined => {
+      const existing =
+        this.connectedServers.get(serverName) ??
+        this.disconnectedServers.get(serverName) ??
+        this._normalizedServers.find((server) => server.name === serverName);
+
+      if (!existing) {
+        return undefined;
+      }
+
+      const { error: _ignoredError, ...rest } = existing as TargetServer & {
+        error?: string;
+      };
+      return { ...rest } as TargetServer;
+    };
 
     if (
       stateChange.to === ConnectionState.Disconnected ||
       stateChange.to === ConnectionState.Failed
     ) {
-      // Move from connected to disconnected
-      this.connectedServers.delete(serverName);
+      const targetServer = resolveTarget();
 
       if (targetServer) {
+        // Move from connected to disconnected state
+        this.connectedServers.delete(serverName);
         this.disconnectedServers.set(serverName, {
           ...targetServer,
           error: stateChange.error?.message,
         });
       }
-
-      // Remove client reference for this server
-      this._clients.delete(serverName);
 
       logEvent('warn', 'server:disconnected', {
         name: serverName,
@@ -943,11 +955,20 @@ export class MCPProxy {
 
       // Notify that tools have changed
       this.notifyToolListChanged('disconnected');
-    } else if (stateChange.to === ConnectionState.Connected) {
-      // Reconnection successful
-      if (targetServer) {
-        this.handleServerConnection(serverName, targetServer);
+      return;
+    }
+
+    if (stateChange.to === ConnectionState.Connected) {
+      const targetServer = resolveTarget();
+
+      if (!targetServer) {
+        console.warn(
+          `[proxy] Received connected state for unknown server ${serverName}`,
+        );
+        return;
       }
+
+      this.handleServerConnection(serverName, targetServer);
     }
   }
 
@@ -958,22 +979,13 @@ export class MCPProxy {
     }
 
     try {
-      const response = await client.listTools();
-      for (const tool of response.tools) {
-        this.toolRegistry.registerDiscoveredTool({
-          fullName: `${serverName}__${tool.name}`,
-          originalName: tool.name,
-          serverName,
-          definition: tool,
-          client,
-        });
-      }
+      const count = await this.refreshServerTools(serverName, client, {
+        throwOnError: true,
+      });
 
       // Notify that tools have changed
       this.notifyToolListChanged('rediscover');
-      console.error(
-        `[proxy] Rediscovered ${response.tools.length} tools from ${serverName}`,
-      );
+      console.error(`[proxy] Rediscovered ${count} tools from ${serverName}`);
     } catch (error) {
       throw new Error(`Failed to rediscover tools: ${error}`);
     }
@@ -996,27 +1008,46 @@ export class MCPProxy {
     };
   }
 
-  private async discoverAllTools() {
-    // Discover from servers
+  async populateToolCaches(): Promise<void> {
     for (const [serverName, client] of this._clients) {
-      try {
-        const response = await client.listTools();
-        for (const tool of response.tools) {
-          this.toolRegistry.registerDiscoveredTool({
-            fullName: `${serverName}__${tool.name}`,
-            originalName: tool.name,
-            serverName,
-            definition: tool,
-            client,
-          });
-        }
-      } catch (error) {
-        console.error(
-          `[proxy] Failed to discover tools from ${serverName}:`,
-          error,
-        );
-        logError('tools:discovery_failed', error, { server: serverName });
+      await this.refreshServerTools(serverName, client);
+    }
+  }
+
+  private async refreshServerTools(
+    serverName: string,
+    client: Client,
+    options: { throwOnError?: boolean } = {},
+  ): Promise<number> {
+    try {
+      const response = await client.listTools();
+      for (const tool of response.tools) {
+        const fullToolName = `${serverName}__${tool.name}`;
+
+        this.toolRegistry.registerDiscoveredTool({
+          fullName: fullToolName,
+          originalName: tool.name,
+          serverName,
+          definition: tool,
+          client,
+        });
       }
+
+      return response.tools.length;
+    } catch (error) {
+      console.error(
+        `[proxy] Failed to discover tools from ${serverName}:`,
+        error,
+      );
+      logError('tools:discovery_failed', error, { server: serverName });
+
+      if (options.throwOnError) {
+        throw new Error(
+          `Failed to discover tools from ${serverName}: ${error}`,
+        );
+      }
+
+      return 0;
     }
   }
 

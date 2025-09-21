@@ -136,7 +136,7 @@ describe('SecretManager', () => {
 
       const removed = manager.removeProvider('inline');
       expect(removed).toBe(true);
-      expect(manager.getProviderNames()).toEqual(['inline']);
+      expect(manager.getProviderNames()).toEqual([]);
     });
 
     it('should return false when removing non-existent provider', () => {
@@ -159,7 +159,7 @@ describe('SecretManager', () => {
 
       const removed = manager.removeProvider('inline');
       expect(removed).toBe(true);
-      expect(manager.getProviderNames()).toEqual(['inline']);
+      expect(manager.getProviderNames()).toEqual([]);
     });
   });
 

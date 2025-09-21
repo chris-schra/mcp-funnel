@@ -1,53 +1,80 @@
-import { discoverCommands } from '@mcp-funnel/commands-core';
+import { discoverCommands, CommandRegistry } from '@mcp-funnel/commands-core';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 
 export async function runCommand(name: string, args: string[]): Promise<void> {
   try {
-    // Try multiple locations for commands
+    const aggregateRegistry = new CommandRegistry();
+    let discoveredAny = false;
+
+    const registerFromRegistry = (registry: CommandRegistry) => {
+      let registered = false;
+      for (const commandName of registry.getAllCommandNames()) {
+        const command = registry.getCommandForCLI(commandName);
+        if (command) {
+          aggregateRegistry.register(command);
+          registered = true;
+        }
+      }
+      return registered;
+    };
+
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
 
-    // 1. Try local development path first
+    // 1. Local development commands (packages/commands)
     const localCommandsPath = resolve(process.cwd(), 'packages/commands');
-    let registry;
-
     if (existsSync(localCommandsPath)) {
-      registry = await discoverCommands(localCommandsPath);
+      const registry = await discoverCommands(localCommandsPath);
+      if (registerFromRegistry(registry)) {
+        discoveredAny = true;
+      }
     }
 
-    // 2. Try bundled commands
+    // 2. Bundled commands within this package
     const bundledPath = resolve(__dirname, '../../../commands');
-    if (!registry && existsSync(bundledPath)) {
-      registry = await discoverCommands(bundledPath);
+    if (existsSync(bundledPath)) {
+      const registry = await discoverCommands(bundledPath);
+      if (registerFromRegistry(registry)) {
+        discoveredAny = true;
+      }
     }
 
-    // 3. Try node_modules scope
+    // 3. Installed command packages under node_modules/@mcp-funnel
     const scopeDir = resolve(process.cwd(), 'node_modules', '@mcp-funnel');
-    if (!registry && existsSync(scopeDir)) {
-      // Look for command packages in the scope
+    if (existsSync(scopeDir)) {
       const { readdirSync } = await import('fs');
       const entries = readdirSync(scopeDir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.isDirectory() && entry.name.startsWith('command-')) {
-          const cmdPath = resolve(scopeDir, entry.name);
-          registry = await discoverCommands(cmdPath);
-          if (registry) break;
+        if (!entry.isDirectory() || !entry.name.startsWith('command-')) {
+          continue;
+        }
+
+        const cmdPath = resolve(scopeDir, entry.name);
+        if (!existsSync(cmdPath)) {
+          continue;
+        }
+
+        const registry = await discoverCommands(cmdPath);
+        if (registerFromRegistry(registry)) {
+          discoveredAny = true;
         }
       }
     }
 
-    if (!registry) {
+    if (!discoveredAny) {
       console.error('No commands found in any location');
       process.exit(1);
     }
 
-    const command = registry.getCommandForCLI(name);
+    const command = aggregateRegistry.getCommandForCLI(name);
     if (!command) {
       console.error(`Command not found: ${name}`);
       console.error(
-        `Available commands: ${registry.getAllCommandNames().join(', ')}`,
+        `Available commands: ${aggregateRegistry
+          .getAllCommandNames()
+          .join(', ')}`,
       );
       process.exit(1);
     }

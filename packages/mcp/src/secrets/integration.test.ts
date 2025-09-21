@@ -633,9 +633,7 @@ describe('SecretManager Integration Tests', () => {
 
       // Resolution after removing provider
       secrets = await manager.resolveSecrets();
-      expect(secrets).toEqual({
-        DYNAMIC_SECRET: 'dynamic-value',
-      });
+      expect(secrets).toEqual({});
     });
   });
 });
