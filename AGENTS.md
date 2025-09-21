@@ -72,3 +72,6 @@ Transport from MCP SDK     // Add WebSocket alongside SSE
 ```
 
 The Rule: Abstract where variation is inevitable, implement only what's immediate.
+
+## Additional Info
+- Repository URL is: https://github.com/chris-schra/mcp-funnel

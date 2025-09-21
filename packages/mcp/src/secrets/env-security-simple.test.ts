@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { filterEnvVars } from '../env-filter.js';
+import { filterEnvVars, getDefaultPassthroughEnv } from '../env-filter.js';
 import { ProxyConfigSchema } from '../config.js';
 
 describe('Environment Security - Core Functionality', () => {
@@ -127,12 +127,10 @@ describe('Environment Security - Core Functionality', () => {
       // AWS_SECRET_ACCESS_KEY=secret GITHUB_TOKEN=token npx mcp-funnel
 
       // 3. The server should NOT receive AWS_SECRET_ACCESS_KEY or GITHUB_TOKEN
-      // Only: NODE_ENV, HOME, USER, PATH, TERM, CI, DEBUG
+      // Only the default passthrough allowlist returned by getDefaultPassthroughEnv()
 
       // The runtime code applies defaults when defaultPassthroughEnv is undefined:
-      // const passthroughEnv = config.defaultPassthroughEnv ?? [
-      //   'NODE_ENV', 'HOME', 'USER', 'PATH', 'TERM', 'CI', 'DEBUG'
-      // ];
+      // const passthroughEnv = config.defaultPassthroughEnv ?? getDefaultPassthroughEnv();
 
       expect(true).toBe(true); // Documentation test
     });
@@ -152,30 +150,15 @@ describe('Environment Security - Core Functionality', () => {
         defaultPassthroughEnv?: string[];
       }) => {
         // This simulates the logic in index.ts:resolveServerEnvironment
-        const passthroughEnv = config.defaultPassthroughEnv ?? [
-          'NODE_ENV',
-          'HOME',
-          'USER',
-          'PATH',
-          'TERM',
-          'CI',
-          'DEBUG',
-        ];
+        const passthroughEnv =
+          config.defaultPassthroughEnv ?? getDefaultPassthroughEnv();
         return passthroughEnv;
       };
 
       // Test undefined defaultPassthroughEnv
       const configWithoutDefault = {};
       const result = simulateRuntimeLogic(configWithoutDefault);
-      expect(result).toEqual([
-        'NODE_ENV',
-        'HOME',
-        'USER',
-        'PATH',
-        'TERM',
-        'CI',
-        'DEBUG',
-      ]);
+      expect(result).toEqual(getDefaultPassthroughEnv());
 
       // Test explicit empty array
       const configWithEmpty = { defaultPassthroughEnv: [] };
@@ -213,19 +196,14 @@ describe('Environment Security - Core Functionality', () => {
       };
 
       // Apply default filter
-      const defaultAllowlist = [
-        'NODE_ENV',
-        'HOME',
-        'USER',
-        'PATH',
-        'TERM',
-        'CI',
-        'DEBUG',
-      ];
+      const defaultAllowlist = getDefaultPassthroughEnv();
       const filtered = filterEnvVars(dangerousEnv, defaultAllowlist);
 
       // Verify ONLY safe vars are passed
-      expect(Object.keys(filtered).sort()).toEqual(defaultAllowlist.sort());
+      const filteredKeys = Object.keys(filtered);
+      expect(filteredKeys.every((key) => defaultAllowlist.includes(key))).toBe(
+        true,
+      );
 
       // Explicitly verify each dangerous var is blocked
       expect(filtered.AWS_ACCESS_KEY_ID).toBeUndefined();

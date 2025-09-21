@@ -27,10 +27,6 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.cjs"
-    },
-    "./overrides": {
-      "import": "./dist/overrides/index.js",
-      "types": "./dist/types/overrides/index.d.ts"
     }
   },
   "files": [

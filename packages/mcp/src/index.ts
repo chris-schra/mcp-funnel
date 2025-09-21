@@ -8,7 +8,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
 import { resolveSecretsFromConfig } from './secrets/index.js';
-import { filterEnvVars } from './env-filter.js';
+import { filterEnvVars, getDefaultPassthroughEnv } from './env-filter.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -765,15 +765,8 @@ export class MCPProxy {
 
     // 1. Start with filtered process.env
     // Use configured defaultPassthroughEnv or secure defaults if not specified
-    const passthroughEnv = this._config.defaultPassthroughEnv ?? [
-      'NODE_ENV',
-      'HOME',
-      'USER',
-      'PATH', // Required for finding executables
-      'TERM',
-      'CI',
-      'DEBUG',
-    ];
+    const passthroughEnv =
+      this._config.defaultPassthroughEnv ?? getDefaultPassthroughEnv();
     finalEnv = filterEnvVars(process.env, passthroughEnv);
 
     // 2. Apply default secret providers if configured
