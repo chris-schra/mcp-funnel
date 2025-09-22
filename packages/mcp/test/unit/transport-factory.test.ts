@@ -538,19 +538,27 @@ describe('TransportFactory', () => {
 
       // Create two different auth provider instances with same functionality
       const authProvider1: IAuthProvider = {
-        getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer token1' }),
+        getHeaders: vi
+          .fn()
+          .mockResolvedValue({ Authorization: 'Bearer token1' }),
         isValid: vi.fn().mockResolvedValue(true),
         refresh: vi.fn().mockResolvedValue(undefined),
       };
 
       const authProvider2: IAuthProvider = {
-        getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer token2' }),
+        getHeaders: vi
+          .fn()
+          .mockResolvedValue({ Authorization: 'Bearer token2' }),
         isValid: vi.fn().mockResolvedValue(true),
         refresh: vi.fn().mockResolvedValue(undefined),
       };
 
-      const transport1 = await createTransport(config, { authProvider: authProvider1 });
-      const transport2 = await createTransport(config, { authProvider: authProvider2 });
+      const transport1 = await createTransport(config, {
+        authProvider: authProvider1,
+      });
+      const transport2 = await createTransport(config, {
+        authProvider: authProvider2,
+      });
 
       // Should be different instances due to different auth provider instances
       expect(transport1).not.toBe(transport2);
@@ -587,8 +595,12 @@ describe('TransportFactory', () => {
         isExpired: vi.fn().mockResolvedValue(false),
       };
 
-      const transport1 = await createTransport(config, { tokenStorage: tokenStorage1 });
-      const transport2 = await createTransport(config, { tokenStorage: tokenStorage2 });
+      const transport1 = await createTransport(config, {
+        tokenStorage: tokenStorage1,
+      });
+      const transport2 = await createTransport(config, {
+        tokenStorage: tokenStorage2,
+      });
 
       // Should be different instances due to different token storage instances
       expect(transport1).not.toBe(transport2);
@@ -603,7 +615,9 @@ describe('TransportFactory', () => {
       };
 
       const authProvider: IAuthProvider = {
-        getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer token' }),
+        getHeaders: vi
+          .fn()
+          .mockResolvedValue({ Authorization: 'Bearer token' }),
         isValid: vi.fn().mockResolvedValue(true),
         refresh: vi.fn().mockResolvedValue(undefined),
       };

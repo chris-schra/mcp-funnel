@@ -676,12 +676,16 @@ describe('MCPProxy Reconnection Logic', () => {
       // Start reconnection
       const reconnectPromise = mcpProxy.reconnectServer(serverName);
 
+      // Set up expectation BEFORE advancing timers to avoid unhandled rejection
+      const expectation =
+        expect(reconnectPromise).rejects.toThrow('Server removed');
+
       // Advance time to trigger the rejection
       vi.advanceTimersByTime(1000);
       await vi.runOnlyPendingTimersAsync();
 
       // Should handle the error gracefully
-      await expect(reconnectPromise).rejects.toThrow('Server removed');
+      await expectation;
     });
 
     it('should handle transport close during active connection', async () => {

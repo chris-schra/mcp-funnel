@@ -301,6 +301,7 @@ export type {
   StdioTransportConfig,
   SSETransportConfig,
   WebSocketTransportConfig,
+  ServerStatus,
 } from './types/index.js';
 
 /**
