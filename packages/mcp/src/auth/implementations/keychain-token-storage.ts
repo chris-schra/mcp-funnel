@@ -18,10 +18,10 @@ const execFileAsync = promisify(execFile);
  *
  * Platform Support:
  * - macOS: Uses `security` command for Keychain access
- * - Windows: Uses `cmdkey` command for Windows Credential Manager
+ * - Windows: Uses `cmdkey` for storage/deletion and PowerShell PasswordVault API for retrieval
  * - Linux: Falls back to encrypted file storage with restrictive permissions
  *
- * No external dependencies - uses OS built-in commands following protocol
+ * No external dependencies - uses OS built-in commands and APIs following security protocols
  *
  * Security: All command execution uses execFile with argument arrays to prevent
  * command injection attacks. ServerIds are validated against a strict regex.
@@ -187,23 +187,28 @@ export class KeychainTokenStorage implements ITokenStorage {
       ]);
       return stdout.trim();
     } else if (process.platform === 'win32') {
-      // Windows: cmdkey doesn't support retrieval, parse cmdkey /list output
-      const { stdout } = await execFileAsync('cmdkey', [`/list:${key}`]);
+      // Windows: Use PowerShell PasswordVault API to retrieve stored credentials
+      // This accesses the same Windows Credential Manager that cmdkey writes to
+      const powershellScript = [
+        'try {',
+        '  $vault = New-Object Windows.Security.Credentials.PasswordVault;',
+        `  $cred = $vault.Retrieve("${this.serviceName}", "${key}");`,
+        '  $cred.RetrievePassword();',
+        '  Write-Output $cred.Password',
+        '} catch {',
+        '  Write-Error "Credential not found: $_";',
+        '  exit 1',
+        '}',
+      ].join(' ');
 
-      // Parse cmdkey output to extract password
-      const lines = stdout.split('\n');
-      const targetLine = lines.find(
-        (line) => line.includes('Target:') && line.includes(key),
-      );
+      const { stdout } = await execFileAsync('powershell', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        powershellScript,
+      ]);
 
-      if (!targetLine) {
-        throw new Error('Credential not found');
-      }
-
-      // Windows credential retrieval is complex, fallback to file for simplicity
-      throw new Error(
-        'Windows keychain retrieval not implemented, using file fallback',
-      );
+      return stdout.trim();
     } else {
       // Linux/other: No keychain command available
       throw new Error('No keychain available for this platform');

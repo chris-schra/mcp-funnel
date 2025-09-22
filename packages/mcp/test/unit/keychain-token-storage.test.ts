@@ -116,6 +116,21 @@ describe('KeychainTokenStorage', () => {
           expect.stringContaining('test-access-token'),
         ]);
       });
+
+      it('should fallback to file storage when Windows credential manager fails', async () => {
+        // Mock Windows credential manager failure
+        mockExecFileAsync.mockRejectedValue(new Error('Windows credential error'));
+
+        // Mock file operations
+        mockedFs.mkdir.mockResolvedValue(undefined);
+        mockedFs.writeFile.mockResolvedValue(undefined);
+
+        await storage.store(mockToken);
+
+        expect(mockExecFileAsync).toHaveBeenCalled();
+        expect(mockedFs.mkdir).toHaveBeenCalled();
+        expect(mockedFs.writeFile).toHaveBeenCalled();
+      });
     });
 
     describe('Linux', () => {
@@ -203,6 +218,63 @@ describe('KeychainTokenStorage', () => {
         const result = await storage.retrieve();
 
         expect(result).toBeNull();
+      });
+    });
+
+    describe('Windows', () => {
+      beforeEach(() => {
+        Object.defineProperty(process, 'platform', { value: 'win32' });
+      });
+
+      it('should retrieve token from Windows credential manager successfully', async () => {
+        const tokenJson = JSON.stringify({
+          accessToken: mockToken.accessToken,
+          expiresAt: mockToken.expiresAt.toISOString(),
+          tokenType: mockToken.tokenType,
+          scope: mockToken.scope,
+        });
+
+        mockExecFileAsync.mockResolvedValue({ stdout: tokenJson, stderr: '' });
+
+        const result = await storage.retrieve();
+
+        expect(mockExecFileAsync).toHaveBeenCalledWith('powershell', [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          expect.stringContaining('Windows.Security.Credentials.PasswordVault'),
+        ]);
+
+        expect(result).toEqual({
+          accessToken: mockToken.accessToken,
+          expiresAt: mockToken.expiresAt,
+          tokenType: mockToken.tokenType,
+          scope: mockToken.scope,
+        });
+      });
+
+      it('should fallback to file storage when Windows credential retrieval fails', async () => {
+        const tokenJson = JSON.stringify({
+          accessToken: mockToken.accessToken,
+          expiresAt: mockToken.expiresAt.toISOString(),
+          tokenType: mockToken.tokenType,
+          scope: mockToken.scope,
+        });
+
+        // Mock Windows credential retrieval failure
+        mockExecFileAsync.mockRejectedValue(new Error('PowerShell error'));
+
+        // Mock successful file read
+        mockedFs.readFile.mockResolvedValue(tokenJson);
+
+        const result = await storage.retrieve();
+
+        expect(result).toEqual({
+          accessToken: mockToken.accessToken,
+          expiresAt: mockToken.expiresAt,
+          tokenType: mockToken.tokenType,
+          scope: mockToken.scope,
+        });
       });
     });
   });
