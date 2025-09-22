@@ -21,5 +21,8 @@ export {
   resolveMergedProxyConfig,
 } from './config-loader.js';
 
+// Re-export server types
+export type { ServerStatus } from './types/server.types.js';
+
 // Default export for backward compatibility
 export { MCPProxy } from './proxy/mcp-proxy.js';
