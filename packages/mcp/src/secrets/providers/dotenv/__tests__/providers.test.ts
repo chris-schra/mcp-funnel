@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { DotEnvProvider } from './dotenv-provider.js';
+import { DotEnvProvider } from '../index.js';
 
 // Test setup helpers
 function createTestDirectory(): string {

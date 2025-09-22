@@ -7,7 +7,7 @@ import { SecretManager } from './secret-manager.js';
 import { SecretProviderRegistry } from './secret-provider-registry.js';
 import { InlineProvider } from './inline-provider.js';
 import { ProcessEnvProvider } from './process-env-provider.js';
-import { DotEnvProvider } from './dotenv-provider.js';
+import { DotEnvProvider } from './providers/dotenv/index.js';
 import { BaseSecretProvider } from './base-provider.js';
 
 class ThrowingProvider extends BaseSecretProvider {

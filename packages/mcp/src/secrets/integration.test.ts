@@ -4,7 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { SecretManager } from './secret-manager.js';
 import { SecretProviderRegistry } from './secret-provider-registry.js';
-import { DotEnvProvider } from './dotenv-provider.js';
+import { DotEnvProvider } from './providers/dotenv/index.js';
 import { ProcessEnvProvider } from './process-env-provider.js';
 import { InlineProvider } from './inline-provider.js';
 

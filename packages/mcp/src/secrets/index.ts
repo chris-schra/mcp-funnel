@@ -41,7 +41,7 @@ export {
 } from './logger.js';
 export { ProcessEnvProvider } from './process-env-provider.js';
 export { InlineProvider } from './inline-provider.js';
-export { DotEnvProvider } from './dotenv-provider.js';
+export { DotEnvProvider } from './providers/dotenv/index.js';
 export {
   createSecretProvider,
   createSecretProviders,

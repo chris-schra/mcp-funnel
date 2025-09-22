@@ -7,7 +7,7 @@
 
 import type { SecretProviderConfig } from './provider-configs.js';
 import type { ISecretProvider } from './types.js';
-import { DotEnvProvider } from './dotenv-provider.js';
+import { DotEnvProvider } from './providers/dotenv/index.js';
 import { ProcessEnvProvider } from './process-env-provider.js';
 import { InlineProvider } from './inline-provider.js';
 
