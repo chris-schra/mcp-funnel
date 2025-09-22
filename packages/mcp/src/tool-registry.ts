@@ -118,19 +118,32 @@ export class ToolRegistry {
     }
   }
 
-  // Remove all tools from a specific server (useful when server disconnects)
-  removeServerTools(serverName: string): void {
+  // Remove all tools from a specific server (used for server disconnection)
+  removeToolsFromServer(serverName: string): void {
     const toolsToRemove: string[] = [];
 
+    // Find all tools from this server
     for (const [name, tool] of this.tools) {
-      if (tool.serverName === serverName && !tool.isCoreTool) {
+      if (tool.serverName === serverName) {
         toolsToRemove.push(name);
       }
     }
 
+    // Remove them from the registry
     for (const toolName of toolsToRemove) {
       this.tools.delete(toolName);
     }
+
+    if (toolsToRemove.length > 0) {
+      console.error(
+        `[registry] Removed ${toolsToRemove.length} tools from disconnected server: ${serverName}`,
+      );
+    }
+  }
+
+  // Compatibility alias for older callers
+  removeServerTools(serverName: string): void {
+    this.removeToolsFromServer(serverName);
   }
 
   // Compute if tool should be exposed (visible to clients)

@@ -6,56 +6,88 @@ import {
   CallToolRequestSchema,
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ProxyConfig, normalizeServers, TargetServer } from '../config.js';
+import { type Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { EventEmitter } from 'events';
+import {
+  ProxyConfig,
+  normalizeServers,
+  TargetServer,
+  TargetServerZod,
+  AuthConfigZod,
+} from '../config.js';
+import { createTransport } from '../transports/index.js';
+import { StdioClientTransport } from '../transports/implementations/stdio-client-transport.js';
+import {
+  ReconnectionManager,
+  type ReconnectionConfig,
+} from '../transports/utils/transport-utils.js';
+import {
+  OAuth2ClientCredentialsProvider,
+  OAuth2AuthCodeProvider,
+  BearerTokenAuthProvider,
+  AuthenticationError,
+  type IAuthProvider,
+  type ITokenStorage,
+} from '../auth/index.js';
+import { TokenStorageFactory } from '../auth/token-storage-factory.js';
 import { ICoreTool, CoreToolContext } from '../tools/core-tool.interface.js';
 import { DiscoverToolsByWords } from '../tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from '../tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from '../tools/bridge-tool-request/index.js';
 import { LoadToolset } from '../tools/load-toolset/index.js';
-import { SearchRegistryTools } from '../tools/search-registry-tools/index.js';
-import { GetServerInstallInfo } from '../tools/get-server-install-info/index.js';
+import type { ServerStatus } from '../types/index.js';
 import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
 import { Dirent } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError } from '../logger.js';
 import { ToolRegistry } from '../tool-registry.js';
-import type { ConnectionStateChange } from '../reconnection-manager.js';
 import { resolveServerEnvironment } from './env.js';
-import { createTransportFactory } from './transports.js';
-import { logger, prefixedLog } from './logging.js';
-import type {
-  ServerConnectionState,
-  IReconnectableTransport,
-} from './types.js';
+
 import Package from '../../package.json';
 
-export class MCPProxy {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+type ManualReconnectionTracker = Map<string, Promise<void>>;
+
+interface AuthProviderResult {
+  provider: IAuthProvider;
+  tokenStorage?: ITokenStorage;
+}
+
+export type ProxyStartOptions = {
+  transport: 'stdio' | 'streamable-http';
+};
+
+export class MCPProxy extends EventEmitter {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
-  private _transports: Map<string, IReconnectableTransport> = new Map();
   private _config: ProxyConfig;
   private _configPath: string;
-  private _normalizedServers: TargetServer[];
+  private _normalizedServers: (TargetServer | TargetServerZod)[];
   private toolRegistry: ToolRegistry;
   private coreTools: Map<string, ICoreTool> = new Map();
-  private transportFactory = createTransportFactory('stdio');
 
-  // Server connection state management
-  private serverState: ServerConnectionState = {
-    connected: new Map(),
-    disconnected: new Map(),
-  };
+  private connectedServers = new Map<string, TargetServer | TargetServerZod>();
+  private disconnectedServers = new Map<
+    string,
+    (TargetServer | TargetServerZod) & { error?: string }
+  >();
+  private connectionTimestamps = new Map<string, string>();
+  private transports = new Map<string, Transport>();
+  private reconnectionManagers = new Map<string, ReconnectionManager>();
+  private manualReconnections: ManualReconnectionTracker = new Map();
+  private manualDisconnectRequests = new Set<string>();
 
-  constructor(config: ProxyConfig, configPath: string) {
+  constructor(config: ProxyConfig, configPath: string = process.cwd()) {
+    super();
     this._config = config;
     this._configPath = configPath;
     this._normalizedServers = normalizeServers(config.servers);
     this.toolRegistry = new ToolRegistry(config);
 
-    // Initialize all servers as disconnected
     this._normalizedServers.forEach((server) => {
-      this.serverState.disconnected.set(server.name, server);
+      this.disconnectedServers.set(server.name, server);
     });
 
     this._server = new Server(
@@ -83,7 +115,7 @@ export class MCPProxy {
 
     // Pre-populate registry with discovered tools
     try {
-      await this.populateToolCaches();
+      await this.discoverAllTools();
     } catch (error) {
       console.error('[proxy] Initial tool discovery failed:', error);
       logError('initial-tool-discovery', error);
@@ -97,8 +129,6 @@ export class MCPProxy {
       new GetToolSchema(),
       new BridgeToolRequest(),
       new LoadToolset(),
-      new SearchRegistryTools(),
-      new GetServerInstallInfo(),
     ];
 
     for (const tool of tools) {
@@ -120,44 +150,6 @@ export class MCPProxy {
     }
   }
 
-  /**
-   * Register a command tool in the tool registry
-   */
-  private registerCommandTool(
-    command: ICommand,
-    enabledCommands: string[],
-  ): void {
-    if (enabledCommands.length > 0 && !enabledCommands.includes(command.name)) {
-      return;
-    }
-
-    const mcpDefs = command.getMCPDefinitions();
-    const isSingle = mcpDefs.length === 1;
-    const singleMatchesCommand = isSingle && mcpDefs[0]?.name === command.name;
-
-    for (const mcpDef of mcpDefs) {
-      const useCompact = singleMatchesCommand && mcpDef.name === command.name;
-      const displayName = useCompact
-        ? `${command.name}`
-        : `${command.name}_${mcpDef.name}`;
-
-      if (!mcpDef.description) {
-        throw new Error(
-          `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
-        );
-      }
-
-      // Register command tool in the registry
-      this.toolRegistry.registerDiscoveredTool({
-        fullName: displayName,
-        originalName: mcpDef.name,
-        serverName: 'commands',
-        definition: { ...mcpDef, name: displayName },
-        command,
-      });
-    }
-  }
-
   private async loadDevelopmentCommands(): Promise<void> {
     // Only load if explicitly enabled in config
     if (!this._config.commands?.enabled) return;
@@ -174,8 +166,37 @@ export class MCPProxy {
       ) => {
         for (const commandName of registry.getAllCommandNames()) {
           const command = registry.getCommandForMCP(commandName);
-          if (command) {
-            this.registerCommandTool(command, enabledCommands);
+          if (
+            command &&
+            (enabledCommands.length === 0 ||
+              enabledCommands.includes(command.name))
+          ) {
+            const mcpDefs = command.getMCPDefinitions();
+            const isSingle = mcpDefs.length === 1;
+            const singleMatchesCommand =
+              isSingle && mcpDefs[0]?.name === command.name;
+
+            for (const mcpDef of mcpDefs) {
+              const useCompact =
+                singleMatchesCommand && mcpDef.name === command.name;
+              const displayName = useCompact
+                ? `${command.name}`
+                : `${command.name}_${mcpDef.name}`;
+
+              if (!mcpDef.description) {
+                throw new Error(
+                  `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
+                );
+              }
+              // Register command tool in the registry
+              this.toolRegistry.registerDiscoveredTool({
+                fullName: displayName,
+                originalName: mcpDef.name,
+                serverName: 'commands',
+                definition: { ...mcpDef, name: displayName },
+                command,
+              });
+            }
           }
         }
       };
@@ -191,70 +212,91 @@ export class MCPProxy {
         // ignore
       }
 
-      // 2) Zero-config auto-scan for installed command packages
-      await this.loadInstalledCommandPackages(enabledCommands);
+      // 2) Zero-config auto-scan for installed command packages under node_modules/@mcp-funnel
+      try {
+        const scopeDir = join(process.cwd(), 'node_modules', '@mcp-funnel');
+        const { readdirSync, existsSync } = await import('fs');
+        if (existsSync(scopeDir)) {
+          const entries = readdirSync(scopeDir, { withFileTypes: true });
+          const packageDirs = entries
+            .filter(
+              (e: Dirent) => e.isDirectory() && e.name.startsWith('command-'),
+            )
+            .map((e: Dirent) => join(scopeDir, e.name));
+
+          const isValidCommand = (obj: unknown): obj is ICommand => {
+            if (!obj || typeof obj !== 'object') return false;
+            const c = obj as Record<string, unknown>;
+            return (
+              typeof c.name === 'string' &&
+              typeof c.description === 'string' &&
+              typeof c.executeToolViaMCP === 'function' &&
+              typeof c.executeViaCLI === 'function' &&
+              typeof c.getMCPDefinitions === 'function'
+            );
+          };
+
+          for (const pkgDir of packageDirs) {
+            try {
+              const pkgJsonPath = join(pkgDir, 'package.json');
+              if (!existsSync(pkgJsonPath)) continue;
+              const { readFile } = await import('fs/promises');
+              const pkg = JSON.parse(await readFile(pkgJsonPath, 'utf-8')) as {
+                module?: string;
+                main?: string;
+              };
+              const entry = pkg.module || pkg.main;
+              if (!entry) continue;
+              const mod = await import(join(pkgDir, entry));
+              const modObj = mod as Record<string, unknown>;
+              const candidate = modObj.default || modObj.command;
+              const chosen = isValidCommand(candidate)
+                ? candidate
+                : (Object.values(modObj).find(isValidCommand) as
+                    | ICommand
+                    | undefined);
+              if (
+                chosen &&
+                (enabledCommands.length === 0 ||
+                  enabledCommands.includes(chosen.name))
+              ) {
+                // Reuse registration logic
+                const mcpDefs = chosen.getMCPDefinitions();
+                const isSingle = mcpDefs.length === 1;
+                const singleMatchesCommand =
+                  isSingle && mcpDefs[0]?.name === chosen.name;
+                for (const mcpDef of mcpDefs) {
+                  const useCompact =
+                    singleMatchesCommand && mcpDef.name === chosen.name;
+                  const displayName = useCompact
+                    ? `${chosen.name}`
+                    : `${chosen.name}_${mcpDef.name}`;
+                  if (!mcpDef.description) {
+                    throw new Error(
+                      `Tool ${mcpDef.name} from command ${chosen.name} is missing a description`,
+                    );
+                  }
+                  // Register command tool in the registry
+                  this.toolRegistry.registerDiscoveredTool({
+                    fullName: displayName,
+                    originalName: mcpDef.name,
+                    serverName: 'commands',
+                    definition: { ...mcpDef, name: displayName },
+                    command: chosen,
+                  });
+                }
+              }
+            } catch (_err) {
+              // skip invalid package
+              continue;
+            }
+          }
+        }
+      } catch (_e) {
+        // No scope directory or unreadable; ignore
+      }
     } catch (error) {
       console.error('Failed to load commands:', error);
-    }
-  }
-
-  private async loadInstalledCommandPackages(
-    enabledCommands: string[],
-  ): Promise<void> {
-    try {
-      const scopeDir = join(process.cwd(), 'node_modules', '@mcp-funnel');
-      const { readdirSync, existsSync } = await import('fs');
-      if (!existsSync(scopeDir)) return;
-
-      const entries = readdirSync(scopeDir, { withFileTypes: true });
-      const packageDirs = entries
-        .filter((e: Dirent) => e.isDirectory() && e.name.startsWith('command-'))
-        .map((e: Dirent) => join(scopeDir, e.name));
-
-      const isValidCommand = (obj: unknown): obj is ICommand => {
-        if (!obj || typeof obj !== 'object') return false;
-        const c = obj as Record<string, unknown>;
-        return (
-          typeof c.name === 'string' &&
-          typeof c.description === 'string' &&
-          typeof c.executeToolViaMCP === 'function' &&
-          typeof c.executeViaCLI === 'function' &&
-          typeof c.getMCPDefinitions === 'function'
-        );
-      };
-
-      for (const pkgDir of packageDirs) {
-        try {
-          const pkgJsonPath = join(pkgDir, 'package.json');
-          if (!existsSync(pkgJsonPath)) continue;
-
-          const { readFile } = await import('fs/promises');
-          const pkg = JSON.parse(await readFile(pkgJsonPath, 'utf-8')) as {
-            module?: string;
-            main?: string;
-          };
-          const entry = pkg.module || pkg.main;
-          if (!entry) continue;
-
-          const mod = await import(join(pkgDir, entry));
-          const modObj = mod as Record<string, unknown>;
-          const candidate = modObj.default || modObj.command;
-          const chosen = isValidCommand(candidate)
-            ? candidate
-            : (Object.values(modObj).find(isValidCommand) as
-                | ICommand
-                | undefined);
-
-          if (chosen) {
-            this.registerCommandTool(chosen, enabledCommands);
-          }
-        } catch (_err) {
-          // skip invalid package
-          continue;
-        }
-      }
-    } catch (_e) {
-      // No scope directory or unreadable; ignore
     }
   }
 
@@ -286,11 +328,13 @@ export class MCPProxy {
         params?: Record<string, unknown>,
       ) => {
         try {
-          // Create a properly typed notification object
+          // Create a properly typed notification object that conforms to the Notification interface
           const notification: Notification = {
             method,
             ...(params !== undefined && { params }),
           };
+          // Type assertion is required because the Server class restricts notifications to specific types,
+          // but this function needs to support arbitrary custom notifications
           // Await the notification to properly catch async errors
           await this._server.notification(notification as Notification);
         } catch (error) {
@@ -305,73 +349,452 @@ export class MCPProxy {
     };
   }
 
+  /**
+   * Creates an appropriate auth provider based on the authentication configuration
+   */
+  private createAuthProvider(
+    authConfig?: AuthConfigZod,
+    serverName?: string,
+  ): AuthProviderResult | undefined {
+    if (!authConfig || authConfig.type === 'none') {
+      return undefined;
+    }
+
+    switch (authConfig.type) {
+      case 'bearer': {
+        return {
+          provider: new BearerTokenAuthProvider({ token: authConfig.token }),
+        };
+      }
+      case 'oauth2-client': {
+        const tokenStorage = TokenStorageFactory.create('auto', serverName);
+        return {
+          provider: new OAuth2ClientCredentialsProvider(
+            {
+              type: 'oauth2-client',
+              clientId: authConfig.clientId,
+              clientSecret: authConfig.clientSecret,
+              tokenEndpoint: authConfig.tokenEndpoint,
+              scope: authConfig.scope,
+              audience: authConfig.audience,
+            },
+            tokenStorage,
+          ),
+          tokenStorage,
+        };
+      }
+      case 'oauth2-code': {
+        const tokenStorage = TokenStorageFactory.create('auto', serverName);
+        return {
+          provider: new OAuth2AuthCodeProvider(
+            {
+              type: 'oauth2-code',
+              clientId: authConfig.clientId,
+              clientSecret: authConfig.clientSecret,
+              authorizationEndpoint: authConfig.authorizationEndpoint,
+              tokenEndpoint: authConfig.tokenEndpoint,
+              redirectUri: authConfig.redirectUri,
+              scope: authConfig.scope,
+              audience: authConfig.audience,
+            },
+            tokenStorage,
+          ),
+          tokenStorage,
+        };
+      }
+      default: {
+        const _exhaustive: never = authConfig;
+        throw new Error(
+          `Unsupported auth type: ${JSON.stringify(_exhaustive)}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Set up disconnect handling for a connected server
+   * Listens for transport close events and handles cleanup/reconnection
+   */
+  private setupDisconnectHandling(
+    targetServer: TargetServer | TargetServerZod,
+    client: Client,
+    transport: Transport,
+  ): void {
+    // Set up transport close handler
+    const originalOnClose = transport.onclose;
+    transport.onclose = () => {
+      // Call original close handler if it exists
+      if (originalOnClose) {
+        originalOnClose();
+      }
+
+      // Handle the disconnection
+      this.handleServerDisconnection(targetServer, 'transport_closed');
+    };
+
+    // Set up transport error handler for connection issues
+    const originalOnError = transport.onerror;
+    transport.onerror = (error: Error) => {
+      // Call original error handler if it exists
+      if (originalOnError) {
+        originalOnError(error);
+      }
+
+      // Log the error and handle disconnection if it's a connection error
+      logEvent('error', 'server:transport_error', {
+        name: targetServer.name,
+        error: error.message,
+      });
+
+      // Handle disconnection for certain error types
+      if (
+        error.message.includes('connection') ||
+        error.message.includes('closed')
+      ) {
+        this.handleServerDisconnection(
+          targetServer,
+          'transport_error',
+          error.message,
+        );
+      }
+    };
+  }
+
+  /**
+   * Handle server disconnection by cleaning up resources and moving to disconnected state
+   */
+  private handleServerDisconnection(
+    targetServer: TargetServer | TargetServerZod,
+    reason: string,
+    errorMessage?: string,
+  ): void {
+    const serverName = targetServer.name;
+
+    const manualDisconnectRequested =
+      this.manualDisconnectRequests.has(serverName);
+    const disconnectionReason =
+      reason === 'manual_disconnect' || manualDisconnectRequested
+        ? 'manual_disconnect'
+        : reason;
+
+    console.error(
+      `[proxy] Server disconnected: ${serverName} (${disconnectionReason})`,
+    );
+    logEvent('info', 'server:disconnected', {
+      name: serverName,
+      reason: disconnectionReason,
+      error: errorMessage,
+    });
+
+    // Move from connected to disconnected
+    if (this.connectedServers.has(serverName)) {
+      this.connectedServers.delete(serverName);
+
+      // Add to disconnected servers with error info
+      const disconnectedServerInfo = errorMessage
+        ? { ...targetServer, error: errorMessage }
+        : targetServer;
+
+      this.disconnectedServers.set(serverName, disconnectedServerInfo);
+
+      // Emit server disconnected event
+      this.emit('server.disconnected', {
+        serverName,
+        status: 'disconnected',
+        timestamp: new Date().toISOString(),
+        reason: errorMessage || disconnectionReason,
+      });
+    }
+
+    // Clean up client reference and associated tracking data
+    const client = this._clients.get(serverName);
+    if (client) {
+      this._clients.delete(serverName);
+
+      // Clean up any resources associated with this client
+      // Remove tools from registry for this server
+      this.toolRegistry.removeToolsFromServer(serverName);
+    }
+
+    // Clean up connection tracking
+    this.connectionTimestamps.delete(serverName);
+    this.transports.delete(serverName);
+
+    // Set up automatic reconnection if enabled and not manually disconnected
+    const autoReconnectConfig = this._config.autoReconnect;
+    const isAutoReconnectEnabled = autoReconnectConfig?.enabled !== false;
+    const isManualDisconnect = disconnectionReason === 'manual_disconnect';
+
+    if (isAutoReconnectEnabled && !isManualDisconnect) {
+      // Create ReconnectionManager if it doesn't exist
+      if (!this.reconnectionManagers.has(serverName)) {
+        const reconnectionConfig: ReconnectionConfig = {
+          maxAttempts: autoReconnectConfig?.maxAttempts ?? 10,
+          initialDelayMs: autoReconnectConfig?.initialDelayMs ?? 1000,
+          backoffMultiplier: autoReconnectConfig?.backoffMultiplier ?? 2,
+          maxDelayMs: autoReconnectConfig?.maxDelayMs ?? 60000,
+        };
+
+        const reconnectionManager = new ReconnectionManager(
+          reconnectionConfig,
+          () => this.attemptReconnection(targetServer),
+          () => {
+            console.error(
+              `[proxy] Max reconnection attempts reached for ${serverName}`,
+            );
+            logEvent('error', 'server:max_reconnection_attempts', {
+              name: serverName,
+            });
+            // Clean up the reconnection manager
+            this.reconnectionManagers.delete(serverName);
+          },
+          'proxy:reconnection',
+        );
+
+        this.reconnectionManagers.set(serverName, reconnectionManager);
+      }
+
+      // Schedule the first reconnection attempt
+      const reconnectionManager = this.reconnectionManagers.get(serverName);
+      if (reconnectionManager) {
+        reconnectionManager.scheduleReconnection();
+      }
+    }
+
+    if (manualDisconnectRequested) {
+      this.manualDisconnectRequests.delete(serverName);
+    }
+  }
+
+  /**
+   * Attempt to reconnect to a disconnected server
+   * Used by ReconnectionManager for automatic reconnection
+   */
+  private async attemptReconnection(
+    targetServer: TargetServer | TargetServerZod,
+  ): Promise<void> {
+    const serverName = targetServer.name;
+
+    // Get retry attempt number from reconnection manager
+    const reconnectionManager = this.reconnectionManagers.get(serverName);
+    const retryAttempt = reconnectionManager?.getAttemptCount() || 0;
+
+    // Emit server reconnecting event for automatic reconnection
+    this.emit('server.reconnecting', {
+      serverName,
+      status: 'reconnecting',
+      timestamp: new Date().toISOString(),
+      retryAttempt,
+    });
+
+    try {
+      await this.connectToSingleServer(targetServer);
+
+      // Reset the reconnection manager on successful connection
+      const reconnectionManager = this.reconnectionManagers.get(serverName);
+      if (reconnectionManager) {
+        reconnectionManager.reset();
+      }
+
+      console.error(`[proxy] Auto-reconnected to: ${serverName}`);
+      logEvent('info', 'server:auto_reconnected', { name: serverName });
+    } catch (error) {
+      console.error(
+        `[proxy] Auto-reconnection failed for ${serverName}:`,
+        error,
+      );
+      logError('server:auto_reconnect_failed', error, { name: serverName });
+
+      // Re-schedule reconnection - the ReconnectionManager will handle backoff
+      const reconnectionManager = this.reconnectionManagers.get(serverName);
+      if (reconnectionManager) {
+        reconnectionManager.scheduleReconnection();
+      }
+    }
+  }
+
+  /**
+   * Connect to a single target server
+   * Extracted from connectToTargetServers for reuse in reconnection logic
+   */
+  private async connectToSingleServer(
+    targetServer: TargetServer | TargetServerZod,
+  ): Promise<void> {
+    logEvent('info', 'server:connect_start', {
+      name: targetServer.name,
+      command: targetServer.command,
+      args: targetServer.args,
+      hasAuth: !!(targetServer as TargetServerZod).auth,
+      hasTransport: !!(targetServer as TargetServerZod).transport,
+    });
+
+    const client = new Client({
+      name: `proxy-client-${targetServer.name}`,
+      version: '1.0.0',
+    });
+
+    const extendedServer = targetServer as TargetServerZod;
+    const legacyServer = targetServer as TargetServer;
+
+    const baseCommand =
+      legacyServer.command ??
+      (extendedServer.transport?.type === 'stdio'
+        ? extendedServer.transport.command
+        : undefined) ??
+      '';
+    const baseArgs =
+      legacyServer.args ??
+      (extendedServer.transport?.type === 'stdio'
+        ? extendedServer.transport.args
+        : undefined) ??
+      [];
+
+    const targetForEnv: TargetServer = {
+      name: targetServer.name,
+      command: baseCommand,
+      args: Array.isArray(baseArgs) ? baseArgs : [],
+      env: legacyServer.env,
+      secretProviders: legacyServer.secretProviders,
+    };
+
+    // SECURITY: Always use resolveServerEnvironment to ensure proper
+    // environment variable filtering, even when no secret providers are configured
+    const resolvedEnv = await resolveServerEnvironment(
+      targetForEnv,
+      this._config,
+      this._configPath,
+    );
+
+    let transport: Transport;
+
+    const authResult = this.createAuthProvider(
+      extendedServer.auth,
+      extendedServer.name,
+    );
+
+    const transportDependencies = authResult
+      ? {
+          authProvider: authResult.provider,
+          tokenStorage: authResult.tokenStorage,
+        }
+      : undefined;
+
+    if (extendedServer.transport) {
+      const explicitTransportEnv =
+        'env' in extendedServer.transport
+          ? (extendedServer.transport.env ?? {})
+          : {};
+
+      const baseTransportEnv = {
+        ...resolvedEnv,
+        ...explicitTransportEnv,
+      };
+
+      const transportConfig =
+        extendedServer.transport.type === 'stdio'
+          ? {
+              ...extendedServer.transport,
+              command:
+                extendedServer.transport.command ??
+                legacyServer.command ??
+                baseCommand,
+              args:
+                extendedServer.transport.args ?? legacyServer.args ?? baseArgs,
+              env: baseTransportEnv,
+            }
+          : {
+              ...extendedServer.transport,
+              env: baseTransportEnv,
+            };
+
+      transport = await createTransport(transportConfig, transportDependencies);
+    } else {
+      if (!legacyServer.command) {
+        throw new Error(`Server ${targetServer.name} missing command field`);
+      }
+
+      transport = new StdioClientTransport(targetServer.name, {
+        command: baseCommand,
+        args: Array.isArray(baseArgs) ? baseArgs : [],
+        env: resolvedEnv,
+      });
+    }
+
+    await client.connect(transport);
+
+    // Set up disconnect handling - listen for transport close events
+    this.setupDisconnectHandling(targetServer, client, transport);
+
+    // Track connection timestamp and transport reference
+    const connectedAt = new Date().toISOString();
+    this.connectionTimestamps.set(targetServer.name, connectedAt);
+    this.transports.set(targetServer.name, transport);
+
+    this.connectedServers.set(targetServer.name, targetServer);
+    this.disconnectedServers.delete(targetServer.name); // Remove from disconnected if reconnecting
+    this._clients.set(targetServer.name, client);
+
+    console.error(`[proxy] Connected to: ${targetServer.name}`);
+    logEvent('info', 'server:connect_success', {
+      name: targetServer.name,
+    });
+
+    // Emit server connected event
+    this.emit('server.connected', {
+      serverName: targetServer.name,
+      status: 'connected',
+      timestamp: connectedAt,
+    });
+
+    // Discover tools from the newly connected server
+    try {
+      const response = await client.listTools();
+      for (const tool of response.tools) {
+        this.toolRegistry.registerDiscoveredTool({
+          fullName: `${targetServer.name}__${tool.name}`,
+          originalName: tool.name,
+          serverName: targetServer.name,
+          definition: tool,
+          client,
+        });
+      }
+    } catch (error) {
+      console.error(
+        `[proxy] Failed to discover tools from ${targetServer.name}:`,
+        error,
+      );
+      logError('tools:discovery_failed', error, { server: targetServer.name });
+    }
+  }
+
   private async connectToTargetServers() {
     const connectionPromises = this._normalizedServers.map(
       async (targetServer) => {
         try {
-          logEvent('info', 'server:connect_start', {
-            name: targetServer.name,
-            command: targetServer.command,
-            args: targetServer.args,
-          });
-          const client = new Client({
-            name: `proxy-client-${targetServer.name}`,
-            version: '1.0.0',
-          });
-
-          // Resolve environment variables using the new modular system
-          const resolvedEnv = await resolveServerEnvironment(
-            targetServer,
-            this._config,
-            this._configPath,
-          );
-
-          // Create transport using factory (SEAM for future transport types)
-          const transport = this.transportFactory.create(targetServer.name, {
-            command: targetServer.command,
-            args: targetServer.args || [],
-            env: resolvedEnv,
-            reconnection: {
-              initialDelay: 1000,
-              maxDelay: 30000,
-              backoffMultiplier: 2,
-              maxRetries: 10,
-              jitter: 0.25,
-            },
-            healthChecks: true,
-            healthCheckInterval: 30000,
-          });
-
-          // Store transport for management
-          this._transports.set(targetServer.name, transport);
-
-          // Handle disconnection events
-          transport.onDisconnection((stateChange) => {
-            this.handleServerDisconnection(targetServer.name, stateChange);
-          });
-
-          await client.connect(transport);
-
-          // Connection successful - update server tracking
-          this.handleServerConnection(targetServer.name, targetServer);
-
-          this._clients.set(targetServer.name, client);
-          console.error(`[proxy] Connected to: ${targetServer.name}`);
-          logEvent('info', 'server:connect_success', {
-            name: targetServer.name,
-          });
+          await this.connectToSingleServer(targetServer);
           return { name: targetServer.name, status: 'connected' as const };
         } catch (error) {
-          const errorMsg = prefixedLog(
-            targetServer.name,
-            `Failed to connect: ${error}`,
-          );
-          logger.error(errorMsg, error, {
-            serverName: targetServer.name,
-            context: 'connection-failed',
-            command: targetServer.command,
-            args: targetServer.args,
-          });
+          // Enhanced error handling for authentication failures
+          if (error instanceof AuthenticationError) {
+            console.error(
+              `[proxy] Authentication failed for ${targetServer.name}: ${error.message}`,
+            );
+            logError('auth-failed', error, {
+              name: targetServer.name,
+              hasAuth: !!(targetServer as TargetServerZod).auth,
+              authType: (targetServer as TargetServerZod).auth?.type || 'none',
+            });
+          } else {
+            console.error(
+              `[proxy] Failed to connect to ${targetServer.name}:`,
+              error,
+            );
+            logError('connection-failed', error, {
+              name: targetServer.name,
+              command: targetServer.command,
+              args: targetServer.args,
+            });
+          }
           // Do not throw; continue starting proxy with remaining servers
           return { name: targetServer.name, status: 'failed' as const, error };
         }
@@ -385,163 +808,188 @@ export class MCPProxy {
     logEvent('info', 'server:connect_summary', { summary });
   }
 
-  private handleServerConnection(
-    serverName: string,
-    targetServer: TargetServer,
-  ): void {
-    // Move from disconnected to connected
-    this.serverState.disconnected.delete(serverName);
-    this.serverState.connected.set(serverName, targetServer);
-
-    logEvent('info', 'server:reconnected', { name: serverName });
-
-    // Rediscover tools from this server since it's now available
-    this.rediscoverServerTools(serverName).catch((error) => {
-      console.error(
-        `[proxy] Failed to rediscover tools from ${serverName}:`,
-        error,
-      );
-      logError('tools:rediscovery_failed', error, { server: serverName });
-    });
-  }
-
-  private handleServerDisconnection(
-    serverName: string,
-    stateChange: ConnectionStateChange,
-  ): void {
-    const resolveTarget = (): TargetServer | undefined => {
-      const existing =
-        this.serverState.connected.get(serverName) ??
-        this.serverState.disconnected.get(serverName) ??
-        this._normalizedServers.find((server) => server.name === serverName);
-
-      if (!existing) {
-        return undefined;
-      }
-
-      const { error: _ignoredError, ...rest } = existing as TargetServer & {
-        error?: string;
-      };
-      return { ...rest } as TargetServer;
-    };
-
-    if (stateChange.to === 'disconnected' || stateChange.to === 'failed') {
-      const targetServer = resolveTarget();
-
-      if (targetServer) {
-        // Move from connected to disconnected state
-        this.serverState.connected.delete(serverName);
-        this.serverState.disconnected.set(serverName, {
-          ...targetServer,
-          error: stateChange.error?.message,
-        });
-      }
-
-      logEvent('warn', 'server:disconnected', {
-        name: serverName,
-        retryCount: stateChange.retryCount,
-        state: stateChange.to,
-        error: stateChange.error?.message,
-      });
-
-      // Remove tools from this server since it's no longer available
-      this.toolRegistry.removeServerTools(serverName);
-
-      // Notify that tools have changed
-      this.notifyToolListChanged('disconnected');
-      return;
-    }
-
-    if (stateChange.to === 'connected') {
-      const targetServer = resolveTarget();
-
-      if (!targetServer) {
-        console.warn(
-          `[proxy] Received connected state for unknown server ${serverName}`,
-        );
-        return;
-      }
-
-      this.handleServerConnection(serverName, targetServer);
-    }
-  }
-
-  private async rediscoverServerTools(serverName: string): Promise<void> {
-    const client = this._clients.get(serverName);
-    if (!client) {
-      return;
-    }
-
-    try {
-      const count = await this.refreshServerTools(serverName, client, {
-        throwOnError: true,
-      });
-
-      // Notify that tools have changed
-      this.notifyToolListChanged('rediscover');
-      console.error(`[proxy] Rediscovered ${count} tools from ${serverName}`);
-    } catch (error) {
-      throw new Error(`Failed to rediscover tools: ${error}`);
-    }
-  }
-
-  private notifyToolListChanged(reason: string): void {
-    void this._server.sendToolListChanged().catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(
-        `[proxy] Failed to send tools/list_changed (${reason}): ${message}`,
-      );
-      logError('tools:list_changed_failed', error, { reason });
-    });
-  }
-
   getTargetServers() {
     return {
-      connected: Array.from(this.serverState.connected),
-      disconnected: Array.from(this.serverState.disconnected),
+      connected: Array.from(this.connectedServers),
+      disconnected: Array.from(this.disconnectedServers),
     };
   }
 
-  async populateToolCaches(): Promise<void> {
-    for (const [serverName, client] of this._clients) {
-      await this.refreshServerTools(serverName, client);
+  /**
+   * Get the status of a single server by name
+   * Returns ServerStatus object with current connection state
+   */
+  getServerStatus(name: string): ServerStatus {
+    // Check if server is connected
+    if (this.connectedServers.has(name)) {
+      const connectedAt = this.connectionTimestamps.get(name);
+      return {
+        name,
+        status: 'connected',
+        connectedAt,
+      };
+    }
+
+    // Check if server is in disconnected state
+    const disconnectedServer = this.disconnectedServers.get(name);
+    if (disconnectedServer) {
+      return {
+        name,
+        status: disconnectedServer.error ? 'error' : 'disconnected',
+        error: disconnectedServer.error,
+      };
+    }
+
+    // Server not found in either map - return disconnected status
+    return {
+      name,
+      status: 'disconnected',
+    };
+  }
+
+  isServerConnected(name: string): boolean {
+    return this.connectedServers.has(name);
+  }
+
+  /**
+   * Reconnect to a disconnected server
+   * Finds the server in disconnectedServers and attempts to reconnect
+   */
+  async reconnectServer(name: string): Promise<void> {
+    // Check if server is already connected
+    if (this.connectedServers.has(name)) {
+      throw new Error(`Server '${name}' is already connected`);
+    }
+
+    if (this.manualReconnections.has(name)) {
+      throw new Error(
+        `Manual reconnection already in progress for server '${name}'`,
+      );
+    }
+
+    // Find the server in disconnectedServers
+    const disconnectedServer = this.disconnectedServers.get(name);
+    if (!disconnectedServer) {
+      throw new Error(`Server '${name}' not found or not configured`);
+    }
+
+    // Remove the error property if it exists for reconnection
+    const serverConfig = { ...disconnectedServer };
+    delete (serverConfig as { error?: string }).error;
+
+    const reconnectionPromise = (async () => {
+      try {
+        // Emit server reconnecting event
+        this.emit('server.reconnecting', {
+          serverName: name,
+          status: 'reconnecting',
+          timestamp: new Date().toISOString(),
+        });
+
+        // Reset the ReconnectionManager if it exists
+        const reconnectionManager = this.reconnectionManagers.get(name);
+        if (reconnectionManager) {
+          reconnectionManager.reset();
+        }
+
+        await this.connectToSingleServer(serverConfig);
+        console.error(`[proxy] Successfully reconnected to: ${name}`);
+        logEvent('info', 'server:reconnected', { name });
+      } catch (error) {
+        // Add error info back to disconnected server
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.disconnectedServers.set(name, {
+          ...disconnectedServer,
+          error: errorMessage,
+        });
+
+        console.error(`[proxy] Failed to reconnect to ${name}:`, error);
+        logError('server:reconnect_failed', error, { name });
+        throw error;
+      } finally {
+        this.manualReconnections.delete(name);
+      }
+    })();
+
+    this.manualReconnections.set(name, reconnectionPromise);
+    return reconnectionPromise;
+  }
+
+  /**
+   * Disconnect from a connected server
+   * Closes the connection and moves server to disconnected state
+   */
+  async disconnectServer(name: string): Promise<void> {
+    // Check if server is currently connected
+    if (!this.connectedServers.has(name)) {
+      throw new Error(`Server '${name}' is not currently connected`);
+    }
+
+    const targetServer = this.connectedServers.get(name)!;
+    const client = this._clients.get(name);
+    const transport = this.transports.get(name);
+
+    this.manualDisconnectRequests.add(name);
+
+    // Cancel any pending reconnection attempts
+    const reconnectionManager = this.reconnectionManagers.get(name);
+    if (reconnectionManager) {
+      reconnectionManager.cancel();
+      this.reconnectionManagers.delete(name);
+    }
+
+    try {
+      // Close the transport connection
+      if (transport) {
+        await transport.close();
+      } else if (client) {
+        // Fallback: access client's private transport if no transport reference
+        const clientWithTransport = client as unknown as {
+          _transport?: { close: () => Promise<void> };
+        };
+        if (clientWithTransport._transport?.close) {
+          await clientWithTransport._transport.close();
+        }
+      }
+
+      console.error(`[proxy] Manually disconnected from: ${name}`);
+      logEvent('info', 'server:manual_disconnect', { name });
+
+      // Clean up and move to disconnected state
+      // Note: handleServerDisconnection will be called by the transport's onclose handler
+      // But we also call it directly to ensure cleanup happens
+      this.handleServerDisconnection(targetServer, 'manual_disconnect');
+    } catch (error) {
+      console.error(`[proxy] Error during disconnection from ${name}:`, error);
+      logError('server:disconnect_failed', error, { name });
+      throw error;
+    } finally {
+      this.manualDisconnectRequests.delete(name);
     }
   }
 
-  private async refreshServerTools(
-    serverName: string,
-    client: Client,
-    options: { throwOnError?: boolean } = {},
-  ): Promise<number> {
-    try {
-      const response = await client.listTools();
-      for (const tool of response.tools) {
-        const fullToolName = `${serverName}__${tool.name}`;
-
-        this.toolRegistry.registerDiscoveredTool({
-          fullName: fullToolName,
-          originalName: tool.name,
-          serverName,
-          definition: tool,
-          client,
-        });
-      }
-
-      return response.tools.length;
-    } catch (error) {
-      console.error(
-        `[proxy] Failed to discover tools from ${serverName}:`,
-        error,
-      );
-      logError('tools:discovery_failed', error, { server: serverName });
-
-      if (options.throwOnError) {
-        throw new Error(
-          `Failed to discover tools from ${serverName}: ${error}`,
+  private async discoverAllTools() {
+    // Discover from servers
+    for (const [serverName, client] of this._clients) {
+      try {
+        const response = await client.listTools();
+        for (const tool of response.tools) {
+          this.toolRegistry.registerDiscoveredTool({
+            fullName: `${serverName}__${tool.name}`,
+            originalName: tool.name,
+            serverName,
+            definition: tool,
+            client,
+          });
+        }
+      } catch (error) {
+        console.error(
+          `[proxy] Failed to discover tools from ${serverName}:`,
+          error,
         );
+        logError('tools:discovery_failed', error, { server: serverName });
       }
-
-      return 0;
     }
   }
 
@@ -593,12 +1041,19 @@ export class MCPProxy {
     });
   }
 
-  async start() {
+  async start(options?: ProxyStartOptions) {
+    const transportOption = options?.transport ?? 'stdio';
+
     await this.initialize();
-    const transport = new StdioServerTransport();
-    await this._server.connect(transport);
-    console.error('[proxy] Server started successfully');
-    logEvent('info', 'proxy:started');
+
+    if (transportOption === 'stdio') {
+      const transport = new StdioServerTransport();
+      await this._server.connect(transport);
+      console.error('[proxy] Server started successfully');
+      logEvent('info', 'proxy:started');
+    }
+
+    return this._server;
   }
 
   // Public getters for web UI and other integrations
@@ -652,34 +1107,30 @@ export class MCPProxy {
   }
 
   /**
-   * Check if a server is currently connected and available
-   * @param name Server name to check
+   * Complete OAuth2 authorization code flow
+   * Uses O(1) static state lookup instead of O(n) iteration
    */
-  isServerConnected(name: string): boolean {
-    // Check if server exists in connected servers Map
-    return this.serverState.connected.has(name);
-  }
+  async completeOAuthFlow(state: string, code: string): Promise<void> {
+    // Use O(1) lookup to find the provider for this state
+    const provider = OAuth2AuthCodeProvider.getProviderForState(state);
 
-  /**
-   * Clean up all resources and connections
-   */
-  async cleanup(): Promise<void> {
-    console.error('[proxy] Cleaning up all connections...');
+    if (!provider) {
+      throw new Error('No matching OAuth flow found for this state parameter');
+    }
 
-    // Clean up all transports (which will handle reconnection cleanup)
-    const cleanupPromises = Array.from(this._transports.values()).map(
-      (transport) => transport.destroy(),
-    );
+    try {
+      await provider.completeOAuthFlow(state, code);
+      logEvent('info', 'proxy:oauth_completed', { state });
 
-    await Promise.allSettled(cleanupPromises);
-
-    // Clear all maps
-    this._clients.clear();
-    this._transports.clear();
-    this.serverState.connected.clear();
-    this.serverState.disconnected.clear();
-
-    console.error('[proxy] Cleanup completed');
-    logEvent('info', 'proxy:cleanup_completed');
+      // Attempt to reconnect servers if any are disconnected
+      // This handles the case where auth completion enables connection
+      setTimeout(() => this.connectToTargetServers(), 1000);
+    } catch (error) {
+      logEvent('error', 'proxy:oauth_completion_failed', {
+        state,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 }

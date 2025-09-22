@@ -17,7 +17,10 @@
     "jsx": "react-jsx",
     "paths": {
       "mcp-funnel": ["./packages/mcp/src/index.ts"],
-      "@mcp-funnel/commands-core": ["./packages/commands/core/src/index.ts"]
+      "@mcp-funnel/commands-core": ["./packages/commands/core/src/index.ts"],
+      "@mcp-funnel/command-ts-validate": [
+        "./packages/commands/ts-validate/src/index.ts"
+      ]
     }
   },
   "include": ["./src/**/*.ts", "./test/**/*.ts", "./packages/**/*"],
