@@ -157,7 +157,7 @@ export class MCPProxy extends EventEmitter {
     try {
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = dirname(__filename);
-      const commandsPath = join(__dirname, '../../commands');
+      const commandsPath = join(__dirname, '../../../commands');
 
       const enabledCommands = this._config.commands.list || [];
 
