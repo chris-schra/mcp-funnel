@@ -678,6 +678,7 @@ describe('MCPProxy Reconnection Logic', () => {
 
       // Advance time to trigger the rejection
       vi.advanceTimersByTime(1000);
+      await vi.runOnlyPendingTimersAsync();
 
       // Should handle the error gracefully
       await expect(reconnectPromise).rejects.toThrow('Server removed');
