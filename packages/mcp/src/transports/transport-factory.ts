@@ -168,6 +168,42 @@ type ResolvedConfig = {
 const transportCache = new Map<string, FactoryTransport>();
 
 /**
+ * WeakMaps to track unique IDs for provider/storage instances for cache key generation
+ * This ensures different instances with the same configuration get separate cache entries
+ */
+const authProviderIds = new WeakMap<IAuthProvider, string>();
+const tokenStorageIds = new WeakMap<ITokenStorage, string>();
+
+/**
+ * Counter for generating unique instance IDs
+ */
+let instanceIdCounter = 0;
+
+/**
+ * Gets or creates a unique ID for an auth provider instance
+ */
+function getAuthProviderInstanceId(provider: IAuthProvider): string {
+  let id = authProviderIds.get(provider);
+  if (!id) {
+    id = `auth_provider_${++instanceIdCounter}`;
+    authProviderIds.set(provider, id);
+  }
+  return id;
+}
+
+/**
+ * Gets or creates a unique ID for a token storage instance
+ */
+function getTokenStorageInstanceId(storage: ITokenStorage): string {
+  let id = tokenStorageIds.get(storage);
+  if (!id) {
+    id = `token_storage_${++instanceIdCounter}`;
+    tokenStorageIds.set(storage, id);
+  }
+  return id;
+}
+
+/**
  * Default values for SSE transport configuration
  */
 const DEFAULT_SSE_CONFIG = {
@@ -588,14 +624,20 @@ function applyDefaults(config: TransportConfig): TransportConfig {
 
 /**
  * Generates a cache key for transport singleton behavior.
+ * Uses unique instance IDs to ensure different provider/storage instances
+ * don't share cached transports even with identical configurations.
  */
 function generateCacheKey(
   config: TransportConfig,
   dependencies?: TransportFactoryDependencies,
 ): string {
   const configKey = JSON.stringify(config);
-  const authKey = dependencies?.authProvider ? 'auth' : 'no-auth';
-  const storageKey = dependencies?.tokenStorage ? 'storage' : 'no-storage';
+  const authKey = dependencies?.authProvider
+    ? `auth:${getAuthProviderInstanceId(dependencies.authProvider)}`
+    : 'no-auth';
+  const storageKey = dependencies?.tokenStorage
+    ? `storage:${getTokenStorageInstanceId(dependencies.tokenStorage)}`
+    : 'no-storage';
   return `${configKey}:${authKey}:${storageKey}`;
 }
 
