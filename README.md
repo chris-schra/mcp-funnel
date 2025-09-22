@@ -895,7 +895,3 @@ Contributions are welcome! Key areas needing work:
 ## 📄 License
 
 MIT - See LICENSE file in the repository root
-
-## 🙏 Acknowledgments
-
-Built on top of the [Model Context Protocol SDK](https://github.com/anthropics/mcp) by Anthropic.
