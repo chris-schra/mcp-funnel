@@ -14,7 +14,7 @@ If not, you **MUST** immediately stop and ask for the PR number.
 - create a thorough review following the instructions in `.haino/flows/review.md`
 - if you found issues (even if they're only minor) you **MUST** use tool `add_comment_to_pending_review` to add comments to specific lines or files
 - use tool `submit_pending_pull_request_review` to submit the review when done - body should be "Review Summary"
-  you created after following `.haino/flows/review.md` - **ONLY** use event "REQUEST_CHANGES" or "COMMENT" - **NEVER** "APPROVE"
+  you created after following `.haino/flows/review.md` - **ONLY** use event "COMMENT" - **NEVER** "APPROVE" or "REQUEST_CHANGES"
 
 ## Schemas:
 

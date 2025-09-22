@@ -820,7 +820,7 @@ describe('MCPRegistryClient', () => {
       // );
     });
 
-    it.skip('should handle concurrent requests properly', async () => {
+    it('should handle concurrent requests properly', async () => {
       const serverDetail: ServerDetail = {
         id: 'concurrent-server',
         _meta: {
@@ -835,32 +835,38 @@ describe('MCPRegistryClient', () => {
       };
 
       let _fetchCallCount = 0;
-      // TODO: Will use _fetchCallCount when implementation exists
       mockFetch.mockImplementation(async () => {
         _fetchCallCount++;
         // Simulate async delay
         await new Promise((resolve) => setTimeout(resolve, 50));
         return {
           ok: true,
-          json: async () => serverDetail,
+          json: async () => ({
+            servers: [serverDetail],
+            metadata: {
+              count: 1,
+              next_cursor: null,
+            },
+          }),
         };
       });
 
       const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
-      // Make concurrent requests for the same server
-      // const promises = [
-      //   _client.getServer('concurrent-server'),
-      //   _client.getServer('concurrent-server'),
-      //   _client.getServer('concurrent-server')
-      // ];
+      const identifier = 'Concurrent Server';
+      const requests = [
+        _client.getServer(identifier),
+        _client.getServer(identifier),
+        _client.getServer(identifier),
+      ];
 
-      // const results = await Promise.all(promises);
+      const results = await Promise.all(requests);
 
-      // Should only make one API call due to caching or deduplication
-      // expect(fetchCallCount).toBeLessThanOrEqual(1);
-      // expect(results).toHaveLength(3);
-      // results.forEach(result => expect(result).toEqual(serverDetail));
+      // Dedup seam: concurrent callers share the in-flight request so transports can swap protocols later.
+      expect(_fetchCallCount).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(results).toHaveLength(3);
+      results.forEach((result) => expect(result).toEqual(serverDetail));
     });
   });
 });

@@ -28,7 +28,6 @@ You are a concise, reasoning-first assistant. **NEVER** try to please without ev
 - Do **NOT** create tests to test mocks, they are giving a false impression of coverage. Always create tests that test real implementations.
 
 ## Use tool parallelism:
-
 Single message, multiple tools:
 <function_calls>
 <invoke name="Edit">file1 changes</invoke>
@@ -37,7 +36,6 @@ Single message, multiple tools:
 </function_calls>
 
 ### Examples:
-
 7 Edit tools → Single message → All parallel
 MultiEdit → Single file, multiple changes
 Parallel Read → Multiple files at once
@@ -74,3 +72,6 @@ Transport from MCP SDK     // Add WebSocket alongside SSE
 ```
 
 The Rule: Abstract where variation is inevitable, implement only what's immediate.
+
+## Additional Info
+- Repository URL is: https://github.com/chris-schra/mcp-funnel
