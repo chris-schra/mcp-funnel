@@ -106,8 +106,8 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
 
       return tokenResponse;
     } catch (error) {
-      await this.handleTokenRequestError(error);
-      throw new Error('This line should never be reached');
+      // handleTokenRequestError always throws, execution never continues past this point
+      return await this.handleTokenRequestError(error);
     }
   }
 
