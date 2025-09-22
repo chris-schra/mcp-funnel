@@ -657,20 +657,13 @@ export class MCPProxy extends EventEmitter {
       secretProviders: legacyServer.secretProviders,
     };
 
-    const shouldResolveSecrets =
-      (this._config.defaultSecretProviders?.length ?? 0) > 0 ||
-      (legacyServer.secretProviders?.length ?? 0) > 0;
-
-    const resolvedEnv = shouldResolveSecrets
-      ? await resolveServerEnvironment(
-          targetForEnv,
-          this._config,
-          this._configPath,
-        )
-      : ({
-          ...process.env,
-          ...legacyServer.env,
-        } as Record<string, string>);
+    // SECURITY: Always use resolveServerEnvironment to ensure proper
+    // environment variable filtering, even when no secret providers are configured
+    const resolvedEnv = await resolveServerEnvironment(
+      targetForEnv,
+      this._config,
+      this._configPath,
+    );
 
     let transport: Transport;
 
