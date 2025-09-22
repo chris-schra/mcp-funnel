@@ -33,7 +33,7 @@ vi.mock('eventsource', async () => {
     '../mocks/mock-eventsource.js',
   )) as { MockEventSource: typeof MockEventSource };
   return {
-    EventSource: importActual,
+    EventSource: importActual.MockEventSource,
   };
 });
 

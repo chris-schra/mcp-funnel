@@ -5,7 +5,7 @@ import type { TokenData } from '../../src/auth/interfaces/token-storage.interfac
 // Create hoisted mock for execFileAsync
 const mockExecFileAsync = vi.hoisted(() => vi.fn());
 
-// Mock child_process module to use execFile
+// Mock child_process module for test interception
 vi.mock('child_process', () => ({
   execFile: vi.fn(),
 }));

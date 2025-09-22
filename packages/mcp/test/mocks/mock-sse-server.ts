@@ -321,10 +321,7 @@ export class MockSSEServer {
     // Auth validation
     if (this.config.requireAuth) {
       const authHeader = req.headers.authorization;
-      const authQuery = req.query.auth as string;
-
-      const providedToken =
-        (authHeader ? extractBearerToken(authHeader) : null) || authQuery;
+      const providedToken = authHeader ? extractBearerToken(authHeader) : null;
 
       if (
         this.shouldSimulateAuthFailure ||

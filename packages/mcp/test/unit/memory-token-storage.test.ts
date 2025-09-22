@@ -19,7 +19,8 @@ interface MockTimerInfo {
 // Helper to create test token data
 function createTestToken(expiresInMs: number = 3600000): TokenData {
   return {
-    accessToken: 'test-access-token-' + Math.random().toString(36).substr(2, 9),
+    accessToken:
+      'test-access-token-' + Math.random().toString(36).substring(2, 11),
     expiresAt: new Date(Date.now() + expiresInMs),
     tokenType: 'Bearer',
     scope: 'read write',
