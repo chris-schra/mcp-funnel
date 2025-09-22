@@ -5,14 +5,14 @@ import {
   SecretProviderConfigSchema,
   normalizeServers,
 } from '../config.js';
-import type { ProxyConfig, TargetServer } from '../config.js';
+import type { ProxyConfig, TargetServerZod } from '../config.js';
 import type { SecretProviderConfig } from './provider-configs.js';
 
 describe('Secrets Configuration Tests', () => {
   describe('Config Schema Validation', () => {
-    describe('secretProviders field in TargetServerSchema', () => {
+    describe('secretProviders field in ExtendedTargetServerSchema', () => {
       it('should validate valid secretProviders configuration', () => {
-        const validServer: TargetServer = {
+        const validServer: TargetServerZod = {
           name: 'test-server',
           command: 'node',
           args: ['server.js'],
@@ -53,7 +53,7 @@ describe('Secrets Configuration Tests', () => {
       });
 
       it('should validate server without secretProviders (optional field)', () => {
-        const serverWithoutSecrets: TargetServer = {
+        const serverWithoutSecrets: TargetServerZod = {
           name: 'simple-server',
           command: 'echo',
           args: ['hello'],
@@ -65,7 +65,7 @@ describe('Secrets Configuration Tests', () => {
       });
 
       it('should validate empty secretProviders array', () => {
-        const serverWithEmptyProviders: TargetServer = {
+        const serverWithEmptyProviders: TargetServerZod = {
           name: 'empty-providers-server',
           command: 'node',
           secretProviders: [],
@@ -297,7 +297,7 @@ describe('Secrets Configuration Tests', () => {
 
   describe('Backward Compatibility Tests', () => {
     it('should support existing env field without breaking changes', () => {
-      const legacyServerConfig: TargetServer = {
+      const legacyServerConfig: TargetServerZod = {
         name: 'legacy-server',
         command: 'node',
         args: ['app.js'],
@@ -318,7 +318,7 @@ describe('Secrets Configuration Tests', () => {
     });
 
     it('should support env field alongside secretProviders', () => {
-      const hybridServerConfig: TargetServer = {
+      const hybridServerConfig: TargetServerZod = {
         name: 'hybrid-server',
         command: 'node',
         args: ['app.js'],
