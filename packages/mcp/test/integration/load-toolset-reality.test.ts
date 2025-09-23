@@ -27,7 +27,7 @@ describe('LoadToolset - Reality Check', () => {
 
   describe('The Harsh Reality', () => {
     it('loaded tools are NOT directly callable - still need bridge_tool_request', async () => {
-      proxy = new MCPProxy(config);
+      proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       const context = proxy['createToolContext']();
@@ -125,7 +125,7 @@ describe('LoadToolset - Reality Check', () => {
     });
 
     it('loading tools still accumulates in message context', async () => {
-      proxy = new MCPProxy(config);
+      proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       const context = proxy['createToolContext']();
@@ -189,7 +189,7 @@ describe('LoadToolset - Reality Check', () => {
     });
 
     it('enableTools() would send notification but server is not connected', async () => {
-      proxy = new MCPProxy(config);
+      proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       const context = proxy['createToolContext']();
@@ -240,7 +240,7 @@ describe('LoadToolset - Reality Check', () => {
     });
 
     it('demonstrates the 3-step dance is still required', async () => {
-      proxy = new MCPProxy(config);
+      proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       const context = proxy['createToolContext']();
@@ -294,7 +294,7 @@ describe('LoadToolset - Reality Check', () => {
     });
 
     it('shows that toolsets provide organization but not context savings', async () => {
-      proxy = new MCPProxy(config);
+      proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       const context = proxy['createToolContext']();
@@ -316,9 +316,12 @@ describe('LoadToolset - Reality Check', () => {
       };
 
       // Need to enable discover tool for this test
-      proxy = new MCPProxy({
-        ...config,
-      });
+      proxy = new MCPProxy(
+        {
+          ...config,
+        },
+        './test-config.json',
+      );
       await proxy.initialize();
 
       // Re-get context with mocked enableTools

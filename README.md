@@ -51,7 +51,6 @@ MCP Funnel:
 - **Dynamic Tool Discovery**: Experimental feature for reducing initial context usage (see limitations)
 - **Core Tools Mode**: Ultra-minimal context mode exposing only selected MCP Funnel tools with dynamic bridging (95%+ context reduction)
 
-
 ## 💡 Why Use MCP Funnel?
 
 ### The Context Problem
@@ -103,11 +102,12 @@ Or to "speak" with chat:
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"command": "docker",<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"args": [<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"run",<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"--env-file",<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".env",<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"-i",<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"--rm",<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"ghcr.io/github/github-mcp-server"<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;],<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"secretProviders": [<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "type": "dotenv", "config": { "path": ".env" } }<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;}<br/>
     &nbsp;&nbsp;}<br/>
@@ -116,7 +116,7 @@ Or to "speak" with chat:
 </details>
 
 ```
-> /context 
+> /context
   ⎿  ⛁ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Context Usage
      ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-opus-4-1-20250805 • 42k/200k tokens (21%)
      ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ MCP tools: 25.4k tokens (12.7%)
@@ -141,14 +141,14 @@ Or to "speak" with chat:
 ⏺ I'll help you discover the code reasoning tool.
 
 ⏺ mcp-funnel - discover_tools_by_words (MCP)(words: "reasoning", enable: false)
-  ⎿  Found 1 tools:                                                                                                                                                                                                                                                                                           
+  ⎿  Found 1 tools:
      ○ code-reasoning__code-reasoning: 🧠 A detailed tool for dynamic and reflective problem-solving through sequential thinking.
      … +29 lines (ctrl+o to expand)
 
 ⏺ Found it! The code-reasoning__code-reasoning tool is available for detailed code analysis and reasoning. Let me enable it:
 
 ⏺ mcp-funnel - load_toolset (MCP)(tools: ["code-reasoning__code-reasoning"])
-  ⎿  Loaded 1 tools matching specified patterns                                                                                                                                                                                                                                                               
+  ⎿  Loaded 1 tools matching specified patterns
 ⏺ The code reasoning tool is now enabled. It provides:
   - Dynamic problem-solving through sequential thinking
   - Ability to branch and explore alternatives
@@ -158,15 +158,7 @@ Or to "speak" with chat:
   You can now use this tool for analyzing code logic, understanding complex implementations, and working through programming challenges step-by-step.
 ```
 
-## 📋 Prerequisites
-
-- Node.js 18+ and npm/yarn
-- [tsx](https://github.com/privatenumber/tsx) for running TypeScript directly
-- MCP servers you want to proxy (installed separately)
-
 ## 🔧 Installation
-
-
 
 ## ⚙️ Configuration
 
@@ -195,14 +187,8 @@ Create a `.mcp-funnel.json` file in your project directory:
   "servers": {
     "github": {
       "command": "docker",
-      "args": [
-        "run",
-        "--env-file",
-        ".env",
-        "-i",
-        "--rm",
-        "ghcr.io/github/github-mcp-server"
-      ]
+      "args": ["run", "-i", "--rm", "ghcr.io/github/github-mcp-server"],
+      "secretProviders": [{ "type": "dotenv", "config": { "path": ".env" } }]
     },
     "memory": {
       "command": "npx",
@@ -230,10 +216,13 @@ Create a `.mcp-funnel.json` file in your project directory:
 ### Configuration Options
 
 - **servers**: Record of MCP servers to connect to (server name as key)
-    - Key: Server name (used as tool prefix)
-    - `command`: Command to execute
-    - `args`: Command arguments (optional)
-    - `env`: Environment variables (optional)
+  - Key: Server name (used as tool prefix)
+  - `command`: Command to execute
+  - `args`: Command arguments (optional)
+  - `env`: Environment variables (optional, deprecated - use secretProviders instead)
+  - `secretProviders`: Array of secret provider configurations for secure environment variable management (recommended)
+- **defaultSecretProviders**: Default secret providers applied to all servers (optional)
+- **defaultPassthroughEnv**: Environment variables passed to all servers by default (optional)
 - **alwaysVisibleTools**: Patterns for tools that are always exposed, bypassing discovery mode (optional)
 - **exposeTools**: Include patterns for external tools to expose (optional)
 - **hideTools**: Exclude patterns for external tools to hide (optional)
@@ -359,31 +348,6 @@ Once configured, you can use natural language to interact with your aggregated t
 
 This works seamlessly because MCP Funnel aggregates your GitHub server's tools with proper namespacing!
 
-### Local Development
-
-```bash
-# Run from source (uses .mcp-funnel.json from current directory)
-yarn dev
-
-# Or build and test locally
-yarn build
-node dist/cli.js  # Uses .mcp-funnel.json from current directory
-node dist/cli.js /path/to/custom-config.json  # Explicit config
-```
-
-### Development Scripts
-
-```bash
-yarn dev            # Run the development server with hot reload
-yarn build          # Build the TypeScript code
-yarn test           # Run all tests
-yarn test:e2e       # Run end-to-end tests with mock servers
-yarn validate       # Run comprehensive code quality checks (lint, typecheck, format)
-yarn lint           # Run ESLint
-yarn typecheck      # Run TypeScript type checking
-yarn format         # Auto-format code with Prettier
-```
-
 ## 🎮 Tool Visibility Control
 
 MCP Funnel provides a three-tier visibility system for managing which tools are exposed:
@@ -432,7 +396,6 @@ Runtime flow:
 - Enable: `load_toolset` with explicit tool names or patterns (e.g., ["context7__resolve_library_id", "context7__get-library-docs"]).
 - Call: Use the enabled tools normally.
 
-
 ## 🚀 Core Tools Mode (Ultra-Low Context)
 
 Core Tools Mode allows you to expose only MCP Funnel's internal tools for dynamic discovery. When you set `exposeCoreTools` to a minimal set, MCP Funnel can expose as few as **3 tools** instead of 100+:
@@ -449,7 +412,7 @@ Core Tools Mode allows you to expose only MCP Funnel's internal tools for dynami
     "github": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_TOKEN": "your-token" }
+      "secretProviders": [{ "type": "dotenv", "config": { "path": ".env" } }]
     }
   },
   "exposeCoreTools": [
@@ -518,7 +481,31 @@ Once these features land, dynamic discovery will significantly reduce initial co
 
 ## 🔒 Security Considerations
 
-- **Never commit API keys**: Use environment variables or `.env` files (git-ignored)
+### 🔐 Secret Management
+
+MCP Funnel includes a secure secret management system that follows the principle of least privilege. Instead of exposing all environment variables to MCP servers, you can use **secret providers** to control exactly which secrets each server receives.
+
+**Quick example:**
+```json
+{
+  "secretProviders": [
+    { "type": "dotenv", "path": ".env" },      // Load from .env files
+    { "type": "process", "prefix": "MCP_" },   // Filter env vars by prefix
+    { "type": "inline", "values": { ... } }    // Define inline secrets
+  ]
+}
+```
+
+**Key benefits:**
+- Minimal environment variable exposure to child processes
+- Multiple provider types (dotenv, process, inline) with precedence rules
+- Built-in security filtering to prevent credential leakage
+- Centralized secret management across all your MCP servers
+
+📖 **[See the complete Secret Management guide →](docs/secret-management.md)**
+
+### Infrastructure Security
+
 - **Filesystem access**: Be careful with filesystem server paths
 - **Docker permissions**: Ensure proper Docker socket access if using containerized servers
 - **Network isolation**: Consider running in isolated environments for sensitive operations
@@ -533,17 +520,11 @@ Once these features land, dynamic discovery will significantly reduce initial co
 - [ ] WebSocket transport support
 - [ ] Full dynamic tool discovery (blocked on Claude Code CLI support)
 
-## 🧪 Testing
+### 🛠️ Development
 
-Run the test suite:
+For local development setup, debugging, and testing:
 
-```bash
-yarn test           # Run all tests
-yarn test:e2e       # Run end-to-end tests
-yarn validate       # Run linting, type checking, and formatting checks
-```
-
-The project includes comprehensive e2e tests simulating Claude SDK conversations with mock MCP servers.
+📖 **[See the Development Guide →](docs/development.md)**
 
 ## 🤝 Contributing
 
@@ -556,7 +537,3 @@ Contributions are welcome! Key areas needing work:
 ## 📄 License
 
 MIT - See LICENSE file in the repository root
-
-## 🙏 Acknowledgments
-
-Built on top of the [Model Context Protocol SDK](https://github.com/anthropics/mcp) by Anthropic.

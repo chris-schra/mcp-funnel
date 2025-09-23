@@ -15,7 +15,7 @@ describe('Core Tools Configuration', () => {
       servers: [],
     };
 
-    const proxy = new MCPProxy(config);
+    const proxy = new MCPProxy(config, './test-config.json');
     await proxy.initialize();
 
     // Get the actual exposed tools
@@ -38,7 +38,7 @@ describe('Core Tools Configuration', () => {
       exposeCoreTools: [], // Explicitly disable all core tools
     };
 
-    const proxy = new MCPProxy(config);
+    const proxy = new MCPProxy(config, './test-config.json');
     await proxy.initialize();
 
     // Should not have any core tools when explicitly disabled
@@ -56,7 +56,7 @@ describe('Core Tools Configuration', () => {
       servers: [],
     };
 
-    const proxy = new MCPProxy(config);
+    const proxy = new MCPProxy(config, './test-config.json');
     await proxy.initialize();
 
     const context = proxy['createToolContext']();
@@ -111,7 +111,7 @@ describe('Core Tools Configuration', () => {
       hideTools: ['testserver__secret_*', 'testserver__private_tool'],
     };
 
-    const proxy = new MCPProxy(config);
+    const proxy = new MCPProxy(config, './test-config.json');
 
     // Manually set up the client to simulate a connected server
     proxy['_clients'].set('testserver', mockClient);

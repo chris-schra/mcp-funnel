@@ -7,7 +7,14 @@ export default tseslint.config(
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {
-    ignores: ['**/generated/*', '**/dist/*', '**/build/*', '**/coverage/*'],
+    ignores: [
+      '**/generated/*',
+      '**/dist/*',
+      '**/build/*',
+      '**/coverage/*',
+      'docs/**/*',
+      '**/.react-router/**',
+    ],
   },
   {
     rules: {

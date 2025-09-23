@@ -2,8 +2,6 @@ import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
 import { resolveToolName } from '../../utils/tool-resolver.js';
-import type { ICommand } from '@mcp-funnel/commands-core';
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 export interface BridgeToolRequestParams {
   tool: string;
