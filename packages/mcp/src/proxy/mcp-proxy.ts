@@ -113,13 +113,8 @@ export class MCPProxy extends EventEmitter {
       this.loadDevelopmentCommands(),
     ]);
 
-    // Pre-populate registry with discovered tools
-    try {
-      await this.discoverAllTools();
-    } catch (error) {
-      console.error('[proxy] Initial tool discovery failed:', error);
-      logError('initial-tool-discovery', error);
-    }
+    // Tools are already discovered during connectToSingleServer
+    // No need to re-discover them here
     this.setupRequestHandlers();
   }
 
@@ -751,9 +746,18 @@ export class MCPProxy extends EventEmitter {
       timestamp: connectedAt,
     });
 
-    // Discover tools from the newly connected server
+    // Discover tools from the newly connected server with timeout
     try {
-      const response = await client.listTools();
+      // Add timeout to prevent hanging if server crashes during discovery
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Tool discovery timeout')), 5000);
+      });
+
+      const response = await Promise.race([
+        client.listTools(),
+        timeoutPromise
+      ]);
+
       for (const tool of response.tools) {
         this.toolRegistry.registerDiscoveredTool({
           fullName: `${targetServer.name}__${tool.name}`,
