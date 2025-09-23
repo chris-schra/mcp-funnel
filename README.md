@@ -213,6 +213,38 @@ Create a `.mcp-funnel.json` file in your project directory:
 }
 ```
 
+### Passing secrets / environment variables example: GitHub MCP
+
+Here's how simple it is to configure GitHub MCP with secure token handling:
+
+**.mcp-funnel.json:**
+```json
+{
+  "servers": {
+    "github": {
+      "transport": {
+        "type": "streamable-http",
+        "url": "https://api.githubcopilot.com/mcp/"
+      },
+      "auth": {
+        "type": "bearer",
+        "token": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "secretProviders": [
+        { "type": "dotenv", "config": { "path": ".env" } }
+      ]
+    }
+  }
+}
+```
+
+**.env:**
+```env
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_github_token_here
+```
+
+That's it! The `secretProviders` automatically loads your token from `.env`, keeping it secure and out of your config files.
+
 ### Configuration Options
 
 - **servers**: Record of MCP servers to connect to (server name as key)

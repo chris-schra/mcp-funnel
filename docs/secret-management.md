@@ -3,6 +3,42 @@
 
 MCP Funnel includes a comprehensive secret management system designed to securely handle environment variables and sensitive configuration for MCP servers. This system replaces the insecure practice of passing all process environment variables directly to child processes.
 
+### Quick Start Example
+
+Here's the simplest way to set up GitHub MCP with secure token handling:
+
+**Step 1: Create `.env` file:**
+```env
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_github_token_here
+```
+
+**Step 2: Configure `.mcp-funnel.json`:**
+```json
+{
+  "servers": {
+    "github": {
+      "transport": {
+        "type": "streamable-http",
+        "url": "https://api.githubcopilot.com/mcp/"
+      },
+      "auth": {
+        "type": "bearer",
+        "token": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "secretProviders": [
+        { "type": "dotenv", "config": { "path": ".env" } }
+      ]
+    }
+  }
+}
+```
+
+**That's it!** Your GitHub token is:
+- ✅ Loaded securely from `.env`
+- ✅ Never exposed in configuration files
+- ✅ Automatically injected when needed
+- ✅ Kept out of version control (add `.env` to `.gitignore`)
+
 ### Why Secret Management Matters
 
 By default, many MCP server configurations simply pass through the entire process environment (`process.env`) to child servers. This approach has several security concerns:
@@ -155,29 +191,49 @@ This provides complete control over which environment variables are exposed to M
 
 MCP Funnel's secret provider system allows you to securely manage environment variables and API tokens for your MCP servers. Here are practical examples for different scenarios:
 
-#### Using a .env File for GitHub Token
+#### Basic Setup with Multiple Servers
 
-Store your GitHub token in a `.env` file and configure MCP Funnel to load it automatically:
+Here's a real-world configuration showing how simple it is to manage secrets for multiple servers:
 
+**.env file:**
+```env
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_github_token_here
+CONTEXT7_API_KEY=ctx7sk_your_key_here
+```
+
+**.mcp-funnel.json:**
 ```json
 {
   "servers": {
     "github": {
+      "transport": {
+        "type": "streamable-http",
+        "url": "https://api.githubcopilot.com/mcp/"
+      },
+      "auth": {
+        "type": "bearer",
+        "token": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "secretProviders": [
+        { "type": "dotenv", "config": { "path": ".env" } }
+      ]
+    },
+    "context7": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "secretProviders": [{ "type": "dotenv", "config": { "path": ".env" } }]
+      "args": ["-y", "@upstash/context7-mcp", "--api-key", "${CONTEXT7_API_KEY}"],
+      "secretProviders": [
+        { "type": "dotenv", "config": { "path": ".env" } }
+      ]
     }
   }
 }
 ```
 
-Create a `.env` file in your project root:
-
-```env
-GITHUB_TOKEN=ghp_your_github_token_here
-```
-
-This approach keeps sensitive tokens out of your configuration files and allows easy per-environment management.
+**Key points:**
+- Both servers read from the same `.env` file
+- Tokens are interpolated using `${VARIABLE_NAME}` syntax
+- Each server only gets the variables it needs
+- No secrets in your config files
 
 #### Filtering Process Environment Variables by Prefix
 
@@ -228,31 +284,39 @@ This setup:
 2. Adds specific process environment variables
 3. Overrides with inline values (useful for non-sensitive static configuration)
 
-#### Global Default Providers
+#### Simplified Global Configuration
 
-Set up default secret providers that apply to all servers, with optional global passthrough variables:
+For even simpler configuration, use default providers that apply to all servers:
 
 ```json
 {
   "defaultSecretProviders": [
     { "type": "dotenv", "config": { "path": ".env" } }
   ],
-  "defaultPassthroughEnv": ["NODE_ENV", "HOME", "PATH"],
   "servers": {
     "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"]
+      "transport": {
+        "type": "streamable-http",
+        "url": "https://api.githubcopilot.com/mcp/"
+      },
+      "auth": {
+        "type": "bearer",
+        "token": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
     },
     "memory": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "secretProviders": [
-        { "type": "process", "config": { "prefix": "MEMORY_" } }
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp", "--api-key", "${CONTEXT7_API_KEY}"]
     }
   }
 }
 ```
+
+**Notice:** No `secretProviders` on individual servers - they all inherit from `defaultSecretProviders`!
 
 In this configuration:
 
