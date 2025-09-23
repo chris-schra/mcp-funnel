@@ -1,6 +1,6 @@
 ---
 name: Idea to Implementation Plan
-title: '[IDEA] Brief description of the feature/enhancement'
+title: '[PLAN] Brief description of the feature/enhancement'
 labels: idea, needs-implementation-plan
 assignees: ''
 ---
