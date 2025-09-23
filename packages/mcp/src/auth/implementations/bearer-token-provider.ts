@@ -11,7 +11,10 @@ import {
   AuthErrorCode,
 } from '../errors/authentication-error.js';
 import { logEvent } from '../../logger.js';
-import { ValidationUtils } from '../../utils/validation-utils.js';
+import {
+  EnvironmentResolver,
+  resolveEnvironmentVariables,
+} from './environment-resolver.js';
 
 /**
  * Configuration interface for BearerTokenAuthProvider
@@ -22,6 +25,11 @@ export interface BearerTokenConfig {
    * Can include environment variable references like ${TOKEN_VAR}
    */
   token: string;
+  /**
+   * Optional environment object for resolving variables
+   * If not provided, uses process.env
+   */
+  env?: Record<string, string | undefined>;
 }
 
 /**
@@ -52,8 +60,8 @@ export class BearerTokenAuthProvider implements IAuthProvider {
     // Resolve environment variables in token
     let resolvedToken: string;
     try {
-      resolvedToken = ValidationUtils.hasEnvironmentVariables(config.token)
-        ? ValidationUtils.resolveEnvironmentVariables(config.token)
+      resolvedToken = EnvironmentResolver.containsVariables(config.token)
+        ? resolveEnvironmentVariables(config.token, { envSource: config.env })
         : config.token;
     } catch (error) {
       throw new AuthenticationError(

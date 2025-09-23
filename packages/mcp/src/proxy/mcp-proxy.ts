@@ -355,6 +355,7 @@ export class MCPProxy extends EventEmitter {
   private createAuthProvider(
     authConfig?: AuthConfigZod,
     serverName?: string,
+    resolvedEnv?: Record<string, string>,
   ): AuthProviderResult | undefined {
     if (!authConfig || authConfig.type === 'none') {
       return undefined;
@@ -363,7 +364,10 @@ export class MCPProxy extends EventEmitter {
     switch (authConfig.type) {
       case 'bearer': {
         return {
-          provider: new BearerTokenAuthProvider({ token: authConfig.token }),
+          provider: new BearerTokenAuthProvider({
+            token: authConfig.token,
+            env: resolvedEnv,
+          }),
         };
       }
       case 'oauth2-client': {
@@ -670,6 +674,7 @@ export class MCPProxy extends EventEmitter {
     const authResult = this.createAuthProvider(
       extendedServer.auth,
       extendedServer.name,
+      resolvedEnv,
     );
 
     const transportDependencies = authResult

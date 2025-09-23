@@ -23,6 +23,10 @@ import { SSEClientTransport } from './implementations/sse-client-transport.js';
 import { WebSocketClientTransport } from './implementations/websocket-client-transport.js';
 import { StreamableHTTPClientTransport } from './implementations/streamable-http-client-transport.js';
 import { ValidationUtils } from '../utils/validation-utils.js';
+import {
+  EnvironmentResolver,
+  resolveEnvironmentVariables as resolveEnv,
+} from '../auth/implementations/environment-resolver.js';
 
 /**
  * Dependencies that can be injected into transports
@@ -323,8 +327,8 @@ function resolveEnvironmentVariables(
   // Helper function to resolve variables in a string
   const resolveString = (value: string): string => {
     try {
-      return ValidationUtils.hasEnvironmentVariables(value)
-        ? ValidationUtils.resolveEnvironmentVariables(value)
+      return EnvironmentResolver.containsVariables(value)
+        ? resolveEnv(value)
         : value;
     } catch (error) {
       throw TransportError.serverError(

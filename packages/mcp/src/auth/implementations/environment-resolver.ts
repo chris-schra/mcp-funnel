@@ -171,26 +171,6 @@ export class EnvironmentResolver {
   }
 
   /**
-   * Creates a resolver with default configuration for OAuth scenarios
-   */
-  static createDefault(): EnvironmentResolver {
-    return new EnvironmentResolver({
-      maxDepth: 5,
-      strict: true,
-    });
-  }
-
-  /**
-   * Creates a resolver with relaxed configuration (non-strict mode)
-   */
-  static createRelaxed(): EnvironmentResolver {
-    return new EnvironmentResolver({
-      maxDepth: 5,
-      strict: false,
-    });
-  }
-
-  /**
    * Utility method to check if a string contains environment variable patterns
    */
   static containsVariables(value: string): boolean {
@@ -207,15 +187,4 @@ export function resolveEnvironmentVariables(
 ): string {
   const resolver = new EnvironmentResolver(config);
   return resolver.resolve(value);
-}
-
-/**
- * Convenience function to resolve environment variables in an object
- */
-export function resolveEnvironmentObject<T extends Record<string, unknown>>(
-  config: T,
-  resolverConfig?: EnvironmentResolverConfig,
-): T {
-  const resolver = new EnvironmentResolver(resolverConfig);
-  return resolver.resolveObject(config);
 }

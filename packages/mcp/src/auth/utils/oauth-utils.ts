@@ -11,14 +11,24 @@ import type {
 import { DEFAULT_EXPIRY_SECONDS } from './oauth-types.js';
 import type { OAuth2ClientCredentialsConfigZod } from '../../config.js';
 import type { OAuth2AuthCodeConfig } from '../../types/auth.types.js';
-import { ValidationUtils } from '../../utils/validation-utils.js';
+import {
+  EnvironmentResolver,
+  resolveEnvironmentVariables as resolveEnv,
+} from '../implementations/environment-resolver.js';
 
 /**
  * Resolves environment variables in configuration
+ * @param config Configuration object with potential environment variables
+ * @param fields Fields to check and resolve
+ * @param envSource Optional custom environment source
  */
 export function resolveEnvironmentVariables<
   T extends Record<string, string | undefined>,
->(config: T, fields: (keyof T)[]): T {
+>(
+  config: T,
+  fields: (keyof T)[],
+  envSource?: Record<string, string | undefined>,
+): T {
   const resolved = { ...config };
 
   for (const field of fields) {
@@ -26,8 +36,8 @@ export function resolveEnvironmentVariables<
     if (typeof value === 'string') {
       try {
         resolved[field] = (
-          ValidationUtils.hasEnvironmentVariables(value)
-            ? ValidationUtils.resolveEnvironmentVariables(value)
+          EnvironmentResolver.containsVariables(value)
+            ? resolveEnv(value, { envSource })
             : value
         ) as T[keyof T];
       } catch (error) {
@@ -89,8 +99,8 @@ export function resolveOAuth2AuthCodeConfig(
  */
 export function resolveEnvVar(value: string): string {
   try {
-    return ValidationUtils.hasEnvironmentVariables(value)
-      ? ValidationUtils.resolveEnvironmentVariables(value)
+    return EnvironmentResolver.containsVariables(value)
+      ? resolveEnv(value)
       : value;
   } catch (error) {
     throw new AuthenticationError(

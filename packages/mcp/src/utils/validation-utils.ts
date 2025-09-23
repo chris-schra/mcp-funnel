@@ -4,7 +4,6 @@
 
 // Security validation for serverId (from keychain-token-storage.ts)
 const SAFE_SERVER_ID_REGEX = /^[a-zA-Z0-9._-]+$/;
-const ENV_VAR_REGEX = /\$\{([^}]+)\}/g;
 
 export class ValidationUtils {
   /**
@@ -50,29 +49,6 @@ export class ValidationUtils {
   }
 
   /**
-   * Resolves environment variables in a string
-   * Format: ${ENV_VAR_NAME}
-   */
-  static resolveEnvironmentVariables(value: string): string {
-    return value.replace(ENV_VAR_REGEX, (match, envVar) => {
-      const envValue = process.env[envVar];
-      if (envValue === undefined) {
-        throw new Error(`Environment variable ${envVar} is not defined`);
-      }
-      return envValue;
-    });
-  }
-
-  /**
-   * Checks if a string contains environment variables
-   */
-  static hasEnvironmentVariables(value: string): boolean {
-    // Reset regex state since it has global flag
-    ENV_VAR_REGEX.lastIndex = 0;
-    return ENV_VAR_REGEX.test(value);
-  }
-
-  /**
    * Validates required config fields
    */
   static validateRequired<T>(
@@ -109,4 +85,3 @@ export class ValidationUtils {
 
 // Export regex patterns for cases where direct regex access is needed
 export const SAFE_SERVER_ID_REGEX_PATTERN = SAFE_SERVER_ID_REGEX;
-export const ENV_VAR_REGEX_PATTERN = ENV_VAR_REGEX;

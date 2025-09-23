@@ -106,59 +106,6 @@ describe('ValidationUtils', () => {
     });
   });
 
-  describe('resolveEnvironmentVariables', () => {
-    it('should resolve environment variables', () => {
-      process.env.TEST_VAR = 'test-value';
-      const result = ValidationUtils.resolveEnvironmentVariables(
-        'prefix-${TEST_VAR}-suffix',
-      );
-      expect(result).toBe('prefix-test-value-suffix');
-    });
-
-    it('should handle multiple environment variables', () => {
-      process.env.VAR1 = 'value1';
-      process.env.VAR2 = 'value2';
-      const result =
-        ValidationUtils.resolveEnvironmentVariables('${VAR1}-${VAR2}');
-      expect(result).toBe('value1-value2');
-    });
-
-    it('should return original string if no variables', () => {
-      const result =
-        ValidationUtils.resolveEnvironmentVariables('no-variables-here');
-      expect(result).toBe('no-variables-here');
-    });
-
-    it('should throw for undefined environment variables', () => {
-      expect(() => {
-        ValidationUtils.resolveEnvironmentVariables('${UNDEFINED_VAR}');
-      }).toThrow('Environment variable UNDEFINED_VAR is not defined');
-    });
-  });
-
-  describe('hasEnvironmentVariables', () => {
-    it('should detect environment variables', () => {
-      expect(ValidationUtils.hasEnvironmentVariables('${VAR}')).toBe(true);
-      expect(
-        ValidationUtils.hasEnvironmentVariables('prefix-${VAR}-suffix'),
-      ).toBe(true);
-      expect(ValidationUtils.hasEnvironmentVariables('${VAR1}-${VAR2}')).toBe(
-        true,
-      );
-    });
-
-    it('should return false for strings without variables', () => {
-      expect(ValidationUtils.hasEnvironmentVariables('no-variables')).toBe(
-        false,
-      );
-      expect(
-        ValidationUtils.hasEnvironmentVariables('missing-braces-VAR'),
-      ).toBe(false);
-      expect(ValidationUtils.hasEnvironmentVariables('${incomplete')).toBe(
-        false,
-      );
-    });
-  });
 
   describe('validateRequired', () => {
     it('should accept objects with all required fields', () => {
