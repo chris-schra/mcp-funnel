@@ -17,3 +17,5 @@ node_modules
 *.tsbuildinfo
 packages/web/build/client/assets
 *.tgz
+
+packages/commands/ts-unused-code/test/fixtures/**/*

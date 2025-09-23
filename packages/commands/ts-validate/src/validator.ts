@@ -6,6 +6,7 @@ import * as path from 'path';
 import chalk from 'chalk';
 import { createRequire } from 'module';
 import { satisfies } from 'semver';
+import { minimatch } from 'minimatch';
 
 const requireFromHere = createRequire(import.meta.url);
 
@@ -587,12 +588,42 @@ export class MonorepoValidator {
 
   private async validateTypeScript(files: string[], tsConfigFile?: string) {
     // Filter to only TypeScript files
-    const tsFiles = files.filter(
-      (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
-    );
+    let tsFiles = files.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
 
     if (tsFiles.length === 0) {
       return;
+    }
+
+    // Load root tsconfig.json exclude patterns if available
+    const rootTsConfigPath = path.resolve(process.cwd(), 'tsconfig.json');
+    if (fssync.existsSync(rootTsConfigPath)) {
+      try {
+        const rootConfig = JSON.parse(
+          fssync.readFileSync(rootTsConfigPath, 'utf-8'),
+        );
+        const rootExcludePatterns: string[] = rootConfig.exclude || [];
+
+        // Pre-compile minimatch matchers outside the filter loop for performance
+        const matchers = rootExcludePatterns.map((pattern) => {
+          // Use minimatch for proper glob pattern matching
+          return (filePath: string) => {
+            const relativePath = path.relative(process.cwd(), filePath);
+            // Normalize path separators for consistent matching across platforms
+            const normalizedPath = relativePath.split(path.sep).join('/');
+            return minimatch(normalizedPath, pattern, {
+              matchBase: true,
+              dot: true,
+            });
+          };
+        });
+
+        // Filter out files matching root exclude patterns
+        tsFiles = tsFiles.filter((file) => {
+          return !matchers.some((matcher) => matcher(file));
+        });
+      } catch {
+        // Ignore errors reading root config
+      }
     }
 
     // If explicit tsconfig provided, validate all TS files against it
@@ -740,7 +771,13 @@ export class MonorepoValidator {
         options: { ...parsed.options, noEmit: true },
       });
 
-      const filesToValidate = new Set(configFiles);
+      // Only validate files that are both requested AND not excluded by tsconfig
+      const parsedFileSet = new Set(
+        parsed.fileNames.map((f) => path.resolve(f)),
+      );
+      const filesToValidate = new Set(
+        configFiles.filter((file) => parsedFileSet.has(path.resolve(file))),
+      );
       const allDiagnostics = [
         ...program.getOptionsDiagnostics(),
         ...program.getGlobalDiagnostics(),

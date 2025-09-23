@@ -106,7 +106,6 @@ describe('ValidationUtils', () => {
     });
   });
 
-
   describe('validateRequired', () => {
     it('should accept objects with all required fields', () => {
       const config = {

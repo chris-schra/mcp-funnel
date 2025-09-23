@@ -753,10 +753,7 @@ export class MCPProxy extends EventEmitter {
         setTimeout(() => reject(new Error('Tool discovery timeout')), 5000);
       });
 
-      const response = await Promise.race([
-        client.listTools(),
-        timeoutPromise
-      ]);
+      const response = await Promise.race([client.listTools(), timeoutPromise]);
 
       for (const tool of response.tools) {
         this.toolRegistry.registerDiscoveredTool({
