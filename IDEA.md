@@ -5,6 +5,8 @@ A command that leverages [TSR (TypeScript Remove)](https://github.com/line/tsr) 
 
 ## Core Implementation
 
+**IMPORTANT NOTE**: This is mocked code ONLY for implementation reference. It is NOT truth.
+
 ### Command Structure
 
 ```typescript
@@ -40,10 +42,15 @@ export class TsUnusedCodeCommand implements ICommand {
     };
   }
 
-  private processResults(tsrResult: any): any {
+// note: types are mocked, make sure to use actual types
+  type OurResultType = { raw:TSRResultType };
+
+  private processResults(tsrResult:TSRResultType):OurResultType {
     // Phase 1: Just return TSR results as-is
     // Phase 2: Could enhance with metadata, categorization, etc.
-    return tsrResult;
+    return {
+      raw: tsrResult
+    };
   }
 
   private resolveEntryPoints(entryPoints?: unknown, paths?: unknown): RegExp[] {
@@ -61,7 +68,7 @@ export class TsUnusedCodeCommand implements ICommand {
     ];
   }
 
-  private formatForAI(result: any): string {
+  private formatForAI(result): string {
     return `
 ## TSR Unused Code Analysis
 
@@ -85,6 +92,19 @@ ${JSON.stringify(result, null, 2)}
 ```
 
 ### MCP Tool Definition
+
+**NOTE**: we need to keep in mind that in monorepos, they're usually more than one tsconfig.json
+Worst case:
+
+-- repo
+-- tsconfig.json
+-- tsconfig.base.json
+---- packages/package-a/tsconfig.json
+---- packages/package-a/tsconfig.build.json
+---- packages/package-b/tsconfig.json (extending tsconfig.base.json)
+---- packages/package-b/tsconfig.build.json (extending packages/package-b/tsconfig.json)
+
+Most certainly, tsr is able to handle this, but we need to make sure to cover those cases.
 
 ```typescript
 getMCPDefinitions(): Tool[] {
@@ -183,26 +203,17 @@ packages/commands/ts-unused-code/
 ```
 
 ### package.json
+
+NOTE: see packages/commands/ts-validate/package.json for reference.
+Especially regarding test script and build tooling
 ```json
 {
   "name": "@mcp-funnel/command-ts-unused-code",
   "version": "0.0.1",
   "type": "module",
-  "main": "./dist/index.js",
-  "exports": {
-    ".": "./dist/index.js"
-  },
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest"
-  },
   "dependencies": {
-    "tsr": "^0.2.3",
+    "tsr": "^1.3.4",
     "@mcp-funnel/commands-core": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0",
-    "vitest": "^1.0.0"
   }
 }
 ```
@@ -214,37 +225,30 @@ packages/commands/ts-unused-code/
 - Pass through TSR results without modification in Phase 1
 - Add `processResults()` as a SEAM for future enhancement
 
-### 2. Clear AI Warnings
+### 2. Clear AI Warnings (instructions returned from our tool via MCP to clients like Claude Code CLI)
 - Always warn about false positives
-- List common false positive scenarios
-- Recommend dry-run first
-
-### 3. Monorepo Considerations
+- Consider common false positive scenarios
 - TSR analyzes from entry points, so cross-package deps might appear unused
 - Future enhancement: detect package boundaries and adjust analysis
 - Clear warnings about monorepo limitations
 
 ## Implementation Phases
 
-### Phase 1 (MVP)
-- [x] Basic TSR integration
-- [x] MCP and CLI interfaces
-- [x] Pass-through results
-- [x] Clear false positive warnings
-- [x] Check mode only by default
-
-### Phase 2 (Enhancements)
-- [ ] Result categorization (safe/risky removals)
+- [ ] Basic TSR integration
+- [ ] MCP and CLI interfaces
+- [ ] Pass-through results
+- [ ] Clear false positive warnings
+- [ ] Check mode only by default
 - [ ] Monorepo-aware analysis
-- [ ] Caching for large codebases
-- [ ] Integration with ts-validate command
 - [ ] Custom ignore patterns
-
-### Phase 3 (Advanced)
 - [ ] Cross-package dependency detection
 - [ ] Framework-specific handlers (Next.js, etc.)
 - [ ] Incremental analysis
-- [ ] HTML/Markdown reports
+
+Abandoned / future ideas:
+- [ ] Result categorization (safe/risky removals)
+- [ ] Caching for large codebases
+- [ ] Integration with ts-validate command
 
 ## Usage Examples
 
@@ -287,7 +291,5 @@ These allow future enhancements without major refactoring.
 
 ## Notes
 
-- TSR is currently suspended but stable enough for use
 - Monitor for TypeScript compatibility issues
-- Consider fallback strategies if TSR becomes unmaintained
 - False positives are expected - always emphasize caution in output
