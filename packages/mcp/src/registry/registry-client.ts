@@ -135,6 +135,46 @@ export class MCPRegistryClient {
   }
 
   /**
+   * Classifies errors into specific categories for better logging and debugging.
+   *
+   * @param error - The error to classify
+   * @param context - Additional context for the error (e.g., method name, identifier)
+   * @returns The error type for logging purposes
+   */
+  private classifyAndLogError(
+    error: unknown,
+    operation: string,
+    context?: string,
+  ): 'network' | 'parsing' | 'unexpected' {
+    const contextStr = context ? ` for ${context}` : '';
+
+    // Network errors: TypeError is commonly thrown for fetch failures
+    if (error instanceof TypeError) {
+      console.error(
+        `[MCPRegistryClient] Network error during ${operation}${contextStr}:`,
+        error.message,
+      );
+      return 'network';
+    }
+
+    // JSON parsing errors
+    if (error instanceof SyntaxError) {
+      console.error(
+        `[MCPRegistryClient] JSON parsing error during ${operation}${contextStr}:`,
+        error.message,
+      );
+      return 'parsing';
+    }
+
+    // All other errors
+    console.error(
+      `[MCPRegistryClient] Unexpected error during ${operation}${contextStr}:`,
+      error,
+    );
+    return 'unexpected';
+  }
+
+  /**
    * Searches for MCP servers in the registry based on keywords.
    *
    * This method performs a keyword-based search across server names, descriptions,
@@ -233,23 +273,8 @@ export class MCPRegistryClient {
       );
       return validServers;
     } catch (error) {
-      // Log different error types with appropriate context
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error(
-          `[MCPRegistryClient] Network error while searching servers:`,
-          error.message,
-        );
-      } else if (error instanceof SyntaxError) {
-        console.error(
-          `[MCPRegistryClient] JSON parsing error in search response:`,
-          error.message,
-        );
-      } else {
-        console.error(
-          `[MCPRegistryClient] Unexpected error searching servers:`,
-          error,
-        );
-      }
+      // Use shared error classification utility
+      this.classifyAndLogError(error, 'search', keywords);
       // Return empty array on error to allow graceful degradation
       // Consumers can check console logs to distinguish error types
       return [];
@@ -324,23 +349,8 @@ export class MCPRegistryClient {
 
       return server;
     } catch (error) {
-      // Log different error types with appropriate context
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error(
-          `[MCPRegistryClient] Network error while fetching server ${identifier}:`,
-          error.message,
-        );
-      } else if (error instanceof SyntaxError) {
-        console.error(
-          `[MCPRegistryClient] JSON parsing error in server response for ${identifier}:`,
-          error.message,
-        );
-      } else {
-        console.error(
-          `[MCPRegistryClient] Unexpected error getting server ${identifier}:`,
-          error,
-        );
-      }
+      // Use shared error classification utility
+      this.classifyAndLogError(error, 'server fetch', identifier);
       // Return null on error to allow graceful degradation
       // Consumers can check console logs to distinguish error types
       return null;
