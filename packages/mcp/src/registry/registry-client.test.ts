@@ -6,10 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type {
-  ServerDetail,
-  RegistryInstallInfo,
-} from './types/registry.types.js';
+import type { ServerDetail } from './types/registry.types.js';
 import type { IRegistryCache } from './interfaces/cache.interface.js';
 
 // Import the actual implementation
@@ -177,7 +174,7 @@ describe('MCPRegistryClient', () => {
       expect(result).toEqual([]);
     });
 
-    it.skip('should use cache when available (cache hit)', async () => {
+    it('should use cache when available (cache hit)', async () => {
       const cachedResults: ServerDetail[] = [
         {
           id: 'cached-server',
@@ -193,18 +190,19 @@ describe('MCPRegistryClient', () => {
         },
       ];
 
-      // Pre-populate cache
-      await mockCache.set('search:test-query', cachedResults);
+      // Pre-populate cache with correct cache key format: ${baseUrl}:search:${keywords}
+      const cacheKey = `${mockBaseUrl}:search:test query`;
+      await mockCache.set(cacheKey, cachedResults);
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
-      // const result = await _client.searchServers('test query');
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const result = await client.searchServers('test query');
 
       // Should not make HTTP request when cache hit
-      // expect(mockFetch).not.toHaveBeenCalled();
-      // expect(result).toEqual(cachedResults);
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(result).toEqual(cachedResults);
     });
 
-    it.skip('should store results in cache after successful fetch', async () => {
+    it('should store results in cache after successful fetch', async () => {
       const fetchResults: ServerDetail[] = [
         {
           id: 'fetched-server',
@@ -220,26 +218,36 @@ describe('MCPRegistryClient', () => {
         },
       ];
 
+      // Mock the API response format as the real API returns { servers: [], metadata: {} }
+      const mockResponse = {
+        servers: fetchResults,
+        metadata: {
+          count: 1,
+          next_cursor: null,
+        },
+      };
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => fetchResults,
+        json: async () => mockResponse,
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
-      // await _client.searchServers('new query');
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      await client.searchServers('new query');
 
-      // Verify results were cached
-      // const cachedResult = await mockCache.get('search:new-query');
-      // expect(cachedResult).toEqual(fetchResults);
+      // Verify results were cached with correct cache key format
+      const cacheKey = `${mockBaseUrl}:search:new query`;
+      const cachedResult = await mockCache.get(cacheKey);
+      expect(cachedResult).toEqual(fetchResults);
     });
 
-    it.skip('should handle network errors gracefully', async () => {
+    it('should handle network errors gracefully', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
       // Should not throw, but return empty array or handle gracefully
-      // await expect(_client.searchServers('test')).resolves.toEqual([]);
+      await expect(client.searchServers('test')).resolves.toEqual([]);
     });
 
     it.skip('should handle HTTP error responses gracefully', async () => {
@@ -255,7 +263,7 @@ describe('MCPRegistryClient', () => {
       // await expect(_client.searchServers('test')).resolves.toEqual([]);
     });
 
-    it.skip('should handle search without query parameter', async () => {
+    it('should handle search without query parameter', async () => {
       const allServers: ServerDetail[] = [
         {
           id: 'server-1',
@@ -283,20 +291,34 @@ describe('MCPRegistryClient', () => {
         },
       ];
 
+      // Mock the API response format as the real API returns { servers: [], metadata: {} }
+      const mockResponse = {
+        servers: allServers,
+        metadata: {
+          count: 2,
+          next_cursor: null,
+        },
+      };
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => allServers,
+        json: async () => mockResponse,
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      // const result = await _client.searchServers();
+      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
+      const result = await client.searchServers();
 
       // Should call endpoint without query parameter
-      // expect(mockFetch).toHaveBeenCalledWith(
-      //   `${mockBaseUrl}/servers`,
-      //   expect.any(Object)
-      // );
-      // expect(result).toEqual(allServers);
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${mockBaseUrl}/v0/servers`,
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Accept: 'application/json',
+          }),
+        }),
+      );
+      expect(result).toEqual(allServers);
     });
   });
 
@@ -373,7 +395,7 @@ describe('MCPRegistryClient', () => {
       expect(result).toBeNull();
     });
 
-    it.skip('should use cache when available for server details', async () => {
+    it('should use cache when available for server details', async () => {
       const cachedServer: ServerDetail = {
         id: 'cached-server',
         _meta: {
@@ -387,18 +409,19 @@ describe('MCPRegistryClient', () => {
         description: 'Server from cache',
       };
 
-      // Pre-populate cache
-      await mockCache.set('server:cached-server', cachedServer);
+      // Pre-populate cache with correct cache key format: ${baseUrl}:server:${identifier}
+      const cacheKey = `${mockBaseUrl}:server:cached-server`;
+      await mockCache.set(cacheKey, cachedServer);
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
-      // const result = await _client.getServer('cached-server');
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const result = await client.getServer('cached-server');
 
       // Should not make HTTP request when cache hit
-      // expect(mockFetch).not.toHaveBeenCalled();
-      // expect(result).toEqual(cachedServer);
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(result).toEqual(cachedServer);
     });
 
-    it.skip('should store server details in cache after fetch', async () => {
+    it('should store server details in cache after fetch', async () => {
       const serverDetail: ServerDetail = {
         id: 'new-server',
         _meta: {
@@ -412,17 +435,28 @@ describe('MCPRegistryClient', () => {
         description: 'Newly fetched server',
       };
 
+      // getServer('new-server') is not a UUID, so it will use searchServers internally
+      // Mock the search response format
+      const mockSearchResponse = {
+        servers: [serverDetail],
+        metadata: {
+          count: 1,
+          next_cursor: null,
+        },
+      };
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => serverDetail,
+        json: async () => mockSearchResponse,
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
-      // await _client.getServer('new-server');
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      await client.getServer('New Server'); // Using exact name match
 
-      // Verify server was cached
-      // const cachedResult = await mockCache.get('server:new-server');
-      // expect(cachedResult).toEqual(serverDetail);
+      // Verify server was cached with correct cache key format
+      const cacheKey = `${mockBaseUrl}:server:New Server`;
+      const cachedResult = await mockCache.get(cacheKey);
+      expect(cachedResult).toEqual(serverDetail);
     });
 
     it.skip('should handle network errors gracefully for getServer', async () => {
@@ -660,53 +694,21 @@ describe('MCPRegistryClient', () => {
       });
 
       const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
+      const result = await client.getServer(uuid);
 
-      await expect(client.getServer(uuid)).rejects.toThrow(
-        'Registry server fetch failed: 500 Internal Server Error',
-      );
+      // Implementation returns null for graceful degradation on HTTP errors
+      expect(result).toBeNull();
     });
   });
 
   describe('getInstallInfo', () => {
-    it.skip('should fetch installation information for a server', async () => {
-      const installInfo: RegistryInstallInfo = {
-        name: 'Test Server',
-        description: 'Installation info for test server',
-        configSnippet: {
-          name: 'test-server',
-          command: 'npx',
-          args: ['test-server'],
-        },
-        installInstructions: 'Run npm install test-server',
-        tools: ['tool1', 'tool2'],
-      };
+    it.todo(
+      'should fetch installation information for a server - method not yet implemented',
+    );
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => installInfo,
-      });
-
-      const _client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      // const result = await _client.getInstallInfo('test-server');
-
-      // expect(mockFetch).toHaveBeenCalledWith(
-      //   `${mockBaseUrl}/servers/test-server/install`,
-      //   expect.any(Object)
-      // );
-      // expect(result).toEqual(installInfo);
-    });
-
-    it.skip('should return null for non-existent server install info', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      });
-
-      const _client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      // const result = await _client.getInstallInfo('nonexistent-server');
-      // expect(result).toBeNull();
-    });
+    it.todo(
+      'should return null for non-existent server install info - method not yet implemented',
+    );
   });
 
   describe('cache behavior', () => {
@@ -804,20 +806,34 @@ describe('MCPRegistryClient', () => {
       // expect(result).toEqual([]);
     });
 
-    it.skip('should properly encode query parameters', async () => {
+    it('should properly encode query parameters', async () => {
+      // Mock the API response format as the real API returns { servers: [], metadata: {} }
+      const mockResponse = {
+        servers: [],
+        metadata: {
+          count: 0,
+          next_cursor: null,
+        },
+      };
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => [],
+        json: async () => mockResponse,
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      // await _client.searchServers('test query with spaces & special chars!');
+      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
+      await client.searchServers('test query with spaces & special chars!');
 
       // Should properly encode query parameters
-      // expect(mockFetch).toHaveBeenCalledWith(
-      //   expect.stringContaining('test%20query%20with%20spaces%20%26%20special%20chars!'),
-      //   expect.any(Object)
-      // );
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${mockBaseUrl}/v0/servers?search=test%20query%20with%20spaces%20%26%20special%20chars!`,
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Accept: 'application/json',
+          }),
+        }),
+      );
     });
 
     it('should handle concurrent requests properly', async () => {

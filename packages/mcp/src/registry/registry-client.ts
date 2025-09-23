@@ -139,15 +139,13 @@ export class MCPRegistryClient {
    * - Cache misses trigger API requests and store results
    *
    * Error handling:
-   * - Network errors: Logged and re-thrown as Error
-   * - HTTP errors: Logged and re-thrown with status information
-   * - JSON parsing errors: Logged and re-thrown
+   * - Network errors: Logged and return empty array
+   * - HTTP errors: Logged and return empty array
+   * - JSON parsing errors: Logged and return empty array
    * - Malformed responses: Return empty array
    *
-   * @param keywords - Search terms to query for (spaces and special characters are URL-encoded)
-   * @returns Promise resolving to array of matching servers (empty array if none found)
-   *
-   * @throws {Error} Network errors, HTTP errors, or JSON parsing failures
+   * @param keywords - Optional search terms to query for (spaces and special characters are URL-encoded). If not provided, returns all servers.
+   * @returns Promise resolving to array of matching servers (empty array if none found or on error)
    *
    * @example
    * ```typescript
@@ -159,24 +157,28 @@ export class MCPRegistryClient {
    * const codeServers = await client.searchServers('code analysis typescript');
    * ```
    */
-  async searchServers(keywords: string): Promise<ServerDetail[]> {
-    const cacheKey = `${this.baseUrl}:search:${keywords}`;
+  async searchServers(keywords?: string): Promise<ServerDetail[]> {
+    const cacheKey = `${this.baseUrl}:search:${keywords || ''}`;
 
     try {
       // Check cache first
       const cached = await this.cache.get(cacheKey);
       if (cached) {
-        console.info(`[MCPRegistryClient] Cache hit for search: ${keywords}`);
+        console.info(
+          `[MCPRegistryClient] Cache hit for search: ${keywords || 'all servers'}`,
+        );
         return cached as ServerDetail[];
       }
 
       console.info(
-        `[MCPRegistryClient] Cache miss, fetching search results for: ${keywords}`,
+        `[MCPRegistryClient] Cache miss, fetching search results for: ${keywords || 'all servers'}`,
       );
 
       // Fetch from registry API using the real endpoint structure
-      // Real API: GET /v0/servers?search={keywords}
-      const url = `${this.baseUrl}/v0/servers?search=${encodeURIComponent(keywords)}`;
+      // Real API: GET /v0/servers?search={keywords} or GET /v0/servers for all servers
+      const url = keywords
+        ? `${this.baseUrl}/v0/servers?search=${encodeURIComponent(keywords)}`
+        : `${this.baseUrl}/v0/servers`;
       const response = (await fetch(url, {
         method: 'GET',
         headers: {
@@ -226,7 +228,8 @@ export class MCPRegistryClient {
       return validServers;
     } catch (error) {
       console.error(`[MCPRegistryClient] Error searching servers:`, error);
-      throw error instanceof Error ? error : new Error('Unknown search error');
+      // Return empty array on error to allow graceful degradation
+      return [];
     }
   }
 
@@ -245,14 +248,12 @@ export class MCPRegistryClient {
    *
    * Error handling:
    * - No exact match found: Return null (server not found)
-   * - HTTP errors: Logged and re-thrown
-   * - Network errors: Logged and re-thrown
-   * - JSON parsing errors: Logged and re-thrown
+   * - HTTP errors: Logged and return null
+   * - Network errors: Logged and return null
+   * - JSON parsing errors: Logged and return null
    *
    * @param identifier - The name or UUID of the server to retrieve
-   * @returns Promise resolving to server details or null if not found
-   *
-   * @throws {Error} Network errors, HTTP errors, or JSON parsing failures
+   * @returns Promise resolving to server details or null if not found or on error
    *
    * @example
    * ```typescript
@@ -304,9 +305,8 @@ export class MCPRegistryClient {
         `[MCPRegistryClient] Error getting server ${identifier}:`,
         error,
       );
-      throw error instanceof Error
-        ? error
-        : new Error('Unknown server fetch error');
+      // Return null on error to allow graceful degradation
+      return null;
     } finally {
       this.inflightServerRequests.delete(cacheKey);
     }
@@ -352,11 +352,11 @@ export class MCPRegistryClient {
         return null;
       }
 
-      const error = new Error(
-        `Registry server fetch failed: ${response.status} ${response.statusText}`,
+      console.error(
+        `[MCPRegistryClient] Direct API error: ${response.status} ${response.statusText}`,
       );
-      console.error(`[MCPRegistryClient] Direct API error:`, error.message);
-      throw error;
+      // Return null on HTTP error to allow graceful degradation
+      return null;
     }
 
     console.info(`[MCPRegistryClient] Searching by name: ${identifier}`);
