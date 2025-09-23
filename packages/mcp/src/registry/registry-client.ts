@@ -81,12 +81,13 @@ interface SearchResponse {
  * - Supports configurable TTL for cache entries
  *
  * Error handling strategy:
- * - Returns graceful defaults (empty arrays/null) to prevent application crashes
+ * - Throws errors for infrastructure failures (network, parsing, server errors)
+ * - Returns empty arrays/null only for legitimate "not found" cases
  * - Logs different error types with specific context for debugging:
  *   - Network errors: Connection/fetch failures
  *   - Parsing errors: Malformed JSON responses
  *   - Unexpected errors: Other runtime exceptions
- * - Consumers can distinguish error types via console logs while maintaining API stability
+ * - Allows calling layers to provide meaningful error messages to users
  *
  * @example
  * ```typescript
@@ -187,13 +188,14 @@ export class MCPRegistryClient {
    * - Cache misses trigger API requests and store results
    *
    * Error handling:
-   * - Network errors: Logged and return empty array
-   * - HTTP errors: Logged and return empty array
-   * - JSON parsing errors: Logged and return empty array
-   * - Malformed responses: Return empty array
+   * - Network errors: Logged and thrown
+   * - HTTP errors: Logged and thrown
+   * - JSON parsing errors: Logged and thrown
+   * - Successfully returns empty array only when no servers match
    *
    * @param keywords - Search terms to query for (spaces and special characters are URL-encoded)
-   * @returns Promise resolving to array of matching servers (empty array if none found or on error)
+   * @returns Promise resolving to array of matching servers (empty array if none found)
+   * @throws Error if network, parsing, or server errors occur
    *
    * @example
    * ```typescript
@@ -212,9 +214,7 @@ export class MCPRegistryClient {
       // Check cache first
       const cached = await this.cache.get(cacheKey);
       if (cached) {
-        console.info(
-          `[MCPRegistryClient] Cache hit for search: ${keywords}`,
-        );
+        console.info(`[MCPRegistryClient] Cache hit for search: ${keywords}`);
         return cached as ServerDetail[];
       }
 
@@ -234,11 +234,13 @@ export class MCPRegistryClient {
       })) as RegistryResponse<SearchResponse>;
 
       if (!response.ok) {
-        const error = new Error(
+        // Log HTTP error with consistent format
+        console.error(
+          `[MCPRegistryClient] HTTP error during search for ${keywords}: ${response.status} ${response.statusText}`,
+        );
+        throw new Error(
           `Registry search failed: ${response.status} ${response.statusText}`,
         );
-        console.error(`[MCPRegistryClient] Search API error:`, error.message);
-        throw error;
       }
 
       const data = await response.json();
@@ -273,11 +275,11 @@ export class MCPRegistryClient {
       );
       return validServers;
     } catch (error) {
-      // Use shared error classification utility
+      // Log the error for debugging
       this.classifyAndLogError(error, 'search', keywords);
-      // Return empty array on error to allow graceful degradation
-      // Consumers can check console logs to distinguish error types
-      return [];
+      // Re-throw the error so calling layer can handle it appropriately
+      // This allows registry-context to provide meaningful error messages
+      throw error;
     }
   }
 
@@ -296,12 +298,13 @@ export class MCPRegistryClient {
    *
    * Error handling:
    * - No exact match found: Return null (server not found)
-   * - HTTP errors: Logged and return null
-   * - Network errors: Logged and return null
-   * - JSON parsing errors: Logged and return null
+   * - Network errors: Logged and thrown
+   * - HTTP errors: Logged and thrown (except 404 which returns null)
+   * - JSON parsing errors: Logged and thrown
    *
    * @param identifier - The name or UUID of the server to retrieve
-   * @returns Promise resolving to server details or null if not found or on error
+   * @returns Promise resolving to server details or null if not found
+   * @throws Error if network, parsing, or server errors occur
    *
    * @example
    * ```typescript
@@ -349,11 +352,11 @@ export class MCPRegistryClient {
 
       return server;
     } catch (error) {
-      // Use shared error classification utility
+      // Log the error for debugging
       this.classifyAndLogError(error, 'server fetch', identifier);
-      // Return null on error to allow graceful degradation
-      // Consumers can check console logs to distinguish error types
-      return null;
+      // Re-throw the error so calling layer can handle it appropriately
+      // This allows registry-context to provide meaningful error messages
+      throw error;
     } finally {
       this.inflightServerRequests.delete(cacheKey);
     }
@@ -399,11 +402,14 @@ export class MCPRegistryClient {
         return null;
       }
 
+      // Log HTTP error with consistent format
       console.error(
-        `[MCPRegistryClient] Direct API error: ${response.status} ${response.statusText}`,
+        `[MCPRegistryClient] HTTP error during server fetch for ${identifier}: ${response.status} ${response.statusText}`,
       );
-      // Return null on HTTP error to allow graceful degradation
-      return null;
+      // Throw error for non-404 HTTP errors so calling layer can handle appropriately
+      throw new Error(
+        `Registry server fetch failed: ${response.status} ${response.statusText}`,
+      );
     }
 
     console.info(`[MCPRegistryClient] Searching by name: ${identifier}`);

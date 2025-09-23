@@ -119,7 +119,9 @@ describe('KeychainTokenStorage', () => {
 
       it('should fallback to file storage when Windows credential manager fails', async () => {
         // Mock Windows credential manager failure
-        mockExecFileAsync.mockRejectedValue(new Error('Windows credential error'));
+        mockExecFileAsync.mockRejectedValue(
+          new Error('Windows credential error'),
+        );
 
         // Mock file operations
         mockedFs.mkdir.mockResolvedValue(undefined);

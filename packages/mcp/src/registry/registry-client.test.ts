@@ -241,16 +241,17 @@ describe('MCPRegistryClient', () => {
       expect(cachedResult).toEqual(fetchResults);
     });
 
-    it('should handle network errors gracefully', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    it('should throw on network errors', async () => {
+      const networkError = new Error('Network error');
+      mockFetch.mockRejectedValueOnce(networkError);
 
       const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
-      // Should not throw, but return empty array or handle gracefully
-      await expect(client.searchServers('test')).resolves.toEqual([]);
+      // Should throw the error for the calling layer to handle
+      await expect(client.searchServers('test')).rejects.toThrow('Network error');
     });
 
-    it('should handle HTTP error responses gracefully', async () => {
+    it('should throw on HTTP error responses', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -259,8 +260,10 @@ describe('MCPRegistryClient', () => {
 
       const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
-      // Should handle HTTP errors gracefully
-      await expect(client.searchServers('test')).resolves.toEqual([]);
+      // Should throw error with status information
+      await expect(client.searchServers('test')).rejects.toThrow(
+        'Registry search failed: 500 Internal Server Error',
+      );
     });
   });
 
@@ -401,16 +404,17 @@ describe('MCPRegistryClient', () => {
       expect(cachedResult).toEqual(serverDetail);
     });
 
-    it('should handle network errors gracefully for getServer', async () => {
+    it('should throw on network errors for getServer', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
-      // Should return null on network error
-      await expect(client.getServer('test-server')).resolves.toBeNull();
+      // Should throw the error for the calling layer to handle
+      await expect(client.getServer('test-server')).rejects.toThrow('Network error');
     });
 
-    it('should handle 500 errors properly for getServer', async () => {
+    it('should throw on 500 errors for getServer', async () => {
+      // First mock is for the search call (for non-UUID)
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -419,8 +423,11 @@ describe('MCPRegistryClient', () => {
 
       const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
-      // Should return null on server error
-      await expect(client.getServer('test-server')).resolves.toBeNull();
+      // Should throw error with status information
+      // For non-UUID, it searches first which throws "Registry search failed"
+      await expect(client.getServer('test-server')).rejects.toThrow(
+        'Registry search failed: 500 Internal Server Error',
+      );
     });
   });
 
@@ -625,7 +632,7 @@ describe('MCPRegistryClient', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle server errors on UUID direct endpoint', async () => {
+    it('should throw on server errors for UUID direct endpoint', async () => {
       const uuid = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       // Mock 500 error response
@@ -636,13 +643,13 @@ describe('MCPRegistryClient', () => {
       });
 
       const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer(uuid);
 
-      // Implementation returns null for graceful degradation on HTTP errors
-      expect(result).toBeNull();
+      // Should throw error for non-404 HTTP errors
+      await expect(client.getServer(uuid)).rejects.toThrow(
+        'Registry server fetch failed: 500 Internal Server Error',
+      );
     });
   });
-
 
   describe('cache behavior', () => {
     it('should respect cache TTL when implemented', async () => {
@@ -711,8 +718,10 @@ describe('MCPRegistryClient', () => {
 
       const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
 
-      // Should handle JSON parsing errors gracefully
-      await expect(client.searchServers('test')).resolves.toEqual([]);
+      // Should throw JSON parsing errors to calling layer
+      await expect(client.searchServers('test')).rejects.toThrow(
+        'Invalid JSON',
+      );
     });
 
     it('should handle empty responses', async () => {
@@ -722,8 +731,10 @@ describe('MCPRegistryClient', () => {
       });
 
       const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.searchServers('test');
-      expect(result).toEqual([]);
+      // Should throw when receiving unexpected null response
+      await expect(client.searchServers('test')).rejects.toThrow(
+        "Cannot read properties of null (reading 'servers')",
+      );
     });
 
     it('should properly encode query parameters', async () => {
