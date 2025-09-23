@@ -80,6 +80,14 @@ interface SearchResponse {
  * - Uses consistent cache key patterns for predictable behavior
  * - Supports configurable TTL for cache entries
  *
+ * Error handling strategy:
+ * - Returns graceful defaults (empty arrays/null) to prevent application crashes
+ * - Logs different error types with specific context for debugging:
+ *   - Network errors: Connection/fetch failures
+ *   - Parsing errors: Malformed JSON responses
+ *   - Unexpected errors: Other runtime exceptions
+ * - Consumers can distinguish error types via console logs while maintaining API stability
+ *
  * @example
  * ```typescript
  * // Basic usage with default cache
@@ -144,7 +152,7 @@ export class MCPRegistryClient {
    * - JSON parsing errors: Logged and return empty array
    * - Malformed responses: Return empty array
    *
-   * @param keywords - Optional search terms to query for (spaces and special characters are URL-encoded). If not provided, returns all servers.
+   * @param keywords - Search terms to query for (spaces and special characters are URL-encoded)
    * @returns Promise resolving to array of matching servers (empty array if none found or on error)
    *
    * @example
@@ -157,28 +165,26 @@ export class MCPRegistryClient {
    * const codeServers = await client.searchServers('code analysis typescript');
    * ```
    */
-  async searchServers(keywords?: string): Promise<ServerDetail[]> {
-    const cacheKey = `${this.baseUrl}:search:${keywords || ''}`;
+  async searchServers(keywords: string): Promise<ServerDetail[]> {
+    const cacheKey = `${this.baseUrl}:search:${keywords}`;
 
     try {
       // Check cache first
       const cached = await this.cache.get(cacheKey);
       if (cached) {
         console.info(
-          `[MCPRegistryClient] Cache hit for search: ${keywords || 'all servers'}`,
+          `[MCPRegistryClient] Cache hit for search: ${keywords}`,
         );
         return cached as ServerDetail[];
       }
 
       console.info(
-        `[MCPRegistryClient] Cache miss, fetching search results for: ${keywords || 'all servers'}`,
+        `[MCPRegistryClient] Cache miss, fetching search results for: ${keywords}`,
       );
 
       // Fetch from registry API using the real endpoint structure
-      // Real API: GET /v0/servers?search={keywords} or GET /v0/servers for all servers
-      const url = keywords
-        ? `${this.baseUrl}/v0/servers?search=${encodeURIComponent(keywords)}`
-        : `${this.baseUrl}/v0/servers`;
+      // Real API: GET /v0/servers?search={keywords}
+      const url = `${this.baseUrl}/v0/servers?search=${encodeURIComponent(keywords)}`;
       const response = (await fetch(url, {
         method: 'GET',
         headers: {
@@ -227,8 +233,25 @@ export class MCPRegistryClient {
       );
       return validServers;
     } catch (error) {
-      console.error(`[MCPRegistryClient] Error searching servers:`, error);
+      // Log different error types with appropriate context
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error(
+          `[MCPRegistryClient] Network error while searching servers:`,
+          error.message,
+        );
+      } else if (error instanceof SyntaxError) {
+        console.error(
+          `[MCPRegistryClient] JSON parsing error in search response:`,
+          error.message,
+        );
+      } else {
+        console.error(
+          `[MCPRegistryClient] Unexpected error searching servers:`,
+          error,
+        );
+      }
       // Return empty array on error to allow graceful degradation
+      // Consumers can check console logs to distinguish error types
       return [];
     }
   }
@@ -301,11 +324,25 @@ export class MCPRegistryClient {
 
       return server;
     } catch (error) {
-      console.error(
-        `[MCPRegistryClient] Error getting server ${identifier}:`,
-        error,
-      );
+      // Log different error types with appropriate context
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error(
+          `[MCPRegistryClient] Network error while fetching server ${identifier}:`,
+          error.message,
+        );
+      } else if (error instanceof SyntaxError) {
+        console.error(
+          `[MCPRegistryClient] JSON parsing error in server response for ${identifier}:`,
+          error.message,
+        );
+      } else {
+        console.error(
+          `[MCPRegistryClient] Unexpected error getting server ${identifier}:`,
+          error,
+        );
+      }
       // Return null on error to allow graceful degradation
+      // Consumers can check console logs to distinguish error types
       return null;
     } finally {
       this.inflightServerRequests.delete(cacheKey);

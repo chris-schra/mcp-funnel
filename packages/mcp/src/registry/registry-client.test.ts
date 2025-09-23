@@ -262,64 +262,6 @@ describe('MCPRegistryClient', () => {
       // Should handle HTTP errors gracefully
       await expect(client.searchServers('test')).resolves.toEqual([]);
     });
-
-    it('should handle search without query parameter', async () => {
-      const allServers: ServerDetail[] = [
-        {
-          id: 'server-1',
-          _meta: {
-            'io.modelcontextprotocol.registry/official': {
-              id: 'server-1-registry-id',
-              published_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-            },
-          },
-          name: 'Server 1',
-          description: 'First server',
-        },
-        {
-          id: 'server-2',
-          _meta: {
-            'io.modelcontextprotocol.registry/official': {
-              id: 'server-2-registry-id',
-              published_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-            },
-          },
-          name: 'Server 2',
-          description: 'Second server',
-        },
-      ];
-
-      // Mock the API response format as the real API returns { servers: [], metadata: {} }
-      const mockResponse = {
-        servers: allServers,
-        metadata: {
-          count: 2,
-          next_cursor: null,
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.searchServers();
-
-      // Should call endpoint without query parameter
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers`,
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Accept: 'application/json',
-          }),
-        }),
-      );
-      expect(result).toEqual(allServers);
-    });
   });
 
   describe('getServer', () => {
