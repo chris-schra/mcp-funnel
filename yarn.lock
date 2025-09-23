@@ -910,6 +910,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@mcp-funnel/command-ts-unused-code@workspace:packages/commands/ts-unused-code":
+  version: 0.0.0-use.local
+  resolution: "@mcp-funnel/command-ts-unused-code@workspace:packages/commands/ts-unused-code"
+  dependencies:
+    "@mcp-funnel/commands-core": "workspace:^"
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    esbuild: "npm:^0.25.9"
+    tsr: "npm:^1.3.4"
+    tsx: "npm:^4.20.5"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
 "@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate":
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate"
@@ -4196,6 +4210,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mri@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "mri@npm:1.2.0"
+  checksum: 10c0/a3d32379c2554cf7351db6237ddc18dc9e54e4214953f3da105b97dc3babe0deb3ffe99cf409b38ea47cc29f9430561ba6b53b24ab8f9ce97a4b50409e4a50e7
+  languageName: node
+  linkType: hard
+
 "mrmime@npm:^2.0.0":
   version: 2.0.1
   resolution: "mrmime@npm:2.0.1"
@@ -5638,6 +5659,20 @@ __metadata:
   bin:
     tsconfck: bin/tsconfck.js
   checksum: 10c0/269c3c513540be44844117bb9b9258fe6f8aeab026d32aeebf458d5299125f330711429dbb556dbf125a0bc25f4a81e6c24ac96de2740badd295c3fb400f66c4
+  languageName: node
+  linkType: hard
+
+"tsr@npm:^1.3.4":
+  version: 1.3.4
+  resolution: "tsr@npm:1.3.4"
+  dependencies:
+    mri: "npm:^1.2.0"
+    picocolors: "npm:^1.1.1"
+  peerDependencies:
+    typescript: ">=4.0.0"
+  bin:
+    tsr: dist/cli.js
+  checksum: 10c0/f14b9502929317b0020b96aa1cd80ffe5bd85b8311b443ad1ac0eaf854a49e80519082fb411fb1bdb3b55b91b61f398002cb5b2234ee72fff471976e43a69cf2
   languageName: node
   linkType: hard
 
