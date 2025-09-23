@@ -17,7 +17,15 @@ assignees: ''
 
 ## Overview
 
-<!-- One paragraph describing what this feature/enhancement will accomplish -->
+<!-- Concise description based on the original idea -->
+
+## User Stories
+
+<!-- List user stories driving the feature, so that we can later check if they are fulfilled -->
+
+## Mocked Usage Examples
+
+<!-- MOCKED usage examples showing how the feature will be used in code and/or CLI -->
 
 ## Core Implementation
 
@@ -93,6 +101,11 @@ packages/[feature-area]/[feature-name]/
 - SEAM for future enhancement
 
 ## Implementation Phases
+
+<!-- 
+NOTE: DO NOT necessarily create phases - we don't have any deadline or so.
+Instead, optimize for parallel work and avoid re-touching and same files throughout phases.
+-->
 
 ### Phase 1: MVP (Current)
 - [ ] Core functionality
