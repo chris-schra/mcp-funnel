@@ -13,6 +13,8 @@ export type {
   ICommandOptions,
 } from './types.js';
 
-// Command implementation will be exported here in the next spark
-// For now, add minimal export to make build work
-export const placeholder = 'ts-unused-code command implementation pending';
+// Export command implementation
+export { TsUnusedCodeCommand } from './command.js';
+
+// Export processor for advanced usage
+export { TsrProcessor } from './processor.js';
