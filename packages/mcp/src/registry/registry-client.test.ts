@@ -250,17 +250,17 @@ describe('MCPRegistryClient', () => {
       await expect(client.searchServers('test')).resolves.toEqual([]);
     });
 
-    it.skip('should handle HTTP error responses gracefully', async () => {
+    it('should handle HTTP error responses gracefully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
       // Should handle HTTP errors gracefully
-      // await expect(_client.searchServers('test')).resolves.toEqual([]);
+      await expect(client.searchServers('test')).resolves.toEqual([]);
     });
 
     it('should handle search without query parameter', async () => {
@@ -459,26 +459,26 @@ describe('MCPRegistryClient', () => {
       expect(cachedResult).toEqual(serverDetail);
     });
 
-    it.skip('should handle network errors gracefully for getServer', async () => {
+    it('should handle network errors gracefully for getServer', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
       // Should return null on network error
-      // await expect(_client.getServer('test-server')).resolves.toBeNull();
+      await expect(client.getServer('test-server')).resolves.toBeNull();
     });
 
-    it.skip('should handle 500 errors properly for getServer', async () => {
+    it('should handle 500 errors properly for getServer', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
       // Should return null on server error
-      // await expect(_client.getServer('test-server')).resolves.toBeNull();
+      await expect(client.getServer('test-server')).resolves.toBeNull();
     });
   });
 
@@ -701,47 +701,9 @@ describe('MCPRegistryClient', () => {
     });
   });
 
-  describe('getInstallInfo', () => {
-    it.todo(
-      'should fetch installation information for a server - method not yet implemented',
-    );
-
-    it.todo(
-      'should return null for non-existent server install info - method not yet implemented',
-    );
-  });
 
   describe('cache behavior', () => {
-    it.skip('should work correctly without cache (NoOpCache)', async () => {
-      const mockResponse: ServerDetail[] = [
-        {
-          id: 'no-cache-server',
-          _meta: {
-            'io.modelcontextprotocol.registry/official': {
-              id: 'no-cache-server-registry-id',
-              published_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-            },
-          },
-          name: 'No Cache Server',
-          description: 'Server without caching',
-        },
-      ];
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const _client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      // const result = await _client.searchServers('test');
-
-      // Should make HTTP request every time with NoOpCache
-      // expect(mockFetch).toHaveBeenCalledTimes(1);
-      // expect(result).toEqual(mockResponse);
-    });
-
-    it.skip('should respect cache TTL when implemented', async () => {
+    it('should respect cache TTL when implemented', async () => {
       const serverDetail: ServerDetail = {
         id: 'ttl-server',
         _meta: {
@@ -755,33 +717,49 @@ describe('MCPRegistryClient', () => {
         description: 'Server for TTL testing',
       };
 
-      // Set with short TTL
-      await mockCache.set('server:ttl-server', serverDetail, 100); // 100ms TTL
+      // Set cache with short TTL using correct cache key format
+      const cacheKey = `${mockBaseUrl}:server:TTL Server`;
+      await mockCache.set(cacheKey, serverDetail, 100); // 100ms TTL
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
       // Should get from cache initially
-      // let result = await _client.getServer('ttl-server');
-      // expect(result).toEqual(serverDetail);
-      // expect(mockFetch).not.toHaveBeenCalled();
+      let result = await client.getServer('TTL Server');
+      expect(result).toEqual(serverDetail);
+      expect(mockFetch).not.toHaveBeenCalled();
 
       // Wait for TTL to expire
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Setup mock for after cache expiry
+      // Setup mock for after cache expiry - getServer uses search internally for non-UUID
+      const mockSearchResponse = {
+        servers: [serverDetail],
+        metadata: {
+          count: 1,
+          next_cursor: null,
+        },
+      };
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => serverDetail,
+        json: async () => mockSearchResponse,
       });
 
       // Should fetch from API after TTL expiry
-      // result = await _client.getServer('ttl-server');
-      // expect(mockFetch).toHaveBeenCalledTimes(1);
+      result = await client.getServer('TTL Server');
+      expect(result).toEqual(serverDetail);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${mockBaseUrl}/v0/servers?search=${encodeURIComponent('TTL Server')}`,
+        expect.objectContaining({
+          method: 'GET',
+        }),
+      );
     });
   });
 
   describe('error handling and edge cases', () => {
-    it.skip('should handle malformed JSON responses', async () => {
+    it('should handle malformed JSON responses', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => {
@@ -789,21 +767,21 @@ describe('MCPRegistryClient', () => {
         },
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, noOpCache);
+      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
 
       // Should handle JSON parsing errors gracefully
-      // await expect(_client.searchServers('test')).resolves.toEqual([]);
+      await expect(client.searchServers('test')).resolves.toEqual([]);
     });
 
-    it.skip('should handle empty responses', async () => {
+    it('should handle empty responses', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => null,
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      // const result = await _client.searchServers('test');
-      // expect(result).toEqual([]);
+      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
+      const result = await client.searchServers('test');
+      expect(result).toEqual([]);
     });
 
     it('should properly encode query parameters', async () => {
