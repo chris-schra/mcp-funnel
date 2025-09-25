@@ -1,10 +1,13 @@
-import { MCPProxy } from './index.js';
+import {
+  MCPProxy,
+  getUserBasePath,
+  resolveMergedProxyConfig,
+} from './index.js';
 import { ProxyConfig, normalizeServers } from './config.js';
 import { mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError } from './logger.js';
-import { getUserBasePath, resolveMergedProxyConfig } from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../.logs');

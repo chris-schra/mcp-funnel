@@ -1,4 +1,4 @@
-import { MCPProxy } from '../../src';
+import { MCPProxy } from '../../src/index.js';
 import { ProxyConfig } from '../../src/config.js';
 // TODO: Will be used when implementing server transport
 // import { Server } from '@modelcontextprotocol/sdk/server/index.js';
