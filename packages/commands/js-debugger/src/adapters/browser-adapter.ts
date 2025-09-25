@@ -141,6 +141,17 @@ export class BrowserAdapter implements IDebugAdapter {
   }
 
   /**
+   * Navigate the connected target to a URL
+   */
+  async navigate(url: string): Promise<void> {
+    if (!this.isConnected) {
+      throw new Error('Not connected to debugging target');
+    }
+
+    await this.cdpClient.send('Page.navigate', { url });
+  }
+
+  /**
    * Set a breakpoint at specified file and line
    */
   async setBreakpoint(

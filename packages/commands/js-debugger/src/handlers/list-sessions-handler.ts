@@ -4,9 +4,7 @@ import type {
   CallToolResult,
 } from '../types.js';
 
-export interface ListSessionsHandlerArgs {
-  // No arguments needed for listing sessions
-}
+export type ListSessionsHandlerArgs = Record<string, never>;
 
 /**
  * Handler for listing active debug sessions

@@ -51,7 +51,6 @@ export class GetVariablesHandler
       if (args.path) {
         // Path-based variable access
         const result = await this.getVariableByPath(
-          session,
           scopes,
           args.path,
           maxDepth,
@@ -101,7 +100,6 @@ export class GetVariablesHandler
    * Get variable by dot-notation path
    */
   private async getVariableByPath(
-    session: any,
     scopes: Scope[],
     path: string,
     maxDepth: number,

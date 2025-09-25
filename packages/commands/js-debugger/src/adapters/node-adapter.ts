@@ -1,5 +1,4 @@
 import { spawn, ChildProcess } from 'child_process';
-// import { promises as fs } from 'fs'; // TODO: Will be used for file validation in future iterations
 import { URL } from 'url';
 import path from 'path';
 import getPort from 'get-port';
@@ -159,7 +158,8 @@ export class NodeDebugAdapter implements IDebugAdapter {
         // Spawn Node.js process with inspector
         await this.spawnNodeProcess(target);
         // Use the full inspector URL if we captured it, otherwise fall back to discovery
-        const connectUrl = this.inspectorUrl || `ws://localhost:${this.inspectorPort}`;
+        const connectUrl =
+          this.inspectorUrl || `ws://localhost:${this.inspectorPort}`;
         await this.connectToInspector(connectUrl);
       }
 
@@ -204,14 +204,6 @@ export class NodeDebugAdapter implements IDebugAdapter {
       );
 
       if (result.breakpointId) {
-        const _breakpointInfo = {
-          id: result.breakpointId,
-          file: normalizedPath,
-          line,
-          condition,
-        };
-        // TODO: Store breakpoint info for debugging purposes in future iterations
-
         this.breakpoints.set(result.breakpointId, result);
         return result.breakpointId;
       }
@@ -516,7 +508,11 @@ export class NodeDebugAdapter implements IDebugAdapter {
       // Timeout after 30 seconds (increased for tsx which needs to transpile)
       setTimeout(() => {
         if (this.nodeProcess && !this.nodeProcess.killed && !inspectorUrl) {
-          reject(new Error(`Timeout waiting for Node.js inspector to start. Output so far: ${debuggerOutput}`));
+          reject(
+            new Error(
+              `Timeout waiting for Node.js inspector to start. Output so far: ${debuggerOutput}`,
+            ),
+          );
         }
       }, 30000);
     });
@@ -533,7 +529,9 @@ export class NodeDebugAdapter implements IDebugAdapter {
             console.error(`[DEBUG] Successfully connected to CDP`);
             return true;
           } catch (error) {
-            console.error(`[DEBUG] Failed to connect: ${error instanceof Error ? error.message : error}`);
+            console.error(
+              `[DEBUG] Failed to connect: ${error instanceof Error ? error.message : error}`,
+            );
             return null;
           }
         },
@@ -607,7 +605,7 @@ export class NodeDebugAdapter implements IDebugAdapter {
       try {
         await this.cdpClient.send('Runtime.runIfWaitingForDebugger');
         this.hasResumedFromInitialPause = true;
-      } catch (error) {
+      } catch (_error) {
         // Already running or command not needed
       }
     }
@@ -763,13 +761,30 @@ export class NodeDebugAdapter implements IDebugAdapter {
         generatePreview: true,
       });
 
-      return result.result.map((prop) => ({
-        name: prop.name,
-        value: prop.value.value,
-        type: prop.value.type,
-        configurable: prop.configurable,
-        enumerable: prop.enumerable,
-      }));
+      return result.result.map((prop) => {
+        const runtimeValue = prop.value;
+
+        let value: unknown;
+        if (runtimeValue) {
+          if (runtimeValue.value !== undefined) {
+            value = runtimeValue.value;
+          } else if (runtimeValue.description !== undefined) {
+            value = runtimeValue.description;
+          }
+        }
+
+        const inferredType =
+          runtimeValue?.type ??
+          (value !== undefined ? typeof value : 'unknown');
+
+        return {
+          name: prop.name,
+          value,
+          type: inferredType,
+          configurable: prop.configurable,
+          enumerable: prop.enumerable,
+        };
+      });
     } catch (error) {
       console.warn('Failed to get scope variables:', error);
       return [];

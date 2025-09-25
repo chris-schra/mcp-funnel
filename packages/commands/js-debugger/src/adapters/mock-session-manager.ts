@@ -6,6 +6,12 @@ import type {
   ConsoleMessage,
 } from '../types.js';
 
+type MockVariableScopes = {
+  local: Record<string, unknown>;
+  closure: Record<string, unknown>;
+  global: Record<string, unknown>;
+};
+
 /**
  * Mock session manager - separates mock logic from real debug logic
  * Implements the IMockSessionManager interface for clean separation
@@ -483,7 +489,7 @@ export class MockSessionManager implements IMockSessionManager {
   /**
    * Create comprehensive mock variables for testing
    */
-  private createMockVariables(session: MockDebugSession) {
+  private createMockVariables(session: MockDebugSession): MockVariableScopes {
     return {
       local: {
         userId: 12345,
@@ -545,16 +551,20 @@ export class MockSessionManager implements IMockSessionManager {
     sessionId: string,
     path: string,
     frameId: number,
-    mockVariables: any,
+    mockVariables: MockVariableScopes,
   ): CallToolResult {
     const pathParts = path.split('.');
-    let current: any = mockVariables;
+    let current: unknown = mockVariables;
     let found = true;
 
     try {
       for (const part of pathParts) {
-        if (current && typeof current === 'object' && part in current) {
-          current = current[part];
+        if (
+          current &&
+          typeof current === 'object' &&
+          part in (current as Record<string, unknown>)
+        ) {
+          current = (current as Record<string, unknown>)[part];
         } else {
           found = false;
           break;
@@ -617,7 +627,7 @@ export class MockSessionManager implements IMockSessionManager {
     sessionId: string,
     frameId: number,
     maxDepth: number,
-    mockVariables: any,
+    mockVariables: MockVariableScopes,
   ): CallToolResult {
     const scopes = [
       {

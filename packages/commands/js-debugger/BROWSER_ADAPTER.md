@@ -5,6 +5,7 @@ The Browser Debug Adapter provides a production-ready debugging interface for Ja
 ## Features
 
 ### Core Debugging Operations
+
 - ✅ **Breakpoint Management**: Set, remove, and manage breakpoints with optional conditions
 - ✅ **Execution Control**: Continue, step over, step into, step out
 - ✅ **Expression Evaluation**: Evaluate JavaScript expressions in the current debugging context
@@ -13,6 +14,7 @@ The Browser Debug Adapter provides a production-ready debugging interface for Ja
 - ✅ **Console Monitoring**: Capture and process console output (log, warn, error, etc.)
 
 ### Browser-Specific Features
+
 - ✅ **Target Discovery**: Automatically discover and connect to browser tabs/pages
 - ✅ **Multiple Connection Modes**: Connect by URL pattern, target ID, or automatically
 - ✅ **Source Map Support**: Automatic source map resolution for transpiled code
@@ -20,6 +22,7 @@ The Browser Debug Adapter provides a production-ready debugging interface for Ja
 - ✅ **Page Navigation**: Handle page reloads and navigation events
 
 ### Production-Ready Features
+
 - ✅ **Robust Error Handling**: Comprehensive error handling with detailed error messages
 - ✅ **Connection Management**: Automatic cleanup and proper resource disposal
 - ✅ **Event System**: Flexible event handlers for debugging state changes
@@ -66,12 +69,14 @@ debugger.onConsoleOutput((msg) => {
 ## Connection Modes
 
 ### Auto Connection
+
 ```typescript
 // Connect to the first available page
 await debugger.connect('auto');
 ```
 
 ### URL Pattern Matching
+
 ```typescript
 // Connect to a page matching the URL pattern
 await debugger.connect('localhost:3000');
@@ -79,12 +84,14 @@ await debugger.connect('https://example.com');
 ```
 
 ### Target ID
+
 ```typescript
 // Connect to a specific target by ID
 await debugger.connect('E4C5B0D1-2F3A-4B5C-8D9E-1F2A3B4C5D6E');
 ```
 
 ### Target Title
+
 ```typescript
 // Connect by page title
 await debugger.connect('My App - Dashboard');
@@ -93,6 +100,7 @@ await debugger.connect('My App - Dashboard');
 ## Advanced Features
 
 ### Conditional Breakpoints
+
 ```typescript
 const bpId = await debugger.setBreakpoint(
   'app.js',
@@ -102,6 +110,7 @@ const bpId = await debugger.setBreakpoint(
 ```
 
 ### Stack Frame Inspection
+
 ```typescript
 debugger.onPaused(async (state) => {
   const stackTrace = await debugger.getStackTrace();
@@ -115,6 +124,7 @@ debugger.onPaused(async (state) => {
 ```
 
 ### Expression Evaluation
+
 ```typescript
 // Evaluate in current context
 const result = await debugger.evaluate('window.location.href');
@@ -131,6 +141,7 @@ const userInfo = await debugger.evaluate(`
 ```
 
 ### Console Monitoring
+
 ```typescript
 debugger.onConsoleOutput((message) => {
   switch (message.level) {
@@ -155,6 +166,7 @@ The adapter automatically resolves source maps for transpiled code:
 - ⚠️ **Relative URLs**: Limited support (browser context dependent)
 
 Source maps are loaded asynchronously and used for:
+
 - Mapping minified locations to original source
 - Resolving original file names in stack traces
 - Providing accurate debugging information for TypeScript, Babel, etc.
@@ -180,34 +192,41 @@ try {
 ## API Reference
 
 ### Constructor
+
 ```typescript
 new BrowserAdapter(host?: string, port?: number)
 ```
+
 - `host`: CDP endpoint host (default: 'localhost')
 - `port`: CDP endpoint port (default: 9222)
 
 ### Core Methods
 
 #### Connection Management
+
 - `connect(target: string): Promise<void>` - Connect to debugging target
 - `disconnect(): Promise<void>` - Disconnect and cleanup
 
 #### Breakpoint Management
+
 - `setBreakpoint(file: string, line: number, condition?: string): Promise<string>` - Set breakpoint
 - `removeBreakpoint(id: string): Promise<void>` - Remove breakpoint
 
 #### Execution Control
+
 - `continue(): Promise<DebugState>` - Resume execution
 - `stepOver(): Promise<DebugState>` - Step over current line
 - `stepInto(): Promise<DebugState>` - Step into function call
 - `stepOut(): Promise<DebugState>` - Step out of current function
 
 #### Inspection
+
 - `evaluate(expression: string): Promise<EvaluationResult>` - Evaluate expression
 - `getStackTrace(): Promise<StackFrame[]>` - Get current stack trace
 - `getScopes(frameId: number): Promise<Scope[]>` - Get variable scopes
 
 #### Event Handlers
+
 - `onConsoleOutput(handler: ConsoleHandler): void` - Register console handler
 - `onPaused(handler: PauseHandler): void` - Register pause handler
 - `onResumed(handler: ResumeHandler): void` - Register resume handler
@@ -215,6 +234,7 @@ new BrowserAdapter(host?: string, port?: number)
 ## Browser Compatibility
 
 ### Supported Browsers
+
 - ✅ **Google Chrome** (all versions with CDP support)
 - ✅ **Microsoft Edge** (Chromium-based)
 - ✅ **Chromium** (all builds)
@@ -222,6 +242,7 @@ new BrowserAdapter(host?: string, port?: number)
 - ✅ **Opera** (Chromium-based)
 
 ### CDP Protocol Support
+
 - **Debugger Domain**: Full support for breakpoints, execution control, and script inspection
 - **Runtime Domain**: Expression evaluation, console monitoring, exception handling
 - **Page Domain**: Navigation events and resource loading
@@ -232,22 +253,26 @@ new BrowserAdapter(host?: string, port?: number)
 ### Common Issues
 
 **"Chrome DevTools endpoint not available"**
+
 ```bash
 # Ensure Chrome is running with the correct flags
 chrome --remote-debugging-port=9222 --disable-web-security
 ```
 
 **"Could not find or create target"**
+
 - Check that browser has open tabs
 - Try `debugger.connect('auto')` instead of URL patterns
 - Verify the target URL/pattern is correct
 
 **"Request timeout"**
+
 - Check network connectivity to CDP endpoint
 - Increase timeout in CDP client options
 - Verify browser is responsive
 
 **Source maps not loading**
+
 - Ensure source map URLs are accessible
 - Check browser console for CORS issues
 - Verify source map format is valid
@@ -255,6 +280,7 @@ chrome --remote-debugging-port=9222 --disable-web-security
 ### Debug Mode
 
 Enable verbose logging for troubleshooting:
+
 ```typescript
 const debugger = new BrowserAdapter();
 
@@ -267,6 +293,7 @@ debugger.cdpClient.on('*', (event, params) => {
 ## Integration Examples
 
 ### With Jest Testing
+
 ```typescript
 import { BrowserAdapter } from '@mcp-funnel/command-js-debugger';
 
@@ -298,6 +325,7 @@ describe('Browser Debugging', () => {
 ```
 
 ### With Puppeteer
+
 ```typescript
 import puppeteer from 'puppeteer';
 import { BrowserAdapter } from '@mcp-funnel/command-js-debugger';

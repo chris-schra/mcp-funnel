@@ -186,7 +186,7 @@ export class CDPClient extends EventEmitter implements ICDPClient {
   async disconnect(): Promise<void> {
     // Disable reconnection for manual disconnect
     const originalAutoReconnect = this.options.autoReconnect;
-    (this.options as any).autoReconnect = false;
+    this.options.autoReconnect = false;
 
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -199,7 +199,7 @@ export class CDPClient extends EventEmitter implements ICDPClient {
           this.cleanup();
           this.emit('disconnect');
           // Restore original setting after disconnect
-          (this.options as any).autoReconnect = originalAutoReconnect;
+          this.options.autoReconnect = originalAutoReconnect;
           resolve();
         };
 
@@ -215,7 +215,7 @@ export class CDPClient extends EventEmitter implements ICDPClient {
     this.cleanup();
     this.emit('disconnect');
     // Restore original setting
-    (this.options as any).autoReconnect = originalAutoReconnect;
+    this.options.autoReconnect = originalAutoReconnect;
   }
 
   /**
@@ -357,9 +357,14 @@ export class CDPClient extends EventEmitter implements ICDPClient {
     this.pendingPromises.delete(response.id);
 
     if (response.error) {
-      const error = new Error(response.error.message);
-      (error as any).code = response.error.code;
-      (error as any).data = response.error.data;
+      const error = new Error(response.error.message) as Error & {
+        code?: number;
+        data?: unknown;
+      };
+      error.code = response.error.code;
+      if ('data' in response.error) {
+        error.data = response.error.data;
+      }
       pending.reject(error);
     } else {
       pending.resolve(response.result);
@@ -439,7 +444,7 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * Reject all pending promises with the given error
    */
   private rejectPendingPromises(error: Error): void {
-    for (const [id, pending] of this.pendingPromises) {
+    for (const pending of this.pendingPromises.values()) {
       clearTimeout(pending.timeout);
       pending.reject(error);
     }

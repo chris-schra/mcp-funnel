@@ -267,6 +267,41 @@ export interface IResponseFormatter {
     filteredCount?: number;
     status: string;
   }): CallToolResult;
+  runningSession(
+    sessionId: string,
+    platform: string,
+    target: string,
+  ): CallToolResult;
+  terminatedSession(sessionId: string, message: string): CallToolResult;
+  stackTrace(
+    sessionId: string,
+    stackTrace: Array<{
+      frameId: number;
+      functionName: string;
+      file: string;
+      line: number;
+      column?: number;
+    }>,
+  ): CallToolResult;
+  variables(
+    sessionId: string,
+    frameId: number,
+    data: {
+      path?: string;
+      maxDepth?: number;
+      scopes?: unknown[];
+      result?: unknown;
+    },
+  ): CallToolResult;
+  evaluation(
+    sessionId: string,
+    evaluation: {
+      expression?: string;
+      result: unknown;
+      type: string;
+      error?: string;
+    },
+  ): CallToolResult;
 }
 
 /**
@@ -279,6 +314,11 @@ export interface ISessionValidator {
   validatePausedSession(
     sessionId: string,
   ): { session: DebugSession } | { error: CallToolResult };
+  createHandlerError(
+    sessionId: string,
+    error: unknown,
+    operation?: string,
+  ): CallToolResult;
 }
 
 /**
@@ -303,6 +343,26 @@ export interface IMockSessionManager {
       evaluate?: string;
     },
   ): CallToolResult;
+  createInitialMockResponse(
+    sessionId: string,
+    request: DebugRequest,
+  ): CallToolResult;
+  getStackTraceMock(sessionId: string): CallToolResult;
+  getConsoleOutputMock(
+    sessionId: string,
+    args: {
+      levels?: Record<string, boolean>;
+      search?: string;
+      since?: number;
+    },
+  ): CallToolResult;
+  getVariablesMock(args: {
+    sessionId: string;
+    path?: string;
+    frameId?: number;
+    maxDepth?: number;
+  }): CallToolResult;
+  stopMockSession(sessionId: string): CallToolResult;
 }
 
 /**
