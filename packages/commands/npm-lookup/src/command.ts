@@ -95,11 +95,16 @@ export class NPMCommand implements ICommand {
           }
 
           const packageInfo = await this.client.getPackage(args.packageName);
+
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify(packageInfo, null, 2),
+              },
+              {
+                type: 'text',
+                text: 'Follow the homepage and repository links for more information about the package if usage examples are required.',
               },
             ],
           };
