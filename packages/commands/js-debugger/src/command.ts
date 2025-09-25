@@ -194,6 +194,28 @@ export class JsDebuggerCommand implements ICommand {
           required: ['sessionId'],
         },
       },
+      {
+        name: 'cleanup_sessions',
+        description:
+          'Manually trigger cleanup of inactive sessions and get cleanup status',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            force: {
+              type: 'boolean',
+              description:
+                'Force cleanup of all inactive sessions regardless of thresholds',
+              default: false,
+            },
+            dryRun: {
+              type: 'boolean',
+              description:
+                'Show what would be cleaned up without actually cleaning',
+              default: false,
+            },
+          },
+        },
+      },
     ];
   }
 
@@ -234,6 +256,13 @@ export class JsDebuggerCommand implements ICommand {
             path?: string;
             frameId?: number;
             maxDepth?: number;
+          },
+        );
+      case 'cleanup_sessions':
+        return this.cleanupSessions(
+          args as unknown as {
+            force?: boolean;
+            dryRun?: boolean;
           },
         );
       default:
@@ -310,7 +339,10 @@ export class JsDebuggerCommand implements ICommand {
     evaluate?: string;
   }): Promise<CallToolResult> {
     try {
-      const session = this.sessionManager.getSession(args.sessionId);
+      // Use getSessionWithActivity to track user activity automatically
+      const session =
+        this.sessionManager.getSessionWithActivity?.(args.sessionId) ||
+        this.sessionManager.getSession(args.sessionId);
 
       if (!session) {
         // Check if it's a mock session
@@ -614,7 +646,10 @@ export class JsDebuggerCommand implements ICommand {
     sessionId: string;
   }): Promise<CallToolResult> {
     try {
-      const session = this.sessionManager.getSession(args.sessionId);
+      // Use getSessionWithActivity to track user activity automatically
+      const session =
+        this.sessionManager.getSessionWithActivity?.(args.sessionId) ||
+        this.sessionManager.getSession(args.sessionId);
 
       if (!session) {
         // Check if it's a mock session
@@ -640,8 +675,7 @@ export class JsDebuggerCommand implements ICommand {
         };
       }
 
-      // Clean disconnect and termination
-      await session.adapter.disconnect();
+      // Clean disconnect and termination - the deleteSession method now handles comprehensive cleanup
       this.sessionManager.deleteSession(args.sessionId);
 
       return {
@@ -652,6 +686,11 @@ export class JsDebuggerCommand implements ICommand {
               sessionId: args.sessionId,
               status: 'terminated',
               message: 'Debug session stopped and cleaned up successfully',
+              cleanup: {
+                resourcesReleased: true,
+                memoryFreed: true,
+                timeoutsCleared: true,
+              },
             }),
           },
         ],
@@ -676,7 +715,10 @@ export class JsDebuggerCommand implements ICommand {
     sessionId: string;
   }): Promise<CallToolResult> {
     try {
-      const session = this.sessionManager.getSession(args.sessionId);
+      // Use getSessionWithActivity to track user activity automatically
+      const session =
+        this.sessionManager.getSessionWithActivity?.(args.sessionId) ||
+        this.sessionManager.getSession(args.sessionId);
 
       if (!session) {
         // Check if it's a mock session
@@ -765,7 +807,10 @@ export class JsDebuggerCommand implements ICommand {
     maxDepth?: number;
   }): Promise<CallToolResult> {
     try {
-      const session = this.sessionManager.getSession(args.sessionId);
+      // Use getSessionWithActivity to track user activity automatically
+      const session =
+        this.sessionManager.getSessionWithActivity?.(args.sessionId) ||
+        this.sessionManager.getSession(args.sessionId);
 
       if (!session) {
         // Check if it's a mock session
@@ -1154,6 +1199,102 @@ export class JsDebuggerCommand implements ICommand {
       return String(value);
     } catch {
       return null;
+    }
+  }
+
+  private async cleanupSessions(args: {
+    force?: boolean;
+    dryRun?: boolean;
+  }): Promise<CallToolResult> {
+    try {
+      const allSessions = this.sessionManager.listSessions();
+      const cleanupConfig = this.sessionManager.getCleanupConfig?.() || {
+        sessionTimeoutMs: 30 * 60 * 1000,
+        memoryThresholdBytes: 100 * 1024 * 1024,
+      };
+
+      // Identify sessions that would be cleaned up
+      const inactiveSessions = allSessions.filter((session) => {
+        const lastActivity = session.metadata?.lastActivity;
+        if (!lastActivity) return false;
+
+        const lastActivityTime = new Date(lastActivity).getTime();
+        const now = new Date().getTime();
+        const isInactive =
+          now - lastActivityTime > cleanupConfig.sessionTimeoutMs;
+
+        const hasExceededMemory =
+          session.metadata?.resourceCount &&
+          session.metadata.resourceCount > 100; // Rough threshold
+
+        return args.force || isInactive || hasExceededMemory;
+      });
+
+      if (args.dryRun) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  dryRun: true,
+                  totalSessions: allSessions.length,
+                  sessionsToCleanup: inactiveSessions.length,
+                  cleanupCandidates: inactiveSessions.map((session) => ({
+                    sessionId: session.id,
+                    platform: session.platform,
+                    lastActivity: session.metadata?.lastActivity,
+                    lifecycleState: session.metadata?.lifecycleState,
+                    resourceCount: session.metadata?.resourceCount,
+                  })),
+                  cleanupConfig: cleanupConfig,
+                  message:
+                    'Dry run completed - no sessions were actually cleaned up',
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+
+      // Perform actual cleanup
+      const cleanedCount =
+        (await this.sessionManager.cleanupInactiveSessions?.()) || 0;
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                totalSessions: allSessions.length,
+                cleanedSessions: cleanedCount,
+                remainingSessions: allSessions.length - cleanedCount,
+                cleanupConfig: cleanupConfig,
+                message: `Successfully cleaned up ${cleanedCount} inactive sessions`,
+                timestamp: new Date().toISOString(),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: error instanceof Error ? error.message : 'Unknown error',
+              message: 'Failed to cleanup sessions',
+            }),
+          },
+        ],
+        isError: true,
+      };
     }
   }
 

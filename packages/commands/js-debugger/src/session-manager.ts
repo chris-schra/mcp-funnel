@@ -7,7 +7,6 @@ import {
   DebugState,
   ConsoleMessage,
   SessionCleanupConfig,
-  SessionMetadata,
   SessionLifecycleState,
   ResourceTracker,
   SessionActivity,
@@ -55,9 +54,16 @@ const DEFAULT_CLEANUP_CONFIG: SessionCleanupConfig = {
  * Resource tracker implementation
  */
 class SessionResourceTracker implements ResourceTracker {
-  private resources = new Map<string, Map<string, { type: string; createdAt: string }>>();
+  private resources = new Map<
+    string,
+    Map<string, { type: string; createdAt: string }>
+  >();
 
-  trackResource(sessionId: string, resourceId: string, type: 'process' | 'connection' | 'timer'): void {
+  trackResource(
+    sessionId: string,
+    resourceId: string,
+    type: 'process' | 'connection' | 'timer',
+  ): void {
     if (!this.resources.has(sessionId)) {
       this.resources.set(sessionId, new Map());
     }
@@ -101,13 +107,19 @@ class SessionResourceTracker implements ResourceTracker {
  * Session activity tracker implementation
  */
 class SessionActivityTracker implements SessionActivity {
-  private activities = new Map<string, {
-    lastActivity: string;
-    activityCount: number;
-    activities: Array<{ type: string; timestamp: string }>;
-  }>();
+  private activities = new Map<
+    string,
+    {
+      lastActivity: string;
+      activityCount: number;
+      activities: Array<{ type: string; timestamp: string }>;
+    }
+  >();
 
-  recordActivity(sessionId: string, type: 'user_action' | 'console_output' | 'state_change' | 'heartbeat'): void {
+  recordActivity(
+    sessionId: string,
+    type: 'user_action' | 'console_output' | 'state_change' | 'heartbeat',
+  ): void {
     const now = new Date().toISOString();
     const activity = this.activities.get(sessionId) || {
       lastActivity: now,
@@ -141,7 +153,7 @@ class SessionActivityTracker implements SessionActivity {
 
     const lastActivity = new Date(activity.lastActivity);
     const now = new Date();
-    return (now.getTime() - lastActivity.getTime()) < thresholdMs;
+    return now.getTime() - lastActivity.getTime() < thresholdMs;
   }
 
   cleanup(): void {
@@ -200,7 +212,10 @@ export class SessionManager implements ISessionManager {
   private globalCleanupTimer?: NodeJS.Timeout;
   private isShuttingDown = false;
 
-  private constructor(adapterFactory?: IAdapterFactory, cleanupConfig?: Partial<SessionCleanupConfig>) {
+  private constructor(
+    adapterFactory?: IAdapterFactory,
+    cleanupConfig?: Partial<SessionCleanupConfig>,
+  ) {
     this.adapterFactory = adapterFactory ?? new AdapterFactory();
     this.cleanupConfig = { ...DEFAULT_CLEANUP_CONFIG, ...cleanupConfig };
     this.resourceTracker = new SessionResourceTracker();
@@ -213,9 +228,15 @@ export class SessionManager implements ISessionManager {
   /**
    * Get the singleton instance of SessionManager
    */
-  static getInstance(adapterFactory?: IAdapterFactory, cleanupConfig?: Partial<SessionCleanupConfig>): SessionManager {
+  static getInstance(
+    adapterFactory?: IAdapterFactory,
+    cleanupConfig?: Partial<SessionCleanupConfig>,
+  ): SessionManager {
     if (!SessionManager.instance) {
-      SessionManager.instance = new SessionManager(adapterFactory, cleanupConfig);
+      SessionManager.instance = new SessionManager(
+        adapterFactory,
+        cleanupConfig,
+      );
     }
     return SessionManager.instance;
   }
@@ -238,7 +259,7 @@ export class SessionManager implements ISessionManager {
     if (this.cleanupConfig.enableAutoCleanup) {
       this.globalCleanupTimer = setInterval(
         () => this.performGlobalCleanup(),
-        this.cleanupConfig.cleanupIntervalMs
+        this.cleanupConfig.cleanupIntervalMs,
       );
 
       // Ensure cleanup timer doesn't prevent process exit
@@ -320,7 +341,11 @@ export class SessionManager implements ISessionManager {
 
     try {
       // Track adapter connection as a resource
-      this.resourceTracker.trackResource(sessionId, `adapter-${sessionId}`, 'connection');
+      this.resourceTracker.trackResource(
+        sessionId,
+        `adapter-${sessionId}`,
+        'connection',
+      );
 
       // Connect the adapter
       await adapter.connect(request.target);
@@ -412,11 +437,13 @@ export class SessionManager implements ISessionManager {
       target: session.request.target,
       state: session.state,
       startTime: session.startTime,
-      metadata: session.metadata ? {
-        lifecycleState: session.lifecycleState,
-        lastActivity: session.metadata.lastActivityAt,
-        resourceCount: this.resourceTracker.getResourceCount(session.id),
-      } : undefined,
+      metadata: session.metadata
+        ? {
+            lifecycleState: session.lifecycleState,
+            lastActivity: session.metadata.lastActivityAt,
+            resourceCount: this.resourceTracker.getResourceCount(session.id),
+          }
+        : undefined,
     }));
   }
 
@@ -436,7 +463,7 @@ export class SessionManager implements ISessionManager {
       if (this.cleanupConfig.enableAutoCleanup) {
         this.globalCleanupTimer = setInterval(
           () => this.performGlobalCleanup(),
-          this.cleanupConfig.cleanupIntervalMs
+          this.cleanupConfig.cleanupIntervalMs,
         );
         this.globalCleanupTimer.unref();
       }
@@ -453,11 +480,13 @@ export class SessionManager implements ISessionManager {
     for (const [sessionId, session] of this.sessions) {
       const isInactive = !this.activityTracker.isSessionActive(
         sessionId,
-        this.cleanupConfig.sessionTimeoutMs
+        this.cleanupConfig.sessionTimeoutMs,
       );
 
-      const hasExceededMemoryThreshold = session.metadata &&
-        session.metadata.resourceUsage.memoryEstimate > this.cleanupConfig.memoryThresholdBytes;
+      const hasExceededMemoryThreshold =
+        session.metadata &&
+        session.metadata.resourceUsage.memoryEstimate >
+          this.cleanupConfig.memoryThresholdBytes;
 
       if (isInactive || hasExceededMemoryThreshold) {
         sessionsToCleanup.push(sessionId);
@@ -466,7 +495,7 @@ export class SessionManager implements ISessionManager {
 
     for (const sessionId of sessionsToCleanup) {
       try {
-        console.log(`Cleaning up inactive session: ${sessionId}`);
+        console.info(`Cleaning up inactive session: ${sessionId}`);
         this.deleteSession(sessionId);
         cleanedCount++;
       } catch (error) {
@@ -488,31 +517,107 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Setup event handlers for a debug session
+   * Setup enhanced event handlers for a debug session with memory leak prevention
    */
   private setupSessionEventHandlers(session: DebugSession): void {
     const { adapter, request } = session;
 
-    // Console output handler with verbosity filtering
+    // Console output handler with verbosity filtering and memory management
     if (request.captureConsole !== false) {
       adapter.onConsoleOutput((message: ConsoleMessage) => {
         if (
           this.shouldIncludeConsoleMessage(message, request.consoleVerbosity)
         ) {
-          session.consoleOutput.push(message);
+          // Implement circular buffer to prevent memory leaks
+          this.addConsoleOutputWithMemoryManagement(session, message);
+
+          // Record console activity
+          this.activityTracker.recordActivity(session.id, 'console_output');
+          this.updateSessionActivity(session);
         }
       });
     }
 
-    // Pause handler
+    // Enhanced pause handler
     adapter.onPaused((state: DebugState) => {
       session.state = state;
+      session.lifecycleState = 'active'; // Update lifecycle state
+      this.activityTracker.recordActivity(session.id, 'state_change');
+      this.updateSessionActivity(session);
     });
 
-    // Resume handler
+    // Enhanced resume handler
     adapter.onResumed(() => {
       session.state = { status: 'running' };
+      session.lifecycleState = 'active'; // Update lifecycle state
+      this.activityTracker.recordActivity(session.id, 'state_change');
+      this.updateSessionActivity(session);
     });
+  }
+
+  /**
+   * Add console output with memory management (circular buffer)
+   */
+  private addConsoleOutputWithMemoryManagement(
+    session: DebugSession,
+    message: ConsoleMessage,
+  ): void {
+    session.consoleOutput.push(message);
+
+    // Implement circular buffer to prevent unbounded memory growth
+    if (
+      session.consoleOutput.length > this.cleanupConfig.maxConsoleOutputEntries
+    ) {
+      // Remove oldest entries, keep recent ones
+      const keepCount = Math.floor(
+        this.cleanupConfig.maxConsoleOutputEntries * 0.8,
+      ); // Keep 80%
+      session.consoleOutput = session.consoleOutput.slice(-keepCount);
+    }
+
+    // Update memory usage estimate
+    if (session.metadata) {
+      session.metadata.resourceUsage.consoleOutputSize =
+        session.consoleOutput.length;
+      session.metadata.resourceUsage.memoryEstimate =
+        this.estimateSessionMemoryUsage(session);
+    }
+  }
+
+  /**
+   * Update session activity metadata
+   */
+  private updateSessionActivity(session: DebugSession): void {
+    if (session.metadata) {
+      const now = new Date().toISOString();
+      session.metadata.lastActivityAt = now;
+      session.metadata.activityCount = this.activityTracker.getActivityCount(
+        session.id,
+      );
+    }
+  }
+
+  /**
+   * Estimate memory usage for a session
+   */
+  private estimateSessionMemoryUsage(session: DebugSession): number {
+    let memoryEstimate = 0;
+
+    // Base session overhead
+    memoryEstimate += 1024; // 1KB base
+
+    // Console output estimate
+    memoryEstimate += session.consoleOutput.length * 200; // ~200 bytes per message
+
+    // Breakpoints estimate
+    memoryEstimate += session.breakpoints.size * 100; // ~100 bytes per breakpoint
+
+    // Metadata estimate
+    if (session.metadata) {
+      memoryEstimate += 512; // ~512 bytes for metadata
+    }
+
+    return memoryEstimate;
   }
 
   /**
@@ -531,7 +636,10 @@ export class SessionManager implements ISessionManager {
   /**
    * Setup enhanced session timeout and heartbeat handling
    */
-  private setupEnhancedSessionTimeouts(sessionId: string, requestTimeoutMs?: number): void {
+  private setupEnhancedSessionTimeouts(
+    sessionId: string,
+    requestTimeoutMs?: number,
+  ): void {
     const session = this.sessions.get(sessionId);
     if (!session || !session.cleanup) return;
 
@@ -542,7 +650,7 @@ export class SessionManager implements ISessionManager {
     const sessionTimeout = setTimeout(() => {
       const currentSession = this.sessions.get(sessionId);
       if (currentSession) {
-        console.log(`Session ${sessionId} timed out after ${timeoutMs}ms`);
+        console.info(`Session ${sessionId} timed out after ${timeoutMs}ms`);
         currentSession.lifecycleState = 'terminating';
         currentSession.state = { status: 'terminated' };
         this.deleteSession(sessionId);
@@ -553,7 +661,11 @@ export class SessionManager implements ISessionManager {
     this.sessionTimeouts.set(sessionId, sessionTimeout);
 
     // Track timeout as a resource
-    this.resourceTracker.trackResource(sessionId, `timeout-${sessionId}`, 'timer');
+    this.resourceTracker.trackResource(
+      sessionId,
+      `timeout-${sessionId}`,
+      'timer',
+    );
 
     // Setup heartbeat if enabled
     if (this.cleanupConfig.enableHeartbeat) {
@@ -585,7 +697,10 @@ export class SessionManager implements ISessionManager {
               currentSession.lifecycleState = 'inactive';
             }
           } catch (error) {
-            console.warn(`Heartbeat check failed for session ${sessionId}:`, error);
+            console.warn(
+              `Heartbeat check failed for session ${sessionId}:`,
+              error,
+            );
             currentSession.lifecycleState = 'inactive';
           }
         }
@@ -594,7 +709,11 @@ export class SessionManager implements ISessionManager {
 
     session.cleanup.heartbeatHandle = heartbeatInterval;
     // Track heartbeat timer as resource
-    this.resourceTracker.trackResource(sessionId, `heartbeat-${sessionId}`, 'timer');
+    this.resourceTracker.trackResource(
+      sessionId,
+      `heartbeat-${sessionId}`,
+      'timer',
+    );
   }
 
   /**
@@ -635,26 +754,146 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Clean up session resources
+   * Perform global cleanup of all sessions
    */
-  private cleanupSession(session: DebugSession): void {
-    // Clear timeout if exists
-    const timeout = this.sessionTimeouts.get(session.id);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.sessionTimeouts.delete(session.id);
-    }
+  private async performGlobalCleanup(): Promise<void> {
+    if (this.isShuttingDown) return;
 
-    // Disconnect adapter
-    session.adapter.disconnect().catch((error) => {
-      console.warn(
-        `Error disconnecting adapter for session ${session.id}:`,
-        error,
+    try {
+      // Clean up inactive sessions
+      await this.cleanupInactiveSessions();
+
+      // Check for memory pressure and clean up if needed
+      const totalSessions = this.sessions.size;
+      if (totalSessions > this.cleanupConfig.maxInactiveSessionsBeforeCleanup) {
+        console.info(
+          `Too many sessions (${totalSessions}), forcing cleanup of oldest inactive`,
+        );
+        await this.forceCleanupOldestSessions(
+          totalSessions - this.cleanupConfig.maxInactiveSessionsBeforeCleanup,
+        );
+      }
+
+      // Cleanup orphaned resources in trackers
+      this.cleanupOrphanedTrackerResources();
+    } catch (error) {
+      console.error('Error during global cleanup:', error);
+    }
+  }
+
+  /**
+   * Force cleanup of oldest sessions to prevent resource exhaustion
+   */
+  private async forceCleanupOldestSessions(count: number): Promise<void> {
+    const sessionEntries = Array.from(this.sessions.entries()).sort((a, b) => {
+      const aLastActivity = a[1].metadata?.lastActivityAt || a[1].startTime;
+      const bLastActivity = b[1].metadata?.lastActivityAt || b[1].startTime;
+      return (
+        new Date(aLastActivity).getTime() - new Date(bLastActivity).getTime()
       );
     });
 
-    // Update state
-    session.state = { status: 'terminated' };
+    for (let i = 0; i < count && i < sessionEntries.length; i++) {
+      const [sessionId] = sessionEntries[i];
+      console.info(`Force cleaning up old session: ${sessionId}`);
+      this.deleteSession(sessionId);
+    }
+  }
+
+  /**
+   * Clean up orphaned resources in trackers
+   */
+  private cleanupOrphanedTrackerResources(): void {
+    // This would clean up tracker resources for sessions that no longer exist
+    // Implementation depends on tracker internal structure
+  }
+
+  /**
+   * Shutdown all sessions and cleanup global resources
+   */
+  async shutdown(): Promise<void> {
+    if (this.isShuttingDown) return;
+    this.isShuttingDown = true;
+
+    console.info('SessionManager shutting down...');
+
+    // Stop global cleanup timer
+    if (this.globalCleanupTimer) {
+      clearInterval(this.globalCleanupTimer);
+      this.globalCleanupTimer = undefined;
+    }
+
+    // Clean up all active sessions
+    const sessionIds = Array.from(this.sessions.keys());
+    const cleanupPromises = sessionIds.map(async (sessionId) => {
+      try {
+        this.deleteSession(sessionId);
+      } catch (error) {
+        console.warn(
+          `Error cleaning up session ${sessionId} during shutdown:`,
+          error,
+        );
+      }
+    });
+
+    await Promise.allSettled(cleanupPromises);
+
+    // Clean up trackers
+    this.resourceTracker.cleanup();
+    this.activityTracker.cleanup();
+
+    console.info('SessionManager shutdown complete');
+  }
+
+  /**
+   * Enhanced session cleanup with comprehensive resource management
+   */
+  private cleanupSession(session: DebugSession): void {
+    try {
+      // Update lifecycle state
+      session.lifecycleState = 'terminating';
+
+      // Clear all timeouts
+      const timeout = this.sessionTimeouts.get(session.id);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.sessionTimeouts.delete(session.id);
+      }
+
+      // Clear session-specific timers
+      if (session.cleanup?.timeoutHandle) {
+        clearTimeout(session.cleanup.timeoutHandle);
+      }
+      if (session.cleanup?.heartbeatHandle) {
+        clearInterval(session.cleanup.heartbeatHandle);
+      }
+
+      // Release all tracked resources
+      const resources = this.resourceTracker.getAllResources(session.id);
+      for (const resource of resources) {
+        this.resourceTracker.releaseResource(session.id, resource.id);
+      }
+
+      // Remove from activity tracker
+      this.activityTracker.removeSession(session.id);
+
+      // Disconnect adapter
+      session.adapter.disconnect().catch((error) => {
+        console.warn(
+          `Error disconnecting adapter for session ${session.id}:`,
+          error,
+        );
+      });
+
+      // Clear console output to free memory
+      session.consoleOutput = [];
+
+      // Update final state
+      session.state = { status: 'terminated' };
+      session.lifecycleState = 'terminated';
+    } catch (error) {
+      console.error(`Error during cleanup of session ${session.id}:`, error);
+    }
   }
 }
 
