@@ -1,9 +1,9 @@
 import type { MetaFunction } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ServerList } from '~/components/ServerList';
-import { ToolExplorer } from '~/components/ToolExplorer';
-import { LogViewer } from '~/components/LogViewer';
-import { useWebSocket } from '~/hooks/useWebSocket';
+import { ServerList } from '~/components/ServerList.js';
+import { ToolExplorer } from '~/components/ToolExplorer.js';
+import { LogViewer } from '~/components/LogViewer.js';
+import { useWebSocket } from '~/hooks/useWebSocket.js';
 
 export const meta: MetaFunction = () => {
   return [

@@ -605,7 +605,9 @@ describe('OAuth2ClientCredentialsProvider', () => {
             configWithMissingEnvVar,
             mockStorage,
           ),
-      ).toThrow('Environment variable MISSING_CLIENT_ID is not defined');
+      ).toThrow(
+        "Required environment variable 'MISSING_CLIENT_ID' is not defined",
+      );
     });
   });
 

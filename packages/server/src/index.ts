@@ -11,7 +11,7 @@ import { oauthRoute } from './api/oauth.js';
 import { streamableRoute } from './api/streamable.js';
 import { WebSocketManager } from './ws/manager.js';
 import type { MCPProxy } from 'mcp-funnel';
-import { appRoute } from './app';
+import { appRoute } from './app/index.js';
 import {
   createAuthValidator,
   validateAuthConfig,

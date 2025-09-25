@@ -10,6 +10,10 @@ import type {
   AuthResult,
   InboundBearerAuthConfig,
 } from '../interfaces/inbound-auth.interface.js';
+import {
+  EnvironmentResolver,
+  EnvironmentResolutionError,
+} from '../../../../mcp/src/auth/implementations/environment-resolver.js';
 
 /**
  * Validates incoming requests using Bearer token authentication
@@ -27,6 +31,7 @@ import type {
  */
 export class BearerTokenValidator implements IInboundAuthValidator {
   private readonly validTokens: string[];
+  private readonly resolver: EnvironmentResolver;
 
   constructor(config: InboundBearerAuthConfig) {
     if (!config.tokens || config.tokens.length === 0) {
@@ -35,14 +40,25 @@ export class BearerTokenValidator implements IInboundAuthValidator {
       );
     }
 
+    // Initialize the environment resolver with strict mode
+    this.resolver = new EnvironmentResolver({ strict: true });
+
     // Resolve environment variables and validate tokens
     this.validTokens = [];
     for (const token of config.tokens) {
-      const resolvedToken = this.resolveEnvironmentVariables(token);
-      if (!resolvedToken || resolvedToken.trim().length === 0) {
-        throw new Error('Bearer tokens cannot be empty or only whitespace');
+      try {
+        const resolvedToken = this.resolver.resolve(token);
+        if (!resolvedToken || resolvedToken.trim().length === 0) {
+          throw new Error('Bearer tokens cannot be empty or only whitespace');
+        }
+        this.validTokens.push(resolvedToken.trim());
+      } catch (error) {
+        if (error instanceof EnvironmentResolutionError) {
+          // Convert to generic Error to maintain existing API
+          throw new Error(error.message);
+        }
+        throw error;
       }
-      this.validTokens.push(resolvedToken.trim());
     }
 
     console.info(
@@ -131,19 +147,5 @@ export class BearerTokenValidator implements IInboundAuthValidator {
     }
 
     return false;
-  }
-
-  /**
-   * Resolves environment variables in token strings
-   * Supports ${VAR_NAME} syntax
-   */
-  private resolveEnvironmentVariables(token: string): string {
-    return token.replace(/\$\{([^}]+)\}/g, (match, varName) => {
-      const value = process.env[varName];
-      if (value === undefined) {
-        throw new Error(`Environment variable ${varName} is not defined`);
-      }
-      return value;
-    });
   }
 }

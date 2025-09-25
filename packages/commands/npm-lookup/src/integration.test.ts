@@ -254,7 +254,7 @@ describe.skipIf(!runIntegrationTests)('NPM Registry Integration Tests', () => {
         });
 
         expect(result.isError).toBeUndefined();
-        expect(result.content).toHaveLength(1);
+        expect(result.content).toHaveLength(2);
         expect(result.content[0].type).toBe('text');
 
         const content = result.content[0].text;

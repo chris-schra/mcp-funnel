@@ -58,7 +58,15 @@ async function loadCommand(commandPath: string): Promise<ICommand | null> {
   try {
     // Read and parse package.json
     const packageJsonPath = join(commandPath, 'package.json');
-    const packageJsonContent = await fs.readFile(packageJsonPath, 'utf-8');
+    const packageJsonContent = await fs
+      .readFile(packageJsonPath, 'utf-8')
+      .catch((error) => {
+        console.warn(`Failed to load command from ${commandPath}:`, error);
+        return null;
+      });
+
+    if (!packageJsonContent) return null;
+
     const packageJson = JSON.parse(packageJsonContent);
 
     // Get the main/module entry point from package.json

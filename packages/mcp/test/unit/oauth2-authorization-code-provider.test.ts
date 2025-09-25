@@ -113,7 +113,7 @@ describe('OAuth2AuthCodeProvider', () => {
       const envConfig = { ...mockConfig, clientId: '${MISSING_VAR}' };
       expect(() => {
         new OAuth2AuthCodeProvider(envConfig, mockStorage);
-      }).toThrow('Environment variable MISSING_VAR is not defined');
+      }).toThrow("Required environment variable 'MISSING_VAR' is not defined");
     });
   });
 

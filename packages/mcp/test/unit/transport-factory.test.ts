@@ -289,11 +289,11 @@ describe('TransportFactory', () => {
       };
 
       await expect(createTransport(config)).rejects.toThrow(
-        'Environment variable MISSING_VAR is not defined',
+        "Required environment variable 'MISSING_VAR' is not defined",
       );
     });
 
-    it('should not resolve nested environment variables', async () => {
+    it('should resolve nested environment variables', async () => {
       process.env.BIN_DIR = '/usr/bin';
       process.env.NODE_BIN = '${BIN_DIR}/node';
 
@@ -304,9 +304,9 @@ describe('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      // Nested environment variable resolution is not supported
+      // The new EnvironmentResolver supports nested resolution
       expect((transport.config as StdioTransportConfig).command).toBe(
-        '${BIN_DIR}/node',
+        '/usr/bin/node',
       );
     });
 

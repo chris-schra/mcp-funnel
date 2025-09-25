@@ -412,7 +412,7 @@ describe('Server Authentication Integration', () => {
 
       // Should throw during server startup
       await expect(startWebServer(mcpProxy, options)).rejects.toThrow(
-        'Environment variable UNDEFINED_TOKEN is not defined',
+        "Required environment variable 'UNDEFINED_TOKEN' is not defined",
       );
     });
   });

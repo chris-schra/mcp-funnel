@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '~/lib/api';
-import { cn } from '~/lib/cn';
+import { api } from '~/lib/api.js';
+import { cn } from '~/lib/cn.js';
 import { useEffect } from 'react';
 
 interface Server {

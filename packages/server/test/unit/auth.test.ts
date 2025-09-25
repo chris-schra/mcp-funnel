@@ -182,7 +182,7 @@ describe('Authentication System', () => {
       };
 
       expect(() => new BearerTokenValidator(config)).toThrow(
-        'Environment variable UNDEFINED_TOKEN is not defined',
+        "Required environment variable 'UNDEFINED_TOKEN' is not defined",
       );
     });
 

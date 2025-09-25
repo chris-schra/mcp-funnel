@@ -540,7 +540,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
           expectStrictResponse(response, 'YES');
 
           const hiddenResponse = await conversation.sendMessage(
-            'Is the tool "mcp__mcp-funnel__mockserver__other_tool" OR "mockserver__other_tool" available? If NOT available, you **MUST** reply with NO, if available, you **MUST** list the tools available via mcp-funnel.',
+            'Is the tool "mcp__mcp-funnel__mockserver__other_tool" OR "mockserver__other_tool" available? If NOT available, you **MUST** reply with NO. Only IF IT IS available, you **MUST** list the tools available via mcp-funnel.',
           );
 
           expectStrictResponse(hiddenResponse, 'NO');

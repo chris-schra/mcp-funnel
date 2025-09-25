@@ -101,7 +101,7 @@ describe('OAuth Utils', () => {
         AuthenticationError,
       );
       expect(() => resolveEnvironmentVariables(config, ['field1'])).toThrow(
-        'Environment variable UNDEFINED_VAR is not defined',
+        "Required environment variable 'UNDEFINED_VAR' is not defined",
       );
     });
   });
@@ -269,7 +269,7 @@ describe('OAuth Utils', () => {
         AuthenticationError,
       );
       expect(() => resolveEnvVar('${UNDEFINED_VAR}')).toThrow(
-        'Environment variable UNDEFINED_VAR is not defined',
+        "Required environment variable 'UNDEFINED_VAR' is not defined",
       );
     });
 
