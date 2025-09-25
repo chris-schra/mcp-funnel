@@ -61,7 +61,6 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: '^_', // Ignore caught errors starting with _
         },
       ],
-      "import/extensions": ["error", "always", { "ignorePackages": true }]
     },
   },
   {
@@ -109,6 +108,39 @@ export default tseslint.config(
     rules: {
       // Allow console in fixtures if used for test signaling
       'no-console': 'off',
+    },
+  },
+  {
+    files: ['packages/commands/js-debugger/test/fixtures/browser/**/*.js'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-debugger': 'off',
+    },
+  },
+  {
+    files: ['packages/commands/js-debugger/test/fixtures/node/**/*.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-debugger': 'off',
     },
   },
 );

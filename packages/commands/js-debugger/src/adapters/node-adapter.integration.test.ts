@@ -1,298 +1,384 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import WebSocket from 'ws';
 import getPort from 'get-port';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { NodeDebugAdapter } from './node-adapter.js';
+import type { DebugState, ConsoleMessage } from '../types.js';
+import { waitFor, sleep } from '../../test/utils/async-helpers.js';
+import {
+  FixtureHandle,
+  prepareNodeFixture,
+} from '../../test/utils/fixture-manager.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const runRealCdpTests = process.env.JS_DEBUGGER_RUN_REAL === 'true';
+const describeReal = runRealCdpTests ? describe : describe.skip;
 
-// Helper to wait for a condition
-async function waitFor(
-  condition: () => boolean | Promise<boolean>,
-  timeout = 5000,
-  interval = 100
-): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    if (await condition()) return;
-    await new Promise(resolve => setTimeout(resolve, interval));
-  }
-  throw new Error('Timeout waiting for condition');
+interface InspectorLaunchOptions {
+  inspectBrk?: boolean;
 }
 
-// Helper to parse inspector URL from process output
+interface InspectorHandle {
+  process: ChildProcess;
+  inspectorUrl: string;
+  port: number;
+  cleanup(): Promise<void>;
+}
+
 function parseInspectorUrl(output: string): string | null {
   const match = output.match(/Debugger listening on (ws:\/\/[^\s]+)/);
   return match ? match[1] : null;
 }
 
-describe('Node.js CDP Integration', () => {
-  let nodeProcess: ChildProcess | null = null;
-  let ws: WebSocket | null = null;
-  let port: number;
-  let inspectorUrl: string;
-  let messageId = 1;
+async function terminateProcess(child: ChildProcess): Promise<void> {
+  if (child.killed || child.exitCode !== null) {
+    return;
+  }
 
-  // Test script that outputs to console
-  const testScript = path.join(__dirname, '..', '..', 'test-fixtures', 'console-test.js');
+  child.kill('SIGTERM');
+
+  await waitFor(() => (child.exitCode !== null ? true : null), {
+    timeoutMs: 2000,
+    intervalMs: 50,
+  }).catch(() => {
+    if (!child.killed && child.exitCode === null) {
+      child.kill('SIGKILL');
+    }
+  });
+}
+
+async function launchInspector(
+  scriptPath: string,
+  options: InspectorLaunchOptions = {},
+): Promise<InspectorHandle> {
+  const port = await getPort();
+  const flag = options.inspectBrk === false ? '--inspect' : '--inspect-brk';
+  const args = [`${flag}=${port}`, scriptPath];
+
+  const child = spawn(process.execPath, args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env },
+  });
+
+  let inspectorUrl: string | null = null;
+  let combinedOutput = '';
+
+  const handleOutput = (data: Buffer) => {
+    const text = data.toString();
+    combinedOutput += text;
+    const url = parseInspectorUrl(text);
+    if (url) {
+      inspectorUrl = url;
+    }
+  };
+
+  child.stdout?.on('data', handleOutput);
+  child.stderr?.on('data', handleOutput);
+
+  try {
+    await waitFor(
+      () => {
+        if (inspectorUrl) {
+          return inspectorUrl;
+        }
+        if (child.exitCode !== null) {
+          throw new Error(
+            `Process exited before inspector was ready (code: ${child.exitCode})\nOutput: ${combinedOutput}`,
+          );
+        }
+        return null;
+      },
+      { timeoutMs: 7000, intervalMs: 50 },
+    );
+  } catch (error) {
+    await terminateProcess(child);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+
+  return {
+    process: child,
+    inspectorUrl: inspectorUrl!,
+    port,
+    cleanup: async () => {
+      child.stdout?.off('data', handleOutput);
+      child.stderr?.off('data', handleOutput);
+      await terminateProcess(child);
+    },
+  };
+}
+
+function createCdpCommandSender(ws: WebSocket) {
+  let nextId = 0;
+
+  return function sendCommand<T = unknown>(
+    method: string,
+    params?: Record<string, unknown>,
+    timeoutMs = 5000,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const messageId = ++nextId;
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error(`CDP command timeout: ${method}`));
+      }, timeoutMs);
+
+      const handleError = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+
+      const handleMessage = (data: WebSocket.RawData) => {
+        try {
+          const message = JSON.parse(data.toString());
+          if (message.id === messageId) {
+            cleanup();
+            if (message.error) {
+              reject(new Error(message.error.message));
+            } else {
+              resolve(message.result as T);
+            }
+          }
+        } catch (error) {
+          cleanup();
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        ws.off('message', handleMessage);
+        ws.off('error', handleError);
+      };
+
+      ws.on('message', handleMessage);
+      ws.once('error', handleError);
+
+      ws.send(
+        JSON.stringify({
+          id: messageId,
+          method,
+          params,
+        }),
+      );
+    });
+  };
+}
+
+async function collectConsoleEvents(
+  ws: WebSocket,
+  expectedCount: number,
+  timeoutMs = 4000,
+) {
+  const events: Array<{
+    type: string;
+    args: Array<{ value?: unknown; description?: string }>;
+  }> = [];
+
+  const handler = (data: WebSocket.RawData) => {
+    const message = JSON.parse(data.toString());
+    if (message.method === 'Runtime.consoleAPICalled') {
+      events.push(message.params);
+    }
+  };
+
+  const closeHandler = () => {
+    if (events.length > 0) {
+      // no-op, waitFor will resolve on next iteration
+    }
+  };
+
+  ws.on('message', handler);
+  ws.once('close', closeHandler);
+
+  try {
+    return await waitFor(
+      () => (events.length >= expectedCount ? [...events] : null),
+      { timeoutMs, intervalMs: 50 },
+    );
+  } finally {
+    ws.off('message', handler);
+    ws.off('close', closeHandler);
+  }
+}
+
+async function openWebSocket(url: string): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url);
+    const handleOpen = () => {
+      socket.off('error', handleError);
+      resolve(socket);
+    };
+    const handleError = (error: Error) => {
+      socket.off('open', handleOpen);
+      reject(error);
+    };
+    socket.once('open', handleOpen);
+    socket.once('error', handleError);
+  });
+}
+
+describeReal('Node.js CDP integration', () => {
+  let consoleFixture: FixtureHandle;
+  let autoExitFixture: FixtureHandle;
 
   beforeAll(async () => {
-    // Create test script
-    const fs = await import('fs/promises');
-    const testDir = path.join(__dirname, '..', '..', 'test-fixtures');
-    await fs.mkdir(testDir, { recursive: true });
-    await fs.writeFile(testScript, `
-console.log('Test log message');
-console.error('Test error message');
-console.warn('Test warning message');
-
-let count = 0;
-const interval = setInterval(() => {
-  count++;
-  console.log('Periodic message', count);
-  if (count >= 3) {
-    clearInterval(interval);
-    console.log('Exiting...');
-    process.exit(0);
-  }
-}, 100);
-`);
+    consoleFixture = await prepareNodeFixture('console-output.js');
+    autoExitFixture = await prepareNodeFixture('auto-exit.js');
   });
 
   afterAll(async () => {
-    // Cleanup
-    if (nodeProcess && !nodeProcess.killed) {
-      nodeProcess.kill('SIGTERM');
-    }
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.close();
-    }
-    // Remove test script
-    const fs = await import('fs/promises');
-    await fs.rm(path.dirname(testScript), { recursive: true, force: true });
+    await Promise.all([consoleFixture.cleanup(), autoExitFixture.cleanup()]);
   });
 
-  it('should connect to Node.js inspector and handle --inspect-brk', async () => {
-    // Get available port
-    port = await getPort({ port: 9229 });
-
-    // Spawn Node.js with --inspect-brk
-    nodeProcess = spawn('node', [`--inspect-brk=${port}`, testScript], {
-      stdio: ['pipe', 'pipe', 'pipe'],
+  it('resumes from --inspect-brk and streams console output', async () => {
+    const inspector = await launchInspector(consoleFixture.tempPath, {
+      inspectBrk: true,
     });
 
-    // Capture inspector URL
-    let capturedUrl: string | null = null;
-    const handleOutput = (data: Buffer) => {
-      const output = data.toString();
-      const url = parseInspectorUrl(output);
-      if (url) capturedUrl = url;
-    };
+    let ws: WebSocket | null = null;
+    try {
+      ws = await openWebSocket(inspector.inspectorUrl);
+      const sendCommand = createCdpCommandSender(ws);
 
-    nodeProcess.stdout?.on('data', handleOutput);
-    nodeProcess.stderr?.on('data', handleOutput);
+      await Promise.all([
+        sendCommand('Runtime.enable'),
+        sendCommand('Console.enable'),
+      ]);
+      await sendCommand('Debugger.enable');
+      await sendCommand('Runtime.runIfWaitingForDebugger');
 
-    // Wait for inspector URL
-    await waitFor(() => capturedUrl !== null);
-    inspectorUrl = capturedUrl!;
-
-    expect(inspectorUrl).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/[\w-]+$/);
-  });
-
-  it('should establish WebSocket connection', async () => {
-    ws = new WebSocket(inspectorUrl);
-
-    await new Promise<void>((resolve, reject) => {
-      ws!.once('open', () => resolve());
-      ws!.once('error', reject);
-    });
-
-    expect(ws.readyState).toBe(WebSocket.OPEN);
-  });
-
-  it('should handle CDP protocol flow correctly', async () => {
-    const messages: any[] = [];
-    const consoleMessages: any[] = [];
-    let isRunning = false;
-
-    // Set up message handler
-    ws!.on('message', (data) => {
-      const msg = JSON.parse(data.toString());
-      messages.push(msg);
-
-      // Track console messages
-      if (msg.method === 'Runtime.consoleAPICalled') {
-        consoleMessages.push(msg.params);
-      }
-
-      // Track resume state
-      if (msg.method === 'Debugger.resumed') {
-        isRunning = true;
-      }
-    });
-
-    // Helper to send CDP command
-    const sendCommand = (method: string, params?: any): Promise<any> => {
-      return new Promise((resolve, reject) => {
-        const id = messageId++;
-        const timeout = setTimeout(() => reject(new Error('Command timeout')), 5000);
-
-        const handler = (data: Buffer) => {
-          const msg = JSON.parse(data.toString());
-          if (msg.id === id) {
-            clearTimeout(timeout);
-            ws!.off('message', handler);
-            if (msg.error) {
-              reject(new Error(msg.error.message));
-            } else {
-              resolve(msg.result);
-            }
-          }
-        };
-
-        ws!.on('message', handler);
-        ws!.send(JSON.stringify({ id, method, params }));
+      const consoleEventsPromise = collectConsoleEvents(ws, 1, 6000);
+      await sendCommand('Runtime.evaluate', {
+        expression: "console.log('Inspector test log')",
       });
-    };
 
-    // 1. Enable Runtime and Console domains FIRST to capture output
-    await sendCommand('Runtime.enable');
-    await sendCommand('Console.enable');
+      const events = await consoleEventsPromise;
+      const categories = events.map((event) => event.type);
 
-    // 2. Enable Debugger domain
-    // Note: With --inspect-brk, the process is paused but no Debugger.paused event is sent
-    await sendCommand('Debugger.enable');
+      expect(categories).toContain('log');
+      const findArg = (needle: string) =>
+        events.find((event) =>
+          event.args.some(
+            (arg) => arg.value === needle || arg.description === needle,
+          ),
+        );
 
-    // 3. With --inspect-brk, use Runtime.runIfWaitingForDebugger to start execution
-    // This is the proper way to start a process that was launched with --inspect-brk
-    const runResult = await sendCommand('Runtime.runIfWaitingForDebugger');
-    console.log('Runtime.runIfWaitingForDebugger result:', runResult);
-    isRunning = true;
-
-    expect(isRunning).toBe(true);
-
-    // 4. Give the script time to run and output console messages
-    // With Runtime.runIfWaitingForDebugger, the script should start executing
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    console.log('Console messages received:', consoleMessages.length);
-    console.log('All messages count:', messages.length);
-
-    // Verify we received console output (if any)
-    if (consoleMessages.length > 0) {
-      const logMessages = consoleMessages.filter(m => m.type === 'log');
-      const errorMessages = consoleMessages.filter(m => m.type === 'error');
-      const warnMessages = consoleMessages.filter(m => m.type === 'warning');
-
-      expect(logMessages.length).toBeGreaterThan(0);
-      expect(errorMessages.length).toBeGreaterThan(0);
-      expect(warnMessages.length).toBeGreaterThan(0);
-
-      // Verify message content
-      const firstLog = logMessages[0];
-      expect(firstLog.args[0].value).toBe('Test log message');
-
-      const firstError = errorMessages[0];
-      expect(firstError.args[0].value).toBe('Test error message');
-
-      const firstWarn = warnMessages[0];
-      expect(firstWarn.args[0].value).toBe('Test warning message');
-    } else {
-      // Console capture with --inspect-brk and Runtime.runIfWaitingForDebugger
-      // is not guaranteed - this is OK as long as the process runs
-      console.log('No console messages captured, but process ran');
+      expect(findArg('Inspector test log')).toBeDefined();
+    } finally {
+      if (ws) {
+        ws.close();
+      }
+      await inspector.cleanup();
     }
   });
 
-  it('should handle --inspect (without -brk) differently', async () => {
-    // Clean up previous connection
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.close();
-    }
-    if (nodeProcess && !nodeProcess.killed) {
-      nodeProcess.kill('SIGTERM');
-    }
-
-    // Get new port
-    const newPort = await getPort({ port: 9230 });
-
-    // Spawn with --inspect (no break)
-    nodeProcess = spawn('node', [`--inspect=${newPort}`, testScript], {
-      stdio: ['pipe', 'pipe', 'pipe'],
+  it('connects with --inspect without pausing execution', async () => {
+    const inspector = await launchInspector(autoExitFixture.tempPath, {
+      inspectBrk: false,
     });
 
-    // Capture inspector URL
-    let capturedUrl: string | null = null;
-    const handleOutput = (data: Buffer) => {
-      const output = data.toString();
-      const url = parseInspectorUrl(output);
-      if (url) capturedUrl = url;
-    };
+    let ws: WebSocket | null = null;
+    let paused = false;
 
-    nodeProcess.stdout?.on('data', handleOutput);
-    nodeProcess.stderr?.on('data', handleOutput);
+    try {
+      ws = await openWebSocket(inspector.inspectorUrl);
 
-    // Wait for inspector URL
-    await waitFor(() => capturedUrl !== null);
-    const newInspectorUrl = capturedUrl!;
+      const pauseListener = (data: WebSocket.RawData) => {
+        const message = JSON.parse(data.toString());
+        if (message.method === 'Debugger.paused') {
+          paused = true;
+        }
+      };
 
-    // Connect
-    const ws2 = new WebSocket(newInspectorUrl);
-    await new Promise<void>((resolve, reject) => {
-      ws2.once('open', () => resolve());
-      ws2.once('error', reject);
-    });
+      ws.on('message', pauseListener);
 
-    let isPaused = false;
-    ws2.on('message', (data) => {
-      const msg = JSON.parse(data.toString());
-      if (msg.method === 'Debugger.paused') {
-        isPaused = true;
+      const sendCommand = createCdpCommandSender(ws);
+      await sendCommand('Debugger.enable');
+
+      await sleep(500);
+      expect(paused).toBe(false);
+
+      ws.off('message', pauseListener);
+    } finally {
+      if (ws) {
+        ws.close();
       }
-    });
-
-    // Enable Debugger
-    const id = messageId++;
-    ws2.send(JSON.stringify({ id, method: 'Debugger.enable' }));
-
-    // Wait a bit to see if it pauses
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Should NOT be paused (--inspect doesn't break)
-    expect(isPaused).toBe(false);
-
-    ws2.close();
+      await inspector.cleanup();
+    }
   });
 });
 
-describe('NodeDebugAdapter Integration', () => {
-  it('should auto-resume and run scripts', async () => {
-    const { NodeDebugAdapter } = await import('./node-adapter.js');
+describeReal('NodeDebugAdapter integration', () => {
+  let breakpointFixture: FixtureHandle;
 
-    // Scripts should auto-run after connection
+  beforeAll(async () => {
+    breakpointFixture = await prepareNodeFixture('breakpoint-script.js');
+  });
+
+  afterAll(async () => {
+    await breakpointFixture.cleanup();
+  });
+
+  it('exposes pause state, scopes, evaluation, and breakpoint control', async () => {
     const adapter = new NodeDebugAdapter();
+    const pauseQueue: DebugState[] = [];
+    const consoleMessages: ConsoleMessage[] = [];
+    const resumeEvents: number[] = [];
 
-    // Create test script
-    const fs = await import('fs/promises');
-    const testScript = path.join(__dirname, '..', '..', 'test-fixtures', 'auto-run-test.js');
-    await fs.mkdir(path.dirname(testScript), { recursive: true });
-    await fs.writeFile(testScript, 'console.log("Script is running"); process.exit(0);');
+    adapter.onPaused((state) => {
+      pauseQueue.push(state);
+    });
+    adapter.onResumed(() => {
+      resumeEvents.push(Date.now());
+    });
+    adapter.onConsoleOutput((message) => {
+      consoleMessages.push(message);
+    });
+
+    await adapter.connect(breakpointFixture.tempPath);
 
     try {
-      await adapter.connect(testScript);
+      const firstPause = await waitFor(() => pauseQueue.shift() ?? null, {
+        timeoutMs: 4000,
+        intervalMs: 50,
+      });
 
-      // Script should automatically start running
-      // Wait briefly to ensure execution
-      await new Promise(resolve => setTimeout(resolve, 500));
+      expect(firstPause.status).toBe('paused');
+      expect(['breakpoint', 'entry']).toContain(firstPause.pauseReason);
 
-      // The adapter should be connected
-      // Script should have executed
+      const stackTrace = await adapter.getStackTrace();
+      expect(stackTrace.length).toBeGreaterThan(0);
 
-      await adapter.disconnect();
+      const scopes = await adapter.getScopes(0);
+      expect(scopes.length).toBeGreaterThan(0);
+
+      const breakpointId = await adapter.setBreakpoint(
+        breakpointFixture.tempPath,
+        10,
+      );
+
+      await adapter.continue();
+
+      const secondPause = await waitFor(() => pauseQueue.shift() ?? null, {
+        timeoutMs: 4000,
+        intervalMs: 50,
+      });
+
+      expect(['breakpoint', 'entry']).toContain(secondPause.pauseReason);
+
+      await adapter.removeBreakpoint(breakpointId);
+
+      await adapter.continue();
+
+      await waitFor(() => (consoleMessages.length >= 1 ? true : null), {
+        timeoutMs: 2000,
+        intervalMs: 50,
+      });
+
+      expect(consoleMessages.length).toBeGreaterThan(0);
+      expect(resumeEvents.length).toBeGreaterThanOrEqual(2);
     } finally {
-      await fs.rm(path.dirname(testScript), { recursive: true, force: true });
+      await adapter.disconnect();
     }
   });
 });

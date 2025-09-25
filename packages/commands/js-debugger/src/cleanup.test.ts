@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SessionManager } from './session-manager.js';
 import { JsDebuggerCommand } from './command.js';
-import type { DebugRequest } from './types.js';
 
 describe('Session Cleanup Mechanisms', () => {
   let sessionManager: SessionManager;
@@ -62,7 +61,8 @@ describe('Session Cleanup Mechanisms', () => {
     expect(dryRunResult.isError).toBeFalsy();
     expect(dryRunResult.content).toHaveLength(1);
 
-    const response = JSON.parse(dryRunResult.content[0].text);
+    const dryRunText = (dryRunResult.content[0]?.text ?? '{}') as string;
+    const response = JSON.parse(dryRunText);
     expect(response.dryRun).toBe(true);
     expect(response.totalSessions).toBe(0);
     expect(response.sessionsToCleanup).toBe(0);
@@ -75,7 +75,8 @@ describe('Session Cleanup Mechanisms', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    const response = JSON.parse(result.content[0].text);
+    const responseText = (result.content[0]?.text ?? '{}') as string;
+    const response = JSON.parse(responseText);
     expect(response.cleanedSessions).toBe(0);
     expect(response.totalSessions).toBe(0);
   });
@@ -88,7 +89,8 @@ describe('Session Cleanup Mechanisms', () => {
     expect(result.isError).toBeFalsy();
     expect(result.content).toHaveLength(1);
 
-    const response = JSON.parse(result.content[0].text);
+    const manualText = (result.content[0]?.text ?? '{}') as string;
+    const response = JSON.parse(manualText);
     expect(response).toHaveProperty('totalSessions');
     expect(response).toHaveProperty('cleanedSessions');
     expect(response).toHaveProperty('cleanupConfig');
@@ -104,7 +106,7 @@ describe('Session Cleanup Mechanisms', () => {
     const sessions = sessionManager.listSessions();
 
     // Verify the enhanced structure matches our expectations
-    sessions.forEach(session => {
+    sessions.forEach((session) => {
       expect(session).toHaveProperty('id');
       expect(session).toHaveProperty('platform');
       expect(session).toHaveProperty('target');
