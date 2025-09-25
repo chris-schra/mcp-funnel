@@ -2,6 +2,7 @@
 
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -15,6 +16,23 @@ export default tseslint.config(
       'docs/**/*',
       '**/.react-router/**',
     ],
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript],
+    rules: {
+      'import/no-unresolved': 'off',
+    },
+    "settings": {
+      "import/resolver": {
+        "node": {
+          "extensions": [
+            ".js",
+            ".jsx"
+          ]
+        }
+      }
+    }
   },
   {
     rules: {
@@ -43,6 +61,7 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: '^_', // Ignore caught errors starting with _
         },
       ],
+      "import/extensions": ["error", "always", { "ignorePackages": true }]
     },
   },
   {
