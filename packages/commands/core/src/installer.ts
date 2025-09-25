@@ -414,20 +414,29 @@ export class CommandInstaller {
     installedPackage: string,
     packageSpec: string,
   ): boolean {
+    // Direct match
     if (installedPackage === packageSpec) {
       return true;
     }
 
+    // Extract the package name from the spec (removes version, git info, etc)
     const normalizedSpec = this.extractPackageNameFromSpec(packageSpec);
     if (installedPackage === normalizedSpec) {
       return true;
     }
 
-    const strippedScope = installedPackage.startsWith('@')
-      ? installedPackage.slice(1)
-      : installedPackage;
+    // For scoped packages, also check without the scope
+    // This handles cases where user might install "@scope/package" as "scope/package"
+    if (installedPackage.startsWith('@')) {
+      // Remove @ prefix to get "scope/package"
+      const withoutAt = installedPackage.slice(1);
+      if (packageSpec === withoutAt || normalizedSpec === withoutAt) {
+        return true;
+      }
+    }
 
-    return packageSpec.includes(strippedScope);
+    // No match
+    return false;
   }
 
   private extractPackageNameFromSpec(packageSpec: string): string {
