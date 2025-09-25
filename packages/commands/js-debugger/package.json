@@ -1,0 +1,61 @@
+{
+  "name": "@mcp-funnel/command-js-debugger",
+  "version": "0.0.5",
+  "author": "Christoph Schramm",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chris-schra/mcp-funnel.git"
+  },
+  "description": "JavaScript debugger command for MCP Funnel - debug Node.js and browser JavaScript with CDP",
+  "keywords": [
+    "mcp",
+    "debugger",
+    "javascript",
+    "node",
+    "browser",
+    "cdp",
+    "chrome-devtools-protocol"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "build": "tsx build.ts",
+    "build:watch": "tsx build.ts --watch",
+    "test": "echo 'ERROR: Tests must be run via `yarn test` from repository root!' && exit 1",
+    "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz",
+    "typedoc": "typedoc"
+  },
+  "dependencies": {
+    "@mcp-funnel/commands-core": "workspace:^",
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "chalk": "^5.3.0",
+    "get-port": "^7.1.0",
+    "source-map": "^0.7.4",
+    "undici": "^6.20.1",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "@types/semver": "^7.7.1",
+    "@types/source-map": "^0.5.7",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.25.9",
+    "tsx": "^4.20.5",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "yarn@4.9.2"
+}
