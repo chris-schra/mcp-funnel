@@ -24,5 +24,11 @@ export {
 // Re-export server types
 export type { ServerStatus } from './types/server.types.js';
 
+// Re-export auth utilities for server package
+export {
+  EnvironmentResolver,
+  EnvironmentResolutionError,
+} from './auth/implementations/environment-resolver.js';
+
 // Default export for backward compatibility
 export { MCPProxy } from './proxy/mcp-proxy.js';

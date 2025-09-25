@@ -91,31 +91,30 @@ export class CommandInstaller {
   ): Promise<InstalledCommand> {
     await this.initialize();
 
-    // Parse package spec (could be name, name@version, git url, etc.)
-    const packageName = this.parsePackageName(packageSpec);
-
     // Check if already installed
     const manifest = await this.readManifest();
-    const existing = manifest.commands.find(
-      (cmd) => cmd.package === packageName,
-    );
+    const existing = this.findMatchingCommand(manifest, packageSpec);
 
     if (existing && !options.force) {
       throw new Error(
-        `Command package '${packageName}' is already installed. Use force option to reinstall.`,
+        `Command package '${existing.package}' is already installed. Use force option to reinstall.`,
       );
     }
 
+    const packagesJsonBefore = await this.readPackagesPackageJson();
+    const dependencyGuess =
+      existing?.package || this.parsePackageName(packageSpec);
+
     // Determine the install spec
     const installSpec = options.version
-      ? `${packageName}@${options.version}`
+      ? `${dependencyGuess}@${options.version}`
       : packageSpec;
 
     console.info(`Installing command package: ${installSpec}`);
 
     try {
       // Install the package using npm
-      const { stdout, stderr } = await execAsync(
+      const { stderr } = await execAsync(
         `npm install --save "${installSpec}"`,
         { cwd: this.packagesDir },
       );
@@ -124,18 +123,27 @@ export class CommandInstaller {
         console.warn('Installation warnings:', stderr);
       }
 
+      const packagesJsonAfter = await this.readPackagesPackageJson();
+      const resolvedPackageName = this.resolveInstalledPackageName({
+        installSpec,
+        packageSpec,
+        dependencyGuess,
+        manifest,
+        packagesJsonBefore,
+        packagesJsonAfter,
+      });
+
       // Load the installed command to get metadata
-      const commandPath = join(this.packagesDir, 'node_modules', packageName);
+      const commandPath = this.getPackagePath(resolvedPackageName);
       const command = await this.loadCommand(commandPath);
 
       if (!command) {
         // Rollback installation
-        await execAsync(
-          `npm uninstall "${packageName}"`,
-          { cwd: this.packagesDir },
-        );
+        await execAsync(`npm uninstall "${resolvedPackageName}"`, {
+          cwd: this.packagesDir,
+        });
         throw new Error(
-          `Package '${packageName}' does not export a valid MCP Funnel command`,
+          `Package '${resolvedPackageName}' does not export a valid MCP Funnel command`,
         );
       }
 
@@ -146,7 +154,7 @@ export class CommandInstaller {
       // Create installed command record
       const installedCommand: InstalledCommand = {
         name: command.name,
-        package: packageName,
+        package: resolvedPackageName,
         version: pkgJson.version,
         description: command.description,
         installedAt: new Date().toISOString(),
@@ -155,7 +163,7 @@ export class CommandInstaller {
       // Update manifest
       if (existing) {
         const index = manifest.commands.findIndex(
-          (cmd) => cmd.package === packageName,
+          (cmd) => cmd.package === existing.package,
         );
         manifest.commands[index] = installedCommand;
       } else {
@@ -165,7 +173,7 @@ export class CommandInstaller {
       await this.writeManifest(manifest);
 
       console.info(
-        `Successfully installed command: ${command.name} (${packageName}@${pkgJson.version})`,
+        `Successfully installed command: ${command.name} (${resolvedPackageName}@${pkgJson.version})`,
       );
       return installedCommand;
     } catch (error) {
@@ -200,10 +208,9 @@ export class CommandInstaller {
 
     try {
       // Uninstall the package
-      await execAsync(
-        `npm uninstall "${command.package}"`,
-        { cwd: this.packagesDir },
-      );
+      await execAsync(`npm uninstall "${command.package}"`, {
+        cwd: this.packagesDir,
+      });
 
       // Remove from manifest
       manifest.commands.splice(commandIndex, 1);
@@ -255,13 +262,16 @@ export class CommandInstaller {
 
     try {
       // Update using npm
-      await execAsync(
-        `npm update "${command.package}"`,
-        { cwd: this.packagesDir },
-      );
+      await execAsync(`npm update "${command.package}"`, {
+        cwd: this.packagesDir,
+      });
 
       // Get new version
-      const commandPath = join(this.packagesDir, 'node_modules', command.package);
+      const commandPath = join(
+        this.packagesDir,
+        'node_modules',
+        command.package,
+      );
       const pkgJsonPath = join(commandPath, 'package.json');
       const pkgJson = JSON.parse(await fs.readFile(pkgJsonPath, 'utf-8'));
 
@@ -301,7 +311,54 @@ export class CommandInstaller {
   }
 
   /**
-   * Load a command from a package directory
+   * Validate that an object implements ICommand interface
+   */
+  private isValidCommand(obj: unknown): boolean {
+    if (!obj || typeof obj !== 'object') {
+      return false;
+    }
+
+    const cmd = obj as Record<string, unknown>;
+    return (
+      typeof cmd.name === 'string' &&
+      typeof cmd.description === 'string' &&
+      typeof cmd.executeToolViaMCP === 'function' &&
+      typeof cmd.executeViaCLI === 'function' &&
+      typeof cmd.getMCPDefinitions === 'function'
+    );
+  }
+
+  /**
+   * Parse package name from various package specs
+   */
+  private parsePackageName(packageSpec: string): string {
+    return this.extractPackageNameFromSpec(packageSpec);
+  }
+
+  /**
+   * Read the command manifest
+   */
+  async readManifest(): Promise<CommandManifest> {
+    try {
+      const content = await fs.readFile(this.manifestPath, 'utf-8');
+      return JSON.parse(content);
+    } catch {
+      return {
+        commands: [],
+        updatedAt: new Date().toISOString(),
+      };
+    }
+  }
+
+  /**
+   * Write the command manifest
+   */
+  private async writeManifest(manifest: CommandManifest): Promise<void> {
+    await fs.writeFile(this.manifestPath, JSON.stringify(manifest, null, 2));
+  }
+
+  /**
+   * Load a command export from an installed package path
    */
   private async loadCommand(commandPath: string): Promise<ICommand | null> {
     try {
@@ -337,63 +394,152 @@ export class CommandInstaller {
   }
 
   /**
-   * Validate that an object implements ICommand interface
+   * Public helper to load an installed command by package name
    */
-  private isValidCommand(obj: unknown): boolean {
-    if (!obj || typeof obj !== 'object') {
-      return false;
-    }
+  async loadInstalledCommand(packageName: string): Promise<ICommand | null> {
+    const commandPath = this.getPackagePath(packageName);
+    return this.loadCommand(commandPath);
+  }
 
-    const cmd = obj as Record<string, unknown>;
-    return (
-      typeof cmd.name === 'string' &&
-      typeof cmd.description === 'string' &&
-      typeof cmd.executeToolViaMCP === 'function' &&
-      typeof cmd.executeViaCLI === 'function' &&
-      typeof cmd.getMCPDefinitions === 'function'
+  private findMatchingCommand(
+    manifest: CommandManifest,
+    packageSpec: string,
+  ): InstalledCommand | undefined {
+    return manifest.commands.find((cmd) =>
+      this.packageMatchesSpec(cmd.package, packageSpec),
     );
   }
 
-  /**
-   * Parse package name from various package specs
-   */
-  private parsePackageName(packageSpec: string): string {
-    // Handle scoped packages
-    if (packageSpec.startsWith('@')) {
-      const match = packageSpec.match(/^(@[^/@]+\/[^/@]+)/);
-      return match ? match[1] : packageSpec.split('@')[1] || packageSpec;
+  private packageMatchesSpec(
+    installedPackage: string,
+    packageSpec: string,
+  ): boolean {
+    if (installedPackage === packageSpec) {
+      return true;
     }
 
-    // Handle git URLs
+    const normalizedSpec = this.extractPackageNameFromSpec(packageSpec);
+    if (installedPackage === normalizedSpec) {
+      return true;
+    }
+
+    const strippedScope = installedPackage.startsWith('@')
+      ? installedPackage.slice(1)
+      : installedPackage;
+
+    return packageSpec.includes(strippedScope);
+  }
+
+  private extractPackageNameFromSpec(packageSpec: string): string {
+    // Scoped packages may include version using a second '@'
+    if (packageSpec.startsWith('@')) {
+      const firstSlash = packageSpec.indexOf('/');
+      const versionSeparator = packageSpec.lastIndexOf('@');
+      if (versionSeparator > firstSlash) {
+        return packageSpec.substring(0, versionSeparator);
+      }
+      return packageSpec;
+    }
+
+    // Git URLs or file specs don't encode the package name; fall back to repo tail
     if (packageSpec.includes('://') || packageSpec.includes('git+')) {
       const parts = packageSpec.split('/');
       const last = parts[parts.length - 1];
-      return last.replace('.git', '');
+      return last.replace(/\.git$/, '');
     }
 
-    // Handle name@version
-    return packageSpec.split('@')[0];
+    if (packageSpec.includes('@')) {
+      const [name] = packageSpec.split('@');
+      return name;
+    }
+
+    return packageSpec;
   }
 
-  /**
-   * Read the command manifest
-   */
-  async readManifest(): Promise<CommandManifest> {
+  private getPackagePath(packageName: string): string {
+    return join(this.packagesDir, 'node_modules', packageName);
+  }
+
+  private async readPackagesPackageJson(): Promise<Record<string, unknown>> {
+    const packageJsonPath = join(this.packagesDir, 'package.json');
     try {
-      const content = await fs.readFile(this.manifestPath, 'utf-8');
-      return JSON.parse(content);
+      const content = await fs.readFile(packageJsonPath, 'utf-8');
+      return JSON.parse(content) as Record<string, unknown>;
     } catch {
-      return {
-        commands: [],
-        updatedAt: new Date().toISOString(),
-      };
+      return {};
     }
   }
 
-  /**
-   * Write the command manifest
-   */
-  private async writeManifest(manifest: CommandManifest): Promise<void> {
-    await fs.writeFile(this.manifestPath, JSON.stringify(manifest, null, 2));
+  private resolveInstalledPackageName({
+    installSpec,
+    packageSpec,
+    dependencyGuess,
+    manifest,
+    packagesJsonBefore,
+    packagesJsonAfter,
+  }: {
+    installSpec: string;
+    packageSpec: string;
+    dependencyGuess: string;
+    manifest: CommandManifest;
+    packagesJsonBefore: Record<string, unknown>;
+    packagesJsonAfter: Record<string, unknown>;
+  }): string {
+    const beforeDeps = this.getDependencyNames(packagesJsonBefore);
+    const afterDeps = this.getDependencyEntries(packagesJsonAfter);
+    const existing = this.findMatchingCommand(manifest, packageSpec);
+
+    if (existing) {
+      return existing.package;
+    }
+
+    const beforeSet = new Set(beforeDeps);
+    const newDeps = afterDeps.filter(([name]) => !beforeSet.has(name));
+
+    if (newDeps.length === 1) {
+      return newDeps[0][0];
+    }
+
+    const guessEntry = afterDeps.find(([name]) => name === dependencyGuess);
+    if (guessEntry) {
+      return guessEntry[0];
+    }
+
+    const specMatch = afterDeps.find(([name, value]) => {
+      if (value === packageSpec || value === installSpec) {
+        return true;
+      }
+      if (typeof value === 'string') {
+        // Git installs record the git reference in the value; ensure the package name is present
+        if (
+          (packageSpec.includes('://') || packageSpec.includes('git+')) &&
+          value.includes(name)
+        ) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (specMatch) {
+      return specMatch[0];
+    }
+
+    return dependencyGuess;
+  }
+
+  private getDependencyNames(pkgJson: Record<string, unknown>): string[] {
+    const deps = this.getDependencyEntries(pkgJson);
+    return deps.map(([name]) => name);
+  }
+
+  private getDependencyEntries(
+    pkgJson: Record<string, unknown>,
+  ): [string, string][] {
+    const deps = pkgJson.dependencies as Record<string, string> | undefined;
+    if (!deps) {
+      return [];
+    }
+    return Object.entries(deps);
   }
 }

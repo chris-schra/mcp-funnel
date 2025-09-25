@@ -2,8 +2,6 @@ import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BaseCoreTool } from '../base-core-tool.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { CommandInstaller } from '@mcp-funnel/commands-core';
-import { join } from 'path';
-import { homedir } from 'os';
 
 export class ManageCommands extends BaseCoreTool {
   readonly name = 'manage_commands';
@@ -70,20 +68,12 @@ export class ManageCommands extends BaseCoreTool {
     let tools: string[] = [];
 
     try {
-      const commandPath = join(
-        homedir(),
-        '.mcp-funnel',
-        'packages',
-        'node_modules',
-        commandPackage,
-        'dist',
-        'index.js',
-      );
-      const module = await import(commandPath);
-      const loadedCommand = module.default || module.command || module;
-
-      if (context.toolRegistry?.hotReloadCommand) {
-        context.toolRegistry.hotReloadCommand(loadedCommand);
+      // Use the installer's loadInstalledCommand which properly resolves entry points
+      const command = await this.installer.loadInstalledCommand(commandPackage);
+      if (!command) {
+        hotReloadError = `Package '${commandPackage}' does not export a valid MCP Funnel command`;
+      } else if (context.toolRegistry?.hotReloadCommand) {
+        context.toolRegistry.hotReloadCommand(command);
         hotReloaded = true;
 
         // Get tools after hot-reload
@@ -168,8 +158,8 @@ export class ManageCommands extends BaseCoreTool {
                         tools: existingTools,
                         hint:
                           existingTools.length > 0
-                            ? `Use these tools: ${existingTools.join(', ')}\n\nTo persist across sessions, ensure it's in .mcp-funnel.json:\n"alwaysVisibleTools": ["${existing.name}__*"]`
-                            : `Use 'discover_tools_by_words' with "${existing.name}" to find and enable its tools.\n\nTo persist across sessions, ensure it's in .mcp-funnel.json:\n"alwaysVisibleTools": ["${existing.name}__*"]`,
+                            ? `Tools available: ${existingTools.join(', ')}\n\n📝 Already installed - choose mode:\n1. Session-only: Use discovery as needed\n2. Persistent: Add to config for auto-loading\n\nFor persistent mode in .mcp-funnel.json:\n"alwaysVisibleTools": ["${existing.name}__*"] or\n"commands": { "list": ["${existing.name}"] }`
+                            : `Command installed but not loaded. Use 'discover_tools_by_words' with "${existing.name}" to enable.\n\n📝 To auto-load on startup, add to .mcp-funnel.json:\n"alwaysVisibleTools": ["${existing.name}__*"] or\n"commands": { "list": ["${existing.name}"] }`,
                       }),
                     },
                   ],
@@ -198,8 +188,8 @@ export class ManageCommands extends BaseCoreTool {
               : '';
 
           const hint = hotReloaded
-            ? `Command installed and hot-reloaded! ${toolsMessage || 'Tools are now available for use.'}\n\nTo persist this command across sessions, add it to .mcp-funnel.json:\n- In current project: ./.mcp-funnel.json\n- Or globally: ~/.mcp-funnel.json\n\nAdd to "exposeCoreTools" or "alwaysVisibleTools" array:\n"alwaysVisibleTools": ["${installed.name}__*"]`
-            : `Command installed! Use 'discover_tools_by_words' with keywords from the command name to find and enable its tools.\n\nTo persist this command across sessions, add it to .mcp-funnel.json:\n- In current project: ./.mcp-funnel.json\n- Or globally: ~/.mcp-funnel.json\n\nAdd to "exposeCoreTools" or "alwaysVisibleTools" array:\n"alwaysVisibleTools": ["${installed.name}__*"]`;
+            ? `Command installed and hot-reloaded! ${toolsMessage || 'Tools are now available for use.'}\n\n📝 Installation Modes:\n1. Session-only: Tools are available now via discovery\n2. Persistent: Add to .mcp-funnel.json for automatic loading\n\nFor persistent mode, add to config:\n- Project: ./.mcp-funnel.json\n- Global: ~/.mcp-funnel.json\n\nAdd to "alwaysVisibleTools" for immediate availability:\n"alwaysVisibleTools": ["${installed.name}__*"]\n\nOr add to "commands.list" for filtered loading:\n"commands": { "enabled": true, "list": ["${installed.name}"] }`
+            : `Command installed! Session-only mode - use 'discover_tools_by_words' with "${installed.name}" to enable.\n\n📝 Installation Modes:\n1. Session-only: Use discovery to enable when needed\n2. Persistent: Add to .mcp-funnel.json for automatic loading\n\nFor persistent mode, add to config:\n- Project: ./.mcp-funnel.json\n- Global: ~/.mcp-funnel.json\n\nAdd to "alwaysVisibleTools" for immediate availability:\n"alwaysVisibleTools": ["${installed.name}__*"]\n\nOr add to "commands.list" for filtered loading:\n"commands": { "enabled": true, "list": ["${installed.name}"] }`;
 
           const response: Record<string, unknown> = {
             success: true,
@@ -263,7 +253,7 @@ export class ManageCommands extends BaseCoreTool {
             message: `Successfully updated command: ${updated.name} to version ${updated.version}`,
             command: updated,
             hotReloaded,
-            hint: `To persist this command across sessions, ensure it's in .mcp-funnel.json:\n"alwaysVisibleTools": ["${updated.name}__*"]`,
+            hint: `Command updated! ${hotReloaded ? 'Tools reloaded.' : 'Restart session to load updated tools.'}\n\n📝 For persistent mode, ensure it's in .mcp-funnel.json:\n"alwaysVisibleTools": ["${updated.name}__*"] or\n"commands": { "list": ["${updated.name}"] }`,
           };
 
           // Add error if it occurred

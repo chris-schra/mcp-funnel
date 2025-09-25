@@ -81,8 +81,17 @@ export async function discoverAllCommands(
 
   // 2. Load user-installed commands from ~/.mcp-funnel using the manifest
   if (includeUserCommands) {
-    const manifestPath = join(homedir(), '.mcp-funnel', 'commands-manifest.json');
-    const userPackagesPath = join(homedir(), '.mcp-funnel', 'packages', 'node_modules');
+    const manifestPath = join(
+      homedir(),
+      '.mcp-funnel',
+      'commands-manifest.json',
+    );
+    const userPackagesPath = join(
+      homedir(),
+      '.mcp-funnel',
+      'packages',
+      'node_modules',
+    );
 
     try {
       // Read the manifest to know what commands are actually installed

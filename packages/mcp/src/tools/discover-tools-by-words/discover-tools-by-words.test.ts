@@ -104,7 +104,7 @@ describe('DiscoverToolsByWords', () => {
       expect(toolDef.inputSchema.properties?.words).toBeDefined();
       expect(toolDef.inputSchema.properties?.enable).toBeDefined();
       const wordsSchema = toolDef.inputSchema.properties?.words as {
-        type: string;
+        oneOf: Array<unknown>;
         description: string;
       };
       const enableSchema = toolDef.inputSchema.properties?.enable as {
@@ -112,7 +112,9 @@ describe('DiscoverToolsByWords', () => {
         description: string;
         default: boolean;
       };
-      expect(wordsSchema.type).toBe('string');
+      expect(Array.isArray(wordsSchema.oneOf)).toBe(true);
+      expect(wordsSchema.oneOf).toHaveLength(3);
+      expect(wordsSchema.description).toContain('Search keywords');
       expect(enableSchema.type).toBe('boolean');
       expect(enableSchema.default).toBe(false);
     });

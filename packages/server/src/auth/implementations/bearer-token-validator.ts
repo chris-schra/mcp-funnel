@@ -10,10 +10,7 @@ import type {
   AuthResult,
   InboundBearerAuthConfig,
 } from '../interfaces/inbound-auth.interface.js';
-import {
-  EnvironmentResolver,
-  EnvironmentResolutionError,
-} from '../../../../mcp/src/auth/implementations/environment-resolver.js';
+import { EnvironmentResolver, EnvironmentResolutionError } from 'mcp-funnel';
 
 /**
  * Validates incoming requests using Bearer token authentication

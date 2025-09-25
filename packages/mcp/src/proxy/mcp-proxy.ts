@@ -53,6 +53,10 @@ import Package from '../../package.json';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+declare global {
+  var __mcpProxyInstance: MCPProxy | undefined;
+}
+
 type ManualReconnectionTracker = Map<string, Promise<void>>;
 
 interface AuthProviderResult {
@@ -92,7 +96,7 @@ export class MCPProxy extends EventEmitter {
     this.toolRegistry = new ToolRegistry(config);
 
     // Expose instance on globalThis for hot-reload support (used by manage-commands tool)
-    (globalThis as any).__mcpProxyInstance = this;
+    globalThis.__mcpProxyInstance = this;
 
     this._normalizedServers.forEach((server) => {
       this.disconnectedServers.set(server.name, server);

@@ -64,7 +64,8 @@ export class BridgeToolRequest extends BaseCoreTool {
 
       if (!resolution.resolved) {
         const message =
-          resolution.error?.message || `Tool not found: ${args.tool}`;
+          resolution.error?.message ||
+          `Tool not found or not exposed: ${args.tool}`;
         const fullMessage = resolution.error?.isAmbiguous
           ? message
           : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
@@ -86,7 +87,8 @@ export class BridgeToolRequest extends BaseCoreTool {
 
     if (!toolState) {
       // Check if the tool exists but is not exposed (discovered but not enabled)
-      const discoveredTool = context.toolRegistry.getToolState(resolvedToolName);
+      const discoveredTool =
+        context.toolRegistry.getToolState(resolvedToolName);
       if (discoveredTool && !discoveredTool.exposed) {
         // Auto-enable the tool since it was explicitly requested
         context.toolRegistry.enableTools([resolvedToolName], 'discovery');
@@ -109,14 +111,16 @@ export class BridgeToolRequest extends BaseCoreTool {
         }
 
         // Log that we auto-enabled the tool
-        console.info(`[bridge-tool-request] Auto-enabled tool: ${resolvedToolName}`);
+        console.info(
+          `[bridge-tool-request] Auto-enabled tool: ${resolvedToolName}`,
+        );
       } else {
         // Tool doesn't exist at all in the registry
         return {
           content: [
             {
               type: 'text',
-              text: `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
+              text: `Tool not found or not exposed: ${args.tool}. Use discover_tools_by_words to find available tools.`,
             },
           ],
           isError: true,
