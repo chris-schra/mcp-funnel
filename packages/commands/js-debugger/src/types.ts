@@ -156,7 +156,11 @@ export interface DebugSession {
  * Resource tracker for monitoring and cleanup
  */
 export interface ResourceTracker {
-  trackResource(sessionId: string, resourceId: string, type: 'process' | 'connection' | 'timer'): void;
+  trackResource(
+    sessionId: string,
+    resourceId: string,
+    type: 'process' | 'connection' | 'timer',
+  ): void;
   releaseResource(sessionId: string, resourceId: string): void;
   getResourceCount(sessionId: string): number;
   getAllResources(sessionId: string): Array<{ id: string; type: string }>;
@@ -166,7 +170,10 @@ export interface ResourceTracker {
  * Session activity tracker
  */
 export interface SessionActivity {
-  recordActivity(sessionId: string, type: 'user_action' | 'console_output' | 'state_change' | 'heartbeat'): void;
+  recordActivity(
+    sessionId: string,
+    type: 'user_action' | 'console_output' | 'state_change' | 'heartbeat',
+  ): void;
   getLastActivity(sessionId: string): string | undefined;
   getActivityCount(sessionId: string): number;
   isSessionActive(sessionId: string, thresholdMs: number): boolean;
@@ -232,18 +239,21 @@ export interface IResponseFormatter {
   success(data: unknown): CallToolResult;
   error(message: string, details?: unknown): CallToolResult;
   debugState(sessionId: string, session: DebugSession): Promise<CallToolResult>;
-  sessionsList(sessions: Array<{
-    id: string;
-    platform: string;
-    target: string;
-    state: DebugState;
-    startTime: string;
-    metadata?: {
-      lifecycleState?: SessionLifecycleState;
-      lastActivity?: string;
-      resourceCount?: number;
-    };
-  }>, mockSessions?: Array<{ id: string; mock: true; [key: string]: unknown }>): CallToolResult;
+  sessionsList(
+    sessions: Array<{
+      id: string;
+      platform: string;
+      target: string;
+      state: DebugState;
+      startTime: string;
+      metadata?: {
+        lifecycleState?: SessionLifecycleState;
+        lastActivity?: string;
+        resourceCount?: number;
+      };
+    }>,
+    mockSessions?: Array<{ id: string; mock: true; [key: string]: unknown }>,
+  ): CallToolResult;
   consoleOutput(data: {
     sessionId: string;
     consoleOutput: Array<{
@@ -263,8 +273,12 @@ export interface IResponseFormatter {
  * Session validation utilities - eliminates DRY violations
  */
 export interface ISessionValidator {
-  validateSession(sessionId: string): { session: DebugSession } | { error: CallToolResult };
-  validatePausedSession(sessionId: string): { session: DebugSession } | { error: CallToolResult };
+  validateSession(
+    sessionId: string,
+  ): { session: DebugSession } | { error: CallToolResult };
+  validatePausedSession(
+    sessionId: string,
+  ): { session: DebugSession } | { error: CallToolResult };
 }
 
 /**
@@ -282,10 +296,13 @@ export interface IMockSessionManager {
     startTime: string;
     mock: true;
   }>;
-  continueMockSession(sessionId: string, args: {
-    action?: string;
-    evaluate?: string;
-  }): CallToolResult;
+  continueMockSession(
+    sessionId: string,
+    args: {
+      action?: string;
+      evaluate?: string;
+    },
+  ): CallToolResult;
 }
 
 /**

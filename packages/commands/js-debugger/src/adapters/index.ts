@@ -4,6 +4,7 @@
 
 export { BrowserAdapter } from './browser-adapter.js';
 export { NodeDebugAdapter } from './node-adapter.js';
+export { MockSessionManager } from './mock-session-manager.js';
 
 // Re-export types for convenience
 export type {
@@ -17,4 +18,6 @@ export type {
   PauseHandler,
   ResumeHandler,
   ConsoleMessage,
+  IMockSessionManager,
+  MockDebugSession,
 } from '../types.js';
