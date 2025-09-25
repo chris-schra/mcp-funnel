@@ -85,15 +85,43 @@ export class BridgeToolRequest extends BaseCoreTool {
     }
 
     if (!toolState) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Tool not found or not exposed: ${args.tool}. Use discover_tools_by_words to find and enable tools.`,
-          },
-        ],
-        isError: true,
-      };
+      // Check if the tool exists but is not exposed (discovered but not enabled)
+      const discoveredTool = context.toolRegistry.getToolState(resolvedToolName);
+      if (discoveredTool && !discoveredTool.exposed) {
+        // Auto-enable the tool since it was explicitly requested
+        context.toolRegistry.enableTools([resolvedToolName], 'discovery');
+        await context.sendNotification?.('tools/list_changed');
+
+        // Get the tool again after enabling
+        toolState = context.toolRegistry.getToolForExecution(resolvedToolName);
+
+        if (!toolState) {
+          // This shouldn't happen, but handle it gracefully
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to auto-enable tool: ${args.tool}. Please try discover_tools_by_words to enable it manually.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        // Log that we auto-enabled the tool
+        console.info(`[bridge-tool-request] Auto-enabled tool: ${resolvedToolName}`);
+      } else {
+        // Tool doesn't exist at all in the registry
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
 
     try {

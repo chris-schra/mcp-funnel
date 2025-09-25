@@ -5,6 +5,7 @@
 import { promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 import type { ICommand } from './interfaces.js';
 import { CommandRegistry } from './registry.js';
 
@@ -46,6 +47,81 @@ export async function discoverCommands(
     }
   } catch (error) {
     console.warn(`Failed to discover commands in ${searchPath}:`, error);
+  }
+
+  return registry;
+}
+
+/**
+ * Discover commands from multiple locations including user-installed commands
+ */
+export async function discoverAllCommands(
+  projectPath?: string,
+  includeUserCommands = true,
+): Promise<CommandRegistry> {
+  const registry = new CommandRegistry();
+
+  // 1. Load project-local commands (if project path provided)
+  if (projectPath) {
+    try {
+      const projectRegistry = await discoverCommands(projectPath);
+      for (const commandName of projectRegistry.getAllCommandNames()) {
+        const command = projectRegistry.getCommandForMCP(commandName);
+        if (command) {
+          registry.register(command);
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `Failed to discover project commands from ${projectPath}:`,
+        error,
+      );
+    }
+  }
+
+  // 2. Load user-installed commands from ~/.mcp-funnel using the manifest
+  if (includeUserCommands) {
+    const manifestPath = join(homedir(), '.mcp-funnel', 'commands-manifest.json');
+    const userPackagesPath = join(homedir(), '.mcp-funnel', 'packages', 'node_modules');
+
+    try {
+      // Read the manifest to know what commands are actually installed
+      const manifestContent = await fs.readFile(manifestPath, 'utf-8');
+      const manifest = JSON.parse(manifestContent) as {
+        commands: Array<{
+          name: string;
+          package: string;
+          version: string;
+          description?: string;
+          installedAt: string;
+        }>;
+      };
+
+      // Load each command from the manifest
+      for (const installedCmd of manifest.commands) {
+        const commandPath = join(userPackagesPath, installedCmd.package);
+        try {
+          const command = await loadCommand(commandPath);
+          if (command) {
+            registry.register(command);
+          } else {
+            console.warn(
+              `Command ${installedCmd.name} from package ${installedCmd.package} could not be loaded`,
+            );
+          }
+        } catch (error) {
+          console.warn(
+            `Failed to load user command ${installedCmd.name} from ${commandPath}:`,
+            error,
+          );
+        }
+      }
+    } catch (error) {
+      // Manifest doesn't exist yet, that's okay - no commands installed
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.warn('Failed to read user commands manifest:', error);
+      }
+    }
   }
 
   return registry;

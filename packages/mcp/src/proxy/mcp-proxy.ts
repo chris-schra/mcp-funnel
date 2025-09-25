@@ -35,8 +35,13 @@ import { DiscoverToolsByWords } from '../tools/discover-tools-by-words/index.js'
 import { GetToolSchema } from '../tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from '../tools/bridge-tool-request/index.js';
 import { LoadToolset } from '../tools/load-toolset/index.js';
+import { ManageCommands } from '../tools/manage-commands/index.js';
 import type { ServerStatus } from '../types/index.js';
-import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
+import {
+  discoverCommands,
+  discoverAllCommands,
+  type ICommand,
+} from '@mcp-funnel/commands-core';
 import { Dirent } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -86,6 +91,9 @@ export class MCPProxy extends EventEmitter {
     this._normalizedServers = normalizeServers(config.servers);
     this.toolRegistry = new ToolRegistry(config);
 
+    // Expose instance on globalThis for hot-reload support (used by manage-commands tool)
+    (globalThis as any).__mcpProxyInstance = this;
+
     this._normalizedServers.forEach((server) => {
       this.disconnectedServers.set(server.name, server);
     });
@@ -124,6 +132,7 @@ export class MCPProxy extends EventEmitter {
       new GetToolSchema(),
       new BridgeToolRequest(),
       new LoadToolset(),
+      new ManageCommands(),
     ];
 
     for (const tool of tools) {
@@ -289,6 +298,15 @@ export class MCPProxy extends EventEmitter {
         }
       } catch (_e) {
         // No scope directory or unreadable; ignore
+      }
+
+      // 3) User-installed commands from ~/.mcp-funnel/packages
+      // These are loaded just like other commands and filtered by the commands.list whitelist
+      try {
+        const userRegistry = await discoverAllCommands(undefined, true);
+        await registerFromRegistry(userRegistry);
+      } catch (error) {
+        console.warn('Failed to load user-installed commands:', error);
       }
     } catch (error) {
       console.error('Failed to load commands:', error);

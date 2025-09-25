@@ -3,11 +3,6 @@ import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
 import { RegistryContext } from '../../registry/index.js';
 
-export interface DiscoverToolsParams {
-  words: string;
-  enable?: boolean;
-}
-
 export interface ToolMatch {
   name: string;
   serverName: string;
@@ -37,9 +32,37 @@ export class DiscoverToolsByWords extends BaseCoreTool {
         type: 'object',
         properties: {
           words: {
-            type: 'string',
+            oneOf: [
+              {
+                type: 'string',
+                description:
+                  'Space-separated keywords (uses AND logic - tool must contain ALL keywords)',
+              },
+              {
+                type: 'object',
+                properties: {
+                  and: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Tool must contain ALL of these keywords',
+                  },
+                },
+                required: ['and'],
+              },
+              {
+                type: 'object',
+                properties: {
+                  or: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Tool must contain ANY of these keywords',
+                  },
+                },
+                required: ['or'],
+              },
+            ],
             description:
-              'Space-separated keywords to search for in tool descriptions. Be precise and minimal - use only terms that directly match the user\'s intent. Each keyword matches tools containing that word anywhere in their name/description. Avoid platform names (github, filesystem) unless explicitly mentioned by the user. Example: for "PR review", use "pull request review" not "github pull request review code".',
+              'Search keywords - either a string (AND logic), or an object with "and" array (ALL keywords) or "or" array (ANY keyword)',
           },
           enable: {
             type: 'boolean',
@@ -56,28 +79,63 @@ export class DiscoverToolsByWords extends BaseCoreTool {
   constructor() {
     super();
   }
+
+  /**
+   * Truncate description to first line break after 100 chars, or at 200 chars if no line break
+   */
+  private truncateDescription(description: string | undefined): string {
+    if (!description) return '';
+
+    // If short enough, return as-is
+    if (description.length <= 100) return description;
+
+    // Find first line break after 100 chars
+    const firstBreakAfter100 = description.indexOf('\n', 100);
+    if (firstBreakAfter100 !== -1) {
+      return description.substring(0, firstBreakAfter100);
+    }
+
+    // No line break found, truncate at 200 chars with ellipsis
+    if (description.length > 200) {
+      return description.substring(0, 197) + '...';
+    }
+
+    return description;
+  }
+
   async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {
-    // Validate args conform to DiscoverToolsParams
-    if (typeof args.words !== 'string') {
+    // Parse the words parameter which can be string or object
+    let keywords: string[] = [];
+    let searchMode: 'and' | 'or' = 'and'; // Default to AND logic
+
+    if (typeof args.words === 'string') {
+      // Legacy string format - use AND logic
+      keywords = args.words.toLowerCase().split(/\s+/).filter(Boolean);
+    } else if (typeof args.words === 'object' && args.words !== null) {
+      if ('and' in args.words && Array.isArray(args.words.and)) {
+        keywords = args.words.and.map((k) => k.toLowerCase());
+        searchMode = 'and';
+      } else if ('or' in args.words && Array.isArray(args.words.or)) {
+        keywords = args.words.or.map((k) => k.toLowerCase());
+        searchMode = 'or';
+      } else {
+        throw new Error(
+          'Invalid words format - use string, {and: [...]}, or {or: [...]}',
+        );
+      }
+    } else {
       throw new Error('Missing or invalid "words" parameter');
     }
 
-    const typedArgs: DiscoverToolsParams = {
-      words: args.words,
-      enable: typeof args.enable === 'boolean' ? args.enable : false,
-    };
+    const enable = typeof args.enable === 'boolean' ? args.enable : false;
 
-    // Use registry's search capability
-    const keywords = typedArgs.words
-      .toLowerCase()
-      .split(/[\s-]+/)
-      .filter(Boolean);
-    const matches = context.toolRegistry.searchTools(keywords);
+    // Use registry's search capability with the appropriate mode
+    const matches = context.toolRegistry.searchTools(keywords, searchMode);
 
-    if (typedArgs.enable && matches.length > 0) {
+    if (enable && matches.length > 0) {
       // Enable the discovered tools
       const toolNames = matches.map((m) => m.fullName);
       context.toolRegistry.enableTools(toolNames, 'discovery');
@@ -98,7 +156,12 @@ export class DiscoverToolsByWords extends BaseCoreTool {
             },
           );
 
-          let retVal = `- ${m.fullName}: ${m.description}`;
+          // Use full description when enabling (contains usage instructions)
+          // Use truncated description for discovery listing
+          const desc = enable
+            ? m.description
+            : this.truncateDescription(m.description);
+          let retVal = `- ${m.fullName}: ${desc}`;
           if (args.length) {
             retVal += `\n  args:`;
             for (const arg of args) {
@@ -126,9 +189,9 @@ export class DiscoverToolsByWords extends BaseCoreTool {
       });
       const hasRegistries = registryContext.hasRegistries();
 
-      let message = `No local tools found matching keywords: ${typedArgs.words}`;
+      let message = `No local tools found matching keywords: ${keywords.join(' ')}`;
       if (hasRegistries) {
-        message += `\n\nTip: Try searching MCP registries for additional tools:\nsearch_registry_tools "${typedArgs.words}"`;
+        message += `\n\nTip: Try searching MCP registries for additional tools:\nsearch_registry_tools "${keywords.join(' ')}"`;
       }
 
       return {
@@ -145,7 +208,8 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     const matchList = matches
       .map((m) => {
         const status = m.exposed ? '✓' : m.enabled ? '◐' : '○';
-        return `${status} ${m.fullName}: ${m.description}`;
+        const truncatedDesc = this.truncateDescription(m.description);
+        return `${status} ${m.fullName}: ${truncatedDesc}`;
       })
       .join('\n');
 

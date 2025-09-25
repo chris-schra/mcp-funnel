@@ -160,6 +160,51 @@ Or to "speak" with chat:
 
 ## 🔧 Installation
 
+### Installing Custom Commands
+
+MCP Funnel supports dynamically installing additional commands from npm packages. You can install commands globally to your user directory (~/.mcp-funnel/packages) where they'll be available across all your projects.
+
+#### Using the Command Manager
+
+The built-in `command-manager` command provides tools for managing your installed commands:
+
+```bash
+# List installed commands
+npx mcp-funnel run command-manager list
+
+# Install a new command from npm
+npx mcp-funnel run command-manager install @awesome-org/mcp-command
+
+# Install a specific version
+npx mcp-funnel run command-manager install @awesome-org/mcp-command --version=1.2.3
+
+# Update a command to the latest version
+npx mcp-funnel run command-manager update my-command
+
+# Uninstall a command
+npx mcp-funnel run command-manager uninstall my-command
+
+# Uninstall and remove command data
+npx mcp-funnel run command-manager uninstall my-command --remove-data
+```
+
+#### Via MCP Protocol
+
+When using Claude or another MCP client, you can manage commands through the exposed tools:
+
+- `command-manager_install` - Install a new command package
+- `command-manager_uninstall` - Remove an installed command
+- `command-manager_list` - List all installed commands
+- `command-manager_update` - Update a command to the latest version
+
+#### Command Discovery
+
+User-installed commands are automatically discovered from `~/.mcp-funnel/packages/node_modules/` and loaded alongside built-in commands. They respect your configuration:
+
+- If `commands.list` is specified, only whitelisted commands are loaded
+- Commands can be hidden using `hideTools` patterns
+- Tools from commands are filtered by `exposeTools` patterns
+
 ## ⚙️ Configuration
 
 MCP Funnel supports two ways to specify configuration:

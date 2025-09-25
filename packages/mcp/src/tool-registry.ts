@@ -141,6 +141,50 @@ export class ToolRegistry {
     }
   }
 
+  // Hot-reload a command's tools (for dynamic command installation)
+  hotReloadCommand(command: ICommand): void {
+    // Remove existing tools from this command
+    const toolsToRemove: string[] = [];
+    for (const [name, tool] of this.tools) {
+      if (tool.command?.name === command.name) {
+        toolsToRemove.push(name);
+      }
+    }
+    for (const toolName of toolsToRemove) {
+      this.tools.delete(toolName);
+    }
+
+    // Register new tools from the command
+    const mcpDefs = command.getMCPDefinitions();
+    const isSingle = mcpDefs.length === 1;
+    const singleMatchesCommand = isSingle && mcpDefs[0]?.name === command.name;
+
+    for (const mcpDef of mcpDefs) {
+      const useCompact = singleMatchesCommand && mcpDef.name === command.name;
+      const displayName = useCompact
+        ? `${command.name}`
+        : `${command.name}_${mcpDef.name}`;
+
+      if (!mcpDef.description) {
+        throw new Error(
+          `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
+        );
+      }
+
+      this.registerDiscoveredTool({
+        fullName: displayName,
+        originalName: mcpDef.name,
+        serverName: 'commands',
+        definition: { ...mcpDef, name: displayName },
+        command,
+      });
+    }
+
+    console.info(
+      `[registry] Hot-reloaded command '${command.name}' with ${mcpDefs.length} tools`,
+    );
+  }
+
   // Compatibility alias for older callers
   removeServerTools(serverName: string): void {
     this.removeToolsFromServer(serverName);
@@ -223,11 +267,11 @@ export class ToolRegistry {
     return Array.from(this.tools.values());
   }
 
-  searchTools(keywords: string[]): ToolState[] {
+  searchTools(keywords: string[], mode: 'and' | 'or' = 'and'): ToolState[] {
     // Search across ALL discovered tools (for discovery features)
     return Array.from(this.tools.values())
       .filter((t) => t.discovered)
-      .filter((t) => this.matchesKeywords(t, keywords))
+      .filter((t) => this.matchesKeywords(t, keywords, mode))
       .sort((a, b) => {
         // Prioritize exposed tools
         if (a.exposed !== b.exposed) return a.exposed ? -1 : 1;
@@ -274,10 +318,21 @@ export class ToolRegistry {
     return patterns.some((p) => matchesPattern(name, p));
   }
 
-  private matchesKeywords(tool: ToolState, keywords: string[]): boolean {
+  private matchesKeywords(
+    tool: ToolState,
+    keywords: string[],
+    mode: 'and' | 'or' = 'and',
+  ): boolean {
     const searchText =
       `${tool.fullName} ${tool.description} ${tool.serverName}`.toLowerCase();
-    return keywords.every((kw) => searchText.includes(kw.toLowerCase()));
+
+    if (mode === 'or') {
+      // OR logic: tool must contain at least one keyword
+      return keywords.some((kw) => searchText.includes(kw.toLowerCase()));
+    } else {
+      // AND logic: tool must contain all keywords
+      return keywords.every((kw) => searchText.includes(kw.toLowerCase()));
+    }
   }
 
   // State inspection
