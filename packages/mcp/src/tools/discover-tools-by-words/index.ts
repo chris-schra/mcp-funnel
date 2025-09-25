@@ -84,7 +84,29 @@ export class DiscoverToolsByWords extends BaseCoreTool {
       await context.sendNotification?.('tools/list_changed');
 
       const enabledList = matches
-        .map((m) => `- ${m.fullName}: ${m.description}`)
+        .map((m) => {
+          const inputSchema = m.definition?.inputSchema;
+
+          const args = Object.entries(inputSchema?.properties || {}).map(
+            ([argName, prop]) => {
+              const def = prop as { type: string; description?: string };
+              let retVal = `${argName}: ${def.type}`;
+              if (m.definition?.inputSchema?.required?.includes(argName)) {
+                retVal += ' [required]';
+              }
+              return retVal;
+            },
+          );
+
+          let retVal = `- ${m.fullName}: ${m.description}`;
+          if (args.length) {
+            retVal += `\n  args:`;
+            for (const arg of args) {
+              retVal += `\n    - ${arg}`;
+            }
+          }
+          return retVal;
+        })
         .join('\n');
 
       return {
