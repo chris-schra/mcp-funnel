@@ -20,7 +20,7 @@
     "validate": "tsx packages/mcp/src/cli.ts run ts-validate --fix",
     "test": "CI=true vitest run",
     "test:e2e": "CI=true TEST_E2E=true vitest run",
-    "test:full": "CI=true TEST_E2E=true RUN_INTEGRATION_TESTS=true vitest run",
+    "test:full": "JS_DEBUGGER_RUN_REAL=true CI=true TEST_E2E=true RUN_INTEGRATION_TESTS=true vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
