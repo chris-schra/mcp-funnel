@@ -6,6 +6,8 @@ import type {
   DebugSession,
   DebugState,
   ConsoleMessage,
+  Scope,
+  Variable,
 } from './types.js';
 
 // Feature flag - set to true to use real CDP implementation
@@ -111,6 +113,55 @@ export class JsDebuggerCommand implements ICommand {
         inputSchema: { type: 'object', properties: {} },
       },
       {
+        name: 'stop',
+        description: 'Stop and terminate a debug session',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            sessionId: { type: 'string', description: 'Debug session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'get_stacktrace',
+        description: 'Get current stack trace when session is paused',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            sessionId: { type: 'string', description: 'Debug session ID' },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
+        name: 'get_variables',
+        description:
+          'Get variables from current debug context with sophisticated inspection',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            sessionId: { type: 'string', description: 'Debug session ID' },
+            path: {
+              type: 'string',
+              description:
+                'Dot-notation path to specific variable (e.g., "user.profile.settings")',
+            },
+            frameId: {
+              type: 'number',
+              description:
+                'Specific stack frame to inspect (defaults to top frame)',
+            },
+            maxDepth: {
+              type: 'number',
+              description: 'Maximum depth to traverse objects (defaults to 3)',
+              default: 3,
+            },
+          },
+          required: ['sessionId'],
+        },
+      },
+      {
         name: 'search_console_output',
         description: 'Search and filter console output from a debug session',
         inputSchema: {
@@ -119,7 +170,8 @@ export class JsDebuggerCommand implements ICommand {
             sessionId: { type: 'string', description: 'Debug session ID' },
             levels: {
               type: 'object',
-              description: 'Log levels to include (defaults to warn and error only)',
+              description:
+                'Log levels to include (defaults to warn and error only)',
               properties: {
                 log: { type: 'boolean' },
                 debug: { type: 'boolean' },
@@ -169,6 +221,19 @@ export class JsDebuggerCommand implements ICommand {
             levels?: Record<string, boolean>;
             search?: string;
             since?: number;
+          },
+        );
+      case 'stop':
+        return this.stopSession(args as unknown as { sessionId: string });
+      case 'get_stacktrace':
+        return this.getStackTrace(args as unknown as { sessionId: string });
+      case 'get_variables':
+        return this.getVariables(
+          args as unknown as {
+            sessionId: string;
+            path?: string;
+            frameId?: number;
+            maxDepth?: number;
           },
         );
       default:
@@ -423,21 +488,23 @@ export class JsDebuggerCommand implements ICommand {
     const levels = args.levels || { warn: true, error: true };
 
     // Get console output from the session
-    let output = args.since !== undefined
-      ? session.consoleOutput.slice(args.since)
-      : session.consoleOutput;
+    let output =
+      args.since !== undefined
+        ? session.consoleOutput.slice(args.since)
+        : session.consoleOutput;
 
     // Filter by levels
-    output = output.filter(msg => levels[msg.level] === true);
+    output = output.filter((msg) => levels[msg.level] === true);
 
     // Filter by search string if provided
     if (args.search) {
       const searchLower = args.search.toLowerCase();
-      output = output.filter(msg =>
-        msg.message.toLowerCase().includes(searchLower) ||
-        msg.args.some(arg =>
-          String(arg).toLowerCase().includes(searchLower)
-        )
+      output = output.filter(
+        (msg) =>
+          msg.message.toLowerCase().includes(searchLower) ||
+          msg.args.some((arg) =>
+            String(arg).toLowerCase().includes(searchLower),
+          ),
       );
     }
 
@@ -541,6 +608,553 @@ export class JsDebuggerCommand implements ICommand {
         },
       ],
     };
+  }
+
+  private async stopSession(args: {
+    sessionId: string;
+  }): Promise<CallToolResult> {
+    try {
+      const session = this.sessionManager.getSession(args.sessionId);
+
+      if (!session) {
+        // Check if it's a mock session
+        const mockSession = this.getMockSession(args.sessionId);
+        if (mockSession) {
+          return this.stopMockSession(args.sessionId);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                error: 'Session not found',
+                sessionId: args.sessionId,
+                activeSessions: this.sessionManager
+                  .listSessions()
+                  .map((s) => s.id),
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Clean disconnect and termination
+      await session.adapter.disconnect();
+      this.sessionManager.deleteSession(args.sessionId);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              sessionId: args.sessionId,
+              status: 'terminated',
+              message: 'Debug session stopped and cleaned up successfully',
+            }),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: error instanceof Error ? error.message : 'Unknown error',
+              sessionId: args.sessionId,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  private async getStackTrace(args: {
+    sessionId: string;
+  }): Promise<CallToolResult> {
+    try {
+      const session = this.sessionManager.getSession(args.sessionId);
+
+      if (!session) {
+        // Check if it's a mock session
+        const mockSession = this.getMockSession(args.sessionId);
+        if (mockSession) {
+          return this.getStackTraceMock(args.sessionId);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                error: 'Session not found',
+                sessionId: args.sessionId,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      if (session.state.status !== 'paused') {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                error:
+                  'Session is not paused. Stack trace is only available when execution is paused.',
+                sessionId: args.sessionId,
+                currentStatus: session.state.status,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const stackTrace = await session.adapter.getStackTrace();
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                sessionId: args.sessionId,
+                status: 'paused',
+                stackTrace: stackTrace.map((frame) => ({
+                  frameId: frame.id,
+                  functionName: frame.functionName,
+                  file: frame.file,
+                  line: frame.line,
+                  column: frame.column,
+                })),
+                frameCount: stackTrace.length,
+                message: `Stack trace with ${stackTrace.length} frames`,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: error instanceof Error ? error.message : 'Unknown error',
+              sessionId: args.sessionId,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  private async getVariables(args: {
+    sessionId: string;
+    path?: string;
+    frameId?: number;
+    maxDepth?: number;
+  }): Promise<CallToolResult> {
+    try {
+      const session = this.sessionManager.getSession(args.sessionId);
+
+      if (!session) {
+        // Check if it's a mock session
+        const mockSession = this.getMockSession(args.sessionId);
+        if (mockSession) {
+          return this.getVariablesMock(args);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                error: 'Session not found',
+                sessionId: args.sessionId,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      if (session.state.status !== 'paused') {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                error:
+                  'Session is not paused. Variable inspection is only available when execution is paused.',
+                sessionId: args.sessionId,
+                currentStatus: session.state.status,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const frameId = args.frameId ?? 0;
+      const maxDepth = args.maxDepth ?? 3;
+
+      // Get the scopes for the specified frame
+      const scopes = await session.adapter.getScopes(frameId);
+
+      if (args.path) {
+        // Path-based variable access
+        const result = await this.getVariableByPath(
+          session,
+          scopes,
+          args.path,
+          maxDepth,
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  sessionId: args.sessionId,
+                  frameId,
+                  path: args.path,
+                  result,
+                  message: `Variable inspection for path: ${args.path}`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } else {
+        // Get all variables in all scopes
+        const enrichedScopes = await Promise.all(
+          scopes.map(async (scope) => ({
+            type: scope.type,
+            name: scope.name,
+            variables: await Promise.all(
+              scope.variables.map(async (variable) => ({
+                name: variable.name,
+                value: await this.enrichVariableValue(
+                  session,
+                  variable.value,
+                  variable.type,
+                  maxDepth,
+                  new Set(),
+                ),
+                type: variable.type,
+                configurable: variable.configurable,
+                enumerable: variable.enumerable,
+              })),
+            ),
+          })),
+        );
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  sessionId: args.sessionId,
+                  frameId,
+                  maxDepth,
+                  scopes: enrichedScopes,
+                  message: `Variable inspection for frame ${frameId} with max depth ${maxDepth}`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: error instanceof Error ? error.message : 'Unknown error',
+              sessionId: args.sessionId,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  private async getVariableByPath(
+    session: DebugSession,
+    scopes: Scope[],
+    path: string,
+    maxDepth: number,
+  ): Promise<{
+    found: boolean;
+    value?: unknown;
+    type?: string;
+    error?: string;
+  }> {
+    const pathParts = path.split('.');
+    const rootVariableName = pathParts[0];
+
+    // Find the root variable in any scope
+    let rootVariable: Variable | undefined;
+    let _scopeName: string | undefined; // TODO: Will be used for enhanced debugging context in future iterations
+
+    for (const scope of scopes) {
+      rootVariable = scope.variables.find(
+        (v: Variable) => v.name === rootVariableName,
+      );
+      if (rootVariable) {
+        _scopeName = scope.name || scope.type;
+        break;
+      }
+    }
+
+    if (!rootVariable) {
+      return {
+        found: false,
+        error: `Variable '${rootVariableName}' not found in any scope`,
+      };
+    }
+
+    // If it's just the root variable, return it enriched
+    if (pathParts.length === 1) {
+      const enrichedValue = await this.enrichVariableValue(
+        session,
+        rootVariable.value,
+        rootVariable.type,
+        maxDepth,
+        new Set(),
+      );
+      return {
+        found: true,
+        value: enrichedValue,
+        type: rootVariable.type,
+      };
+    }
+
+    // Navigate through the path
+    try {
+      const result = await this.navigateVariablePath(
+        session,
+        rootVariable.value,
+        rootVariable.type,
+        pathParts.slice(1),
+        maxDepth,
+        new Set(),
+      );
+      return {
+        found: true,
+        value: result.value,
+        type: result.type,
+      };
+    } catch (error) {
+      return {
+        found: false,
+        error: `Error navigating path '${path}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  private async navigateVariablePath(
+    _session: DebugSession, // TODO: Will be used for CDP-based deep navigation in future iterations
+    currentValue: unknown,
+    currentType: string,
+    remainingPath: string[],
+    _maxDepth: number, // TODO: Will be used for depth-limited navigation in future iterations
+    _visitedObjects: Set<string>, // TODO: Will be used for circular reference detection in future iterations
+  ): Promise<{ value: unknown; type: string }> {
+    if (remainingPath.length === 0) {
+      return { value: currentValue, type: currentType };
+    }
+
+    if (currentType !== 'object' || currentValue === null) {
+      throw new Error(
+        `Cannot navigate property '${remainingPath[0]}' on non-object type '${currentType}'`,
+      );
+    }
+
+    // This would need to be implemented based on adapter capabilities
+    // For now, return a placeholder implementation
+    throw new Error(
+      'Deep object navigation not fully implemented in current CDP client',
+    );
+  }
+
+  private async enrichVariableValue(
+    session: DebugSession,
+    value: unknown,
+    type: string,
+    maxDepth: number,
+    visitedObjects: Set<string>,
+    currentDepth = 0,
+  ): Promise<unknown> {
+    // Prevent infinite recursion
+    if (currentDepth >= maxDepth) {
+      return `[Max depth ${maxDepth} reached]`;
+    }
+
+    // Handle primitive types
+    if (type !== 'object' || value === null || value === undefined) {
+      return this.formatPrimitiveValue(value, type);
+    }
+
+    // Handle circular references
+    const valueId = this.getObjectId(value);
+    if (valueId && visitedObjects.has(valueId)) {
+      return '[Circular]';
+    }
+
+    if (valueId) {
+      visitedObjects.add(valueId);
+    }
+
+    // Handle arrays
+    if (Array.isArray(value)) {
+      if (value.length > 100) {
+        return `[Array with ${value.length} items - too large to display]`;
+      }
+
+      const enrichedArray = await Promise.all(
+        value.slice(0, 50).map(async (item, index) => ({
+          index: String(index),
+          value: await this.enrichVariableValue(
+            session,
+            item,
+            typeof item,
+            maxDepth,
+            new Set(visitedObjects),
+            currentDepth + 1,
+          ),
+        })),
+      );
+
+      if (value.length > 50) {
+        enrichedArray.push({
+          index: '...',
+          value: `[${value.length - 50} more items]`,
+        });
+      }
+
+      return enrichedArray;
+    }
+
+    // Handle special object types
+    if (value instanceof Date) {
+      return { __type: 'Date', value: value.toISOString() };
+    }
+
+    if (value instanceof RegExp) {
+      return { __type: 'RegExp', value: value.toString() };
+    }
+
+    if (value instanceof Map) {
+      return {
+        __type: 'Map',
+        size: value.size,
+        entries: Array.from(value.entries()).slice(0, 20),
+      };
+    }
+
+    if (value instanceof Set) {
+      return {
+        __type: 'Set',
+        size: value.size,
+        values: Array.from(value.values()).slice(0, 20),
+      };
+    }
+
+    if (value instanceof WeakMap) {
+      return { __type: 'WeakMap', note: 'WeakMap contents not accessible' };
+    }
+
+    if (value instanceof WeakSet) {
+      return { __type: 'WeakSet', note: 'WeakSet contents not accessible' };
+    }
+
+    if (value instanceof Promise) {
+      return { __type: 'Promise', state: 'pending' };
+    }
+
+    // Handle plain objects
+    if (typeof value === 'object') {
+      const keys = Object.keys(value);
+      const result: Record<string, unknown> = {};
+
+      // Limit object property inspection to avoid performance issues
+      const maxProps = 50;
+      const keysToProcess = keys.slice(0, maxProps);
+
+      for (const key of keysToProcess) {
+        try {
+          const propValue = (value as Record<string, unknown>)[key];
+          result[key] = await this.enrichVariableValue(
+            session,
+            propValue,
+            typeof propValue,
+            maxDepth,
+            new Set(visitedObjects),
+            currentDepth + 1,
+          );
+        } catch (error) {
+          result[key] =
+            `[Error: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+        }
+      }
+
+      if (keys.length > maxProps) {
+        result['...'] = `[${keys.length - maxProps} more properties]`;
+      }
+
+      return result;
+    }
+
+    return value;
+  }
+
+  private formatPrimitiveValue(value: unknown, type: string): unknown {
+    switch (type) {
+      case 'string':
+        return value;
+      case 'number':
+        return value;
+      case 'boolean':
+        return value;
+      case 'undefined':
+        return undefined;
+      case 'symbol':
+        return `[Symbol: ${String(value)}]`;
+      case 'function':
+        return `[Function: ${String(value)}]`;
+      case 'bigint':
+        return `${String(value)}n`;
+      default:
+        return value;
+    }
+  }
+
+  private getObjectId(value: unknown): string | null {
+    // In a real implementation, this would use the objectId from CDP
+    // For now, we use a simple fallback
+    try {
+      return String(value);
+    } catch {
+      return null;
+    }
   }
 
   private formatConsoleOutput(messages: ConsoleMessage[]) {
@@ -778,6 +1392,314 @@ export class JsDebuggerCommand implements ICommand {
         },
       ],
     };
+  }
+
+  private stopMockSession(sessionId: string): CallToolResult {
+    const session = mockSessionsMap.get(sessionId);
+    if (!session) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: 'Mock session not found',
+              sessionId: sessionId,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    mockSessionsMap.delete(sessionId);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            sessionId: sessionId,
+            status: 'terminated',
+            message: '[MOCK] Debug session stopped and cleaned up successfully',
+          }),
+        },
+      ],
+    };
+  }
+
+  private getStackTraceMock(sessionId: string): CallToolResult {
+    const session = mockSessionsMap.get(sessionId);
+    if (!session) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: 'Mock session not found',
+              sessionId: sessionId,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const mockStackTrace = [
+      {
+        frameId: 0,
+        functionName: 'processUserData',
+        file: session.request.breakpoints?.[0]?.file || 'main.js',
+        line: session.request.breakpoints?.[0]?.line || 15,
+        column: 12,
+      },
+      {
+        frameId: 1,
+        functionName: 'handleRequest',
+        file: session.request.breakpoints?.[0]?.file || 'main.js',
+        line: (session.request.breakpoints?.[0]?.line || 15) - 8,
+        column: 4,
+      },
+      {
+        frameId: 2,
+        functionName: 'main',
+        file: session.request.breakpoints?.[0]?.file || 'main.js',
+        line: 1,
+        column: 1,
+      },
+    ];
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              sessionId: sessionId,
+              status: 'paused',
+              stackTrace: mockStackTrace,
+              frameCount: mockStackTrace.length,
+              message: `[MOCK] Stack trace with ${mockStackTrace.length} frames`,
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+    };
+  }
+
+  private getVariablesMock(args: {
+    sessionId: string;
+    path?: string;
+    frameId?: number;
+    maxDepth?: number;
+  }): CallToolResult {
+    const session = mockSessionsMap.get(args.sessionId);
+    if (!session) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: 'Mock session not found',
+              sessionId: args.sessionId,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const frameId = args.frameId ?? 0;
+    const maxDepth = args.maxDepth ?? 3;
+
+    const mockVariables = {
+      local: {
+        userId: 12345,
+        userData: {
+          name: 'John Doe',
+          email: 'john@example.com',
+          profile: {
+            settings: {
+              theme: 'dark',
+              notifications: true,
+              privacy: {
+                public: false,
+                trackingEnabled: false,
+              },
+            },
+            preferences: ['email', 'sms'],
+          },
+        },
+        processedCount: session.currentBreakpointIndex * 10 + 42,
+        isProcessing: true,
+        config: {
+          debug: true,
+          timeout: 5000,
+          retryCount: 3,
+        },
+        largeArray: Array.from({ length: 150 }, (_, i) => `item-${i}`),
+        circularRef: '[Circular reference detected]',
+        dateObj: { __type: 'Date', value: '2023-12-01T10:30:00.000Z' },
+        regexObj: { __type: 'RegExp', value: '/test/gi' },
+        mapObj: {
+          __type: 'Map',
+          size: 3,
+          entries: [
+            ['key1', 'value1'],
+            ['key2', 'value2'],
+            ['key3', 'value3'],
+          ],
+        },
+        setObj: {
+          __type: 'Set',
+          size: 2,
+          values: ['item1', 'item2'],
+        },
+        promiseObj: { __type: 'Promise', state: 'pending' },
+      },
+      closure: {
+        outerVariable: 'from closure',
+        counter: session.currentBreakpointIndex,
+      },
+      global: {
+        process: '[Node.js process object]',
+        console: '[Console object]',
+        Buffer: '[Buffer constructor]',
+      },
+    };
+
+    if (args.path) {
+      // Mock path-based access
+      const pathParts = args.path.split('.');
+      let current: Record<string, unknown> = mockVariables;
+      let found = true;
+
+      try {
+        for (const part of pathParts) {
+          if (current && typeof current === 'object' && part in current) {
+            current = (current as Record<string, unknown>)[part] as Record<
+              string,
+              unknown
+            >;
+          } else {
+            found = false;
+            break;
+          }
+        }
+
+        const result = {
+          found,
+          value: found ? current : undefined,
+          type: found
+            ? Array.isArray(current)
+              ? 'array'
+              : typeof current
+            : undefined,
+          error: found
+            ? undefined
+            : `Variable path '${args.path}' not found in mock session`,
+        };
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  sessionId: args.sessionId,
+                  frameId,
+                  path: args.path,
+                  result,
+                  message: `[MOCK] Variable inspection for path: ${args.path}`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                sessionId: args.sessionId,
+                frameId,
+                path: args.path,
+                result: {
+                  found: false,
+                  error: `[MOCK] Error accessing path '${args.path}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+                },
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+    } else {
+      // Return all scopes
+      const scopes = [
+        {
+          type: 'local',
+          name: 'Local',
+          variables: Object.entries(mockVariables.local).map(
+            ([name, value]) => ({
+              name,
+              value,
+              type: Array.isArray(value) ? 'array' : typeof value,
+              configurable: true,
+              enumerable: true,
+            }),
+          ),
+        },
+        {
+          type: 'closure',
+          name: 'Closure',
+          variables: Object.entries(mockVariables.closure).map(
+            ([name, value]) => ({
+              name,
+              value,
+              type: typeof value,
+              configurable: true,
+              enumerable: true,
+            }),
+          ),
+        },
+        {
+          type: 'global',
+          name: 'Global',
+          variables: Object.entries(mockVariables.global).map(
+            ([name, value]) => ({
+              name,
+              value,
+              type: typeof value,
+              configurable: false,
+              enumerable: false,
+            }),
+          ),
+        },
+      ];
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                sessionId: args.sessionId,
+                frameId,
+                maxDepth,
+                scopes,
+                message: `[MOCK] Variable inspection for frame ${frameId} with max depth ${maxDepth}`,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    }
   }
 
   async executeViaCLI(_args: string[]): Promise<void> {

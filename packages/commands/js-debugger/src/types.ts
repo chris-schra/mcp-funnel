@@ -95,6 +95,45 @@ export interface DebugRequest {
   consoleVerbosity?: 'all' | 'warn-error' | 'error-only' | 'none';
 }
 
+/**
+ * Session metadata for tracking activity and resource usage
+ */
+export interface SessionMetadata {
+  createdAt: string;
+  lastActivityAt: string;
+  lastHeartbeatAt?: string;
+  activityCount: number;
+  resourceUsage: {
+    consoleOutputSize: number;
+    memoryEstimate: number;
+  };
+}
+
+/**
+ * Session lifecycle state (separate from debug execution state)
+ */
+export type SessionLifecycleState =
+  | 'initializing'
+  | 'connected'
+  | 'active'
+  | 'inactive'
+  | 'terminating'
+  | 'terminated';
+
+/**
+ * Cleanup configuration for session management
+ */
+export interface SessionCleanupConfig {
+  sessionTimeoutMs: number; // default 30 minutes (1800000)
+  heartbeatIntervalMs: number; // default 5 minutes (300000)
+  maxConsoleOutputEntries: number; // default 1000
+  maxInactiveSessionsBeforeCleanup: number; // default 10
+  cleanupIntervalMs: number; // default 5 minutes (300000)
+  memoryThresholdBytes: number; // default 100MB (104857600)
+  enableHeartbeat: boolean; // default true
+  enableAutoCleanup: boolean; // default true
+}
+
 export interface DebugSession {
   id: string;
   adapter: IDebugAdapter;
@@ -103,6 +142,34 @@ export interface DebugSession {
   state: DebugState;
   startTime: string;
   consoleOutput: ConsoleMessage[];
+  // Enhanced cleanup and lifecycle management
+  metadata?: SessionMetadata;
+  lifecycleState?: SessionLifecycleState;
+  cleanup?: {
+    timeoutHandle?: NodeJS.Timeout;
+    heartbeatHandle?: NodeJS.Timeout;
+    resources: Set<string>; // track resource IDs for cleanup
+  };
+}
+
+/**
+ * Resource tracker for monitoring and cleanup
+ */
+export interface ResourceTracker {
+  trackResource(sessionId: string, resourceId: string, type: 'process' | 'connection' | 'timer'): void;
+  releaseResource(sessionId: string, resourceId: string): void;
+  getResourceCount(sessionId: string): number;
+  getAllResources(sessionId: string): Array<{ id: string; type: string }>;
+}
+
+/**
+ * Session activity tracker
+ */
+export interface SessionActivity {
+  recordActivity(sessionId: string, type: 'user_action' | 'console_output' | 'state_change' | 'heartbeat'): void;
+  getLastActivity(sessionId: string): string | undefined;
+  getActivityCount(sessionId: string): number;
+  isSessionActive(sessionId: string, thresholdMs: number): boolean;
 }
 
 export interface ISessionManager {
@@ -115,7 +182,16 @@ export interface ISessionManager {
     target: string;
     state: DebugState;
     startTime: string;
+    metadata?: {
+      lifecycleState?: SessionLifecycleState;
+      lastActivity?: string;
+      resourceCount?: number;
+    };
   }>;
+  // Enhanced cleanup methods
+  cleanupInactiveSessions?(): Promise<number>;
+  getCleanupConfig?(): SessionCleanupConfig;
+  setCleanupConfig?(config: Partial<SessionCleanupConfig>): void;
 }
 
 export interface ICDPClient {
@@ -127,4 +203,111 @@ export interface ICDPClient {
   ): Promise<T>;
   on(event: string, handler: (params: unknown) => void): void;
   off(event: string, handler: (params: unknown) => void): void;
+}
+
+// SEAMS: Extension point interfaces for the refactored architecture
+
+/**
+ * Main extension point for MCP tool handlers
+ */
+export interface IToolHandler<TArgs = Record<string, unknown>> {
+  readonly name: string;
+  handle(args: TArgs, context: ToolHandlerContext): Promise<CallToolResult>;
+}
+
+/**
+ * Shared context available to all tool handlers
+ */
+export interface ToolHandlerContext {
+  sessionManager: ISessionManager;
+  responseFormatter: IResponseFormatter;
+  sessionValidator: ISessionValidator;
+  mockSessionManager?: IMockSessionManager;
+}
+
+/**
+ * Response formatting extension point - eliminates JSON formatting duplication
+ */
+export interface IResponseFormatter {
+  success(data: unknown): CallToolResult;
+  error(message: string, details?: unknown): CallToolResult;
+  debugState(sessionId: string, session: DebugSession): Promise<CallToolResult>;
+  sessionsList(sessions: Array<{
+    id: string;
+    platform: string;
+    target: string;
+    state: DebugState;
+    startTime: string;
+    metadata?: {
+      lifecycleState?: SessionLifecycleState;
+      lastActivity?: string;
+      resourceCount?: number;
+    };
+  }>, mockSessions?: Array<{ id: string; mock: true; [key: string]: unknown }>): CallToolResult;
+  consoleOutput(data: {
+    sessionId: string;
+    consoleOutput: Array<{
+      level: string;
+      timestamp: string;
+      message: string;
+      args: unknown[];
+    }>;
+    filters?: unknown;
+    totalCount: number;
+    filteredCount?: number;
+    status: string;
+  }): CallToolResult;
+}
+
+/**
+ * Session validation utilities - eliminates DRY violations
+ */
+export interface ISessionValidator {
+  validateSession(sessionId: string): { session: DebugSession } | { error: CallToolResult };
+  validatePausedSession(sessionId: string): { session: DebugSession } | { error: CallToolResult };
+}
+
+/**
+ * Mock session management interface - separates mock logic from real logic
+ */
+export interface IMockSessionManager {
+  createMockSession(request: DebugRequest): string;
+  getMockSession(sessionId: string): MockDebugSession | undefined;
+  deleteMockSession(sessionId: string): boolean;
+  listMockSessions(): Array<{
+    id: string;
+    platform: string;
+    target: string;
+    state: { status: 'paused' };
+    startTime: string;
+    mock: true;
+  }>;
+  continueMockSession(sessionId: string, args: {
+    action?: string;
+    evaluate?: string;
+  }): CallToolResult;
+}
+
+/**
+ * Mock session structure
+ */
+export interface MockDebugSession {
+  request: DebugRequest;
+  currentBreakpointIndex: number;
+  events: Array<Record<string, unknown>>;
+  startTime: string;
+  consoleOutput: Array<{
+    level: 'log' | 'debug' | 'info' | 'warn' | 'error';
+    timestamp: string;
+    message: string;
+    args: unknown[];
+  }>;
+}
+
+/**
+ * CallToolResult interface (from @mcp-funnel/commands-core)
+ */
+export interface CallToolResult {
+  content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
 }
