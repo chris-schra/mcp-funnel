@@ -401,7 +401,7 @@ export class CommandInstaller {
     return this.loadCommand(commandPath);
   }
 
-  private findMatchingCommand(
+  protected findMatchingCommand(
     manifest: CommandManifest,
     packageSpec: string,
   ): InstalledCommand | undefined {
@@ -432,6 +432,24 @@ export class CommandInstaller {
       const withoutAt = installedPackage.slice(1);
       if (packageSpec === withoutAt || normalizedSpec === withoutAt) {
         return true;
+      }
+
+      // Special-case git URLs: scoped packages installed via git often arrive as
+      // git+https://host/scope/package.git. Ensure we detect those installs.
+      if (packageSpec.includes('://') || packageSpec.includes('git+')) {
+        // Extract the path from the git URL
+        const urlMatch = packageSpec.match(
+          /(?:git\+)?https?:\/\/[^/]+\/(.+?)(?:\.git)?(?:#.*)?$/,
+        );
+        if (urlMatch) {
+          const urlPath = urlMatch[1];
+          const scopeSlashPair = withoutAt;
+          // Only match if the URL path is EXACTLY the scope/package
+          // This prevents false positives like "other/myorg/tool" matching "@myorg/tool"
+          if (urlPath === scopeSlashPair) {
+            return true;
+          }
+        }
       }
     }
 
