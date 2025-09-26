@@ -4996,7 +4996,6 @@ __metadata:
     eventsource: "npm:^4.0.0"
     globby: "npm:^14.1.0"
     tsx: "npm:^4.20.5"
-    type-fest: "npm:^5.0.1"
     typescript: "npm:^5.9.2"
     uuid: "npm:^13.0.0"
     vite-tsconfig-paths: "npm:^5.1.4"
@@ -6758,13 +6757,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tagged-tag@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "tagged-tag@npm:1.0.0"
-  checksum: 10c0/91d25c9ffb86a91f20522cefb2cbec9b64caa1febe27ad0df52f08993ff60888022d771e868e6416cf2e72dab68449d2139e8709ba009b74c6c7ecd4000048d1
-  languageName: node
-  linkType: hard
-
 "tailwind-merge@npm:^2.6.0":
   version: 2.6.0
   resolution: "tailwind-merge@npm:2.6.0"
@@ -6980,15 +6972,6 @@ __metadata:
   dependencies:
     prelude-ls: "npm:^1.2.1"
   checksum: 10c0/7b3fd0ed43891e2080bf0c5c504b418fbb3e5c7b9708d3d015037ba2e6323a28152ec163bcb65212741fa5d2022e3075ac3c76440dbd344c9035f818e8ecee58
-  languageName: node
-  linkType: hard
-
-"type-fest@npm:^5.0.1":
-  version: 5.0.1
-  resolution: "type-fest@npm:5.0.1"
-  dependencies:
-    tagged-tag: "npm:^1.0.0"
-  checksum: 10c0/8d248edd9705e0da3cc14f4f4ca7fb40a6c5b2c822fe4ba8fc226743578bc229f66fa4ff66e7d4070806ab8312adc64199ce0f0836d20ede13922ced2ff36118
   languageName: node
   linkType: hard
 

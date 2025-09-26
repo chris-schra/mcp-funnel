@@ -401,7 +401,7 @@ export class CommandInstaller {
     return this.loadCommand(commandPath);
   }
 
-  private findMatchingCommand(
+  protected findMatchingCommand(
     manifest: CommandManifest,
     packageSpec: string,
   ): InstalledCommand | undefined {

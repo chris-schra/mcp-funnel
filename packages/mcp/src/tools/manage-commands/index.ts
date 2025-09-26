@@ -46,9 +46,9 @@ export class ManageCommands extends BaseCoreTool {
 
   private installer: CommandInstaller;
 
-  constructor() {
+  constructor(installer?: CommandInstaller) {
     super();
-    this.installer = new CommandInstaller();
+    this.installer = installer || new CommandInstaller();
   }
 
   /**
@@ -98,6 +98,20 @@ export class ManageCommands extends BaseCoreTool {
   ): Promise<CallToolResult> {
     const action = args.action as string;
     const packageSpec = args.package as string;
+
+    // Validate required parameters
+    if (!packageSpec) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: 'Missing required parameter: package',
+            }),
+          },
+        ],
+      };
+    }
 
     try {
       switch (action) {

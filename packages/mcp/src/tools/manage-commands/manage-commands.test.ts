@@ -7,7 +7,6 @@ import { CommandInstaller } from '@mcp-funnel/commands-core';
 import type { CoreToolContext } from '../core-tool.interface.js';
 import type { ICommand } from '@mcp-funnel/commands-core';
 import type { ToolRegistry } from '../../tool-registry.js';
-import type { Merge } from 'type-fest';
 
 interface SchemaProperty {
   type: string;
@@ -66,8 +65,7 @@ describe('ManageCommands', () => {
       enableTools: vi.fn(),
     };
 
-    // Create tool and mock the installer completely
-    tool = new ManageCommands();
+    // Create mock installer
     const mockInstallerPartial: Partial<CommandInstaller> = {
       install: vi.fn(),
       uninstall: vi.fn(),
@@ -77,11 +75,8 @@ describe('ManageCommands', () => {
     };
     mockInstaller = mockInstallerPartial as CommandInstaller;
 
-    // Type assertion needed to access private property for testing
-    const toolWithInstaller = tool as ManageCommands & {
-      installer: CommandInstaller;
-    } as Merge<ManageCommands, { installer: CommandInstaller }>;
-    toolWithInstaller.installer = mockInstaller;
+    // Create tool with mock installer via dependency injection
+    tool = new ManageCommands(mockInstaller);
 
     // Clear all mocks before each test
     vi.clearAllMocks();
@@ -534,8 +529,9 @@ describe('ManageCommands', () => {
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };
-      // Should work since package is undefined, but installer will handle validation
-      expect(content.text).toBeDefined();
+      const response = JSON.parse(content.text);
+
+      expect(response.error).toBe('Missing required parameter: package');
     });
 
     it('should handle installer initialization errors', async () => {
