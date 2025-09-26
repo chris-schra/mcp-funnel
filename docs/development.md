@@ -6,7 +6,6 @@
 yarn build          # Build the TypeScript code
 yarn test           # Run "fast" tests
 yarn test:e2e       # Run end-to-end tests with mock servers
-yarn validate       # Run comprehensive code quality checks (lint, typecheck, prettier)
 ```
 
 The project includes comprehensive e2e tests simulating Claude SDK conversations with mock MCP servers.
