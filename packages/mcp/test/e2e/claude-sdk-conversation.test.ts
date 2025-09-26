@@ -534,7 +534,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
           );
 
           const response = await conversation.sendMessage(
-            'Is the tool "mcp__mcp-funnel__mockserver__exposed_tool" OR "mockserver__exposed_tool" available? If available, you **MUST** reply with YES, if not available, you **MUST** list the tools available via mcp-funnel.',
+            'Is the tool "mcp__mcp-funnel__mockserver__exposed_tool" OR "mockserver__exposed_tool" available? If available, you **MUST** reply with YES, any **ONLY** ELSE IF not available, you **MUST** list the tools available via mcp-funnel.',
           );
 
           expectStrictResponse(response, 'YES');

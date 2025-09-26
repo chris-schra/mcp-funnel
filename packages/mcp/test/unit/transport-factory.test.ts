@@ -47,23 +47,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-// TODO: Mock transport implementations that would be created by the factory
-const _mockStdioTransport = {
-  connect: vi.fn().mockResolvedValue(undefined),
-  disconnect: vi.fn().mockResolvedValue(undefined),
-  send: vi.fn().mockResolvedValue(undefined),
-  receive: vi.fn().mockResolvedValue(undefined),
-  isConnected: vi.fn().mockReturnValue(true),
-};
-
-const _mockSSETransport = {
-  connect: vi.fn().mockResolvedValue(undefined),
-  disconnect: vi.fn().mockResolvedValue(undefined),
-  send: vi.fn().mockResolvedValue(undefined),
-  receive: vi.fn().mockResolvedValue(undefined),
-  isConnected: vi.fn().mockReturnValue(true),
-};
-
 describe('TransportFactory', () => {
   let originalEnv: NodeJS.ProcessEnv;
 
