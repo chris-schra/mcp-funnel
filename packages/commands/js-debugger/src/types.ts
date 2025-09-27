@@ -133,6 +133,7 @@ export interface DebugRequest {
   target: string;
   command?: string; // Runtime command for Node (e.g., "node", "tsx", "ts-node")
   args?: string[]; // Additional CLI arguments passed to the script when launching Node runtime
+  stopOnEntry?: boolean; // Pause at entry before running user code
   breakpoints?: Array<{
     file: string;
     line: number;

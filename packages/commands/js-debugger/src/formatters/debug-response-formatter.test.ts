@@ -5,25 +5,33 @@ import type {
   IDebugAdapter,
   DebugState,
   DebugRequest,
+  StackFrame,
+  Scope,
+  EvaluationResult,
+  BreakpointRegistration,
 } from '../types.js';
 
-function createAdapterStub(stackFrames: any[]): IDebugAdapter {
-  return {
+function createAdapterStub(stackFrames: StackFrame[]): IDebugAdapter {
+  const adapter: Partial<IDebugAdapter> = {
     connect: async () => {},
     disconnect: async () => {},
-    setBreakpoint: async () => ({ id: 'stub', verified: false }),
+    setBreakpoint: async () =>
+      ({ id: 'stub', verified: false }) satisfies BreakpointRegistration,
     removeBreakpoint: async () => {},
-    continue: async () => ({ status: 'running' }),
-    stepOver: async () => ({ status: 'running' }),
-    stepInto: async () => ({ status: 'running' }),
-    stepOut: async () => ({ status: 'running' }),
-    evaluate: async () => ({ value: undefined, type: 'undefined' }),
+    continue: async () => ({ status: 'running' }) satisfies DebugState,
+    stepOver: async () => ({ status: 'running' }) satisfies DebugState,
+    stepInto: async () => ({ status: 'running' }) satisfies DebugState,
+    stepOut: async () => ({ status: 'running' }) satisfies DebugState,
+    evaluate: async () =>
+      ({ value: undefined, type: 'undefined' }) satisfies EvaluationResult,
     getStackTrace: async () => stackFrames,
-    getScopes: async () => [],
+    getScopes: async () => [] as Scope[],
     onConsoleOutput: () => {},
     onPaused: () => {},
     onResumed: () => {},
-  } as unknown as IDebugAdapter;
+  };
+
+  return adapter as IDebugAdapter;
 }
 
 describe('DebugResponseFormatter messaging', () => {
@@ -47,12 +55,12 @@ describe('DebugResponseFormatter messaging', () => {
         platform: 'node',
         target: '/path/to/script.js',
         stopOnEntry: true,
-      } as DebugRequest,
+      } satisfies DebugRequest,
       breakpoints: new Map(),
       state: {
         status: 'paused',
         pauseReason: 'entry',
-      } as DebugState,
+      } satisfies DebugState,
       startTime: new Date().toISOString(),
       consoleOutput: [],
     };
@@ -85,12 +93,12 @@ describe('DebugResponseFormatter messaging', () => {
         platform: 'node',
         target: '/Users/example/app/index.js',
         stopOnEntry: true,
-      } as DebugRequest,
+      } satisfies DebugRequest,
       breakpoints: new Map(),
       state: {
         status: 'paused',
         pauseReason: 'debugger',
-      } as DebugState,
+      } satisfies DebugState,
       startTime: new Date().toISOString(),
       consoleOutput: [],
     };

@@ -169,7 +169,10 @@ describeReal('BrowserAdapter integration', () => {
   it('pauses on debugger statement, inspects state, and captures console output', async () => {
     const chrome = await launchHeadlessChromium();
     const staticServer = await startStaticServer(fixturesRoot.tempPath);
-    const adapter = new BrowserAdapter('127.0.0.1', chrome.port);
+    const adapter = new BrowserAdapter({
+      host: '127.0.0.1',
+      port: chrome.port,
+    });
     const cdpClient = await chromium.connectOverCDP(
       `http://127.0.0.1:${chrome.port}`,
     );

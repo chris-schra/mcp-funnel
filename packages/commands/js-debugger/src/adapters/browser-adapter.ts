@@ -75,7 +75,7 @@ export class BrowserAdapter implements IDebugAdapter {
 
     this.cdpClient = new CDPClient();
     this.targetDiscovery = new TargetDiscovery(host, port);
-    this.projectRoot = this.deriveProjectRoot(options?.request);
+    this.projectRoot = deriveProjectRootFromRequest(options?.request);
 
     this.setupEventHandlers();
   }
@@ -393,7 +393,16 @@ export class BrowserAdapter implements IDebugAdapter {
 
     return this.currentCallFrames.map((frame, index) => {
       const filePath = this.urlToFilePath(frame.url);
-      const origin = this.classifyFileOrigin(filePath);
+      const origin = classifyOrigin(filePath, {
+        projectRoot: this.projectRoot,
+        internalMatchers: [
+          (normalized) => normalized.startsWith('chrome-extension:'),
+        ],
+        libraryMatchers: [
+          (normalized) => normalized.includes('/node_modules/'),
+        ],
+        treatAbsoluteAsUser: true,
+      });
 
       return {
         id: index,
@@ -402,7 +411,7 @@ export class BrowserAdapter implements IDebugAdapter {
         line: frame.location.lineNumber + 1, // Convert to 1-based
         column: frame.location.columnNumber,
         origin,
-        relativePath: this.toRelativePath(filePath),
+        relativePath: toRelativePath(filePath, this.projectRoot),
       } satisfies StackFrame;
     });
   }
@@ -700,49 +709,6 @@ export class BrowserAdapter implements IDebugAdapter {
         console.warn('Error in breakpoint resolved handler:', error);
       }
     }
-  }
-
-  private deriveProjectRoot(request?: DebugRequest): string | undefined {
-    if (!request) {
-      return undefined;
-    }
-
-    const candidates: string[] = [];
-    if (request.target) {
-      candidates.push(request.target);
-    }
-    if (request.breakpoints) {
-      for (const bp of request.breakpoints) {
-        candidates.push(bp.file);
-      }
-    }
-
-    for (const candidate of candidates) {
-      if (!candidate) continue;
-      if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
-        continue;
-      }
-      if (candidate.startsWith('ws://') || candidate.startsWith('wss://')) {
-        continue;
-      }
-
-      let filePath = candidate;
-      if (candidate.startsWith('file://')) {
-        try {
-          filePath = new URL(candidate).pathname;
-        } catch {
-          continue;
-        }
-      }
-
-      if (!path.isAbsolute(filePath)) {
-        continue;
-      }
-
-      return path.dirname(filePath).replace(/\\/g, '/');
-    }
-
-    return undefined;
   }
 
   private handleBreakpointResolved(params: {
