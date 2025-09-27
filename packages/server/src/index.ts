@@ -103,7 +103,6 @@ export async function startWebServer(
   app.route('/api/config', configRoute);
   app.route('/api/oauth', oauthRoute);
   app.route('/api/streamable', streamableRoute);
-
   app.route('/app', appRoute);
 
   // Health check endpoint - intentionally placed AFTER auth middleware setup
@@ -145,6 +144,21 @@ export async function startWebServer(
     server.on('error', (error) => {
       console.error('❌ Server startup failed:', error);
       reject(error);
+    });
+
+    // graceful shutdown
+    process.on('SIGINT', () => {
+      server.close();
+      process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+      server.close((err) => {
+        if (err) {
+          console.error(err);
+          process.exit(1);
+        }
+        process.exit(0);
+      });
     });
 
     // Setup WebSocket server
