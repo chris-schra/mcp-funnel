@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { IncomingMessage, ServerResponse } from 'node:http';
+import { ServerResponse } from 'node:http';
+import { serve, type HttpBindings } from '@hono/node-server';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
 import type { MCPProxy } from 'mcp-funnel';
@@ -8,7 +9,12 @@ type Variables = {
   mcpProxy: MCPProxy;
 };
 
-export const streamableRoute = new Hono<{ Variables: Variables }>();
+type Bindings = HttpBindings;
+
+export const streamableRoute = new Hono<{
+  Variables: Variables;
+  Bindings: Bindings;
+}>();
 
 /**
  * Global storage for the StreamableHTTP transport and MCPProxy
@@ -122,27 +128,83 @@ streamableRoute.all('/mcp', async (c) => {
     const bridge = await initializeStreamableBridge(mcpProxy);
 
     // Convert Hono request/response to Node.js format for SDK compatibility
-    const nodeReq = c.req.raw as unknown as IncomingMessage;
-    const nodeRes = c.res as unknown as ServerResponse;
+    const nodeReq = c.env.incoming;
+    const nodeRes = c.env.outgoing;
 
     // Parse request body for POST requests
     let parsedBody: unknown;
     if (c.req.method === 'POST') {
       try {
         parsedBody = await c.req.json();
+        console.debug('Request:\n', JSON.stringify(parsedBody, null, 2));
       } catch (error) {
         console.error('Failed to parse request body:', error);
         return c.json({ error: 'Invalid JSON in request body' }, 400);
       }
     }
 
+    // Intercept response writes to log what's being sent
+    const originalWrite = nodeRes.write.bind(nodeRes);
+
+    // Capture response chunks for debugging
+    const responseChunks: Buffer[] = [];
+
+    // @ts-expect-error override write method
+    nodeRes.write = function (
+      chunk: unknown,
+      encodingOrCallback: BufferEncoding,
+      callback: ((error: Error | null | undefined) => void) | undefined,
+    ) {
+      // Log the chunk being written
+      if (chunk) {
+        const buffer = Buffer.isBuffer(chunk)
+          ? chunk
+          : Buffer.from(chunk as ArrayLike<number>);
+        responseChunks.push(buffer);
+      }
+      return originalWrite.call(this, chunk, encodingOrCallback, callback);
+    };
+
+    const handleFinish = () => {
+      const fullResponse = Buffer.concat(responseChunks).toString('utf8');
+
+      try {
+        const m = fullResponse.match(/event: message\ndata: (.*)/);
+        if (m && m[1]) {
+          const data = JSON.parse(m[1]);
+          console.info('Response:\n', JSON.stringify(data, null, 2));
+        }
+      } catch (error) {
+        console.error('Failed to parse response body:', error);
+      } finally {
+        nodeRes.off('finish', handleFinish);
+        nodeReq.off('close', handleClose);
+      }
+    };
+
+    const handleClose = () => {
+      console.info('StreamableHTTP connection closed');
+      bridge.transport.close().then(() => {
+        console.info('transport closed');
+        bridge.isConnected = false;
+      });
+    };
+
+    nodeRes.on('finish', handleFinish);
+    nodeReq.on('close', handleClose);
+
     // Handle the request using the StreamableHTTP transport
+    // The transport will directly write to nodeRes
     await bridge.transport.handleRequest(nodeReq, nodeRes, parsedBody);
 
-    // The transport has handled the response directly
-    // For SSE streams, the connection stays open
-    // For JSON responses, the response has been sent
-    return c.body(null);
+    c.res = undefined; // Prevent Hono from sending its own response
+    // Return an empty Response that Hono will ignore since headers are already sent
+    c.res = new Response(null, {
+      status: 204,
+      headers: {
+        'x-hono-already-sent': 'true',
+      },
+    });
   } catch (error) {
     console.error('StreamableHTTP request handling error:', error);
     return c.json(
