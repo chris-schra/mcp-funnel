@@ -202,6 +202,10 @@ class AdapterFactory implements IAdapterFactory {
 export class SessionManager implements ISessionManager {
   private static instance: SessionManager | undefined;
   private sessions = new Map<string, DebugSession>();
+  private terminatedSessions = new Map<
+    string,
+    { session: DebugSession; expiresAt: number }
+  >();
   private adapterFactory: IAdapterFactory;
   private sessionTimeouts = new Map<string, NodeJS.Timeout>();
 
@@ -387,7 +391,17 @@ export class SessionManager implements ISessionManager {
    * Get a session by ID
    */
   getSession(id: string): DebugSession | undefined {
-    return this.sessions.get(id);
+    const activeSession = this.sessions.get(id);
+    if (activeSession) {
+      return activeSession;
+    }
+
+    const terminated = this.getTerminatedSession(id);
+    if (terminated) {
+      return terminated;
+    }
+
+    return undefined;
   }
 
   /**
@@ -399,8 +413,11 @@ export class SessionManager implements ISessionManager {
       return;
     }
 
+    const snapshot = this.createSessionSnapshot(session);
+
     this.cleanupSession(session);
     this.sessions.delete(id);
+    this.storeTerminatedSession(snapshot);
   }
 
   /**
@@ -614,18 +631,24 @@ export class SessionManager implements ISessionManager {
     return await new Promise((resolve) => {
       const check = () => {
         const session = this.sessions.get(sessionId);
-        if (!session) {
+        const resolvedSession = session ?? this.getTerminatedSession(sessionId);
+        if (!resolvedSession) {
           resolve(undefined);
           return;
         }
 
-        if (session.state.status === 'paused') {
-          resolve(session);
+        if (resolvedSession.state.status === 'paused') {
+          resolve(resolvedSession);
+          return;
+        }
+
+        if (resolvedSession.state.status === 'terminated') {
+          resolve(resolvedSession);
           return;
         }
 
         if (Date.now() - start >= timeoutMs) {
-          resolve(session);
+          resolve(resolvedSession);
           return;
         }
 
@@ -683,6 +706,48 @@ export class SessionManager implements ISessionManager {
     const messageLevel = CONSOLE_LEVEL_PRIORITY[message.level];
 
     return messageLevel <= verbosityLevel;
+  }
+
+  private createSessionSnapshot(session: DebugSession): DebugSession {
+    return {
+      ...session,
+      breakpoints: new Map(session.breakpoints),
+      consoleOutput: [...session.consoleOutput],
+      state: { status: 'terminated' },
+      lifecycleState: 'terminated',
+      metadata: session.metadata ? { ...session.metadata } : undefined,
+      cleanup: undefined,
+    };
+  }
+
+  private storeTerminatedSession(session: DebugSession): void {
+    const expiresAt = Date.now() + 60000; // keep for 60 seconds
+
+    this.cleanupExpiredTerminatedSessions();
+    this.terminatedSessions.set(session.id, { session, expiresAt });
+  }
+
+  private getTerminatedSession(id: string): DebugSession | undefined {
+    const entry = this.terminatedSessions.get(id);
+    if (!entry) {
+      return undefined;
+    }
+
+    if (entry.expiresAt < Date.now()) {
+      this.terminatedSessions.delete(id);
+      return undefined;
+    }
+
+    return entry.session;
+  }
+
+  private cleanupExpiredTerminatedSessions(): void {
+    const now = Date.now();
+    for (const [id, entry] of this.terminatedSessions.entries()) {
+      if (entry.expiresAt < now) {
+        this.terminatedSessions.delete(id);
+      }
+    }
   }
 
   /**
