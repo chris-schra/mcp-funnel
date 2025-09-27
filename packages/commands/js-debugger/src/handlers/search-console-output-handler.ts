@@ -3,7 +3,7 @@ import type {
   ToolHandlerContext,
   CallToolResult,
   ConsoleMessage,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface SearchConsoleOutputHandlerArgs {
   sessionId: string;

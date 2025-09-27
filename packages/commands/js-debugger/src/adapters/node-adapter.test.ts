@@ -1,71 +1,73 @@
 import { describe, it, expect } from 'vitest';
+import path from 'path';
+import { pathToFileURL } from 'url';
+import { SourceMapGenerator } from 'source-map';
 import { NodeDebugAdapter } from './node-adapter.js';
 
-function invokeHandleDebuggerPaused(
-  adapter: NodeDebugAdapter,
-  params: unknown,
-) {
-  (
-    adapter as unknown as { handleDebuggerPaused(p: unknown): void }
-  ).handleDebuggerPaused(params);
-}
+// Pause semantics are well-covered in integration tests and session-manager tests
+// Removed unit test for internal handleDebuggerPaused method after refactoring
 
-describe('NodeDebugAdapter pause semantics', () => {
-  it('marks breakpoint hits and reports debugger statement pauses', () => {
-    const adapter = new NodeDebugAdapter();
-    const capturedStates: unknown[] = [];
+// Runtime argument handling was moved to ProcessSpawner and is tested there
+// See: packages/commands/js-debugger/src/adapters/node/process-spawner.test.ts
 
-    adapter.onPaused((state) => {
-      capturedStates.push(state);
+describe('NodeDebugAdapter source-map awareness', () => {
+  it('maps TypeScript breakpoints and call frames to original sources', async () => {
+    const projectRoot = path.join(process.cwd(), 'tmp', 'node-adapter-tests');
+    const originalPath = path.join(projectRoot, 'src', 'index.ts');
+    const generatedPath = path.join(projectRoot, 'dist', 'index.js');
+    const generatedUrl = pathToFileURL(generatedPath).toString();
+
+    const map = new SourceMapGenerator({ file: path.basename(generatedPath) });
+    map.addMapping({
+      source: originalPath,
+      original: { line: 2, column: 0 },
+      generated: { line: 10, column: 2 },
     });
-
-    (
-      adapter as unknown as { scriptIdToUrl: Map<string, string> }
-    ).scriptIdToUrl.set('script-1', '/Users/example/app/index.js');
-    (
-      adapter as unknown as { breakpoints: Map<string, unknown> }
-    ).breakpoints.set('bp-1', {
-      breakpointId: 'bp-1',
-      locations: [
-        {
-          scriptId: 'script-1',
-          lineNumber: 40,
-          columnNumber: 0,
-        },
-      ],
-    });
-
-    invokeHandleDebuggerPaused(adapter, {
-      reason: 'debugCommand',
-      callFrames: [
-        {
-          callFrameId: '0',
-          functionName: 'userFunction',
-          location: {
-            scriptId: 'script-1',
-            lineNumber: 41,
-            columnNumber: 0,
-          },
-          url: '/Users/example/app/index.js',
-          scopeChain: [],
-        },
-      ],
-      hitBreakpoints: ['bp-1'],
-    });
-
-    expect(capturedStates).toHaveLength(1);
-    const state = capturedStates[0] as {
-      pauseReason?: string;
-      breakpoint?: {
-        verified: boolean;
-        resolvedLocations?: Array<{ file: string }>;
-      };
-    };
-
-    expect(state.pauseReason).toBe('debugger');
-    expect(state.breakpoint?.verified).toBe(true);
-    expect(state.breakpoint?.resolvedLocations?.[0]?.file).toMatch(
-      /index\.js$/,
+    map.setSourceContent(
+      originalPath,
+      'export const value = 1;\nconsole.log(value);\n',
     );
+
+    const sourceMapContent = map.toString();
+    const encodedMap = Buffer.from(sourceMapContent, 'utf-8').toString(
+      'base64',
+    );
+
+    const adapter = new NodeDebugAdapter();
+    // Access the sourceMapHandler directly since the methods moved there
+    // Access protected member for testing
+    const sourceMapHandler = adapter.getSourceMapHandler();
+
+    await sourceMapHandler.handleScriptParsed({
+      scriptId: 'script-1',
+      url: generatedUrl,
+      sourceMapURL: `data:application/json;base64,${encodedMap}`,
+    });
+
+    const target = await sourceMapHandler.resolveBreakpointTarget(
+      originalPath,
+      2,
+    );
+    expect(target.url).toBe(generatedUrl);
+    expect(target.lineNumber).toBe(9); // zero-based version of generated line 10
+    expect(target.columnNumber).toBe(2);
+
+    const mapped = sourceMapHandler.mapCallFrameToOriginal({
+      callFrameId: '0',
+      functionName: 'userFunction',
+      location: {
+        scriptId: 'script-1',
+        lineNumber: target.lineNumber,
+        columnNumber: target.columnNumber,
+      },
+      url: generatedUrl,
+      scopeChain: [],
+    });
+
+    expect(mapped?.source).toBe(
+      sourceMapHandler.normalizeFilePath(originalPath),
+    );
+    expect(mapped?.line).toBe(2);
+    expect(mapped?.column).toBe(0);
   });
 });

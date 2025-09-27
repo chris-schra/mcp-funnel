@@ -10,31 +10,37 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { RegistryContext } from './registry-context.js';
 import { MCPRegistryClient } from './registry-client.js';
 import { generateConfigSnippet } from './config-generator.js';
-import type {
-  RegistryServer,
-  Package,
-  Remote,
-  KeyValueInput,
-  EnvironmentVariable,
-  ServerDetail,
-} from './types/registry.types.js';
-import type { ProxyConfig } from '../config.js';
+import { testServers } from './__test__/test-fixtures.js';
+import {
+  createMockProxyConfig,
+  mockSingleServerFlow,
+  mockUuidLookup,
+  mockErrorScenario,
+  assertSearchResult,
+  assertErrorResult,
+  assertConfig,
+} from './__test__/test-utils.js';
+import {
+  packageTypeConfigCases,
+  remoteConfigCases,
+  environmentVariableCases,
+  backwardCompatibilityCases,
+  argumentValidationCases,
+  headerValidationCases,
+  envExclusionCases,
+} from './__test__/config-test-cases.js';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 describe('Registry Integration Tests', () => {
-  let mockProxyConfig: ProxyConfig;
+  let mockProxyConfig: ReturnType<typeof createMockProxyConfig>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     RegistryContext.reset();
-
-    mockProxyConfig = {
-      servers: [],
-      registries: ['https://registry.modelcontextprotocol.io'],
-    } as ProxyConfig;
+    mockProxyConfig = createMockProxyConfig();
   });
 
   afterEach(() => {
@@ -43,64 +49,19 @@ describe('Registry Integration Tests', () => {
 
   describe('Full Flow: Search → Get Details → Generate Config', () => {
     it('should complete full flow for NPM package server', async () => {
-      // Mock search response with NPM server
-      const npmServerDetail: ServerDetail = {
-        id: 'npm-example-server',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'npm-example-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'NPM Example Server',
-        description: 'Example MCP server from NPM registry',
-        packages: [
-          {
-            identifier: '@mcp/example-server',
-            registry_type: 'npm',
-            runtime_hint: 'node',
-            package_arguments: ['--config', 'production.json'],
-            environment_variables: [
-              { name: 'NODE_ENV', value: 'production', is_required: false },
-              { name: 'API_KEY', is_required: true },
-            ],
-          },
-        ],
-        tools: ['file-reader', 'api-client'],
-      };
-
-      // Mock search API response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          servers: [npmServerDetail],
-          metadata: { count: 1, next_cursor: null },
-        }),
-      });
-
-      // Mock getServer API response (uses search internally)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          servers: [npmServerDetail],
-          metadata: { count: 1, next_cursor: null },
-        }),
-      });
-
+      mockSingleServerFlow(mockFetch, testServers.npm);
       const context = RegistryContext.getInstance(mockProxyConfig);
 
       // Step 1: Search for servers
       const searchResult = await context.searchServers('example');
-      expect(searchResult.found).toBe(true);
-      expect(searchResult.servers).toHaveLength(1);
+      assertSearchResult(searchResult, { found: true, count: 1 });
       expect(searchResult.servers![0].name).toBe('NPM Example Server');
       expect(searchResult.servers![0].registryId).toBe(
         'npm-example-registry-id',
       );
       expect(searchResult.servers![0].isRemote).toBe(false);
 
-      // Step 2: Get server details using server name (since getServer searches by name)
+      // Step 2: Get server details
       const serverDetails =
         await context.getServerDetails('NPM Example Server');
       expect(serverDetails).toBeTruthy();
@@ -109,78 +70,28 @@ describe('Registry Integration Tests', () => {
 
       // Step 3: Generate configuration
       const config = await context.generateServerConfig(serverDetails!);
-      expect(config.name).toBe('NPM Example Server');
-      expect(config.command).toBe('node');
-      expect(config.args).toEqual([
-        '@mcp/example-server',
-        '--config',
-        'production.json',
-      ]);
-      expect(config.env).toEqual({ NODE_ENV: 'production' });
+      assertConfig(config, {
+        command: 'npx',
+        argsPattern: [
+          '-y',
+          '@mcp/example-server',
+          '--config',
+          'production.json',
+        ],
+        env: { NODE_ENV: 'production' },
+      });
 
       // Step 4: Generate install instructions
       const installInfo = await context.generateInstallInfo(serverDetails!);
       expect(installInfo.name).toBe('NPM Example Server');
-      expect(installInfo.configSnippet.command).toBe('node');
+      expect(installInfo.configSnippet.command).toBe('npx');
       expect(installInfo.installInstructions).toContain('npm');
       expect(installInfo.installInstructions).toContain('@mcp/example-server');
       expect(installInfo.tools).toEqual(['file-reader', 'api-client']);
     });
 
     it('should complete full flow for remote SSE server with headers', async () => {
-      const headers: KeyValueInput[] = [
-        {
-          name: 'Authorization',
-          value: 'Bearer ${API_TOKEN}',
-          is_required: true,
-          is_secret: true,
-        },
-        {
-          name: 'Content-Type',
-          value: 'text/event-stream',
-          is_required: false,
-        },
-        { name: 'Accept', value: 'text/event-stream', is_required: false },
-      ];
-
-      const remoteServerDetail: ServerDetail = {
-        id: 'remote-sse-server',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'remote-sse-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'Remote SSE Server',
-        description: 'Server accessed via Server-Sent Events',
-        remotes: [
-          {
-            type: 'sse',
-            url: 'https://api.example.com/mcp/events',
-            headers,
-          },
-        ],
-        tools: ['remote-api', 'event-stream'],
-      };
-
-      // Mock API responses
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          servers: [remoteServerDetail],
-          metadata: { count: 1, next_cursor: null },
-        }),
-      });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          servers: [remoteServerDetail],
-          metadata: { count: 1, next_cursor: null },
-        }),
-      });
-
+      mockSingleServerFlow(mockFetch, testServers.remoteSSE);
       const context = RegistryContext.getInstance(mockProxyConfig);
 
       // Full flow execution
@@ -190,11 +101,12 @@ describe('Registry Integration Tests', () => {
       const installInfo = await context.generateInstallInfo(serverDetails!);
 
       // Verify remote configuration
-      expect(config.transport).toBe('sse');
-      expect(config.url).toBe('https://api.example.com/mcp/events');
+      assertConfig(config, {
+        transport: 'sse',
+        url: 'https://api.example.com/mcp/events',
+        headerCheck: 'object',
+      });
 
-      // Headers are converted from KeyValueInput[] to Record<string, string> by RegistryContext
-      expect(typeof config.headers).toBe('object');
       expect(config.headers).toEqual({
         Authorization: 'Bearer ${API_TOKEN}',
         'Content-Type': 'text/event-stream',
@@ -208,78 +120,30 @@ describe('Registry Integration Tests', () => {
     });
 
     it('should complete full flow for server lookup by UUID', async () => {
-      const serverUuid = 'a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d';
-      const mockServer: ServerDetail = {
-        id: serverUuid,
-        name: 'mcp-funnel-server',
-        description: 'MCP proxy server',
-        packages: [
-          {
-            registry_type: 'npm' as const,
-            identifier: '@chris-schra/mcp-funnel',
-            runtime_hint: 'npx',
-            environment_variables: [],
-          },
-        ],
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: serverUuid,
-            published_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        },
-      };
-
-      // Mock direct GET endpoint for UUID
-      mockFetch.mockImplementation(async (url) => {
-        const urlStr = typeof url === 'string' ? url : url.toString();
-
-        if (urlStr.includes(`/v0/servers/${serverUuid}`)) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => mockServer,
-          } as Response;
-        }
-
-        throw new Error(`Unexpected fetch: ${urlStr}`);
-      });
-
+      const serverUuid = testServers.uuid.id;
+      mockUuidLookup(mockFetch, serverUuid, testServers.uuid);
       const context = RegistryContext.getInstance(mockProxyConfig);
 
       // Get server details by UUID
       const serverDetails = await context.getServerDetails(serverUuid);
-      expect(serverDetails).toEqual(mockServer);
+      expect(serverDetails).toEqual(testServers.uuid);
 
       // Generate config
-      const config = await context.generateServerConfig(mockServer);
-      expect(config.command).toBe('npx');
-      expect(config.args).toEqual(['@chris-schra/mcp-funnel']);
+      const config = await context.generateServerConfig(testServers.uuid);
+      assertConfig(config, {
+        command: 'npx',
+        argsPattern: ['@chris-schra/mcp-funnel'],
+      });
 
       // Generate install info
-      const installInfo = await context.generateInstallInfo(mockServer);
+      const installInfo = await context.generateInstallInfo(testServers.uuid);
       expect(installInfo.name).toBe('mcp-funnel-server');
       expect(installInfo.configSnippet.command).toBe('npx');
     });
 
     it('should handle UUID lookup failure gracefully', async () => {
       const invalidUuid = '550e8400-e29b-41d4-a716-446655440000';
-
-      // Mock 404 response for invalid UUID
-      mockFetch.mockImplementation(async (url) => {
-        const urlStr = typeof url === 'string' ? url : url.toString();
-
-        if (urlStr.includes(`/v0/servers/${invalidUuid}`)) {
-          return {
-            ok: false,
-            status: 404,
-            statusText: 'Not Found',
-          } as Response;
-        }
-
-        throw new Error(`Unexpected fetch: ${urlStr}`);
-      });
-
+      mockUuidLookup(mockFetch, invalidUuid, null);
       const context = RegistryContext.getInstance(mockProxyConfig);
 
       // Get server details should return null for not found
@@ -289,192 +153,69 @@ describe('Registry Integration Tests', () => {
   });
 
   describe('Multiple Package Types Configuration Validation', () => {
-    it('should generate correct NPM config with npx', async () => {
-      const npmPackage: Package = {
-        identifier: '@scope/npm-server',
-        registry_type: 'npm',
-        package_arguments: ['--production', '--port', '3000'],
-        environment_variables: [{ name: 'NODE_ENV', value: 'production' }],
-      };
-
-      const server: RegistryServer = {
-        id: 'npm-server',
-        name: 'NPM Server',
-        description: 'NPM package server',
-        packages: [npmPackage],
-      };
-
+    it.each(packageTypeConfigCases)('$name', ({ server, expected }) => {
       const config = generateConfigSnippet(server);
-
-      expect(config.command).toBe('npx');
-      expect(config.args).toEqual([
-        '-y',
-        '@scope/npm-server',
-        '--production',
-        '--port',
-        '3000',
-      ]);
-      expect(config.env).toEqual({ NODE_ENV: 'production' });
+      assertConfig(config, expected);
     });
 
-    it('should generate correct PyPI config with uvx', async () => {
-      const pypiPackage: Package = {
-        identifier: 'mcp-python-server',
-        registry_type: 'pypi',
-        package_arguments: ['--verbose', '--host', '0.0.0.0'],
-        environment_variables: [
-          { name: 'PYTHONPATH', value: '/opt/mcp' },
-          { name: 'LOG_LEVEL', value: 'DEBUG' },
-        ],
-      };
-
-      const server: RegistryServer = {
-        id: 'pypi-server',
-        name: 'PyPI Server',
-        description: 'Python package server',
-        packages: [pypiPackage],
-      };
-
+    it.each(remoteConfigCases)('$name', ({ server, expected }) => {
       const config = generateConfigSnippet(server);
-
-      expect(config.command).toBe('uvx');
-      expect(config.args).toEqual([
-        'mcp-python-server',
-        '--verbose',
-        '--host',
-        '0.0.0.0',
-      ]);
-      expect(config.env).toEqual({
-        PYTHONPATH: '/opt/mcp',
-        LOG_LEVEL: 'DEBUG',
-      });
+      assertConfig(config, expected);
     });
 
-    it('should generate correct OCI config with docker', async () => {
-      const ociPackage: Package = {
-        identifier: 'ghcr.io/example/mcp-server:v1.0.0',
-        registry_type: 'oci',
-        package_arguments: ['--config', '/app/config.json'],
-        environment_variables: [
-          { name: 'CONTAINER_PORT', value: '8080' },
-          { name: 'ENV', value: 'production' },
-        ],
-      };
-
-      const server: RegistryServer = {
-        id: 'oci-server',
-        name: 'OCI Container Server',
-        description: 'Container-based server',
-        packages: [ociPackage],
-      };
-
+    it.each(environmentVariableCases)('$name', ({ server, expected }) => {
       const config = generateConfigSnippet(server);
-
-      expect(config.command).toBe('docker');
-      expect(config.args).toEqual([
-        'run',
-        '-i',
-        '--rm',
-        'ghcr.io/example/mcp-server:v1.0.0',
-        '--config',
-        '/app/config.json',
-      ]);
-      expect(config.env).toEqual({
-        CONTAINER_PORT: '8080',
-        ENV: 'production',
-      });
-    });
-
-    it('should generate correct remote config with proper headers', async () => {
-      const headers: KeyValueInput[] = [
-        {
-          name: 'Authorization',
-          value: 'Bearer token123',
-          is_required: true,
-          is_secret: true,
-        },
-        { name: 'X-API-Version', value: 'v1', is_required: false },
-        { name: 'User-Agent', value: 'MCP-Client/1.0', is_required: false },
-      ];
-
-      const remote: Remote = {
-        type: 'websocket',
-        url: 'wss://api.example.com/mcp/ws',
-        headers,
-      };
-
-      const server: RegistryServer = {
-        id: 'remote-ws-server',
-        name: 'Remote WebSocket Server',
-        description: 'WebSocket-based remote server',
-        remotes: [remote],
-      };
-
-      const config = generateConfigSnippet(server);
-
-      expect(config.transport).toBe('websocket');
-      expect(config.url).toBe('wss://api.example.com/mcp/ws');
-      expect(config.headers).toEqual(headers);
-    });
-
-    it('should handle GitHub package type correctly', async () => {
-      const githubPackage: Package = {
-        identifier: 'owner/repo',
-        registry_type: 'github',
-        package_arguments: ['start', '--production'],
-        environment_variables: [
-          { name: 'GITHUB_TOKEN', is_required: true },
-          { name: 'NODE_ENV', value: 'production' },
-        ],
-      };
-
-      const server: RegistryServer = {
-        id: 'github-server',
-        name: 'GitHub Server',
-        description: 'GitHub repository server',
-        packages: [githubPackage],
-      };
-
-      const config = generateConfigSnippet(server);
-
-      expect(config.command).toBe('npx');
-      expect(config.args).toEqual([
-        '-y',
-        'github:owner/repo',
-        'start',
-        '--production',
-      ]);
-      expect(config.env).toEqual({ NODE_ENV: 'production' });
+      if (expected.env) {
+        assertConfig(config, { env: expected.env });
+      }
+      if (expected.command) {
+        assertConfig(config, {
+          command: expected.command,
+          argsPattern: expected.args,
+        });
+      }
     });
   });
 
   describe('Error Scenarios', () => {
-    it('should handle server not found gracefully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          servers: [],
-          metadata: { count: 0, next_cursor: null },
-        }),
-      });
+    const errorScenarios = [
+      {
+        name: 'server not found',
+        scenario: 'not-found' as const,
+        term: 'non-existent-server',
+      },
+      { name: 'network errors', scenario: 'network' as const, term: 'test' },
+      {
+        name: 'HTTP 500 errors',
+        scenario: 'server-error' as const,
+        term: 'test',
+      },
+      { name: 'HTTP 404 errors', scenario: 'not-found' as const, term: 'test' },
+      {
+        name: 'malformed JSON responses',
+        scenario: 'malformed' as const,
+        term: 'test',
+      },
+    ];
 
-      const context = RegistryContext.getInstance(mockProxyConfig);
-      const serverDetails = await context.getServerDetails(
-        'non-existent-server',
-      );
+    it.each(errorScenarios)(
+      'should handle $name gracefully',
+      async ({ scenario, term }) => {
+        mockErrorScenario(mockFetch, scenario);
+        const context = RegistryContext.getInstance(mockProxyConfig);
 
-      expect(serverDetails).toBeNull();
-    });
+        if (term === 'non-existent-server') {
+          const serverDetails = await context.getServerDetails(term);
+          expect(serverDetails).toBeNull();
+        } else {
+          const searchResult = await context.searchServers(term);
+          assertErrorResult(searchResult);
+        }
+      },
+    );
 
     it('should handle invalid registry ID gracefully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          servers: [],
-          metadata: { count: 0, next_cursor: null },
-        }),
-      });
-
+      mockErrorScenario(mockFetch, 'not-found');
       const context = RegistryContext.getInstance(mockProxyConfig);
       const searchResult = await context.searchServers(
         'invalid-search-term-that-returns-nothing',
@@ -482,240 +223,30 @@ describe('Registry Integration Tests', () => {
 
       expect(searchResult.found).toBe(false);
       expect(searchResult.servers).toEqual([]);
-      expect(searchResult.message).toBe('No servers found');
-    });
-
-    it('should handle network errors gracefully', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
-
-      const context = RegistryContext.getInstance(mockProxyConfig);
-
-      const searchResult = await context.searchServers('test');
-      expect(searchResult.found).toBe(false);
-      expect(searchResult.servers).toEqual([]);
-      expect(searchResult.message).toContain('Registry errors');
-    });
-
-    it('should handle HTTP 500 errors gracefully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        json: async () => ({}),
-      });
-
-      const context = RegistryContext.getInstance(mockProxyConfig);
-
-      const searchResult = await context.searchServers('test');
-      expect(searchResult.found).toBe(false);
-      expect(searchResult.servers).toEqual([]);
-      expect(searchResult.message).toContain('Registry errors');
-    });
-
-    it('should handle HTTP 404 errors gracefully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-        json: async () => ({}),
-      });
-
-      const context = RegistryContext.getInstance(mockProxyConfig);
-
-      const searchResult = await context.searchServers('test');
-      expect(searchResult.found).toBe(false);
-      expect(searchResult.servers).toEqual([]);
-      expect(searchResult.message).toContain('Registry errors');
-    });
-
-    it('should handle malformed JSON responses', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => {
-          throw new Error('Invalid JSON');
-        },
-      });
-
-      const context = RegistryContext.getInstance(mockProxyConfig);
-
-      const searchResult = await context.searchServers('test');
-      expect(searchResult.found).toBe(false);
-      expect(searchResult.servers).toEqual([]);
       expect(searchResult.message).toContain('Registry errors');
     });
   });
 
   describe('Config Generation Validation', () => {
-    it('should validate NPM configs use npx with correct arguments', () => {
-      const server: RegistryServer = {
-        id: 'npm-validation',
-        name: 'NPM Validation Server',
-        description: 'Server for NPM config validation',
-        packages: [
-          {
-            identifier: '@validation/server',
-            registry_type: 'npm',
-            package_arguments: ['--flag1', '--flag2'],
-          },
-        ],
-      };
-
+    it.each(argumentValidationCases)('$name', ({ server, validate }) => {
       const config = generateConfigSnippet(server);
-
-      expect(config.command).toBe('npx');
-      expect(config.args![0]).toBe('-y');
-      expect(config.args![1]).toBe('@validation/server');
-      expect(config.args).toContain('--flag1');
-      expect(config.args).toContain('--flag2');
+      validate(config);
     });
 
-    it('should validate PyPI configs use uvx with correct arguments', () => {
-      const server: RegistryServer = {
-        id: 'pypi-validation',
-        name: 'PyPI Validation Server',
-        description: 'Server for PyPI config validation',
-        packages: [
-          {
-            identifier: 'validation-server',
-            registry_type: 'pypi',
-            package_arguments: ['--debug', '--port', '5000'],
-          },
-        ],
-      };
-
+    it.each(headerValidationCases)('$name', ({ server, validate }) => {
       const config = generateConfigSnippet(server);
-
-      expect(config.command).toBe('uvx');
-      expect(config.args![0]).toBe('validation-server');
-      expect(config.args).toContain('--debug');
-      expect(config.args).toContain('--port');
-      expect(config.args).toContain('5000');
+      validate(config);
     });
 
-    it('should validate OCI configs use docker with proper flags', () => {
-      const server: RegistryServer = {
-        id: 'oci-validation',
-        name: 'OCI Validation Server',
-        description: 'Server for OCI config validation',
-        packages: [
-          {
-            identifier: 'registry.example.com/validation:latest',
-            registry_type: 'oci',
-            package_arguments: ['--mount', '/data'],
-          },
-        ],
-      };
-
+    it.each(envExclusionCases)('$name', ({ server, validate }) => {
       const config = generateConfigSnippet(server);
-
-      expect(config.command).toBe('docker');
-      expect(config.args).toEqual([
-        'run',
-        '-i',
-        '--rm',
-        'registry.example.com/validation:latest',
-        '--mount',
-        '/data',
-      ]);
-    });
-
-    it('should validate remote configs have proper transport and headers', () => {
-      const headers: KeyValueInput[] = [
-        {
-          name: 'X-Auth-Token',
-          value: 'secret123',
-          is_required: true,
-          is_secret: true,
-        },
-        { name: 'Content-Type', value: 'application/json', is_required: false },
-      ];
-
-      const server: RegistryServer = {
-        id: 'remote-validation',
-        name: 'Remote Validation Server',
-        description: 'Server for remote config validation',
-        remotes: [
-          {
-            type: 'sse',
-            url: 'https://validation.example.com/events',
-            headers,
-          },
-        ],
-      };
-
-      const config = generateConfigSnippet(server);
-
-      expect(config.transport).toBe('sse');
-      expect(config.url).toBe('https://validation.example.com/events');
-      expect(config.headers).toEqual(headers);
-
-      // Verify header structure
-      expect(Array.isArray(config.headers)).toBe(true);
-      const authHeader = (config.headers as KeyValueInput[]).find(
-        (h) => h.name === 'X-Auth-Token',
-      );
-      expect(authHeader).toBeTruthy();
-      expect(authHeader!.is_required).toBe(true);
-      expect(authHeader!.is_secret).toBe(true);
-    });
-
-    it('should handle environment variables correctly with is_required field', () => {
-      const envVars: EnvironmentVariable[] = [
-        { name: 'REQUIRED_VAR', is_required: true },
-        { name: 'OPTIONAL_VAR', value: 'default_value', is_required: false },
-        { name: 'ANOTHER_REQUIRED', is_required: true },
-        { name: 'WITH_VALUE', value: 'some_value' },
-      ];
-
-      const server: RegistryServer = {
-        id: 'env-validation',
-        name: 'Environment Validation Server',
-        description: 'Server for environment variable validation',
-        packages: [
-          {
-            identifier: 'env-server',
-            registry_type: 'npm',
-            environment_variables: envVars,
-          },
-        ],
-      };
-
-      const config = generateConfigSnippet(server);
-
-      // Should only include variables with values (not required-only vars)
-      expect(config.env).toEqual({
-        OPTIONAL_VAR: 'default_value',
-        WITH_VALUE: 'some_value',
-      });
-
-      // Required-only variables without values should not be included
-      expect(config.env).not.toHaveProperty('REQUIRED_VAR');
-      expect(config.env).not.toHaveProperty('ANOTHER_REQUIRED');
+      validate(config);
     });
   });
 
   describe('Backward Compatibility', () => {
-    it('should handle servers without _meta field', () => {
-      const serverWithoutMeta: ServerDetail = {
-        id: 'legacy-server-id',
-        name: 'Legacy Server',
-        description: 'Server without _meta field for backward compatibility',
-        packages: [
-          {
-            identifier: 'legacy-package',
-            registry_type: 'npm',
-          },
-        ],
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          servers: [serverWithoutMeta],
-          metadata: { count: 1, next_cursor: null },
-        }),
-      });
-
+    it('should handle servers without _meta field', async () => {
+      mockSingleServerFlow(mockFetch, testServers.legacy);
       const context = RegistryContext.getInstance(mockProxyConfig);
 
       expect(async () => {
@@ -725,72 +256,23 @@ describe('Registry Integration Tests', () => {
       }).not.toThrow();
     });
 
-    it('should handle packages without environment_variables field', () => {
-      const packageWithoutEnv: Package = {
-        identifier: 'simple-package',
-        registry_type: 'npm',
-        package_arguments: ['--simple'],
-      };
-
-      const server: RegistryServer = {
-        id: 'simple-server',
-        name: 'Simple Server',
-        description: 'Server with package without env vars',
-        packages: [packageWithoutEnv],
-      };
-
+    it.each(backwardCompatibilityCases)('$name', ({ server, expected }) => {
       const config = generateConfigSnippet(server);
 
-      expect(config.command).toBe('npx');
-      expect(config.args).toEqual(['-y', 'simple-package', '--simple']);
-      expect(config.env).toBeUndefined();
-    });
-
-    it('should handle remotes without headers field', () => {
-      const remoteWithoutHeaders: Remote = {
-        type: 'stdio',
-        url: 'http://localhost:3000/mcp',
-      };
-
-      const server: RegistryServer = {
-        id: 'simple-remote',
-        name: 'Simple Remote Server',
-        description: 'Remote server without headers',
-        remotes: [remoteWithoutHeaders],
-      };
-
-      const config = generateConfigSnippet(server);
-
-      expect(config.transport).toBe('stdio');
-      expect(config.url).toBe('http://localhost:3000/mcp');
-      expect(config.headers).toBeUndefined();
-    });
-
-    it('should handle old format servers with missing registry_type', () => {
-      const packageWithoutRegistryType = {
-        identifier: 'unknown-package',
-        // Missing registry_type field
-        package_arguments: ['--legacy'],
-      } as Package;
-
-      const server: RegistryServer = {
-        id: 'old-format-server',
-        name: 'Old Format Server',
-        description: 'Server with old package format',
-        packages: [packageWithoutRegistryType],
-      };
-
-      const config = generateConfigSnippet(server);
-
-      // Should fall back to raw metadata for unknown types
-      expect(config._raw_metadata).toBeTruthy();
-      expect(config.name).toBe('Old Format Server');
+      if (expected.command || expected.transport) {
+        assertConfig(config, expected);
+      } else {
+        // For old format servers, should have _raw_metadata
+        expect(config._raw_metadata).toBeTruthy();
+        expect(config.name).toBe(server.name);
+      }
     });
   });
 
   describe('Integration with MCPRegistryClient', () => {
     it('should properly integrate client search with context aggregation', async () => {
-      const mockServers: ServerDetail[] = [
+      // Define mock servers inline to avoid fixture conflicts
+      const mockServers = [
         {
           id: 'client-server-1',
           _meta: {
@@ -819,6 +301,8 @@ describe('Registry Integration Tests', () => {
         },
       ];
 
+      // Clear and set mock
+      mockFetch.mockClear();
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({

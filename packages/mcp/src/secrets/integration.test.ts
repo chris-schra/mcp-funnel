@@ -1,305 +1,155 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
-import { tmpdir } from 'os';
 import { SecretManager } from './secret-manager.js';
 import { SecretProviderRegistry } from './secret-provider-registry.js';
-import { DotEnvProvider } from './providers/dotenv/index.js';
-import { ProcessEnvProvider } from './process-env-provider.js';
-import { InlineProvider } from './inline-provider.js';
-
-// Test setup helpers
-function createTestDirectory(): string {
-  const testDir = join(
-    tmpdir(),
-    `integration-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  );
-  mkdirSync(testDir, { recursive: true });
-  return testDir;
-}
-
-function createTestEnvFile(
-  dir: string,
-  filename: string,
-  content: string,
-): string {
-  const filePath = join(dir, filename);
-  writeFileSync(filePath, content, 'utf-8');
-  return filePath;
-}
-
-function cleanupTestDirectory(dir: string): void {
-  try {
-    rmSync(dir, { recursive: true, force: true });
-  } catch {
-    // Ignore cleanup errors
-  }
-}
+import {
+  TestEnvironmentManager,
+  SecretManagerBuilder,
+  RegistryBuilder,
+  cacheHelpers,
+  assertionHelpers,
+  providerSetup,
+} from './integration.test.helpers.js';
+import {
+  testEnvironments,
+  envFileContents,
+  inlineConfigs,
+  providerFactories,
+  expectedResults,
+} from './integration.test.fixtures.js';
 
 describe('SecretManager Integration Tests', () => {
-  let testDir: string;
-  let originalEnv: NodeJS.ProcessEnv;
+  let envManager: TestEnvironmentManager;
 
   beforeEach(() => {
-    testDir = createTestDirectory();
-    originalEnv = { ...process.env };
+    envManager = new TestEnvironmentManager();
   });
 
   afterEach(() => {
-    process.env = originalEnv;
-    cleanupTestDirectory(testDir);
+    envManager.cleanup();
   });
 
   describe('Multiple Provider Types Integration', () => {
     it('should resolve secrets from multiple providers with correct precedence', async () => {
-      // Set up test environment
-      process.env = {
-        ...originalEnv,
-        APP_API_KEY: 'env-api-key',
-        APP_DATABASE_URL: 'env-database-url',
-        APP_DEBUG: 'true',
-      };
+      envManager.setupEnvironment(testEnvironments.basic);
+      const envFilePath = envManager.createEnvFile(
+        '.env.app',
+        envFileContents.basic,
+      );
 
-      // Create .env file that overrides some env vars
-      const envContent = [
-        'API_KEY=file-api-key', // Will override APP_API_KEY from process env
-        'SECRET_TOKEN=file-secret-token', // Only in file
-        'CONFIG=file-config',
-      ].join('\n');
-      const envFilePath = createTestEnvFile(testDir, '.env.app', envContent);
+      const manager = new SecretManagerBuilder()
+        .withProvider(providerFactories.processEnvWithPrefix('APP_'))
+        .withProvider(providerFactories.dotEnvFromPath(envFilePath))
+        .withProvider(providerFactories.inlineFromConfig(inlineConfigs.basic))
+        .build();
 
-      // Create providers
-      const processProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { prefix: 'APP_' },
-      });
-
-      const dotenvProvider = new DotEnvProvider({
-        path: envFilePath,
-      });
-
-      const inlineProvider = new InlineProvider({
-        type: 'inline',
-        config: {
-          values: {
-            API_KEY: 'inline-api-key', // Will override all others
-            DEPLOYMENT_ID: 'deploy-123', // Only in inline
-          },
-        },
-      });
-
-      // Create manager with providers in precedence order
-      const manager = new SecretManager([
-        processProvider, // First (lowest precedence)
-        dotenvProvider, // Second (medium precedence)
-        inlineProvider, // Third (highest precedence)
-      ]);
-
-      // Act
       const secrets = await manager.resolveSecrets();
-
-      // Assert
-      expect(secrets).toEqual({
-        API_KEY: 'inline-api-key', // Inline provider wins
-        DATABASE_URL: 'env-database-url', // Only in process provider
-        DEBUG: 'true', // Only in process provider
-        SECRET_TOKEN: 'file-secret-token', // Only in dotenv provider
-        CONFIG: 'file-config', // Only in dotenv provider
-        DEPLOYMENT_ID: 'deploy-123', // Only in inline provider
-      });
+      assertionHelpers.expectSecretsToEqual(
+        secrets,
+        expectedResults.multipleProviders,
+      );
     });
 
     it('should handle provider failures gracefully in integration', async () => {
-      // Set up test environment
-      process.env = {
-        ...originalEnv,
-        WORKING_API_KEY: 'working-api-key',
-        WORKING_CONFIG: 'working-config',
-      };
+      const nonExistentPath = join(envManager.getTestDir(), 'nonexistent.env');
+      const providers = providerSetup.createMixedProviders(
+        envManager,
+        testEnvironments.working,
+        nonExistentPath,
+      );
 
-      // Create working providers
-      const workingProcessProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { prefix: 'WORKING_' },
-      });
-
-      // Create failing dotenv provider (non-existent file that will throw)
-      const nonExistentPath = join(testDir, 'nonexistent.env');
-      const failingDotenvProvider = new DotEnvProvider({
-        path: nonExistentPath,
-      });
-
-      const workingInlineProvider = new InlineProvider({
-        type: 'inline',
-        config: {
-          values: {
-            INLINE_SECRET: 'inline-secret',
-          },
-        },
-      });
-
-      // Create manager with mixed working/failing providers
-      const manager = new SecretManager([
-        workingProcessProvider,
-        failingDotenvProvider, // This will fail gracefully
-        workingInlineProvider,
-      ]);
-
-      // Act
+      const manager = new SecretManagerBuilder()
+        .withProviders(providers)
+        .build();
       const secrets = await manager.resolveSecrets();
 
-      // Assert - should get secrets from working providers only
-      expect(secrets).toEqual({
-        API_KEY: 'working-api-key',
-        CONFIG: 'working-config',
-        INLINE_SECRET: 'inline-secret',
-      });
+      assertionHelpers.expectSecretsToEqual(
+        secrets,
+        expectedResults.gracefulFailure,
+      );
     });
 
     it('should handle complex .env files with variable interpolation in integration', async () => {
-      // Set up base environment
-      process.env = {
-        ...originalEnv,
-        BASE_PATH: '/usr/local',
-        DB_HOST: 'localhost',
-      };
-
-      // Create complex .env file with interpolation
-      const envContent = [
-        'export APP_HOME="$BASE_PATH/app"',
-        'DATABASE_URL="postgres://user:pass@$DB_HOST:5432/myapp"',
-        'PATH_WITH_HOME="$APP_HOME/bin:$PATH"',
-        'API_KEY="secret',
-        'with',
-        'newlines"',
-        'ESCAPED_VALUE="Value with \\n newline and \\t tab"',
-        '# This is a comment',
-        'SIMPLE_VALUE=simple',
-      ].join('\n');
-      const envFilePath = createTestEnvFile(
-        testDir,
+      envManager.setupEnvironment(testEnvironments.complex);
+      const envFilePath = envManager.createEnvFile(
         '.env.complex',
-        envContent,
+        envFileContents.complex,
       );
 
-      const dotenvProvider = new DotEnvProvider({
-        path: envFilePath,
-      });
+      const manager = new SecretManagerBuilder()
+        .withProvider(providerFactories.dotEnvFromPath(envFilePath))
+        .build();
 
-      const manager = new SecretManager([dotenvProvider]);
-
-      // Act
       const secrets = await manager.resolveSecrets();
-
-      // Assert
       const expectedPath = process.env.PATH
         ? `/usr/local/app/bin:${process.env.PATH}`
         : '/usr/local/app/bin:';
 
-      expect(secrets).toEqual({
-        APP_HOME: '/usr/local/app',
-        DATABASE_URL: 'postgres://user:pass@localhost:5432/myapp',
-        PATH_WITH_HOME: expectedPath,
-        API_KEY: 'secret\nwith\nnewlines',
-        ESCAPED_VALUE: 'Value with \n newline and \t tab',
-        SIMPLE_VALUE: 'simple',
-      });
+      assertionHelpers.expectSecretsToEqual(
+        secrets,
+        expectedResults.complex(expectedPath),
+      );
     });
   });
 
   describe('Registry Integration', () => {
     it('should integrate with SecretProviderRegistry for dynamic provider management', async () => {
-      // Set up test data
-      process.env = {
-        ...originalEnv,
-        REGISTRY_SECRET: 'registry-secret',
-      };
-
-      const envContent = 'FILE_SECRET=file-secret';
-      const envFilePath = createTestEnvFile(
-        testDir,
+      envManager.setupEnvironment({ REGISTRY_SECRET: 'registry-secret' });
+      const envFilePath = envManager.createEnvFile(
         '.env.registry',
-        envContent,
+        'FILE_SECRET=file-secret',
       );
 
-      // Create registry and providers
-      const registry = new SecretProviderRegistry();
+      const registry = new RegistryBuilder()
+        .withProvider(
+          'process',
+          providerFactories.processEnvWithAllowlist(['REGISTRY_SECRET']),
+        )
+        .withProvider('dotenv', providerFactories.dotEnvFromPath(envFilePath))
+        .withProvider(
+          'inline',
+          providerFactories.inlineFromConfig(inlineConfigs.working),
+        )
+        .build();
 
-      const processProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['REGISTRY_SECRET'] },
-      });
-
-      const dotenvProvider = new DotEnvProvider({
-        path: envFilePath,
-      });
-
-      const inlineProvider = new InlineProvider({
-        type: 'inline',
-        config: {
-          values: {
-            INLINE_SECRET: 'inline-secret',
-          },
-        },
-      });
-
-      // Register providers
-      registry.register('process', processProvider);
-      registry.register('dotenv', dotenvProvider);
-      registry.register('inline', inlineProvider);
-
-      // Create manager with registry
-      const manager = new SecretManager([], registry);
-
-      // Act
+      const manager = new SecretManagerBuilder().withRegistry(registry).build();
       const secrets = await manager.resolveSecrets();
 
-      // Assert
-      expect(secrets).toEqual({
+      assertionHelpers.expectSecretsToEqual(secrets, {
         REGISTRY_SECRET: 'registry-secret',
         FILE_SECRET: 'file-secret',
         INLINE_SECRET: 'inline-secret',
       });
 
-      // Verify provider names are accessible
-      const providerNames = manager.getProviderNames();
-      expect(providerNames).toContain('process');
-      expect(providerNames).toContain('dotenv');
-      expect(providerNames).toContain('inline');
+      assertionHelpers.expectProviderNames(manager, [
+        'process',
+        'dotenv',
+        'inline',
+      ]);
     });
 
     it('should handle both direct providers and registry providers', async () => {
-      // Set up test environment
-      process.env = {
-        ...originalEnv,
+      envManager.setupEnvironment({
         DIRECT_SECRET: 'direct-secret',
         REGISTRY_SECRET: 'registry-secret',
-      };
-
-      // Create registry
-      const registry = new SecretProviderRegistry();
-
-      const registryProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['REGISTRY_SECRET'] },
       });
 
-      registry.register('registry-provider', registryProvider);
+      const registry = new RegistryBuilder()
+        .withProvider(
+          'registry-provider',
+          providerFactories.processEnvWithAllowlist(['REGISTRY_SECRET']),
+        )
+        .build();
 
-      // Create direct provider
-      const directProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['DIRECT_SECRET'] },
-      });
+      const manager = new SecretManagerBuilder()
+        .withProvider(
+          providerFactories.processEnvWithAllowlist(['DIRECT_SECRET']),
+        )
+        .withRegistry(registry)
+        .build();
 
-      // Create manager with both direct and registry providers
-      const manager = new SecretManager([directProvider], registry);
-
-      // Act
       const secrets = await manager.resolveSecrets();
-
-      // Assert
-      expect(secrets).toEqual({
+      assertionHelpers.expectSecretsToEqual(secrets, {
         DIRECT_SECRET: 'direct-secret',
         REGISTRY_SECRET: 'registry-secret',
       });
@@ -308,67 +158,42 @@ describe('SecretManager Integration Tests', () => {
 
   describe('Caching Integration', () => {
     it('should cache results across multiple resolution calls', async () => {
-      process.env = {
-        ...originalEnv,
-        CACHE_TEST: 'cache-value',
-      };
+      envManager.setupEnvironment(testEnvironments.cache);
 
-      const provider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['CACHE_TEST'] },
-      });
+      const manager = new SecretManagerBuilder()
+        .withProvider(providerFactories.processEnvWithAllowlist(['CACHE_TEST']))
+        .withCaching(1000)
+        .build();
 
-      // Enable caching with 1-second TTL
-      const manager = new SecretManager([provider], undefined, {
-        cacheTtl: 1000,
-      });
+      const { beforeChange, afterChangeWithCache, afterCacheClear } =
+        await cacheHelpers.testCacheBehavior(
+          manager,
+          'CACHE_TEST',
+          'cache-value',
+          'changed-value',
+        );
 
-      // First resolution
-      const secrets1 = await manager.resolveSecrets();
-      expect(secrets1).toEqual({ CACHE_TEST: 'cache-value' });
-
-      // Change environment (simulating external change)
-      process.env.CACHE_TEST = 'changed-value';
-
-      // Second resolution (should use cache)
-      const secrets2 = await manager.resolveSecrets();
-      expect(secrets2).toEqual({ CACHE_TEST: 'cache-value' }); // Still cached value
-
-      // Clear cache
-      manager.clearCache();
-
-      // Third resolution (should re-fetch)
-      const secrets3 = await manager.resolveSecrets();
-      expect(secrets3).toEqual({ CACHE_TEST: 'changed-value' }); // New value
+      expect(beforeChange).toEqual({ CACHE_TEST: 'cache-value' });
+      expect(afterChangeWithCache).toEqual({ CACHE_TEST: 'cache-value' }); // Still cached
+      expect(afterCacheClear).toEqual({ CACHE_TEST: 'changed-value' }); // New value
     });
 
     it('should handle cache expiration', async () => {
-      process.env = {
-        ...originalEnv,
-        EXPIRE_TEST: 'initial-value',
-      };
+      envManager.setupEnvironment({ EXPIRE_TEST: 'initial-value' });
 
-      const provider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['EXPIRE_TEST'] },
-      });
+      const manager = new SecretManagerBuilder()
+        .withProvider(
+          providerFactories.processEnvWithAllowlist(['EXPIRE_TEST']),
+        )
+        .withCaching(1) // Very short TTL
+        .build();
 
-      // Very short cache TTL (1ms)
-      const manager = new SecretManager([provider], undefined, {
-        cacheTtl: 1,
-      });
-
-      // First resolution
       const secrets1 = await manager.resolveSecrets();
       expect(secrets1).toEqual({ EXPIRE_TEST: 'initial-value' });
 
-      // Wait for cache to expire
-      await new Promise((resolve) => setTimeout(resolve, 5));
-
-      // Change environment
+      await cacheHelpers.waitForCacheExpiration(1);
       process.env.EXPIRE_TEST = 'expired-value';
 
-      // Second resolution (cache should be expired)
       const secrets2 = await manager.resolveSecrets();
       expect(secrets2).toEqual({ EXPIRE_TEST: 'expired-value' });
     });
@@ -376,44 +201,24 @@ describe('SecretManager Integration Tests', () => {
 
   describe('Error Handling Integration', () => {
     it('should handle mixed success and failure scenarios', async () => {
-      // Set up test environment
-      process.env = {
-        ...originalEnv,
-        SUCCESS_SECRET: 'success-value',
-      };
+      const providers = [
+        ...providerSetup.createMixedProviders(
+          envManager,
+          { SUCCESS_SECRET: 'success-value' },
+          '/dev/null/invalid/path/.env',
+          ['SUCCESS_SECRET'], // Allow SUCCESS_SECRET specifically
+        ),
+        providerFactories.inlineFromConfig(inlineConfigs.fallback),
+      ];
 
-      // Working provider
-      const workingProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['SUCCESS_SECRET'] },
-      });
-
-      // Failing provider (will try to read non-existent file with error other than ENOENT)
-      const invalidDotenvProvider = new DotEnvProvider({
-        path: '/dev/null/invalid/path/.env', // This will cause permission error
-      });
-
-      const fallbackProvider = new InlineProvider({
-        type: 'inline',
-        config: {
-          values: {
-            FALLBACK_SECRET: 'fallback-value',
-          },
-        },
-      });
-
-      const manager = new SecretManager([
-        workingProvider,
-        invalidDotenvProvider, // This should fail but not break the manager
-        fallbackProvider,
-      ]);
-
-      // Act
+      const manager = new SecretManagerBuilder()
+        .withProviders(providers)
+        .build();
       const secrets = await manager.resolveSecrets();
 
-      // Assert - should get secrets from working providers
-      expect(secrets).toEqual({
+      assertionHelpers.expectSecretsToEqual(secrets, {
         SUCCESS_SECRET: 'success-value',
+        INLINE_SECRET: 'inline-secret',
         FALLBACK_SECRET: 'fallback-value',
       });
     });
@@ -421,217 +226,83 @@ describe('SecretManager Integration Tests', () => {
 
   describe('Real-world Scenarios', () => {
     it('should handle typical application configuration scenario', async () => {
-      // Simulate typical app environment
-      process.env = {
-        ...originalEnv,
-        NODE_ENV: 'development',
-        PORT: '3000',
-        APP_API_KEY: 'env-api-key',
-        APP_DATABASE_HOST: 'localhost',
-        APP_DEBUG: 'true',
-      };
-
-      // Create app-specific .env file
-      const appEnvContent = [
-        '# Application secrets',
-        'API_KEY=development-api-key', // Override env var
-        'DATABASE_URL=postgres://user:pass@$APP_DATABASE_HOST:5432/myapp',
-        'SECRET_KEY=super-secret-key',
-        'REDIS_URL=redis://localhost:6379',
-        '',
-        '# Feature flags',
-        'FEATURE_NEW_UI=true',
-        'FEATURE_ANALYTICS=false',
-      ].join('\n');
-      const appEnvPath = createTestEnvFile(
-        testDir,
+      envManager.setupEnvironment(testEnvironments.application);
+      const appEnvPath = envManager.createEnvFile(
         '.env.development',
-        appEnvContent,
+        envFileContents.application,
       );
 
-      // Create deployment-specific overrides
-      const deploymentOverrides = new InlineProvider({
-        type: 'inline',
-        config: {
-          values: {
-            DEPLOYMENT_ID: 'dev-deployment-123',
-            BUILD_VERSION: '1.2.3-dev',
-            LOG_LEVEL: 'debug',
-          },
-        },
-      });
+      const manager = new SecretManagerBuilder()
+        .withProvider(
+          providerFactories.processEnvWithAllowlist(['NODE_ENV', 'PORT']),
+        )
+        .withProvider(providerFactories.processEnvWithPrefix('APP_'))
+        .withProvider(providerFactories.dotEnvFromPath(appEnvPath))
+        .withProvider(
+          providerFactories.inlineFromConfig(inlineConfigs.deployment),
+        )
+        .build();
 
-      // Set up providers in order of precedence
-      const envProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { prefix: 'APP_' },
-      });
-
-      const nodeEnvProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['NODE_ENV', 'PORT'] },
-      });
-
-      const appConfigProvider = new DotEnvProvider({
-        path: appEnvPath,
-      });
-
-      const manager = new SecretManager([
-        nodeEnvProvider, // Base environment
-        envProvider, // App-specific env vars
-        appConfigProvider, // App config file (overrides env)
-        deploymentOverrides, // Deployment-specific (highest precedence)
-      ]);
-
-      // Act
       const config = await manager.resolveSecrets();
-
-      // Assert
-      expect(config).toEqual({
-        NODE_ENV: 'development',
-        PORT: '3000',
-        API_KEY: 'development-api-key', // File overrides env
-        DATABASE_HOST: 'localhost',
-        DEBUG: 'true',
-        DATABASE_URL: 'postgres://user:pass@localhost:5432/myapp',
-        SECRET_KEY: 'super-secret-key',
-        REDIS_URL: 'redis://localhost:6379',
-        FEATURE_NEW_UI: 'true',
-        FEATURE_ANALYTICS: 'false',
-        DEPLOYMENT_ID: 'dev-deployment-123',
-        BUILD_VERSION: '1.2.3-dev',
-        LOG_LEVEL: 'debug',
-      });
+      assertionHelpers.expectSecretsToEqual(
+        config,
+        expectedResults.application,
+      );
     });
 
     it('should handle microservice configuration with service discovery', async () => {
-      // Simulate microservice environment
-      process.env = {
-        ...originalEnv,
-        SERVICE_NAME: 'user-service',
-        SERVICE_VERSION: '2.1.0',
-        CLUSTER_REGION: 'us-west-2',
-        SHARED_DB_HOST: 'shared-db.internal',
-        SHARED_REDIS_HOST: 'shared-redis.internal',
-      };
-
-      // Shared infrastructure secrets
-      const sharedInfraProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { prefix: 'SHARED_' },
-      });
-
-      // Service metadata
-      const serviceMetadataProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: {
-          allowlist: ['SERVICE_NAME', 'SERVICE_VERSION', 'CLUSTER_REGION'],
-        },
-      });
-
-      // Service-specific configuration
-      const serviceConfigContent = [
-        'PORT=8080',
-        'API_VERSION=v2',
-        'DATABASE_URL=postgres://user:pass@$SHARED_DB_HOST:5432/users',
-        'REDIS_URL=redis://$SHARED_REDIS_HOST:6379/0',
-        'MAX_CONNECTIONS=100',
-        'TIMEOUT_MS=5000',
-      ].join('\n');
-      const serviceConfigPath = createTestEnvFile(
-        testDir,
+      envManager.setupEnvironment(testEnvironments.microservice);
+      const serviceConfigPath = envManager.createEnvFile(
         '.env.service',
-        serviceConfigContent,
+        envFileContents.microservice,
       );
 
-      const serviceConfigProvider = new DotEnvProvider({
-        path: serviceConfigPath,
-      });
+      const manager = new SecretManagerBuilder()
+        .withProvider(
+          providerFactories.processEnvWithAllowlist([
+            'SERVICE_NAME',
+            'SERVICE_VERSION',
+            'CLUSTER_REGION',
+          ]),
+        )
+        .withProvider(providerFactories.processEnvWithPrefix('SHARED_'))
+        .withProvider(providerFactories.dotEnvFromPath(serviceConfigPath))
+        .withProvider(providerFactories.inlineFromConfig(inlineConfigs.runtime))
+        .build();
 
-      // Runtime secrets (highest precedence)
-      const runtimeSecretsProvider = new InlineProvider({
-        type: 'inline',
-        config: {
-          values: {
-            JWT_SECRET: 'runtime-jwt-secret',
-            ENCRYPTION_KEY: 'runtime-encryption-key',
-            API_RATE_LIMIT: '1000',
-          },
-        },
-      });
-
-      const manager = new SecretManager([
-        serviceMetadataProvider, // Service identity
-        sharedInfraProvider, // Shared infrastructure
-        serviceConfigProvider, // Service configuration
-        runtimeSecretsProvider, // Runtime secrets
-      ]);
-
-      // Act
       const config = await manager.resolveSecrets();
-
-      // Assert
-      expect(config).toEqual({
-        SERVICE_NAME: 'user-service',
-        SERVICE_VERSION: '2.1.0',
-        CLUSTER_REGION: 'us-west-2',
-        DB_HOST: 'shared-db.internal',
-        REDIS_HOST: 'shared-redis.internal',
-        PORT: '8080',
-        API_VERSION: 'v2',
-        DATABASE_URL: 'postgres://user:pass@shared-db.internal:5432/users',
-        REDIS_URL: 'redis://shared-redis.internal:6379/0',
-        MAX_CONNECTIONS: '100',
-        TIMEOUT_MS: '5000',
-        JWT_SECRET: 'runtime-jwt-secret',
-        ENCRYPTION_KEY: 'runtime-encryption-key',
-        API_RATE_LIMIT: '1000',
-      });
+      assertionHelpers.expectSecretsToEqual(
+        config,
+        expectedResults.microservice,
+      );
     });
   });
 
   describe('Provider Dynamic Management', () => {
     it('should support adding and removing providers at runtime', async () => {
-      // Set up initial environment
-      process.env = {
-        ...originalEnv,
-        INITIAL_SECRET: 'initial-value',
-        DYNAMIC_SECRET: 'dynamic-value',
-      };
+      envManager.setupEnvironment(testEnvironments.dynamic);
 
-      const initialProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['INITIAL_SECRET'] },
-      });
+      const manager = new SecretManagerBuilder()
+        .withProvider(
+          providerFactories.processEnvWithAllowlist(['INITIAL_SECRET']),
+        )
+        .build();
 
-      const manager = new SecretManager([initialProvider]);
-
-      // Initial resolution
       let secrets = await manager.resolveSecrets();
-      expect(secrets).toEqual({
-        INITIAL_SECRET: 'initial-value',
-      });
+      expect(secrets).toEqual({ INITIAL_SECRET: 'initial-value' });
 
-      // Add dynamic provider
-      const dynamicProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { allowlist: ['DYNAMIC_SECRET'] },
-      });
-
-      manager.addProvider(dynamicProvider);
-
-      // Resolution after adding provider
+      manager.addProvider(
+        providerFactories.processEnvWithAllowlist(['DYNAMIC_SECRET']),
+      );
       secrets = await manager.resolveSecrets();
       expect(secrets).toEqual({
         INITIAL_SECRET: 'initial-value',
         DYNAMIC_SECRET: 'dynamic-value',
       });
 
-      // Remove initial provider
       const removed = manager.removeProvider('process');
       expect(removed).toBe(true);
 
-      // Resolution after removing provider
       secrets = await manager.resolveSecrets();
       expect(secrets).toEqual({});
     });

@@ -1,59 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { rmSync } from 'fs';
 import type { ISecretProvider, ISecretProviderRegistry } from './types.js';
 import { SecretManager } from './secret-manager.js';
 import { SecretProviderRegistry } from './secret-provider-registry.js';
-import { InlineProvider } from './inline-provider.js';
-import { ProcessEnvProvider } from './process-env-provider.js';
-import { DotEnvProvider } from './providers/dotenv/index.js';
-import { BaseSecretProvider } from './base-provider.js';
-
-class ThrowingProvider extends BaseSecretProvider {
-  constructor(
-    name: string,
-    private readonly error: Error,
-  ) {
-    super(name);
-  }
-
-  protected async doResolveSecrets(): Promise<Record<string, string>> {
-    throw this.error;
-  }
-}
-
-class DelayedProvider extends BaseSecretProvider {
-  constructor(
-    name: string,
-    private readonly values: Record<string, string>,
-    private readonly delayMs: number,
-  ) {
-    super(name);
-  }
-
-  protected async doResolveSecrets(): Promise<Record<string, string>> {
-    await new Promise((resolve) => setTimeout(resolve, this.delayMs));
-    return { ...this.values };
-  }
-}
-
-function createInlineProvider(values: Record<string, string>): InlineProvider {
-  return new InlineProvider({
-    type: 'inline',
-    config: { values },
-  });
-}
-
-function writeEnvFile(
-  baseDir: string,
-  filename: string,
-  content: string[],
-): string {
-  const filePath = join(baseDir, filename);
-  writeFileSync(filePath, content.join('\n'), 'utf-8');
-  return filePath;
-}
+import {
+  ThrowingProvider,
+  DelayedProvider,
+  createInlineProvider,
+  createProcessEnvProvider,
+  createDotEnvProvider,
+  writeEnvFile,
+  setupWorkDir,
+  testData,
+} from './test-utilities.js';
 
 describe('SecretManager', () => {
   let registry: SecretProviderRegistry;
@@ -63,7 +22,7 @@ describe('SecretManager', () => {
   beforeEach(() => {
     registry = new SecretProviderRegistry();
     originalEnv = { ...process.env };
-    workDir = mkdtempSync(join(tmpdir(), 'secret-manager-test-'));
+    workDir = setupWorkDir();
   });
 
   afterEach(() => {
@@ -71,144 +30,121 @@ describe('SecretManager', () => {
     rmSync(workDir, { recursive: true, force: true });
   });
 
-  describe('SecretManager initialization tests', () => {
-    it('should create manager with no providers', () => {
-      const manager = new SecretManager();
+  describe('Initialization', () => {
+    const initializationCases = [
+      {
+        name: 'no providers',
+        providers: () => [],
+        expected: [],
+      },
+      {
+        name: 'single provider',
+        providers: () => [createInlineProvider(testData.simple)],
+        expected: ['inline'],
+      },
+      {
+        name: 'multiple providers',
+        providers: () => {
+          process.env = { ...originalEnv, APP_API_KEY: 'env-api-key' };
+          return [
+            createInlineProvider({ DATABASE_URL: 'db-url' }),
+            createProcessEnvProvider(),
+          ];
+        },
+        expected: ['inline', 'process'],
+      },
+    ];
 
-      expect(manager.getProviderNames()).toEqual([]);
-    });
-
-    it('should create manager with single provider', () => {
-      const inlineProvider = createInlineProvider({ API_KEY: 'dev-key' });
-      const manager = new SecretManager([inlineProvider]);
-
-      expect(manager.getProviderNames()).toEqual(['inline']);
-    });
-
-    it('should create manager with multiple providers', () => {
-      process.env = {
-        ...originalEnv,
-        APP_API_KEY: 'env-api-key',
-      };
-      const inlineProvider = createInlineProvider({ DATABASE_URL: 'db-url' });
-      const envProvider = new ProcessEnvProvider({
-        type: 'process',
-        config: { prefix: 'APP_' },
+    initializationCases.forEach(({ name, providers, expected }) => {
+      it(`should create manager with ${name}`, () => {
+        const manager = new SecretManager(providers());
+        expect(manager.getProviderNames()).toEqual(expected);
       });
-      const manager = new SecretManager([inlineProvider, envProvider]);
-
-      expect(manager.getProviderNames()).toEqual(['inline', 'process']);
     });
 
     it('should create manager with registry', () => {
       const manager = new SecretManager([], registry);
-
       expect(manager.getProviderNames()).toEqual([]);
     });
 
     it('should create manager with both providers and registry', () => {
-      const inlineProvider = createInlineProvider({ API_KEY: 'value' });
+      const inlineProvider = createInlineProvider(testData.simple);
       const envProvider = createInlineProvider({ API_KEY: 'other' });
       registry.register('inline-alt', envProvider);
 
       const manager = new SecretManager([inlineProvider], registry);
-
       expect(manager.getProviderNames()).toEqual(['inline', 'inline']);
     });
   });
 
-  describe('Provider registration tests', () => {
-    it('should allow adding providers after initialization', () => {
+  describe('Provider Management', () => {
+    it('should handle adding, removing, and duplicate providers', () => {
       const manager = new SecretManager();
-      const inlineProvider = createInlineProvider({ API_KEY: 'value' });
+      const inlineProvider = createInlineProvider(testData.simple);
 
+      // Adding providers
       manager.addProvider(inlineProvider);
       expect(manager.getProviderNames()).toEqual(['inline']);
 
       manager.addProvider(createInlineProvider({ API_KEY: 'override' }));
       expect(manager.getProviderNames()).toEqual(['inline', 'inline']);
-    });
 
-    it('should allow removing providers by name', () => {
-      const first = createInlineProvider({ FIRST: 'first' });
-      const second = createInlineProvider({ SECOND: 'second' });
-      const manager = new SecretManager([first, second]);
-
+      // Removing providers - existing vs non-existent
       const removed = manager.removeProvider('inline');
       expect(removed).toBe(true);
       expect(manager.getProviderNames()).toEqual([]);
-    });
 
-    it('should return false when removing non-existent provider', () => {
-      const manager = new SecretManager([
-        createInlineProvider({ API_KEY: 'x' }),
-      ]);
-
-      const removed = manager.removeProvider('missing');
-      expect(removed).toBe(false);
+      manager.addProvider(createInlineProvider(testData.simple));
+      const notRemoved = manager.removeProvider('missing');
+      expect(notRemoved).toBe(false);
       expect(manager.getProviderNames()).toEqual(['inline']);
-    });
-
-    it('should handle duplicate provider names gracefully', () => {
-      const first = createInlineProvider({ KEY: 'value-one' });
-      const second = createInlineProvider({ KEY: 'value-two' });
-      const manager = new SecretManager([first]);
-
-      manager.addProvider(second);
-      expect(manager.getProviderNames()).toEqual(['inline', 'inline']);
-
-      const removed = manager.removeProvider('inline');
-      expect(removed).toBe(true);
-      expect(manager.getProviderNames()).toEqual([]);
     });
   });
 
-  describe('Secret resolution tests', () => {
-    it('should resolve secrets from single provider', async () => {
-      const inlineProvider = createInlineProvider({ API_KEY: 'inline-key' });
-      const manager = new SecretManager([inlineProvider]);
+  describe('Secret Resolution', () => {
+    const resolutionCases = [
+      {
+        name: 'single provider',
+        providers: () => [createInlineProvider({ API_KEY: 'inline-key' })],
+        expected: { API_KEY: 'inline-key' },
+      },
+      {
+        name: 'multiple providers with merging',
+        providers: () => [
+          createInlineProvider(testData.override.base),
+          createInlineProvider(testData.override.overriding),
+        ],
+        expected: testData.override.expected,
+      },
+      {
+        name: 'provider precedence (later overrides earlier)',
+        providers: () => [
+          createInlineProvider(testData.precedence.first),
+          createInlineProvider(testData.precedence.second),
+        ],
+        expected: testData.precedence.expected,
+      },
+      {
+        name: 'empty provider list',
+        providers: () => [],
+        expected: {},
+      },
+      {
+        name: 'providers returning empty secrets',
+        providers: () => [
+          createInlineProvider({}),
+          createInlineProvider(testData.simple),
+        ],
+        expected: testData.simple,
+      },
+    ];
 
-      const result = await manager.resolveSecrets();
-
-      expect(result).toEqual({ API_KEY: 'inline-key' });
-    });
-
-    it('should merge secrets from multiple providers', async () => {
-      const baseProvider = createInlineProvider({
-        API_KEY: 'base-key',
-        DATABASE_URL: 'db-url',
+    resolutionCases.forEach(({ name, providers, expected }) => {
+      it(`should resolve secrets from ${name}`, async () => {
+        const manager = new SecretManager(providers());
+        const result = await manager.resolveSecrets();
+        expect(result).toEqual(expected);
       });
-      const overridingProvider = createInlineProvider({
-        API_KEY: 'override-key',
-        SECRET_TOKEN: 'token',
-      });
-      const manager = new SecretManager([baseProvider, overridingProvider]);
-
-      const result = await manager.resolveSecrets();
-
-      expect(result).toEqual({
-        API_KEY: 'override-key',
-        DATABASE_URL: 'db-url',
-        SECRET_TOKEN: 'token',
-      });
-    });
-
-    it('should handle provider precedence (later overrides earlier)', async () => {
-      const first = createInlineProvider({
-        SHARED_KEY: 'first',
-        ONLY_FIRST: 'one',
-      });
-      const second = createInlineProvider({
-        SHARED_KEY: 'second',
-        ONLY_SECOND: 'two',
-      });
-      const manager = new SecretManager([first, second]);
-
-      const result = await manager.resolveSecrets();
-
-      expect(result.SHARED_KEY).toBe('second');
-      expect(result.ONLY_FIRST).toBe('one');
-      expect(result.ONLY_SECOND).toBe('two');
     });
 
     it('should handle provider errors gracefully', async () => {
@@ -220,7 +156,6 @@ describe('SecretManager', () => {
       const manager = new SecretManager([healthy, failing]);
 
       const result = await manager.resolveSecrets();
-
       expect(result).toEqual({ HEALTHY_KEY: 'value' });
     });
 
@@ -232,7 +167,6 @@ describe('SecretManager', () => {
       const manager = new SecretManager([failing]);
 
       const result = await manager.resolveSecrets();
-
       expect(result).toEqual({});
     });
 
@@ -251,122 +185,81 @@ describe('SecretManager', () => {
       expect(result.SLOW_KEY).toBe('value');
       expect(elapsed).toBeGreaterThanOrEqual(10);
     });
+
+    it('should handle concurrent resolution calls', async () => {
+      const manager = new SecretManager([
+        createInlineProvider(testData.simple),
+      ]);
+
+      const [first, second, third] = await Promise.all([
+        manager.resolveSecrets(),
+        manager.resolveSecrets(),
+        manager.resolveSecrets(),
+      ]);
+
+      expect(first.API_KEY).toBe('test-key');
+      expect(second.API_KEY).toBe('test-key');
+      expect(third.API_KEY).toBe('test-key');
+    });
   });
 
-  describe('Caching tests', () => {
-    it('should provide cache clearing functionality', async () => {
+  describe('Caching', () => {
+    it('should provide cache lifecycle with clearing functionality', async () => {
       const provider = createInlineProvider({ KEY: 'value' });
       const resolveSpy = vi.spyOn(provider, 'resolveSecrets');
       const manager = new SecretManager([provider], undefined, {
         cacheTtl: 500,
       });
 
+      // First resolution and cache info validation
       const firstResolution = await manager.resolveSecrets();
       const cacheInfoBeforeClear = manager.getCacheInfo();
 
       expect(firstResolution).toEqual({ KEY: 'value' });
       expect(resolveSpy).toHaveBeenCalledTimes(1);
-      expect(cacheInfoBeforeClear).not.toBeNull();
       expect(cacheInfoBeforeClear?.valid).toBe(true);
       expect(cacheInfoBeforeClear?.ttl).toBe(500);
 
+      // Cache clearing and re-resolution
       manager.clearCache();
-      // Clearing should collapse the cache seam so alternate transports can rehydrate consistently.
       expect(manager.getCacheInfo()).toBeNull();
 
       const secondResolution = await manager.resolveSecrets();
-
       expect(secondResolution).toEqual({ KEY: 'value' });
       expect(resolveSpy).toHaveBeenCalledTimes(2);
     });
-
-    it('should support cached resolution lifecycle', async () => {
-      const provider = createInlineProvider({ KEY: 'value' });
-      const manager = new SecretManager([provider], undefined, {
-        cacheTtl: 1000,
-      });
-
-      const first = await manager.resolveSecrets();
-      const infoAfterFirst = manager.getCacheInfo();
-      const second = await manager.resolveSecrets();
-
-      manager.clearCache();
-      const third = await manager.resolveSecrets();
-
-      expect(first.KEY).toBe('value');
-      expect(second.KEY).toBe('value');
-      expect(third.KEY).toBe('value');
-      expect(infoAfterFirst?.valid).toBe(true);
-    });
-
-    it('should handle cache invalidation correctly', async () => {
-      const manager = new SecretManager([
-        createInlineProvider({ KEY: 'value' }),
-      ]);
-
-      await manager.resolveSecrets();
-      manager.clearCache();
-
-      const result = await manager.resolveSecrets();
-      expect(result).toEqual({ KEY: 'value' });
-    });
   });
 
-  describe('Registry integration tests', () => {
-    it('should register providers in registry', () => {
+  describe('Registry Integration', () => {
+    it('should handle registry operations and provider lifecycle', () => {
       const inlineProvider = createInlineProvider({ KEY: 'value' });
       const dotEnvPath = writeEnvFile(workDir, '.env.basic', [
         'DOT_KEY=dot-value',
       ]);
-      const dotEnvProvider = new DotEnvProvider({ path: dotEnvPath });
+      const dotEnvProvider = createDotEnvProvider(dotEnvPath);
 
+      // Registration and retrieval
       registry.register('inline', inlineProvider);
       registry.register('dotenv', dotEnvProvider);
 
       expect(registry.get('inline')).toBe(inlineProvider);
       expect(registry.get('dotenv')).toBe(dotEnvProvider);
+      expect(registry.get('missing')).toBeUndefined();
       expect(registry.getAll().size).toBe(2);
-    });
 
-    it('should retrieve providers from registry', () => {
-      const inlineProvider = createInlineProvider({ KEY: 'value' });
-      registry.register('inline', inlineProvider);
-
-      const retrieved = registry.get('inline');
-      expect(retrieved).toBe(inlineProvider);
-      expect(retrieved?.getName()).toBe('inline');
-    });
-
-    it('should handle registry provider not found', () => {
-      const retrieved = registry.get('missing');
-      expect(retrieved).toBeUndefined();
-    });
-
-    it('should prevent duplicate provider registration', () => {
-      registry.register('inline', createInlineProvider({ KEY: 'value' }));
-
+      // Duplicate registration prevention
       expect(() => {
         registry.register('inline', createInlineProvider({ KEY: 'other' }));
       }).toThrow("Secret provider 'inline' is already registered");
     });
 
-    it('should return all registered providers', () => {
-      registry.register('inline', createInlineProvider({ KEY: 'value' }));
-      registry.register('second', createInlineProvider({ KEY: 'other' }));
-
-      const allProviders = registry.getAll();
-      expect(allProviders.size).toBe(2);
-      expect(allProviders.has('inline')).toBe(true);
-      expect(allProviders.has('second')).toBe(true);
-    });
-
-    it('should integrate registry with SecretManager', async () => {
+    it('should integrate registry with SecretManager for secret resolution', async () => {
       const inlineProvider = createInlineProvider({ API_KEY: 'inline-key' });
       const envPath = writeEnvFile(workDir, '.env.inline', [
         'API_KEY=dotenv-key',
         'NEW_SECRET=dotenv-secret',
       ]);
-      const dotEnvProvider = new DotEnvProvider({ path: envPath });
+      const dotEnvProvider = createDotEnvProvider(envPath);
 
       registry.register('inline', inlineProvider);
       registry.register('dotenv', dotEnvProvider);
@@ -385,85 +278,19 @@ describe('SecretManager', () => {
       registry.register('inline', inlineProvider);
 
       const manager = new SecretManager([inlineProvider], registry);
-      const names = manager.getProviderNames();
-
-      expect(names).toEqual(['inline']);
+      expect(manager.getProviderNames()).toEqual(['inline']);
 
       const secrets = await manager.resolveSecrets();
       expect(secrets).toEqual({ TOKEN: 'value' });
     });
-
-    it('should handle registry provider lifecycle', () => {
-      const inlineProvider = createInlineProvider({ KEY: 'value' });
-      registry.register('inline', inlineProvider);
-      const manager = new SecretManager([], registry);
-
-      const providerFromRegistry = registry.get('inline');
-      if (providerFromRegistry) {
-        manager.addProvider(providerFromRegistry);
-      }
-
-      expect(manager.getProviderNames()).toContain('inline');
-    });
   });
 
-  describe('Edge cases and error handling', () => {
-    it('should handle empty provider list', async () => {
-      const manager = new SecretManager([]);
-
-      const result = await manager.resolveSecrets();
-
-      expect(result).toEqual({});
-    });
-
-    it('should handle providers returning empty secrets', async () => {
-      const emptyProvider = createInlineProvider({});
-      const nonEmptyProvider = createInlineProvider({ API_KEY: 'value' });
-      const manager = new SecretManager([emptyProvider, nonEmptyProvider]);
-
-      const result = await manager.resolveSecrets();
-
-      expect(result).toEqual({ API_KEY: 'value' });
-    });
-
-    it('should handle concurrent resolution calls', async () => {
+  describe('Type Safety and Interface Compliance', () => {
+    it('should ensure proper interfaces and type safety', async () => {
+      // Resolved secrets structure validation
       const manager = new SecretManager([
-        createInlineProvider({ API_KEY: 'value' }),
+        createInlineProvider(testData.simple),
       ]);
-
-      const [first, second, third] = await Promise.all([
-        manager.resolveSecrets(),
-        manager.resolveSecrets(),
-        manager.resolveSecrets(),
-      ]);
-
-      expect(first.API_KEY).toBe('value');
-      expect(second.API_KEY).toBe('value');
-      expect(third.API_KEY).toBe('value');
-    });
-
-    it('should validate provider interface compliance', () => {
-      const provider: ISecretProvider = createInlineProvider({ KEY: 'value' });
-
-      expect(provider.resolveSecrets()).toBeInstanceOf(Promise);
-      expect(typeof provider.getName()).toBe('string');
-    });
-
-    it('should handle mixed sync/async provider behavior', async () => {
-      const synchronousProvider = createInlineProvider({ SYNC_KEY: 'value' });
-      const result = synchronousProvider.resolveSecrets();
-
-      expect(result).toBeInstanceOf(Promise);
-      expect(await result).toEqual({ SYNC_KEY: 'value' });
-    });
-  });
-
-  describe('Type safety and interface compliance', () => {
-    it('should ensure resolved secrets structure', async () => {
-      const manager = new SecretManager([
-        createInlineProvider({ API_KEY: 'value' }),
-      ]);
-
       const result = await manager.resolveSecrets();
 
       expect(typeof result).toBe('object');
@@ -471,19 +298,15 @@ describe('SecretManager', () => {
       Object.values(result).forEach((value) => {
         expect(typeof value).toBe('string');
       });
-    });
 
-    it('should ensure provider interface compliance', () => {
+      // Provider interface compliance
       const provider: ISecretProvider = createInlineProvider({ KEY: 'value' });
-
       expect(provider.getName()).toBe('inline');
       expect(provider.resolveSecrets()).toBeInstanceOf(Promise);
-    });
+      expect(await provider.resolveSecrets()).toEqual({ KEY: 'value' });
 
-    it('should ensure registry interface compliance', () => {
+      // Registry interface compliance
       const reg: ISecretProviderRegistry = registry;
-      const provider = createInlineProvider({ KEY: 'value' });
-
       expect(() => reg.register('test', provider)).not.toThrow();
       expect(reg.get('test')).toBe(provider);
       expect(reg.getAll()).toBeInstanceOf(Map);

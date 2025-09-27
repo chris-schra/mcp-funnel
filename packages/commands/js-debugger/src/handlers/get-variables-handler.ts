@@ -4,7 +4,7 @@ import type {
   CallToolResult,
   Scope,
   Variable,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface GetVariablesHandlerArgs {
   sessionId: string;

@@ -1,4 +1,4 @@
-import type { BreakpointLocation } from '../types.js';
+import type { BreakpointLocation } from '../types/index.js';
 
 export interface CDPLocation {
   scriptId: string;

@@ -3,7 +3,7 @@ import type {
   ToolHandlerContext,
   CallToolResult,
   DebugState,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface ContinueHandlerArgs {
   sessionId: string;
@@ -54,8 +54,7 @@ export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
 
       // Handle stop action
       if (args.action === 'stop') {
-        await session.adapter.disconnect();
-        context.sessionManager.deleteSession(args.sessionId);
+        await context.sessionManager.deleteSession(args.sessionId);
         return context.responseFormatter.terminatedSession(
           args.sessionId,
           'Debug session terminated by user',
@@ -75,9 +74,37 @@ export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
           newState = await session.adapter.stepOut();
           break;
         case 'continue':
-        default:
-          newState = await session.adapter.continue();
+        default: {
+          // Access the underlying enhanced session's continue method directly
+          const enhancedSession = session.getEnhancedSession
+            ? session.getEnhancedSession()
+            : null;
+
+          // Type guard for enhanced session with continue method
+          interface SessionWithContinue {
+            continue(): Promise<DebugState>;
+          }
+
+          const hasValidContinue = (
+            obj: unknown,
+          ): obj is SessionWithContinue => {
+            return (
+              obj !== null &&
+              typeof obj === 'object' &&
+              'continue' in obj &&
+              typeof (obj as SessionWithContinue).continue === 'function'
+            );
+          };
+
+          if (hasValidContinue(enhancedSession)) {
+            newState = await enhancedSession.continue();
+          } else {
+            throw new Error(
+              'Enhanced session not available for continue operation',
+            );
+          }
           break;
+        }
       }
 
       session.state = newState;

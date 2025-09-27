@@ -1,5 +1,5 @@
 import path from 'path';
-import type { CodeOrigin, DebugRequest } from '../types.js';
+import type { CodeOrigin, DebugRequest } from '../types/index.js';
 
 export interface OriginClassifierOptions {
   projectRoot?: string;

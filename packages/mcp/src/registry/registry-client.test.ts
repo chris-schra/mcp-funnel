@@ -7,817 +7,420 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ServerDetail } from './types/registry.types.js';
-import type { IRegistryCache } from './interfaces/cache.interface.js';
-
-// Import the actual implementation
 import { MCPRegistryClient } from './registry-client.js';
 
-/**
- * Mock cache implementation for testing.
- */
-class MockCache implements IRegistryCache<unknown> {
-  private storage = new Map<string, { value: unknown; expires?: number }>();
-
-  async get(key: string): Promise<unknown | null> {
-    const item = this.storage.get(key);
-    if (!item) return null;
-    if (item.expires && Date.now() > item.expires) {
-      this.storage.delete(key);
-      return null;
-    }
-    return item.value;
-  }
-
-  async set(key: string, value: unknown, ttlMs?: number): Promise<void> {
-    const expires = ttlMs ? Date.now() + ttlMs : undefined;
-    this.storage.set(key, { value, expires });
-  }
-
-  async has(key: string): Promise<boolean> {
-    return (await this.get(key)) !== null;
-  }
-
-  async delete(key: string): Promise<void> {
-    this.storage.delete(key);
-  }
-
-  async clear(): Promise<void> {
-    this.storage.clear();
-  }
-}
-
-/**
- * No-op cache implementation for testing without cache.
- */
-class NoOpCache implements IRegistryCache<unknown> {
-  async get(): Promise<null> {
-    return null;
-  }
-
-  async set(): Promise<void> {
-    // No-op
-  }
-
-  async has(): Promise<boolean> {
-    return false;
-  }
-
-  async delete(): Promise<void> {
-    // No-op
-  }
-
-  async clear(): Promise<void> {
-    // No-op
-  }
-}
+// Test utilities and fixtures
+import {
+  MOCK_SERVERS,
+  TEST_CONSTANTS,
+  TEST_SCENARIOS,
+  CACHE_KEYS,
+} from './__tests__/fixtures.js';
+import {
+  HttpMockHelper,
+  AssertionHelper,
+  CacheTestHelper,
+  createHttpMockHelper,
+  runParameterizedTests,
+} from './__tests__/helpers.js';
+import { MockCache, NoOpCache, CacheFactory } from './__tests__/mock-cache.js';
 
 describe('MCPRegistryClient', () => {
-  const mockBaseUrl = 'https://registry.modelcontextprotocol.io';
   let mockFetch: ReturnType<typeof vi.fn>;
+  let httpMock: HttpMockHelper;
   let mockCache: MockCache;
   let noOpCache: NoOpCache;
 
   beforeEach(() => {
-    // Reset mocks before each test
     mockFetch = vi.fn();
     global.fetch = mockFetch;
-    mockCache = new MockCache();
-    noOpCache = new NoOpCache();
+    httpMock = createHttpMockHelper(mockFetch);
+    mockCache = CacheFactory.createMockCache();
+    noOpCache = CacheFactory.createNoOpCache();
   });
 
   describe('constructor', () => {
     it('should accept baseUrl and optional cache', () => {
-      const clientWithoutCache = new MCPRegistryClient(mockBaseUrl);
-      expect(clientWithoutCache).toBeDefined();
-
-      const clientWithCache = new MCPRegistryClient(mockBaseUrl, mockCache);
-      expect(clientWithCache).toBeDefined();
-    });
-
-    it('should use provided baseUrl for API calls', () => {
-      const customUrl = 'https://custom.registry.com';
-      const client = new MCPRegistryClient(customUrl, mockCache);
-      expect(client).toBeDefined();
-      // The baseUrl will be used in actual API calls - verified in integration tests
+      expect(new MCPRegistryClient(TEST_CONSTANTS.BASE_URL)).toBeDefined();
+      expect(
+        new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, mockCache),
+      ).toBeDefined();
+      expect(
+        new MCPRegistryClient(TEST_CONSTANTS.CUSTOM_URL, mockCache),
+      ).toBeDefined();
     });
   });
 
   describe('searchServers', () => {
-    it('should make correct API call to registry search endpoint', async () => {
-      const mockServers: ServerDetail[] = [
-        {
-          id: 'test-server-1',
-          _meta: {
-            'io.modelcontextprotocol.registry/official': {
-              id: 'test-server-1-registry-id',
-              published_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-            },
-          },
-          name: 'Test Server 1',
-          description: 'A test server for demonstration',
-          packages: [
-            {
-              identifier: 'test-server-1',
-              registry_type: 'npm',
-            },
-          ],
-        },
-      ];
+    const testCases = [
+      {
+        name: 'should make correct API call and return results',
+        setup: () => httpMock.mockSuccessfulSearch([MOCK_SERVERS.BASIC]),
+        query: 'test query',
+        cache: noOpCache,
+        expectedResult: [MOCK_SERVERS.BASIC],
+        expectsHttp: true,
+      },
+      {
+        name: 'should return empty array when no servers found',
+        setup: () => httpMock.mockEmptySearch(),
+        query: 'nonexistent',
+        cache: noOpCache,
+        expectedResult: [],
+        expectsHttp: true,
+      },
+      // NOTE: Cache hit test moved to separate test below
+    ];
 
-      // Mock the real API response format: { servers: [], metadata: {} }
-      const mockResponse = {
-        servers: mockServers,
-        metadata: {
-          count: 1,
-          next_cursor: null,
-        },
-      };
+    testCases.forEach((testCase) => {
+      it(testCase.name, async () => {
+        await testCase.setup();
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
+        // For cache hit tests, ensure mock fetch is cleared and won't be called
+        if (!testCase.expectsHttp) {
+          mockFetch.mockClear();
+        }
+
+        const client = new MCPRegistryClient(
+          TEST_CONSTANTS.BASE_URL,
+          testCase.cache,
+        );
+        const result = await client.searchServers(testCase.query);
+
+        if (testCase.expectsHttp) {
+          AssertionHelper.assertSingleHttpRequest(mockFetch);
+        } else {
+          AssertionHelper.assertNoHttpRequests(mockFetch);
+        }
+        expect(result).toEqual(testCase.expectedResult);
       });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.searchServers('test query');
-
-      // Verify correct endpoint and format
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers?search=test%20query`,
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Accept: 'application/json',
-          }),
-        }),
-      );
-      expect(result).toEqual(mockServers);
-    });
-
-    it('should return empty array when no servers found', async () => {
-      const mockResponse = {
-        servers: [],
-        metadata: {
-          count: 0,
-          next_cursor: null,
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.searchServers('nonexistent');
-      expect(result).toEqual([]);
     });
 
     it('should use cache when available (cache hit)', async () => {
-      const cachedResults: ServerDetail[] = [
-        {
-          id: 'cached-server',
-          _meta: {
-            'io.modelcontextprotocol.registry/official': {
-              id: 'cached-server-registry-id',
-              published_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-            },
-          },
-          name: 'Cached Server',
-          description: 'Server from cache',
-        },
-      ];
-
-      // Pre-populate cache with correct cache key format: ${baseUrl}:search:${keywords}
-      const cacheKey = `${mockBaseUrl}:search:test query`;
+      const cachedResults = [MOCK_SERVERS.CACHED];
+      const cacheKey = `${TEST_CONSTANTS.BASE_URL}:search:cached query`;
       await mockCache.set(cacheKey, cachedResults);
 
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
-      const result = await client.searchServers('test query');
+      const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, mockCache);
+      const result = await client.searchServers('cached query');
 
-      // Should not make HTTP request when cache hit
-      expect(mockFetch).not.toHaveBeenCalled();
+      AssertionHelper.assertNoHttpRequests(mockFetch);
       expect(result).toEqual(cachedResults);
     });
 
     it('should store results in cache after successful fetch', async () => {
-      const fetchResults: ServerDetail[] = [
-        {
-          id: 'fetched-server',
-          _meta: {
-            'io.modelcontextprotocol.registry/official': {
-              id: 'fetched-server-registry-id',
-              published_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-            },
-          },
-          name: 'Fetched Server',
-          description: 'Server from API',
-        },
-      ];
-
-      // Mock the API response format as the real API returns { servers: [], metadata: {} }
-      const mockResponse = {
-        servers: fetchResults,
-        metadata: {
-          count: 1,
-          next_cursor: null,
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      httpMock.mockSuccessfulSearch([MOCK_SERVERS.BASIC]);
+      const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, mockCache);
       await client.searchServers('new query');
-
-      // Verify results were cached with correct cache key format
-      const cacheKey = `${mockBaseUrl}:search:new query`;
-      const cachedResult = await mockCache.get(cacheKey);
-      expect(cachedResult).toEqual(fetchResults);
-    });
-
-    it('should throw on network errors', async () => {
-      const networkError = new Error('Network error');
-      mockFetch.mockRejectedValueOnce(networkError);
-
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
-
-      // Should throw the error for the calling layer to handle
-      await expect(client.searchServers('test')).rejects.toThrow(
-        'Network error',
+      await CacheTestHelper.assertCacheStored(
+        mockCache,
+        TEST_CONSTANTS.BASE_URL,
+        'search:new query',
+        [MOCK_SERVERS.BASIC],
       );
     });
 
-    it('should throw on HTTP error responses', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
-
-      // Should throw error with status information
-      await expect(client.searchServers('test')).rejects.toThrow(
-        'Registry search failed: 500 Internal Server Error',
-      );
-    });
+    // Error scenarios
+    [...TEST_SCENARIOS.NETWORK_ERRORS, ...TEST_SCENARIOS.HTTP_ERRORS].forEach(
+      (scenario) => {
+        it(`should throw on ${scenario.name}`, async () => {
+          if ('error' in scenario) {
+            httpMock.mockNetworkError(scenario.error);
+          } else {
+            httpMock.mockHttpError(scenario.status, scenario.statusText);
+          }
+          const client = new MCPRegistryClient(
+            TEST_CONSTANTS.BASE_URL,
+            mockCache,
+          );
+          await AssertionHelper.assertErrorThrown(
+            client.searchServers('test'),
+            scenario.expectedMessage,
+          );
+        });
+      },
+    );
   });
 
   describe('getServer', () => {
-    it('should find server by exact name match using search', async () => {
-      const serverDetail: ServerDetail = {
-        id: 'test-server',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'test-server-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'Test Server',
-        description: 'Detailed test server information',
-        packages: [
-          {
-            identifier: 'test-server',
-            registry_type: 'npm',
-            runtime_hint: 'node',
-            package_arguments: ['--verbose'],
-          },
-        ],
-        tools: ['tool1', 'tool2'],
-      };
+    const getServerTests = [
+      [
+        'find by name',
+        () => httpMock.mockSuccessfulSearch([MOCK_SERVERS.DETAILED]),
+        'Test Server',
+        noOpCache,
+        MOCK_SERVERS.DETAILED,
+        true,
+      ],
+      [
+        'return null for non-existent',
+        () => httpMock.mockEmptySearch(),
+        'nonexistent',
+        noOpCache,
+        null,
+        true,
+      ],
+      // NOTE: Cache hit test moved to separate test below
+    ] as const;
 
-      // Mock search response since getServer uses search internally
-      const mockSearchResponse = {
-        servers: [serverDetail],
-        metadata: {
-          count: 1,
-          next_cursor: null,
-        },
-      };
+    getServerTests.forEach(
+      ([name, setup, identifier, cache, expectedResult, expectsHttp]) => {
+        it(`should ${name}`, async () => {
+          await setup();
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSearchResponse,
-      });
+          // For cache hit tests, ensure mock fetch is cleared and won't be called
+          if (!expectsHttp) {
+            mockFetch.mockClear();
+          }
 
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer('Test Server');
+          const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, cache);
+          const result = await client.getServer(identifier);
+          expectsHttp
+            ? AssertionHelper.assertSingleHttpRequest(mockFetch)
+            : AssertionHelper.assertNoHttpRequests(mockFetch);
+          expectedResult
+            ? AssertionHelper.assertServerResult(result, expectedResult)
+            : AssertionHelper.assertNotFound(result);
+        });
+      },
+    );
 
-      // Should use search endpoint for non-UUID identifiers (UUIDs use direct GET endpoint)
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers?search=Test%20Server`,
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Accept: 'application/json',
-          }),
-        }),
-      );
-      expect(result).toEqual(serverDetail);
-    });
-
-    it('should return null for non-existent server', async () => {
-      const mockSearchResponse = {
-        servers: [],
-        metadata: {
-          count: 0,
-          next_cursor: null,
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSearchResponse,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer('nonexistent-server');
-      expect(result).toBeNull();
-    });
-
-    it('should use cache when available for server details', async () => {
-      const cachedServer: ServerDetail = {
-        id: 'cached-server',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'cached-server-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'Cached Server',
-        description: 'Server from cache',
-      };
-
-      // Pre-populate cache with correct cache key format: ${baseUrl}:server:${identifier}
-      const cacheKey = `${mockBaseUrl}:server:cached-server`;
+    it('should use cache when available', async () => {
+      const cachedServer = MOCK_SERVERS.CACHED;
+      const cacheKey = `${TEST_CONSTANTS.BASE_URL}:server:cached-server`;
       await mockCache.set(cacheKey, cachedServer);
 
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, mockCache);
       const result = await client.getServer('cached-server');
 
-      // Should not make HTTP request when cache hit
-      expect(mockFetch).not.toHaveBeenCalled();
-      expect(result).toEqual(cachedServer);
+      AssertionHelper.assertNoHttpRequests(mockFetch);
+      AssertionHelper.assertServerResult(result, cachedServer);
     });
 
-    it('should store server details in cache after fetch', async () => {
-      const serverDetail: ServerDetail = {
-        id: 'new-server',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'new-server-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'New Server',
-        description: 'Newly fetched server',
-      };
-
-      // getServer('new-server') is not a UUID, so it will use searchServers internally
-      // Mock the search response format
-      const mockSearchResponse = {
-        servers: [serverDetail],
-        metadata: {
-          count: 1,
-          next_cursor: null,
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSearchResponse,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
-      await client.getServer('New Server'); // Using exact name match
-
-      // Verify server was cached with correct cache key format
-      const cacheKey = `${mockBaseUrl}:server:New Server`;
-      const cachedResult = await mockCache.get(cacheKey);
-      expect(cachedResult).toEqual(serverDetail);
+    it('should store in cache after fetch', async () => {
+      httpMock.mockSuccessfulSearch([MOCK_SERVERS.BASIC]);
+      const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, mockCache);
+      await client.getServer('Test Server 1');
+      await CacheTestHelper.assertCacheStored(
+        mockCache,
+        TEST_CONSTANTS.BASE_URL,
+        'Test Server 1',
+        MOCK_SERVERS.BASIC,
+      );
     });
 
-    it('should throw on network errors for getServer', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
-
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
-
-      // Should throw the error for the calling layer to handle
-      await expect(client.getServer('test-server')).rejects.toThrow(
+    [
+      [
+        'network errors',
+        () => httpMock.mockNetworkError(new Error('Network error')),
         'Network error',
-      );
-    });
-
-    it('should throw on 500 errors for getServer', async () => {
-      // First mock is for the search call (for non-UUID)
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
-
-      // Should throw error with status information
-      // For non-UUID, it searches first which throws "Registry search failed"
-      await expect(client.getServer('test-server')).rejects.toThrow(
+      ],
+      [
+        'HTTP errors',
+        () => httpMock.mockHttpError(500, 'Internal Server Error'),
         'Registry search failed: 500 Internal Server Error',
-      );
+      ],
+    ].forEach(([name, setup, expectedMessage]) => {
+      it(`should throw on ${name}`, async () => {
+        setup();
+        const client = new MCPRegistryClient(
+          TEST_CONSTANTS.BASE_URL,
+          mockCache,
+        );
+        await AssertionHelper.assertErrorThrown(
+          client.getServer('test-server'),
+          expectedMessage,
+        );
+      });
     });
   });
 
   describe('UUID detection and routing', () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
+    beforeEach(() => vi.clearAllMocks());
+
+    const uuidTests = [
+      [
+        'valid UUID (direct)',
+        TEST_CONSTANTS.VALID_UUID,
+        () => httpMock.mockSuccessfulServerFetch(MOCK_SERVERS.UUID_SERVER),
+        true,
+        MOCK_SERVERS.UUID_SERVER,
+      ],
+      [
+        'uppercase UUID (direct)',
+        TEST_CONSTANTS.UPPERCASE_UUID,
+        () => httpMock.mockSuccessfulServerFetch(MOCK_SERVERS.UUID_SERVER),
+        true,
+        MOCK_SERVERS.UUID_SERVER,
+      ],
+      [
+        'non-UUID (search)',
+        'github-mcp-server',
+        () =>
+          httpMock.mockSuccessfulSearch([
+            MOCK_SERVERS.GITHUB,
+            MOCK_SERVERS.OTHER,
+          ]),
+        false,
+        MOCK_SERVERS.GITHUB,
+      ],
+      [
+        '404 UUID lookup',
+        TEST_CONSTANTS.NOT_FOUND_UUID,
+        () => httpMock.mockNotFound(),
+        true,
+        null,
+      ],
+    ] as const;
+
+    uuidTests.forEach(([name, uuid, setup, expectDirect, expectedResult]) => {
+      it(`should handle ${name}`, async () => {
+        setup();
+        const client = new MCPRegistryClient(
+          TEST_CONSTANTS.BASE_URL,
+          noOpCache,
+        );
+        const result = await client.getServer(uuid);
+        expectDirect
+          ? AssertionHelper.assertDirectEndpointCalled(
+              mockFetch,
+              TEST_CONSTANTS.BASE_URL,
+              uuid,
+            )
+          : AssertionHelper.assertSearchEndpointCalled(
+              mockFetch,
+              TEST_CONSTANTS.BASE_URL,
+              uuid,
+              uuid,
+            );
+        expectedResult
+          ? AssertionHelper.assertServerResult(result, expectedResult)
+          : AssertionHelper.assertNotFound(result);
+      });
     });
 
-    it('should detect and use direct GET endpoint for UUID format', async () => {
-      const uuid = 'a8a5c761-c1dc-4d1d-9100-b57df4c9ec0d';
-      const mockServer: ServerDetail = {
-        id: uuid,
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: uuid,
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'test-server',
-        description: 'Test server',
-        packages: [
-          {
-            identifier: 'test-server',
-            registry_type: 'npm',
-          },
-        ],
-      };
-
-      // Mock the direct GET endpoint
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockServer,
+    // Malformed UUIDs use search
+    TEST_SCENARIOS.UUID_FORMATS.filter(
+      (s) => !s.shouldUseDirectEndpoint,
+    ).forEach((scenario) => {
+      it(`should handle ${scenario.name} via search`, async () => {
+        httpMock.mockEmptySearch();
+        const client = new MCPRegistryClient(
+          TEST_CONSTANTS.BASE_URL,
+          noOpCache,
+        );
+        const result = await client.getServer(scenario.uuid);
+        AssertionHelper.assertSearchEndpointCalled(
+          mockFetch,
+          TEST_CONSTANTS.BASE_URL,
+          scenario.uuid,
+          encodeURIComponent(scenario.uuid),
+        );
+        AssertionHelper.assertNotFound(result);
       });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer(uuid);
-
-      // Should call direct endpoint, not search
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers/${uuid}`,
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          }),
-        }),
-      );
-      expect(result).toEqual(mockServer);
-    });
-
-    it('should use search endpoint for non-UUID format', async () => {
-      const name = 'github-mcp-server';
-      const mockServer: ServerDetail = {
-        id: 'github-server-id',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'github-server-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'github-mcp-server',
-        description: 'GitHub MCP Server',
-        packages: [
-          {
-            identifier: 'github-mcp-server',
-            registry_type: 'npm',
-          },
-        ],
-      };
-      const mockResults = [
-        mockServer,
-        {
-          id: 'other-server-id',
-          _meta: {
-            'io.modelcontextprotocol.registry/official': {
-              id: 'other-server-registry-id',
-              published_at: '2025-01-01T00:00:00Z',
-              updated_at: '2025-01-01T00:00:00Z',
-            },
-          },
-          name: 'other-server',
-          description: 'Other server',
-        },
-      ];
-
-      // Mock the search endpoint
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ servers: mockResults }),
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer(name);
-
-      // Should call search endpoint, not direct GET
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers?search=${encodeURIComponent(name)}`,
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Accept: 'application/json',
-          }),
-        }),
-      );
-      expect(result).toEqual(mockServer);
-    });
-
-    it('should handle 404 for UUID lookup', async () => {
-      const uuid = '550e8400-e29b-41d4-a716-446655440000';
-
-      // Mock 404 response
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer(uuid);
-
-      expect(result).toBeNull();
-    });
-
-    it('should detect UUIDs case-insensitively', async () => {
-      const upperUuid = 'A8A5C761-C1DC-4D1D-9100-B57DF4C9EC0D';
-      const mockServer: ServerDetail = {
-        id: upperUuid.toLowerCase(),
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: upperUuid.toLowerCase(),
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'test-server',
-        description: 'Test server with uppercase UUID',
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockServer,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      await client.getServer(upperUuid);
-
-      // Should call direct endpoint with the UUID as provided (case preserved in URL)
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers/${upperUuid}`,
-        expect.objectContaining({
-          method: 'GET',
-        }),
-      );
-    });
-
-    it('should handle malformed UUID-like strings via search', async () => {
-      // UUID with invalid characters - should fall back to search
-      const malformedId = 'a8a5c761-c1dc-4d1d-9100-g57df4c9ec0d';
-      const mockResults: ServerDetail[] = [];
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ servers: mockResults }),
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer(malformedId);
-
-      // Should use search endpoint for malformed UUID
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers?search=${encodeURIComponent(malformedId)}`,
-        expect.any(Object),
-      );
-      expect(result).toBeNull();
-    });
-
-    it('should handle UUID with missing hyphens via search', async () => {
-      // UUID without hyphens - should fall back to search
-      const nohyphensId = 'a8a5c761c1dc4d1d9100b57df4c9ec0d';
-      const mockResults: ServerDetail[] = [];
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ servers: mockResults }),
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      const result = await client.getServer(nohyphensId);
-
-      // Should use search endpoint for non-hyphenated string
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers?search=${encodeURIComponent(nohyphensId)}`,
-        expect.any(Object),
-      );
-      expect(result).toBeNull();
     });
 
     it('should throw on server errors for UUID direct endpoint', async () => {
-      const uuid = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
-
-      // Mock 500 error response
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-
-      // Should throw error for non-404 HTTP errors
-      await expect(client.getServer(uuid)).rejects.toThrow(
+      httpMock.mockHttpError(500, 'Internal Server Error');
+      const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, noOpCache);
+      await AssertionHelper.assertErrorThrown(
+        client.getServer(TEST_CONSTANTS.SERVER_ERROR_UUID),
         'Registry server fetch failed: 500 Internal Server Error',
       );
     });
   });
 
   describe('cache behavior', () => {
-    it('should respect cache TTL when implemented', async () => {
-      const serverDetail: ServerDetail = {
-        id: 'ttl-server',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'ttl-server-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'TTL Server',
-        description: 'Server for TTL testing',
-      };
-
-      // Set cache with short TTL using correct cache key format
-      const cacheKey = `${mockBaseUrl}:server:TTL Server`;
-      await mockCache.set(cacheKey, serverDetail, 100); // 100ms TTL
-
-      const client = new MCPRegistryClient(mockBaseUrl, mockCache);
-
-      // Should get from cache initially
-      let result = await client.getServer('TTL Server');
-      expect(result).toEqual(serverDetail);
-      expect(mockFetch).not.toHaveBeenCalled();
-
-      // Wait for TTL to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      // Setup mock for after cache expiry - getServer uses search internally for non-UUID
-      const mockSearchResponse = {
-        servers: [serverDetail],
-        metadata: {
-          count: 1,
-          next_cursor: null,
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSearchResponse,
-      });
-
-      // Should fetch from API after TTL expiry
-      result = await client.getServer('TTL Server');
-      expect(result).toEqual(serverDetail);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers?search=${encodeURIComponent('TTL Server')}`,
-        expect.objectContaining({
-          method: 'GET',
-        }),
+    it('should respect cache TTL', async () => {
+      const serverDetail = MOCK_SERVERS.TTL_TEST;
+      await CacheTestHelper.populateCache(
+        mockCache,
+        TEST_CONSTANTS.BASE_URL,
+        'TTL Server',
+        serverDetail,
+        100,
       );
+
+      const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, mockCache);
+      let result = await client.getServer('TTL Server');
+      AssertionHelper.assertServerResult(result, serverDetail);
+      AssertionHelper.assertNoHttpRequests(mockFetch);
+
+      await new Promise((resolve) => setTimeout(resolve, 150)); // Wait for TTL
+      httpMock.mockSuccessfulSearch([serverDetail]);
+      result = await client.getServer('TTL Server');
+      AssertionHelper.assertServerResult(result, serverDetail);
+      AssertionHelper.assertSingleHttpRequest(mockFetch);
     });
   });
 
   describe('error handling and edge cases', () => {
-    it('should handle malformed JSON responses', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => {
-          throw new Error('Invalid JSON');
-        },
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-
-      // Should throw JSON parsing errors to calling layer
-      await expect(client.searchServers('test')).rejects.toThrow(
-        'Invalid JSON',
-      );
-    });
-
-    it('should handle empty responses', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => null,
-      });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      // Should throw when receiving unexpected null response
-      await expect(client.searchServers('test')).rejects.toThrow(
+    [
+      ['malformed JSON', () => httpMock.mockJsonError(), 'Invalid JSON'],
+      [
+        'empty responses',
+        () => httpMock.mockNullResponse(),
         "Cannot read properties of null (reading 'servers')",
-      );
-    });
-
-    it('should properly encode query parameters', async () => {
-      // Mock the API response format as the real API returns { servers: [], metadata: {} }
-      const mockResponse = {
-        servers: [],
-        metadata: {
-          count: 0,
-          next_cursor: null,
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
+      ],
+    ].forEach(([name, setup, expectedMessage]) => {
+      it(`should handle ${name}`, async () => {
+        setup();
+        const client = new MCPRegistryClient(
+          TEST_CONSTANTS.BASE_URL,
+          noOpCache,
+        );
+        await AssertionHelper.assertErrorThrown(
+          client.searchServers('test'),
+          expectedMessage,
+        );
       });
-
-      const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
-      await client.searchServers('test query with spaces & special chars!');
-
-      // Should properly encode query parameters
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${mockBaseUrl}/v0/servers?search=test%20query%20with%20spaces%20%26%20special%20chars!`,
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Accept: 'application/json',
-          }),
-        }),
-      );
     });
 
-    it('should handle concurrent requests properly', async () => {
-      const serverDetail: ServerDetail = {
-        id: 'concurrent-server',
-        _meta: {
-          'io.modelcontextprotocol.registry/official': {
-            id: 'concurrent-server-registry-id',
-            published_at: '2025-01-01T00:00:00Z',
-            updated_at: '2025-01-01T00:00:00Z',
-          },
-        },
-        name: 'Concurrent Server',
-        description: 'Server for concurrency testing',
-      };
+    // Query encoding tests
+    TEST_SCENARIOS.SEARCH_QUERIES.forEach((scenario) => {
+      it(`should encode ${scenario.name}`, async () => {
+        httpMock.mockEmptySearch();
+        const client = new MCPRegistryClient(
+          TEST_CONSTANTS.BASE_URL,
+          noOpCache,
+        );
+        await client.searchServers(scenario.query);
+        AssertionHelper.assertSearchEndpointCalled(
+          mockFetch,
+          TEST_CONSTANTS.BASE_URL,
+          scenario.query,
+          scenario.encoded,
+        );
+      });
+    });
 
-      let _fetchCallCount = 0;
+    it('should handle concurrent requests (dedup seam)', async () => {
+      const serverDetail = MOCK_SERVERS.CONCURRENT;
+      let fetchCallCount = 0;
       mockFetch.mockImplementation(async () => {
-        _fetchCallCount++;
-        // Simulate async delay
+        fetchCallCount++;
         await new Promise((resolve) => setTimeout(resolve, 50));
         return {
           ok: true,
           json: async () => ({
             servers: [serverDetail],
-            metadata: {
-              count: 1,
-              next_cursor: null,
-            },
+            metadata: { count: 1, next_cursor: null },
           }),
         };
       });
 
-      const _client = new MCPRegistryClient(mockBaseUrl, mockCache);
+      const client = new MCPRegistryClient(TEST_CONSTANTS.BASE_URL, mockCache);
+      const results = await Promise.all([
+        client.getServer('Concurrent Server'),
+        client.getServer('Concurrent Server'),
+        client.getServer('Concurrent Server'),
+      ]);
 
-      const identifier = 'Concurrent Server';
-      const requests = [
-        _client.getServer(identifier),
-        _client.getServer(identifier),
-        _client.getServer(identifier),
-      ];
-
-      const results = await Promise.all(requests);
-
-      // Dedup seam: concurrent callers share the in-flight request so transports can swap protocols later.
-      expect(_fetchCallCount).toBe(1);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(fetchCallCount).toBe(1); // Deduplication
       expect(results).toHaveLength(3);
-      results.forEach((result) => expect(result).toEqual(serverDetail));
+      results.forEach((result) =>
+        AssertionHelper.assertServerResult(result, serverDetail),
+      );
     });
   });
 });

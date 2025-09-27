@@ -2,376 +2,259 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { type CommandManifest } from './installer.js';
 import { TestableCommandInstaller } from './installer.test-harness.js';
 
+// Test data helpers
+const createBasicManifest = (): CommandManifest => ({
+  commands: [
+    {
+      name: 'weather-tool',
+      package: 'weather-tool',
+      version: '1.0.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+      description: 'Weather information tool',
+    },
+    {
+      name: 'scoped-tool',
+      package: '@myorg/weather-helper',
+      version: '2.1.0',
+      installedAt: '2023-01-02T00:00:00.000Z',
+      description: 'Scoped weather helper',
+    },
+    {
+      name: 'git-tool',
+      package: '@github/actions-toolkit',
+      version: '1.0.0',
+      installedAt: '2023-01-03T00:00:00.000Z',
+      description: 'GitHub actions toolkit',
+    },
+    {
+      name: 'simple-tool',
+      package: 'lodash',
+      version: '4.17.21',
+      installedAt: '2023-01-04T00:00:00.000Z',
+      description: 'Utility library',
+    },
+  ],
+  updatedAt: '2023-01-04T00:00:00.000Z',
+});
+
+const createScopedManifest = (): CommandManifest => ({
+  commands: [
+    {
+      name: 'tool1',
+      package: '@org1/common-tool',
+      version: '1.0.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+    {
+      name: 'tool2',
+      package: '@org2/common-tool',
+      version: '1.0.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+  ],
+  updatedAt: '2023-01-01T00:00:00.000Z',
+});
+
+const createPrefixManifest = (): CommandManifest => ({
+  commands: [
+    {
+      name: 'tool1',
+      package: 'test',
+      version: '1.0.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+    {
+      name: 'tool2',
+      package: 'test-utils',
+      version: '1.0.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+    {
+      name: 'tool3',
+      package: 'test-framework-utils',
+      version: '1.0.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+  ],
+  updatedAt: '2023-01-01T00:00:00.000Z',
+});
+
+const createRealWorldManifest = (): CommandManifest => ({
+  commands: [
+    {
+      name: 'react',
+      package: 'react',
+      version: '18.2.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+    {
+      name: 'react-dom',
+      package: 'react-dom',
+      version: '18.2.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+    {
+      name: 'types-react',
+      package: '@types/react',
+      version: '18.0.0',
+      installedAt: '2023-01-01T00:00:00.000Z',
+    },
+  ],
+  updatedAt: '2023-01-01T00:00:00.000Z',
+});
+
 describe('CommandInstaller - packageMatchesSpec', () => {
   let mockManifest: CommandManifest;
   let installer: TestableCommandInstaller;
 
+  // Test utilities
+  const expectMatch = (spec: string, expectedPackage: string) => {
+    const result = installer.testFindMatchingCommand(mockManifest, spec);
+    expect(result?.package).toBe(expectedPackage);
+  };
+
+  const expectNoMatch = (spec: string) => {
+    const result = installer.testFindMatchingCommand(mockManifest, spec);
+    expect(result).toBeUndefined();
+  };
+
   beforeEach(() => {
     installer = new TestableCommandInstaller();
-
-    // Create a mock manifest with various package types
-    mockManifest = {
-      commands: [
-        {
-          name: 'weather-tool',
-          package: 'weather-tool',
-          version: '1.0.0',
-          installedAt: '2023-01-01T00:00:00.000Z',
-          description: 'Weather information tool',
-        },
-        {
-          name: 'scoped-tool',
-          package: '@myorg/weather-helper',
-          version: '2.1.0',
-          installedAt: '2023-01-02T00:00:00.000Z',
-          description: 'Scoped weather helper',
-        },
-        {
-          name: 'git-tool',
-          package: '@github/actions-toolkit',
-          version: '1.0.0',
-          installedAt: '2023-01-03T00:00:00.000Z',
-          description: 'GitHub actions toolkit',
-        },
-        {
-          name: 'simple-tool',
-          package: 'lodash',
-          version: '4.17.21',
-          installedAt: '2023-01-04T00:00:00.000Z',
-          description: 'Utility library',
-        },
-      ],
-      updatedAt: '2023-01-04T00:00:00.000Z',
-    };
+    mockManifest = createBasicManifest();
   });
 
-  describe('exact package name matches', () => {
+  describe('package name matching and version handling', () => {
     it('should match exact package names', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'weather-tool',
-      );
-      expect(result?.package).toBe('weather-tool');
-    });
-
-    it('should match exact scoped package names', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        '@myorg/weather-helper',
-      );
-      expect(result?.package).toBe('@myorg/weather-helper');
+      expectMatch('weather-tool', 'weather-tool');
+      expectMatch('@myorg/weather-helper', '@myorg/weather-helper');
     });
 
     it('should return undefined for non-existent packages', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'non-existent-package',
-      );
-      expect(result).toBeUndefined();
+      expectNoMatch('non-existent-package');
     });
-  });
 
-  describe('version specifier handling', () => {
     it('should match package names with version specifiers', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'weather-tool@1.2.3',
-      );
-      expect(result?.package).toBe('weather-tool');
-    });
-
-    it('should match scoped packages with version specifiers', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        '@myorg/weather-helper@3.0.0',
-      );
-      expect(result?.package).toBe('@myorg/weather-helper');
-    });
-
-    it('should match packages with complex version specifiers', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'lodash@^4.17.0',
-      );
-      expect(result?.package).toBe('lodash');
-    });
-
-    it('should match packages with pre-release versions', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'weather-tool@1.0.0-beta.1',
-      );
-      expect(result?.package).toBe('weather-tool');
+      expectMatch('weather-tool@1.2.3', 'weather-tool');
+      expectMatch('@myorg/weather-helper@3.0.0', '@myorg/weather-helper');
+      expectMatch('lodash@^4.17.0', 'lodash');
+      expectMatch('weather-tool@1.0.0-beta.1', 'weather-tool');
     });
   });
 
   describe('scoped package handling', () => {
     it('should match scoped packages without @ prefix', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'myorg/weather-helper',
-      );
-      expect(result?.package).toBe('@myorg/weather-helper');
-    });
-
-    it('should match scoped packages without @ prefix with version', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'myorg/weather-helper@2.0.0',
-      );
-      expect(result?.package).toBe('@myorg/weather-helper');
+      expectMatch('myorg/weather-helper', '@myorg/weather-helper');
+      expectMatch('myorg/weather-helper@2.0.0', '@myorg/weather-helper');
     });
 
     it('should not match scope-like strings for non-scoped packages', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'weather/tool',
-      );
-      expect(result).toBeUndefined();
+      expectNoMatch('weather/tool');
     });
   });
 
   describe('git URL handling', () => {
-    it('should match git+https URLs containing scoped package path', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'git+https://github.com/github/actions-toolkit.git',
-      );
-      expect(result?.package).toBe('@github/actions-toolkit');
-    });
+    const gitUrlTestCases = [
+      'git+https://github.com/github/actions-toolkit.git',
+      'https://github.com/github/actions-toolkit.git',
+      'git+https://github.com/github/actions-toolkit.git#main',
+    ];
 
-    it('should match https git URLs containing scoped package path', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'https://github.com/github/actions-toolkit.git',
-      );
-      expect(result?.package).toBe('@github/actions-toolkit');
-    });
-
-    it('should match complex git URLs with additional path segments', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'git+https://github.com/github/actions-toolkit.git#main',
-      );
-      expect(result?.package).toBe('@github/actions-toolkit');
+    gitUrlTestCases.forEach((url) => {
+      it(`should match ${url.includes('git+https') ? 'git+https' : 'https'} URLs`, () => {
+        expectMatch(url, '@github/actions-toolkit');
+      });
     });
 
     it('should not match git URLs that do not contain the scoped package path', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'git+https://github.com/other/different-package.git',
-      );
-      expect(result).toBeUndefined();
+      expectNoMatch('git+https://github.com/other/different-package.git');
     });
 
     it('should NOT match git URLs with additional path segments (false positive prevention)', () => {
-      // Critical test: @myorg/weather-helper should NOT match "other/myorg/weather-helper"
-      const result1 = installer.testFindMatchingCommand(
-        mockManifest,
-        'git+https://github.com/other/myorg/weather-helper.git',
-      );
-      expect(result1).toBeUndefined(); // Should NOT match @myorg/weather-helper
-
-      // @github/actions-toolkit should NOT match "org/github/actions-toolkit"
-      const result2 = installer.testFindMatchingCommand(
-        mockManifest,
-        'git+https://github.com/org/github/actions-toolkit.git',
-      );
-      expect(result2).toBeUndefined(); // Should NOT match @github/actions-toolkit
+      expectNoMatch('git+https://github.com/other/myorg/weather-helper.git');
+      expectNoMatch('git+https://github.com/org/github/actions-toolkit.git');
     });
 
     it('should NOT match git URLs where package appears as substring', () => {
-      // @myorg/weather-helper should NOT match URLs containing it as substring
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'git+https://github.com/bigmyorg/weather-helper-tools.git',
-      );
-      expect(result).toBeUndefined();
+      expectNoMatch('git+https://github.com/bigmyorg/weather-helper-tools.git');
     });
   });
 
   describe('false positive prevention - the critical bug fix', () => {
-    it('should NOT match substring of package name', () => {
-      // This is the critical test case - "weather" should NOT match "weather-tool"
-      const result = installer.testFindMatchingCommand(mockManifest, 'weather');
-      expect(result).toBeUndefined();
-    });
+    const falsePositiveTestCases = [
+      { spec: 'weather', description: 'substring of package name' },
+      {
+        spec: 'helper',
+        description: 'packages containing the spec as substring',
+      },
+      { spec: 'org', description: 'packages where spec is contained within' },
+      { spec: 'myorg', description: 'partial scoped package names' },
+      { spec: 'tool', description: 'suffix substrings' },
+      { spec: 'ther', description: 'middle substrings' },
+      { spec: 'Weather-Tool', description: 'case-sensitive variations' },
+    ];
 
-    it('should NOT match packages containing the spec as substring', () => {
-      // "helper" should NOT match "@myorg/weather-helper"
-      const result = installer.testFindMatchingCommand(mockManifest, 'helper');
-      expect(result).toBeUndefined();
-    });
-
-    it('should NOT match packages where spec is contained within', () => {
-      // "org" should NOT match "@myorg/weather-helper"
-      const result = installer.testFindMatchingCommand(mockManifest, 'org');
-      expect(result).toBeUndefined();
-    });
-
-    it('should NOT match partial scoped package names', () => {
-      // "myorg" should NOT match "@myorg/weather-helper"
-      const result = installer.testFindMatchingCommand(mockManifest, 'myorg');
-      expect(result).toBeUndefined();
-    });
-
-    it('should NOT match suffix substrings', () => {
-      // "tool" should NOT match "weather-tool"
-      const result = installer.testFindMatchingCommand(mockManifest, 'tool');
-      expect(result).toBeUndefined();
-    });
-
-    it('should NOT match middle substrings', () => {
-      // "ther" should NOT match "weather-tool"
-      const result = installer.testFindMatchingCommand(mockManifest, 'ther');
-      expect(result).toBeUndefined();
-    });
-
-    it('should NOT match case-sensitive variations', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'Weather-Tool',
-      );
-      expect(result).toBeUndefined();
+    falsePositiveTestCases.forEach(({ spec, description }) => {
+      it(`should NOT match ${description}`, () => {
+        expectNoMatch(spec);
+      });
     });
   });
 
   describe('edge cases', () => {
-    it('should handle empty string specs', () => {
-      const result = installer.testFindMatchingCommand(mockManifest, '');
-      expect(result).toBeUndefined();
-    });
+    const edgeCaseTestCases = [
+      { spec: '', description: 'empty string specs' },
+      { spec: '@', description: 'specs with only @ symbol' },
+      { spec: '@1.0.0', description: 'specs with only version' },
+      { spec: '@/package', description: 'malformed scoped package specs' },
+      {
+        spec: 'weather-tool#tag',
+        description: 'specs with special characters',
+      },
+      { spec: 'a'.repeat(1000), description: 'very long package names' },
+    ];
 
-    it('should handle specs with only @ symbol', () => {
-      const result = installer.testFindMatchingCommand(mockManifest, '@');
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle specs with only version', () => {
-      const result = installer.testFindMatchingCommand(mockManifest, '@1.0.0');
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle malformed scoped package specs', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        '@/package',
-      );
-      expect(result).toBeUndefined();
+    edgeCaseTestCases.forEach(({ spec, description }) => {
+      it(`should handle ${description}`, () => {
+        expectNoMatch(spec);
+      });
     });
 
     it('should handle multiple @ symbols correctly', () => {
-      // extractPackageNameFromSpec('weather-tool@@1.0.0') returns 'weather-tool'
-      // This should match the installed package
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'weather-tool@@1.0.0',
-      );
-      expect(result?.package).toBe('weather-tool');
-    });
-
-    it('should handle specs with special characters', () => {
-      const result = installer.testFindMatchingCommand(
-        mockManifest,
-        'weather-tool#tag',
-      );
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle very long package names', () => {
-      const longName = 'a'.repeat(1000);
-      const result = installer.testFindMatchingCommand(mockManifest, longName);
-      expect(result).toBeUndefined();
+      expectMatch('weather-tool@@1.0.0', 'weather-tool');
     });
   });
 
   describe('complex scenarios', () => {
     it('should handle packages with similar names but different scopes', () => {
-      const complexManifest: CommandManifest = {
-        commands: [
-          {
-            name: 'tool1',
-            package: '@org1/common-tool',
-            version: '1.0.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-          {
-            name: 'tool2',
-            package: '@org2/common-tool',
-            version: '1.0.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-        ],
-        updatedAt: '2023-01-01T00:00:00.000Z',
-      };
-
-      const result1 = installer.testFindMatchingCommand(
-        complexManifest,
-        '@org1/common-tool',
-      );
-      expect(result1?.package).toBe('@org1/common-tool');
-
-      const result2 = installer.testFindMatchingCommand(
-        complexManifest,
-        '@org2/common-tool',
-      );
-      expect(result2?.package).toBe('@org2/common-tool');
-
-      // Should not match the common part
-      const result3 = installer.testFindMatchingCommand(
-        complexManifest,
-        'common-tool',
-      );
-      expect(result3).toBeUndefined();
+      const scopedManifest = createScopedManifest();
+      expect(
+        installer.testFindMatchingCommand(scopedManifest, '@org1/common-tool')
+          ?.package,
+      ).toBe('@org1/common-tool');
+      expect(
+        installer.testFindMatchingCommand(scopedManifest, '@org2/common-tool')
+          ?.package,
+      ).toBe('@org2/common-tool');
+      expect(
+        installer.testFindMatchingCommand(scopedManifest, 'common-tool'),
+      ).toBeUndefined();
     });
 
     it('should handle packages where one name is prefix of another', () => {
-      const prefixManifest: CommandManifest = {
-        commands: [
-          {
-            name: 'tool1',
-            package: 'test',
-            version: '1.0.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-          {
-            name: 'tool2',
-            package: 'test-utils',
-            version: '1.0.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-          {
-            name: 'tool3',
-            package: 'test-framework-utils',
-            version: '1.0.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-        ],
-        updatedAt: '2023-01-01T00:00:00.000Z',
-      };
-
-      // Should match exactly
-      const result1 = installer.testFindMatchingCommand(prefixManifest, 'test');
-      expect(result1?.package).toBe('test');
-
-      const result2 = installer.testFindMatchingCommand(
-        prefixManifest,
-        'test-utils',
-      );
-      expect(result2?.package).toBe('test-utils');
-
-      // Should NOT match longer names even though they contain the spec
-      const result3 = installer.testFindMatchingCommand(
-        prefixManifest,
-        'utils',
-      );
-      expect(result3).toBeUndefined();
-
-      const result4 = installer.testFindMatchingCommand(
-        prefixManifest,
-        'framework',
-      );
-      expect(result4).toBeUndefined();
+      const prefixManifest = createPrefixManifest();
+      expect(
+        installer.testFindMatchingCommand(prefixManifest, 'test')?.package,
+      ).toBe('test');
+      expect(
+        installer.testFindMatchingCommand(prefixManifest, 'test-utils')
+          ?.package,
+      ).toBe('test-utils');
+      expect(
+        installer.testFindMatchingCommand(prefixManifest, 'utils'),
+      ).toBeUndefined();
+      expect(
+        installer.testFindMatchingCommand(prefixManifest, 'framework'),
+      ).toBeUndefined();
     });
 
     it('should correctly prioritize exact matches over partial matches', () => {
@@ -401,60 +284,21 @@ describe('CommandInstaller - packageMatchesSpec', () => {
 
   describe('real-world package examples', () => {
     it('should handle popular npm packages correctly', () => {
-      const realWorldManifest: CommandManifest = {
-        commands: [
-          {
-            name: 'react',
-            package: 'react',
-            version: '18.2.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-          {
-            name: 'react-dom',
-            package: 'react-dom',
-            version: '18.2.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-          {
-            name: 'types-react',
-            package: '@types/react',
-            version: '18.0.0',
-            installedAt: '2023-01-01T00:00:00.000Z',
-          },
-        ],
-        updatedAt: '2023-01-01T00:00:00.000Z',
-      };
+      const realWorldManifest = createRealWorldManifest();
+      const testCases = [
+        { spec: 'react', expected: 'react' },
+        { spec: 'react-dom', expected: 'react-dom' },
+        { spec: '@types/react', expected: '@types/react' },
+        { spec: 'react@18.0.0', expected: 'react' },
+        { spec: '@types/react@17.0.0', expected: '@types/react' },
+        { spec: 'types/react', expected: '@types/react' },
+      ];
 
-      // Should match each exactly
-      expect(
-        installer.testFindMatchingCommand(realWorldManifest, 'react')?.package,
-      ).toBe('react');
-      expect(
-        installer.testFindMatchingCommand(realWorldManifest, 'react-dom')
-          ?.package,
-      ).toBe('react-dom');
-      expect(
-        installer.testFindMatchingCommand(realWorldManifest, '@types/react')
-          ?.package,
-      ).toBe('@types/react');
-
-      // Should handle versions
-      expect(
-        installer.testFindMatchingCommand(realWorldManifest, 'react@18.0.0')
-          ?.package,
-      ).toBe('react');
-      expect(
-        installer.testFindMatchingCommand(
-          realWorldManifest,
-          '@types/react@17.0.0',
-        )?.package,
-      ).toBe('@types/react');
-
-      // Should handle scoped packages without @
-      expect(
-        installer.testFindMatchingCommand(realWorldManifest, 'types/react')
-          ?.package,
-      ).toBe('@types/react');
+      testCases.forEach(({ spec, expected }) => {
+        expect(
+          installer.testFindMatchingCommand(realWorldManifest, spec)?.package,
+        ).toBe(expected);
+      });
     });
   });
 });

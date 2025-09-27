@@ -2,7 +2,7 @@ import type {
   IToolHandler,
   ToolHandlerContext,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface GetStacktraceHandlerArgs {
   sessionId: string;

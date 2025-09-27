@@ -4,13 +4,14 @@ import type {
   ToolHandlerContext,
   CallToolResult,
   DebugRequest,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface DebugHandlerArgs {
   platform: 'node' | 'browser';
   target: string;
   command?: string;
   args?: string[];
+  runtimeArgs?: string[];
   breakpoints?: Array<{
     file: string;
     line: number;
@@ -59,6 +60,7 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
         target,
         command: args.command,
         args: args.args,
+        runtimeArgs: args.runtimeArgs,
         stopOnEntry: true,
         breakpoints,
         timeout: args.timeout,
@@ -87,8 +89,7 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
       }
 
       // Create real debug session
-      const sessionId = await context.sessionManager.createSession(request);
-      const session = context.sessionManager.getSession(sessionId);
+      const session = await context.sessionManager.createSession(request);
 
       if (!session) {
         return context.responseFormatter.error(
@@ -97,13 +98,13 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
       }
 
       const awaitedSession = await context.sessionManager.waitForPause(
-        sessionId,
+        session.id,
         request.timeout ?? 30000,
       );
 
       const latestSession = awaitedSession
         ? awaitedSession
-        : context.sessionManager.getSession(sessionId);
+        : context.sessionManager.getSession(session.id);
 
       if (!latestSession) {
         return context.responseFormatter.error(
@@ -113,14 +114,14 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
 
       if (latestSession.state.status !== 'paused') {
         return context.responseFormatter.runningSession(
-          sessionId,
+          session.id,
           request.platform,
           request.target,
         );
       }
 
       return await context.responseFormatter.debugState(
-        sessionId,
+        session.id,
         latestSession,
       );
     } catch (error) {

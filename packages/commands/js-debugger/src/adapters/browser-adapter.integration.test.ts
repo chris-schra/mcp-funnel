@@ -8,15 +8,12 @@ import { tmpdir } from 'os';
 import getPort from 'get-port';
 import { chromium } from 'playwright';
 import { BrowserAdapter } from './browser-adapter.js';
-import type { DebugState, ConsoleMessage } from '../types.js';
+import type { DebugState, ConsoleMessage } from '../types/index.js';
 import { waitFor } from '../../test/utils/async-helpers.js';
 import {
   prepareBrowserFixturesRoot,
   type FixtureHandle,
 } from '../../test/utils/fixture-manager.js';
-
-const runRealCdpTests = process.env.JS_DEBUGGER_RUN_REAL === 'true';
-const describeReal = runRealCdpTests ? describe : describe.skip;
 
 interface ChromeHandle {
   process: ChildProcess;
@@ -155,7 +152,7 @@ async function startStaticServer(rootDir: string): Promise<StaticServerHandle> {
   };
 }
 
-describeReal('BrowserAdapter integration', () => {
+describe('BrowserAdapter integration', () => {
   let fixturesRoot: FixtureHandle;
 
   beforeAll(async () => {

@@ -22,6 +22,7 @@ export default tseslint.config(
     extends: [importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript],
     rules: {
       'import/no-unresolved': 'off',
+      'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
     },
     "settings": {
       "import/resolver": {

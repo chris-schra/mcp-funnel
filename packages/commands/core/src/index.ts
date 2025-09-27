@@ -28,3 +28,7 @@ export {
   type InstallOptions,
   type UninstallOptions,
 } from './installer.js';
+export { ManifestManager } from './manifest-manager.js';
+export { PackageUtils } from './package-utils.js';
+export { CommandLoader } from './command-loader.js';
+export { InstallOperations } from './install-operations.js';

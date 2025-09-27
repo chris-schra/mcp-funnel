@@ -62,9 +62,17 @@ export interface CDPDebuggerPausedParams {
     | 'OOM'
     | 'other'
     | 'promiseRejection'
-    | 'XHR';
+    | 'XHR'
+    | 'Break on start'
+    | 'step';
   data?: unknown;
   hitBreakpoints?: string[];
+  exception?: {
+    type: string;
+    value?: unknown;
+    description?: string;
+    className?: string;
+  };
 }
 
 export interface CDPScriptParsedParams {

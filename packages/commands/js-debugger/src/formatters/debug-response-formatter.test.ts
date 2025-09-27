@@ -9,7 +9,7 @@ import type {
   Scope,
   EvaluationResult,
   BreakpointRegistration,
-} from '../types.js';
+} from '../types/index.js';
 
 function createAdapterStub(stackFrames: StackFrame[]): IDebugAdapter {
   const adapter: Partial<IDebugAdapter> = {

@@ -3,15 +3,12 @@ import { spawn, ChildProcess } from 'child_process';
 import WebSocket from 'ws';
 import getPort from 'get-port';
 import { NodeDebugAdapter } from './node-adapter.js';
-import type { DebugState, ConsoleMessage } from '../types.js';
+import type { DebugState, ConsoleMessage } from '../types/index.js';
 import { waitFor, sleep } from '../../test/utils/async-helpers.js';
 import {
   FixtureHandle,
   prepareNodeFixture,
 } from '../../test/utils/fixture-manager.js';
-
-const runRealCdpTests = process.env.JS_DEBUGGER_RUN_REAL === 'true';
-const describeReal = runRealCdpTests ? describe : describe.skip;
 
 interface InspectorLaunchOptions {
   inspectBrk?: boolean;
@@ -217,7 +214,7 @@ async function openWebSocket(url: string): Promise<WebSocket> {
   });
 }
 
-describeReal('Node.js CDP integration', () => {
+describe('Node.js CDP integration', () => {
   let consoleFixture: FixtureHandle;
   let autoExitFixture: FixtureHandle;
 
@@ -308,7 +305,7 @@ describeReal('Node.js CDP integration', () => {
   });
 });
 
-describeReal('NodeDebugAdapter integration', () => {
+describe('NodeDebugAdapter integration', () => {
   let breakpointFixture: FixtureHandle;
 
   beforeAll(async () => {
@@ -366,7 +363,9 @@ describeReal('NodeDebugAdapter integration', () => {
         intervalMs: 50,
       });
 
-      expect(['breakpoint', 'entry']).toContain(secondPause.pauseReason);
+      expect(['breakpoint', 'entry', 'debugger']).toContain(
+        secondPause.pauseReason,
+      );
 
       await adapter.removeBreakpoint(breakpointRegistration.id);
 

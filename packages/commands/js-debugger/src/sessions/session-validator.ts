@@ -4,7 +4,7 @@ import type {
   IMockSessionManager,
   DebugSession,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 /**
  * Session validation utilities - eliminates DRY violations across handlers

@@ -2,7 +2,7 @@ import type {
   IToolHandler,
   ToolHandlerContext,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface StopHandlerArgs {
   sessionId: string;
@@ -33,11 +33,8 @@ export class StopHandler implements IToolHandler<StopHandlerArgs> {
         return validation.error;
       }
 
-      const { session } = validation;
-
-      // Clean disconnect and termination - the session manager handles comprehensive cleanup
-      await session.adapter.disconnect();
-      context.sessionManager.deleteSession(args.sessionId);
+      // Clean disconnect and termination - delegate to session manager cleanup
+      await context.sessionManager.deleteSession(args.sessionId);
 
       return context.responseFormatter.success({
         sessionId: args.sessionId,

@@ -2,7 +2,7 @@ import type {
   IToolHandler,
   ToolHandlerContext,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface CleanupSessionsHandlerArgs {
   force?: boolean;
@@ -65,7 +65,9 @@ export class CleanupSessionsHandler
 
       // Perform actual cleanup
       const cleanedCount =
-        (await context.sessionManager.cleanupInactiveSessions?.()) || 0;
+        (await context.sessionManager.cleanupInactiveSessions?.({
+          force: args.force === true,
+        })) || 0;
 
       return context.responseFormatter.success({
         totalSessions: allSessions.length,
