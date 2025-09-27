@@ -566,7 +566,8 @@ export class BrowserAdapter implements IDebugAdapter {
       const resolvedLocations = breakpoint
         ? mapBreakpointLocations(breakpoint.locations, {
             resolveScriptUrl: (scriptId) => this.scripts.get(scriptId)?.url,
-            convertScriptUrlToPath: (scriptUrl) => this.urlToFilePath(scriptUrl),
+            convertScriptUrlToPath: (scriptUrl) =>
+              this.urlToFilePath(scriptUrl),
             onPathResolved: (filePath) => {
               if (!this.projectRoot && path.isAbsolute(filePath)) {
                 this.projectRoot = path.dirname(filePath).replace(/\\/g, '/');
@@ -603,11 +604,11 @@ export class BrowserAdapter implements IDebugAdapter {
         };
 
         if (resolvedLocations.length > 0) {
-        this.emitBreakpointResolved({
-          id: breakpointId,
-          verified: true,
-          resolvedLocations,
-        });
+          this.emitBreakpointResolved({
+            id: breakpointId,
+            verified: true,
+            resolvedLocations,
+          });
         }
       }
     }
@@ -839,7 +840,6 @@ export class BrowserAdapter implements IDebugAdapter {
 
     return undefined;
   }
-
 
   /**
    * Load source map for a script

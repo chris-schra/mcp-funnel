@@ -24,7 +24,9 @@ export function mapBreakpointLocations(
   return locations
     .map((location) => {
       const scriptUrl =
-        options.resolveScriptUrl(location.scriptId) || options.fallbackUrl || '';
+        options.resolveScriptUrl(location.scriptId) ||
+        options.fallbackUrl ||
+        '';
       const filePath = options.convertScriptUrlToPath(scriptUrl);
 
       if (!filePath) {

@@ -93,7 +93,9 @@ export function deriveProjectRootFromRequest(
   return undefined;
 }
 
-function normalizeCandidatePath(candidate: string | undefined): string | undefined {
+function normalizeCandidatePath(
+  candidate: string | undefined,
+): string | undefined {
   if (!candidate) {
     return undefined;
   }

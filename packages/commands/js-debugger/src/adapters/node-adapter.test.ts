@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { NodeDebugAdapter } from './node-adapter.js';
 
-function invokeHandleDebuggerPaused(adapter: NodeDebugAdapter, params: unknown) {
-  (adapter as unknown as { handleDebuggerPaused(p: unknown): void }).handleDebuggerPaused(
-    params,
-  );
+function invokeHandleDebuggerPaused(
+  adapter: NodeDebugAdapter,
+  params: unknown,
+) {
+  (
+    adapter as unknown as { handleDebuggerPaused(p: unknown): void }
+  ).handleDebuggerPaused(params);
 }
 
 describe('NodeDebugAdapter pause semantics', () => {
@@ -16,23 +19,21 @@ describe('NodeDebugAdapter pause semantics', () => {
       capturedStates.push(state);
     });
 
-    (adapter as unknown as { scriptIdToUrl: Map<string, string> }).scriptIdToUrl.set(
-      'script-1',
-      '/Users/example/app/index.js',
-    );
-    (adapter as unknown as { breakpoints: Map<string, unknown> }).breakpoints.set(
-      'bp-1',
-      {
-        breakpointId: 'bp-1',
-        locations: [
-          {
-            scriptId: 'script-1',
-            lineNumber: 40,
-            columnNumber: 0,
-          },
-        ],
-      },
-    );
+    (
+      adapter as unknown as { scriptIdToUrl: Map<string, string> }
+    ).scriptIdToUrl.set('script-1', '/Users/example/app/index.js');
+    (
+      adapter as unknown as { breakpoints: Map<string, unknown> }
+    ).breakpoints.set('bp-1', {
+      breakpointId: 'bp-1',
+      locations: [
+        {
+          scriptId: 'script-1',
+          lineNumber: 40,
+          columnNumber: 0,
+        },
+      ],
+    });
 
     invokeHandleDebuggerPaused(adapter, {
       reason: 'debugCommand',
