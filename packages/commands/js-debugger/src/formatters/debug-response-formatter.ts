@@ -339,6 +339,16 @@ export class DebugResponseFormatter implements IResponseFormatter {
     const lineSuffix = location?.line ? `:${location.line}` : '';
     const pauseReason = state.pauseReason;
 
+    if (pauseReason === 'debugger') {
+      const locationSuffix = locationLabel
+        ? ` in ${locationLabel}${lineSuffix}`
+        : '';
+      return {
+        message: `Paused on debugger statement${locationSuffix}`,
+        hint: 'Use js-debugger_continue to step past the manual debugger statement.',
+      };
+    }
+
     if (location?.type === 'internal' && pauseReason === 'entry') {
       return {
         message:

@@ -185,7 +185,6 @@ export class JsDebuggerCommand implements ICommand {
               description: 'Console output verbosity level',
               default: 'all',
             },
-            stopOnEntry: { type: 'boolean', default: false },
             useMock: {
               type: 'boolean',
               description: 'Use mock implementation instead of real CDP',

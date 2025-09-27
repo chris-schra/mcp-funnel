@@ -1,4 +1,3 @@
-import path from 'path';
 import {
   IDebugAdapter,
   DebugState,
@@ -11,9 +10,9 @@ import {
   PauseHandler,
   ResumeHandler,
   BreakpointRegistration,
-  BreakpointLocation,
   CodeOrigin,
   DebugLocation,
+  DebugRequest,
 } from '../types.js';
 import {
   CDPClient,
@@ -30,6 +29,19 @@ import {
   CDPStackTrace,
 } from '../cdp/index.js';
 import { SourceMapConsumer } from 'source-map';
+import { mapBreakpointLocations } from '../utils/breakpoints.js';
+import {
+  classifyOrigin,
+  toRelativePath,
+  deriveProjectRootFromRequest,
+} from '../utils/locations.js';
+import path from 'path';
+
+type BrowserAdapterOptions = {
+  host?: string;
+  port?: number;
+  request?: DebugRequest;
+};
 
 /**
  * Browser debugging adapter using Chrome DevTools Protocol
@@ -50,16 +62,20 @@ export class BrowserAdapter implements IDebugAdapter {
   private breakpointResolvedHandlers: Array<
     (registration: BreakpointRegistration) => void
   > = [];
-  private projectRoot: string = path.resolve(process.cwd()).replace(/\\/g, '/');
+  private projectRoot?: string;
 
   // Event handlers
   private consoleHandlers: ConsoleHandler[] = [];
   private pauseHandlers: PauseHandler[] = [];
   private resumeHandlers: ResumeHandler[] = [];
 
-  constructor(host = 'localhost', port = 9222) {
+  constructor(options?: BrowserAdapterOptions) {
+    const host = options?.host ?? 'localhost';
+    const port = options?.port ?? 9222;
+
     this.cdpClient = new CDPClient();
     this.targetDiscovery = new TargetDiscovery(host, port);
+    this.projectRoot = this.deriveProjectRoot(options?.request);
 
     this.setupEventHandlers();
   }
@@ -191,8 +207,15 @@ export class BrowserAdapter implements IDebugAdapter {
 
       this.breakpoints.set(result.breakpointId, result);
 
-      const resolvedLocations = this.mapBreakpointLocations(result.locations, {
+      const resolvedLocations = mapBreakpointLocations(result.locations, {
+        resolveScriptUrl: (scriptId) => this.scripts.get(scriptId)?.url,
+        convertScriptUrlToPath: (scriptUrl) => this.urlToFilePath(scriptUrl),
         fallbackUrl: url,
+        onPathResolved: (filePath) => {
+          if (!this.projectRoot && path.isAbsolute(filePath)) {
+            this.projectRoot = path.dirname(filePath).replace(/\\/g, '/');
+          }
+        },
       });
 
       const registration: BreakpointRegistration = {
@@ -541,7 +564,15 @@ export class BrowserAdapter implements IDebugAdapter {
       const breakpointId = params.hitBreakpoints[0];
       const breakpoint = this.breakpoints.get(breakpointId);
       const resolvedLocations = breakpoint
-        ? this.mapBreakpointLocations(breakpoint.locations)
+        ? mapBreakpointLocations(breakpoint.locations, {
+            resolveScriptUrl: (scriptId) => this.scripts.get(scriptId)?.url,
+            convertScriptUrlToPath: (scriptUrl) => this.urlToFilePath(scriptUrl),
+            onPathResolved: (filePath) => {
+              if (!this.projectRoot && path.isAbsolute(filePath)) {
+                this.projectRoot = path.dirname(filePath).replace(/\\/g, '/');
+              }
+            },
+          })
         : [];
 
       if (resolvedLocations.length === 0 && topFrame) {
@@ -572,11 +603,11 @@ export class BrowserAdapter implements IDebugAdapter {
         };
 
         if (resolvedLocations.length > 0) {
-          this.emitBreakpointResolved({
-            id: breakpointId,
-            verified: true,
-            resolvedLocations,
-          });
+        this.emitBreakpointResolved({
+          id: breakpointId,
+          verified: true,
+          resolvedLocations,
+        });
         }
       }
     }
@@ -670,6 +701,49 @@ export class BrowserAdapter implements IDebugAdapter {
     }
   }
 
+  private deriveProjectRoot(request?: DebugRequest): string | undefined {
+    if (!request) {
+      return undefined;
+    }
+
+    const candidates: string[] = [];
+    if (request.target) {
+      candidates.push(request.target);
+    }
+    if (request.breakpoints) {
+      for (const bp of request.breakpoints) {
+        candidates.push(bp.file);
+      }
+    }
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
+        continue;
+      }
+      if (candidate.startsWith('ws://') || candidate.startsWith('wss://')) {
+        continue;
+      }
+
+      let filePath = candidate;
+      if (candidate.startsWith('file://')) {
+        try {
+          filePath = new URL(candidate).pathname;
+        } catch {
+          continue;
+        }
+      }
+
+      if (!path.isAbsolute(filePath)) {
+        continue;
+      }
+
+      return path.dirname(filePath).replace(/\\/g, '/');
+    }
+
+    return undefined;
+  }
+
   private handleBreakpointResolved(params: {
     breakpointId: string;
     location: {
@@ -703,7 +777,15 @@ export class BrowserAdapter implements IDebugAdapter {
       });
     }
 
-    const resolvedLocations = this.mapBreakpointLocations([normalizedLocation]);
+    const resolvedLocations = mapBreakpointLocations([normalizedLocation], {
+      resolveScriptUrl: (scriptId) => this.scripts.get(scriptId)?.url,
+      convertScriptUrlToPath: (scriptUrl) => this.urlToFilePath(scriptUrl),
+      onPathResolved: (filePath) => {
+        if (!this.projectRoot && path.isAbsolute(filePath)) {
+          this.projectRoot = path.dirname(filePath).replace(/\\/g, '/');
+        }
+      },
+    });
 
     this.emitBreakpointResolved({
       id: params.breakpointId,
@@ -712,34 +794,16 @@ export class BrowserAdapter implements IDebugAdapter {
     });
   }
 
-  private mapBreakpointLocations(
-    locations: Array<{
-      scriptId: string;
-      lineNumber: number;
-      columnNumber?: number;
-    }>,
-    options?: { fallbackUrl?: string },
-  ): BreakpointLocation[] {
-    return locations
-      .map((location) => {
-        const script = this.scripts.get(location.scriptId);
-        const scriptUrl = script?.url || options?.fallbackUrl || '';
-        const filePath = this.urlToFilePath(scriptUrl);
-        if (!filePath) {
-          return undefined;
-        }
-        return {
-          file: filePath,
-          line: location.lineNumber + 1,
-          column: location.columnNumber,
-        } satisfies BreakpointLocation;
-      })
-      .filter((entry): entry is BreakpointLocation => Boolean(entry));
-  }
-
   private createDebugLocation(frame: CDPCallFrame): DebugLocation | undefined {
     const filePath = this.urlToFilePath(frame.url);
-    const origin = this.classifyFileOrigin(filePath);
+    const origin = classifyOrigin(filePath, {
+      projectRoot: this.projectRoot,
+      internalMatchers: [
+        (normalized) => normalized.startsWith('chrome-extension:'),
+      ],
+      libraryMatchers: [(normalized) => normalized.includes('/node_modules/')],
+      treatAbsoluteAsUser: true,
+    });
 
     if (!filePath && origin === 'internal') {
       return {
@@ -753,35 +817,9 @@ export class BrowserAdapter implements IDebugAdapter {
       file: filePath || undefined,
       line: frame.location.lineNumber + 1,
       column: frame.location.columnNumber,
-      relativePath: this.toRelativePath(filePath),
+      relativePath: toRelativePath(filePath, this.projectRoot),
       description: this.describeOrigin(origin, filePath),
     };
-  }
-
-  private classifyFileOrigin(filePath: string): CodeOrigin {
-    if (!filePath) {
-      return 'internal';
-    }
-
-    const normalized = filePath.replace(/\\/g, '/');
-
-    if (normalized.startsWith('chrome-extension:')) {
-      return 'internal';
-    }
-
-    if (normalized.includes('/node_modules/')) {
-      return 'library';
-    }
-
-    if (normalized.startsWith(`${this.projectRoot}/`)) {
-      return 'user';
-    }
-
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-      return 'unknown';
-    }
-
-    return 'unknown';
   }
 
   private describeOrigin(
@@ -802,18 +840,6 @@ export class BrowserAdapter implements IDebugAdapter {
     return undefined;
   }
 
-  private toRelativePath(filePath: string): string | undefined {
-    if (!filePath) {
-      return undefined;
-    }
-
-    const normalized = filePath.replace(/\\/g, '/');
-    if (normalized.startsWith(`${this.projectRoot}/`)) {
-      return normalized.slice(this.projectRoot.length + 1);
-    }
-
-    return undefined;
-  }
 
   /**
    * Load source map for a script
@@ -906,14 +932,17 @@ export class BrowserAdapter implements IDebugAdapter {
    */
   private mapPauseReason(
     reason: string,
-  ): 'breakpoint' | 'step' | 'exception' | 'entry' {
+  ): 'breakpoint' | 'step' | 'exception' | 'entry' | 'debugger' {
     switch (reason) {
       case 'breakpoint':
         return 'breakpoint';
+      case 'step':
+        return 'step';
       case 'exception':
         return 'exception';
       case 'debugCommand':
-        return 'step';
+      case 'debuggerStatement':
+        return 'debugger';
       default:
         return 'entry';
     }

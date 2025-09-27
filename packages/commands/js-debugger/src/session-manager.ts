@@ -186,10 +186,10 @@ class AdapterFactory implements IAdapterFactory {
     switch (platform) {
       case 'node':
         return new NodeDebugAdapter({
-          request: request,
+          request,
         });
       case 'browser':
-        return new BrowserAdapter();
+        return new BrowserAdapter({ request });
       default:
         throw new Error(`Unsupported platform: ${platform}`);
     }
@@ -603,6 +603,37 @@ export class SessionManager implements ISessionManager {
       session.metadata.resourceUsage.memoryEstimate =
         this.estimateSessionMemoryUsage(session);
     }
+  }
+
+  async waitForPause(
+    sessionId: string,
+    timeoutMs = 10000,
+  ): Promise<DebugSession | undefined> {
+    const start = Date.now();
+
+    return await new Promise((resolve) => {
+      const check = () => {
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+          resolve(undefined);
+          return;
+        }
+
+        if (session.state.status === 'paused') {
+          resolve(session);
+          return;
+        }
+
+        if (Date.now() - start >= timeoutMs) {
+          resolve(session);
+          return;
+        }
+
+        setTimeout(check, 50);
+      };
+
+      check();
+    });
   }
 
   /**

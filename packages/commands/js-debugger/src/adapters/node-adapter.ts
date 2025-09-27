@@ -15,10 +15,16 @@ import {
   ResumeHandler,
   ConsoleMessage,
   BreakpointRegistration,
-  BreakpointLocation,
   DebugLocation,
   CodeOrigin,
+  DebugRequest,
 } from '../types.js';
+import { mapBreakpointLocations } from '../utils/breakpoints.js';
+import {
+  classifyOrigin,
+  toRelativePath,
+  deriveProjectRootFromRequest,
+} from '../utils/locations.js';
 import { CDPClient } from '../cdp/client.js';
 import {
   validateScriptPath,
@@ -130,10 +136,7 @@ interface CDPConsoleAPICalledEventParams {
 
 type NodeDebugAdapterOptions = {
   cdpClient?: ICDPClient;
-  request?: {
-    command?: string;
-    args?: string[];
-  };
+  request?: DebugRequest;
 };
 /**
  * Node.js debug adapter using Chrome DevTools Protocol
@@ -154,7 +157,7 @@ export class NodeDebugAdapter implements IDebugAdapter {
   private breakpointResolvedHandlers: Array<
     (registration: BreakpointRegistration) => void
   > = [];
-  private projectRoot: string;
+  private projectRoot?: string;
   private hasResumedFromInitialPause = false;
 
   // Event handlers
@@ -164,13 +167,16 @@ export class NodeDebugAdapter implements IDebugAdapter {
 
   constructor(options?: NodeDebugAdapterOptions) {
     this.cdpClient = options?.cdpClient || new CDPClient();
+    const request = options?.request;
+
     // Use the specified command or default to 'node'
-    this.runtime = options?.request?.command || 'node';
-    const rawArgs = options?.request?.args ?? [];
+    this.runtime = request?.command || 'node';
+    const rawArgs = request?.args ?? [];
     this.scriptArgs = Array.isArray(rawArgs)
       ? rawArgs.filter((value): value is string => typeof value === 'string')
       : [];
-    this.projectRoot = path.resolve(process.cwd()).replace(/\\/g, '/');
+
+    this.projectRoot = deriveProjectRootFromRequest(request);
   }
 
   async connect(target: string): Promise<void> {
@@ -182,6 +188,11 @@ export class NodeDebugAdapter implements IDebugAdapter {
       } else {
         // Spawn Node.js process with inspector
         await this.spawnNodeProcess(target);
+        if (!this.projectRoot) {
+          this.projectRoot = path
+            .dirname(path.resolve(target))
+            .replace(/\\/g, '/');
+        }
         // Use the full inspector URL if we captured it, otherwise fall back to discovery
         const connectUrl =
           this.inspectorUrl || `ws://localhost:${this.inspectorPort}`;
@@ -229,8 +240,21 @@ export class NodeDebugAdapter implements IDebugAdapter {
       );
 
       if (result.breakpointId) {
+        if (!this.projectRoot && path.isAbsolute(normalizedPath)) {
+          this.projectRoot = path.dirname(normalizedPath).replace(/\\/g, '/');
+        }
         this.breakpoints.set(result.breakpointId, result);
-        const resolvedLocations = this.mapBreakpointLocations(result.locations);
+        const resolvedLocations = mapBreakpointLocations(result.locations, {
+          resolveScriptUrl: (scriptId) => this.scriptIdToUrl.get(scriptId),
+          convertScriptUrlToPath: (scriptUrl) =>
+            this.convertScriptUrlToFilePath(scriptUrl),
+          fallbackUrl: fileUrl,
+          onPathResolved: (filePath) => {
+            if (!this.projectRoot && path.isAbsolute(filePath)) {
+              this.projectRoot = path.dirname(filePath).replace(/\\/g, '/');
+            }
+          },
+        });
         const registration: BreakpointRegistration = {
           id: result.breakpointId,
           verified: resolvedLocations.length > 0,
@@ -434,7 +458,7 @@ export class NodeDebugAdapter implements IDebugAdapter {
       const scriptUrl =
         frame.url || this.scriptIdToUrl.get(frame.location.scriptId) || '';
       const filePath = this.convertScriptUrlToFilePath(scriptUrl);
-      const origin = this.classifyFileOrigin(filePath);
+      const origin = this.getOriginForPath(filePath);
 
       return {
         id: index,
@@ -443,7 +467,7 @@ export class NodeDebugAdapter implements IDebugAdapter {
         line: frame.location.lineNumber + 1, // Convert back to 1-based
         column: frame.location.columnNumber,
         origin,
-        relativePath: this.toRelativePath(filePath),
+        relativePath: toRelativePath(filePath, this.projectRoot),
       } satisfies StackFrame;
     });
   }
@@ -496,13 +520,16 @@ export class NodeDebugAdapter implements IDebugAdapter {
     // Find an available port using get-port
     this.inspectorPort = await getPort({ port: 9229 });
 
+    const resolvedScriptPath = path.resolve(scriptPath);
+    this.projectRoot = path.dirname(resolvedScriptPath).replace(/\\/g, '/');
+
     return new Promise((resolve, reject) => {
       // Use the runtime directly (no npx wrapper)
       const command = this.runtime;
       // Always use --inspect-brk to ensure we can attach debugger before script runs
       const args = [
         `--inspect-brk=${this.inspectorPort}`,
-        path.resolve(scriptPath),
+        resolvedScriptPath,
         ...this.scriptArgs,
       ];
 
@@ -653,16 +680,6 @@ export class NodeDebugAdapter implements IDebugAdapter {
 
     // Enable Debugger domain
     await this.cdpClient.send('Debugger.enable');
-
-    // Auto-resume from --inspect-brk if we haven't received a pause event
-    if (!this.isPaused) {
-      try {
-        await this.cdpClient.send('Runtime.runIfWaitingForDebugger');
-        this.hasResumedFromInitialPause = true;
-      } catch (_error) {
-        // Already running or command not needed
-      }
-    }
   }
 
   /**
@@ -675,8 +692,10 @@ export class NodeDebugAdapter implements IDebugAdapter {
       case 'breakpoint':
         return 'breakpoint';
       case 'step':
-      case 'debugCommand':
         return 'step';
+      case 'debugCommand':
+      case 'debuggerStatement':
+        return 'debugger';
       case 'exception':
         return 'exception';
       case 'other':
@@ -689,17 +708,6 @@ export class NodeDebugAdapter implements IDebugAdapter {
   private handleDebuggerPaused(params: CDPPausedEventParams): void {
     this.isPaused = true;
     this.currentCallFrames = params.callFrames;
-
-    // Auto-resume the initial pause from --inspect-brk
-    if (!this.hasResumedFromInitialPause && params.reason === 'other') {
-      this.hasResumedFromInitialPause = true;
-      // Auto-resume execution
-      this.cdpClient.send('Debugger.resume').catch(() => {
-        // Ignore error - may already be running
-      });
-      // Don't notify pause handler for this automatic resume
-      return;
-    }
 
     const debugState: DebugState = {
       status: 'paused',
@@ -718,7 +726,16 @@ export class NodeDebugAdapter implements IDebugAdapter {
       const breakpointId = params.hitBreakpoints[0];
       const storedBreakpoint = this.breakpoints.get(breakpointId);
       const resolvedLocations = storedBreakpoint
-        ? this.mapBreakpointLocations(storedBreakpoint.locations)
+        ? mapBreakpointLocations(storedBreakpoint.locations, {
+            resolveScriptUrl: (scriptId) => this.scriptIdToUrl.get(scriptId),
+            convertScriptUrlToPath: (scriptUrl) =>
+              this.convertScriptUrlToFilePath(scriptUrl),
+            onPathResolved: (filePath) => {
+              if (!this.projectRoot && path.isAbsolute(filePath)) {
+                this.projectRoot = path.dirname(filePath).replace(/\\/g, '/');
+              }
+            },
+          })
         : [];
 
       if (resolvedLocations.length === 0 && topFrame && debugState.location) {
@@ -881,7 +898,16 @@ export class NodeDebugAdapter implements IDebugAdapter {
       });
     }
 
-    const resolvedLocations = this.mapBreakpointLocations([normalizedLocation]);
+    const resolvedLocations = mapBreakpointLocations([normalizedLocation], {
+      resolveScriptUrl: (scriptId) => this.scriptIdToUrl.get(scriptId),
+      convertScriptUrlToPath: (scriptUrl) =>
+        this.convertScriptUrlToFilePath(scriptUrl),
+      onPathResolved: (filePath) => {
+        if (!this.projectRoot && path.isAbsolute(filePath)) {
+          this.projectRoot = path.dirname(filePath).replace(/\\/g, '/');
+        }
+      },
+    });
 
     this.emitBreakpointResolved({
       id: params.breakpointId,
@@ -890,32 +916,13 @@ export class NodeDebugAdapter implements IDebugAdapter {
     });
   }
 
-  private mapBreakpointLocations(
-    locations: CDPBreakpoint['locations'],
-  ): BreakpointLocation[] {
-    return locations
-      .map((location) => {
-        const scriptUrl = this.scriptIdToUrl.get(location.scriptId) || '';
-        const filePath = this.convertScriptUrlToFilePath(scriptUrl);
-        if (!filePath) {
-          return undefined;
-        }
-        return {
-          file: filePath,
-          line: location.lineNumber + 1,
-          column: location.columnNumber,
-        } satisfies BreakpointLocation;
-      })
-      .filter((entry): entry is BreakpointLocation => Boolean(entry));
-  }
-
   private createDebugLocation(
     frame: CDPPausedEventParams['callFrames'][number],
   ): DebugLocation | undefined {
     const scriptUrl =
       frame.url || this.scriptIdToUrl.get(frame.location.scriptId);
     const filePath = this.convertScriptUrlToFilePath(scriptUrl || '');
-    const origin = this.classifyFileOrigin(filePath);
+    const origin = this.getOriginForPath(filePath);
 
     if (!filePath && origin === 'internal') {
       return {
@@ -929,35 +936,21 @@ export class NodeDebugAdapter implements IDebugAdapter {
       file: filePath || undefined,
       line: frame.location.lineNumber + 1,
       column: frame.location.columnNumber,
-      relativePath: this.toRelativePath(filePath),
+      relativePath: toRelativePath(filePath, this.projectRoot),
       description: this.describeOrigin(origin, filePath),
     };
   }
 
-  private classifyFileOrigin(filePath: string): CodeOrigin {
-    if (!filePath) {
-      return 'internal';
-    }
-
-    const normalized = filePath.replace(/\\/g, '/');
-
-    if (normalized.startsWith('node:')) {
-      return 'internal';
-    }
-
-    if (normalized.includes('/internal/')) {
-      return 'internal';
-    }
-
-    if (normalized.includes('/node_modules/')) {
-      return 'library';
-    }
-
-    if (normalized.startsWith(`${this.projectRoot}/`)) {
-      return 'user';
-    }
-
-    return 'unknown';
+  private getOriginForPath(filePath: string): CodeOrigin {
+    return classifyOrigin(filePath, {
+      projectRoot: this.projectRoot,
+      internalMatchers: [
+        (normalized) => normalized.startsWith('node:'),
+        (normalized) => normalized.includes('/internal/'),
+      ],
+      libraryMatchers: [(normalized) => normalized.includes('/node_modules/')],
+      treatAbsoluteAsUser: true,
+    });
   }
 
   private describeOrigin(
@@ -976,19 +969,6 @@ export class NodeDebugAdapter implements IDebugAdapter {
 
     if (origin === 'library') {
       return 'Dependency code (node_modules)';
-    }
-
-    return undefined;
-  }
-
-  private toRelativePath(filePath: string): string | undefined {
-    if (!filePath) {
-      return undefined;
-    }
-
-    const normalized = filePath.replace(/\\/g, '/');
-    if (normalized.startsWith(`${this.projectRoot}/`)) {
-      return normalized.slice(this.projectRoot.length + 1);
     }
 
     return undefined;

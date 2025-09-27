@@ -47,7 +47,7 @@ export interface IDebugAdapter {
 
 export interface DebugState {
   status: 'running' | 'paused' | 'terminated';
-  pauseReason?: 'breakpoint' | 'step' | 'exception' | 'entry';
+  pauseReason?: 'breakpoint' | 'step' | 'exception' | 'entry' | 'debugger';
   breakpoint?: BreakpointInfo;
   exception?: ExceptionInfo;
   location?: DebugLocation;
@@ -248,6 +248,10 @@ export interface ISessionManager {
   cleanupInactiveSessions?(): Promise<number>;
   getCleanupConfig?(): SessionCleanupConfig;
   setCleanupConfig?(config: Partial<SessionCleanupConfig>): void;
+  waitForPause(
+    sessionId: string,
+    timeoutMs?: number,
+  ): Promise<DebugSession | undefined>;
 }
 
 export interface ICDPClient {

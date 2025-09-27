@@ -137,8 +137,13 @@ Inspect variables at a specific scope or path.
 **Parameters:**
 - `sessionId`: Debug session ID
 - `frameId?`: Stack frame ID (0 for top frame)
-- `path?`: Variable path (e.g., "user.profile.settings")
+- `path`: Dot-notation path to the variable (required)
 - `maxDepth?`: Maximum object traversal depth
+
+### Pause Behaviour
+- Sessions always pause at the runtime entry point before user code runs; use `js-debugger_continue` to reach your breakpoints.
+- Pauses triggered by manual `debugger;` statements surface as `pauseReason: "debugger"` with guidance on how to proceed.
+- Responses include breakpoint summaries so you can see which breakpoints are resolved or still pending immediately after launch.
 
 ### `js-debugger_search_console_output`
 Search and filter console output.
