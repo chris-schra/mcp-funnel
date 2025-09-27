@@ -95,6 +95,7 @@ Start a debugging session for Node.js or browser JavaScript.
 - `platform`: "node" | "browser" - Target platform
 - `target`: Script path (Node) or URL/auto (browser)
 - `command?`: Runtime command for Node (node, tsx, ts-node)
+- `args?`: Additional CLI arguments passed to the script (Node only)
 - `breakpoints?`: Array of breakpoint definitions
 - `timeout?`: Session timeout in milliseconds
 - `evalExpressions?`: Expressions to evaluate when paused

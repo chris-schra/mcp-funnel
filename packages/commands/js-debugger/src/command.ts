@@ -145,6 +145,14 @@ export class JsDebuggerCommand implements ICommand {
                 'Runtime command for Node (e.g., "node", "tsx", "ts-node"). Defaults to "node"',
               default: 'node',
             },
+            args: {
+              type: 'array',
+              description:
+                'Additional CLI arguments passed to the script. Use this instead of embedding arguments in the target path.',
+              items: {
+                type: 'string',
+              },
+            },
             breakpoints: {
               type: 'array',
               description: 'Breakpoints to set',
@@ -241,8 +249,9 @@ export class JsDebuggerCommand implements ICommand {
             sessionId: { type: 'string', description: 'Debug session ID' },
             path: {
               type: 'string',
+              minLength: 1,
               description:
-                'Dot-notation path to specific variable (e.g., "user.profile.settings")',
+                'Dot-notation path to a specific variable (e.g., "user.profile")',
             },
             frameId: {
               type: 'number',
@@ -255,7 +264,7 @@ export class JsDebuggerCommand implements ICommand {
               default: 3,
             },
           },
-          required: ['sessionId'],
+          required: ['sessionId', 'path'],
         },
       },
       {

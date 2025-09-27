@@ -352,10 +352,12 @@ describeReal('NodeDebugAdapter integration', () => {
       const scopes = await adapter.getScopes(0);
       expect(scopes.length).toBeGreaterThan(0);
 
-      const breakpointId = await adapter.setBreakpoint(
+      const breakpointRegistration = await adapter.setBreakpoint(
         breakpointFixture.tempPath,
         10,
       );
+
+      expect(breakpointRegistration.id).toBeTruthy();
 
       await adapter.continue();
 
@@ -366,7 +368,7 @@ describeReal('NodeDebugAdapter integration', () => {
 
       expect(['breakpoint', 'entry']).toContain(secondPause.pauseReason);
 
-      await adapter.removeBreakpoint(breakpointId);
+      await adapter.removeBreakpoint(breakpointRegistration.id);
 
       await adapter.continue();
 

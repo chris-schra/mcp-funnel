@@ -1,3 +1,4 @@
+import path from 'path';
 import {
   IDebugAdapter,
   DebugState,
@@ -9,6 +10,10 @@ import {
   ConsoleHandler,
   PauseHandler,
   ResumeHandler,
+  BreakpointRegistration,
+  BreakpointLocation,
+  CodeOrigin,
+  DebugLocation,
 } from '../types.js';
 import {
   CDPClient,
@@ -42,6 +47,10 @@ export class BrowserAdapter implements IDebugAdapter {
   private breakpoints = new Map<string, CDPBreakpoint>();
   private currentCallFrames: CDPCallFrame[] = [];
   private debugState: DebugState = { status: 'running' };
+  private breakpointResolvedHandlers: Array<
+    (registration: BreakpointRegistration) => void
+  > = [];
+  private projectRoot: string = path.resolve(process.cwd()).replace(/\\/g, '/');
 
   // Event handlers
   private consoleHandlers: ConsoleHandler[] = [];
@@ -158,7 +167,7 @@ export class BrowserAdapter implements IDebugAdapter {
     file: string,
     line: number,
     condition?: string,
-  ): Promise<string> {
+  ): Promise<BreakpointRegistration> {
     if (!this.isConnected) {
       throw new Error('Not connected to debugging target');
     }
@@ -182,7 +191,21 @@ export class BrowserAdapter implements IDebugAdapter {
 
       this.breakpoints.set(result.breakpointId, result);
 
-      return result.breakpointId;
+      const resolvedLocations = this.mapBreakpointLocations(result.locations, {
+        fallbackUrl: url,
+      });
+
+      const registration: BreakpointRegistration = {
+        id: result.breakpointId,
+        verified: resolvedLocations.length > 0,
+        resolvedLocations,
+      };
+
+      if (registration.verified) {
+        this.emitBreakpointResolved(registration);
+      }
+
+      return registration;
     } catch (error) {
       throw new Error(
         `Failed to set breakpoint: ${error instanceof Error ? error.message : error}`,
@@ -345,13 +368,20 @@ export class BrowserAdapter implements IDebugAdapter {
       return [];
     }
 
-    return this.currentCallFrames.map((frame, index) => ({
-      id: index,
-      functionName: frame.functionName || '(anonymous)',
-      file: this.urlToFilePath(frame.url),
-      line: frame.location.lineNumber + 1, // Convert to 1-based
-      column: frame.location.columnNumber,
-    }));
+    return this.currentCallFrames.map((frame, index) => {
+      const filePath = this.urlToFilePath(frame.url);
+      const origin = this.classifyFileOrigin(filePath);
+
+      return {
+        id: index,
+        functionName: frame.functionName || '(anonymous)',
+        file: filePath,
+        line: frame.location.lineNumber + 1, // Convert to 1-based
+        column: frame.location.columnNumber,
+        origin,
+        relativePath: this.toRelativePath(filePath),
+      } satisfies StackFrame;
+    });
   }
 
   /**
@@ -426,6 +456,12 @@ export class BrowserAdapter implements IDebugAdapter {
     this.resumeHandlers.push(handler);
   }
 
+  onBreakpointResolved(
+    handler: (registration: BreakpointRegistration) => void,
+  ): void {
+    this.breakpointResolvedHandlers.push(handler);
+  }
+
   /**
    * Setup CDP event handlers
    */
@@ -442,6 +478,19 @@ export class BrowserAdapter implements IDebugAdapter {
 
     this.cdpClient.on('Debugger.scriptParsed', (params: unknown) => {
       this.handleScriptParsed(params as CDPScriptParsedParams);
+    });
+
+    this.cdpClient.on('Debugger.breakpointResolved', (params: unknown) => {
+      this.handleBreakpointResolved(
+        params as {
+          breakpointId: string;
+          location: {
+            scriptId: string;
+            lineNumber: number;
+            columnNumber?: number;
+          };
+        },
+      );
     });
 
     // Console events
@@ -480,16 +529,55 @@ export class BrowserAdapter implements IDebugAdapter {
       pauseReason: this.mapPauseReason(params.reason),
     };
 
+    const topFrame = params.callFrames[0];
+    if (topFrame) {
+      const location = this.createDebugLocation(topFrame);
+      if (location) {
+        this.debugState.location = location;
+      }
+    }
+
     if (params.hitBreakpoints && params.hitBreakpoints.length > 0) {
       const breakpointId = params.hitBreakpoints[0];
       const breakpoint = this.breakpoints.get(breakpointId);
+      const resolvedLocations = breakpoint
+        ? this.mapBreakpointLocations(breakpoint.locations)
+        : [];
+
+      if (resolvedLocations.length === 0 && topFrame) {
+        const fallbackLocation = this.createDebugLocation(topFrame);
+        if (fallbackLocation?.file) {
+          resolvedLocations.push({
+            file: fallbackLocation.file,
+            line: fallbackLocation.line || topFrame.location.lineNumber + 1,
+            column: fallbackLocation.column ?? topFrame.location.columnNumber,
+          });
+        }
+      }
 
       if (breakpoint) {
         this.debugState.breakpoint = {
           id: breakpointId,
-          file: '', // This needs to be mapped from script URL
-          line: breakpoint.locations[0]?.lineNumber || 0,
+          file:
+            resolvedLocations[0]?.file ||
+            this.urlToFilePath(topFrame?.url || '') ||
+            '[unknown]',
+          line:
+            resolvedLocations[0]?.line ||
+            (topFrame ? topFrame.location.lineNumber + 1 : 0),
+          condition: undefined,
+          verified: resolvedLocations.length > 0,
+          resolvedLocations:
+            resolvedLocations.length > 0 ? resolvedLocations : undefined,
         };
+
+        if (resolvedLocations.length > 0) {
+          this.emitBreakpointResolved({
+            id: breakpointId,
+            verified: true,
+            resolvedLocations,
+          });
+        }
       }
     }
 
@@ -570,6 +658,161 @@ export class BrowserAdapter implements IDebugAdapter {
         console.warn('Error in console handler:', error);
       }
     });
+  }
+
+  private emitBreakpointResolved(registration: BreakpointRegistration): void {
+    for (const handler of this.breakpointResolvedHandlers) {
+      try {
+        handler(registration);
+      } catch (error) {
+        console.warn('Error in breakpoint resolved handler:', error);
+      }
+    }
+  }
+
+  private handleBreakpointResolved(params: {
+    breakpointId: string;
+    location: {
+      scriptId: string;
+      lineNumber: number;
+      columnNumber?: number;
+    };
+  }): void {
+    const breakpoint = this.breakpoints.get(params.breakpointId);
+    const normalizedLocation = {
+      scriptId: params.location.scriptId,
+      lineNumber: params.location.lineNumber,
+      columnNumber: params.location.columnNumber,
+    };
+
+    if (breakpoint) {
+      const locations = breakpoint.locations || [];
+      const alreadyRecorded = locations.some(
+        (loc) =>
+          loc.scriptId === normalizedLocation.scriptId &&
+          loc.lineNumber === normalizedLocation.lineNumber &&
+          loc.columnNumber === normalizedLocation.columnNumber,
+      );
+      if (!alreadyRecorded) {
+        locations.push(normalizedLocation);
+      }
+    } else {
+      this.breakpoints.set(params.breakpointId, {
+        breakpointId: params.breakpointId,
+        locations: [normalizedLocation],
+      });
+    }
+
+    const resolvedLocations = this.mapBreakpointLocations([normalizedLocation]);
+
+    this.emitBreakpointResolved({
+      id: params.breakpointId,
+      verified: resolvedLocations.length > 0,
+      resolvedLocations,
+    });
+  }
+
+  private mapBreakpointLocations(
+    locations: Array<{
+      scriptId: string;
+      lineNumber: number;
+      columnNumber?: number;
+    }>,
+    options?: { fallbackUrl?: string },
+  ): BreakpointLocation[] {
+    return locations
+      .map((location) => {
+        const script = this.scripts.get(location.scriptId);
+        const scriptUrl = script?.url || options?.fallbackUrl || '';
+        const filePath = this.urlToFilePath(scriptUrl);
+        if (!filePath) {
+          return undefined;
+        }
+        return {
+          file: filePath,
+          line: location.lineNumber + 1,
+          column: location.columnNumber,
+        } satisfies BreakpointLocation;
+      })
+      .filter((entry): entry is BreakpointLocation => Boolean(entry));
+  }
+
+  private createDebugLocation(frame: CDPCallFrame): DebugLocation | undefined {
+    const filePath = this.urlToFilePath(frame.url);
+    const origin = this.classifyFileOrigin(filePath);
+
+    if (!filePath && origin === 'internal') {
+      return {
+        type: 'internal',
+        description: 'Browser runtime code',
+      };
+    }
+
+    return {
+      type: origin,
+      file: filePath || undefined,
+      line: frame.location.lineNumber + 1,
+      column: frame.location.columnNumber,
+      relativePath: this.toRelativePath(filePath),
+      description: this.describeOrigin(origin, filePath),
+    };
+  }
+
+  private classifyFileOrigin(filePath: string): CodeOrigin {
+    if (!filePath) {
+      return 'internal';
+    }
+
+    const normalized = filePath.replace(/\\/g, '/');
+
+    if (normalized.startsWith('chrome-extension:')) {
+      return 'internal';
+    }
+
+    if (normalized.includes('/node_modules/')) {
+      return 'library';
+    }
+
+    if (normalized.startsWith(`${this.projectRoot}/`)) {
+      return 'user';
+    }
+
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+      return 'unknown';
+    }
+
+    return 'unknown';
+  }
+
+  private describeOrigin(
+    origin: CodeOrigin,
+    filePath: string,
+  ): string | undefined {
+    if (origin === 'internal') {
+      if (filePath.startsWith('chrome-extension:')) {
+        return 'Browser extension script';
+      }
+      return 'Browser runtime code';
+    }
+
+    if (origin === 'library') {
+      return 'Dependency code (node_modules)';
+    }
+
+    return undefined;
+  }
+
+  private toRelativePath(filePath: string): string | undefined {
+    if (!filePath) {
+      return undefined;
+    }
+
+    const normalized = filePath.replace(/\\/g, '/');
+    if (normalized.startsWith(`${this.projectRoot}/`)) {
+      return normalized.slice(this.projectRoot.length + 1);
+    }
+
+    return undefined;
   }
 
   /**

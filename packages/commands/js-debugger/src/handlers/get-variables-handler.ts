@@ -8,7 +8,7 @@ import type {
 
 export interface GetVariablesHandlerArgs {
   sessionId: string;
-  path?: string;
+  path: string;
   frameId?: number;
   maxDepth?: number;
 }
@@ -42,51 +42,31 @@ export class GetVariablesHandler
 
       const { session } = validation;
 
+      if (!args.path?.trim()) {
+        return context.responseFormatter.error(
+          'Variable path is required. Provide the dot-notation path using the "path" parameter.',
+        );
+      }
+
+      const trimmedPath = args.path.trim();
       const frameId = args.frameId ?? 0;
       const maxDepth = args.maxDepth ?? 3;
 
-      // Get the scopes for the specified frame
-      const scopes = await session.adapter.getScopes(frameId);
+      // Get the scopes for the specified frame and drop globals to avoid huge payloads
+      const scopes = (await session.adapter.getScopes(frameId)).filter(
+        (scope) => scope.type !== 'global',
+      );
 
-      if (args.path) {
-        // Path-based variable access
-        const result = await this.getVariableByPath(
-          scopes,
-          args.path,
-          maxDepth,
-        );
-        return context.responseFormatter.variables(args.sessionId, frameId, {
-          path: args.path,
-          result,
-        });
-      } else {
-        // Get all variables in all scopes
-        const enrichedScopes = await Promise.all(
-          scopes.map(async (scope) => ({
-            type: scope.type,
-            name: scope.name,
-            variables: await Promise.all(
-              scope.variables.map(async (variable) => ({
-                name: variable.name,
-                value: await this.enrichVariableValue(
-                  variable.value,
-                  variable.type,
-                  maxDepth,
-                  new Set(),
-                ),
-                type: variable.type,
-                configurable: variable.configurable,
-                enumerable: variable.enumerable,
-              })),
-            ),
-          })),
-        );
+      const result = await this.getVariableByPath(
+        scopes,
+        trimmedPath,
+        maxDepth,
+      );
 
-        return context.responseFormatter.variables(args.sessionId, frameId, {
-          maxDepth,
-          scopes: enrichedScopes,
-        });
-      }
+      return context.responseFormatter.variables(args.sessionId, frameId, {
+        path: trimmedPath,
+        result,
+      });
     } catch (error) {
       return context.sessionValidator.createHandlerError(
         args.sessionId,

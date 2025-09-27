@@ -9,6 +9,7 @@ export interface DebugHandlerArgs {
   platform: 'node' | 'browser';
   target: string;
   command?: string;
+  args?: string[];
   breakpoints?: Array<{
     file: string;
     line: number;
@@ -38,6 +39,7 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
         platform: args.platform,
         target: args.target,
         command: args.command,
+        args: args.args,
         breakpoints: args.breakpoints,
         timeout: args.timeout,
         evalExpressions: args.evalExpressions,

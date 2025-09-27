@@ -41,12 +41,15 @@ export class GetStacktraceHandler
 
       return context.responseFormatter.stackTrace(
         args.sessionId,
+        session,
         stackTrace.map((frame) => ({
           frameId: frame.id,
           functionName: frame.functionName,
           file: frame.file,
           line: frame.line,
           column: frame.column,
+          origin: frame.origin,
+          relativePath: frame.relativePath,
         })),
       );
     } catch (error) {

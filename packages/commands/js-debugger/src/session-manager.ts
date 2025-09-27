@@ -542,6 +542,15 @@ export class SessionManager implements ISessionManager {
     adapter.onPaused((state: DebugState) => {
       session.state = state;
       session.lifecycleState = 'active'; // Update lifecycle state
+      if (state.breakpoint) {
+        const entry = session.breakpoints.get(state.breakpoint.id);
+        if (entry) {
+          entry.verified = state.breakpoint.verified;
+          if (state.breakpoint.resolvedLocations) {
+            entry.resolvedLocations = state.breakpoint.resolvedLocations;
+          }
+        }
+      }
       this.activityTracker.recordActivity(session.id, 'state_change');
       this.updateSessionActivity(session);
     });
@@ -553,6 +562,18 @@ export class SessionManager implements ISessionManager {
       this.activityTracker.recordActivity(session.id, 'state_change');
       this.updateSessionActivity(session);
     });
+
+    if (typeof adapter.onBreakpointResolved === 'function') {
+      adapter.onBreakpointResolved((registration) => {
+        const entry = session.breakpoints.get(registration.id);
+        if (entry) {
+          entry.verified = registration.verified;
+          if (registration.resolvedLocations) {
+            entry.resolvedLocations = registration.resolvedLocations;
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -732,16 +753,18 @@ export class SessionManager implements ISessionManager {
   ): Promise<void> {
     for (const bp of breakpoints) {
       try {
-        const id = await session.adapter.setBreakpoint(
+        const registration = await session.adapter.setBreakpoint(
           bp.file,
           bp.line,
           bp.condition,
         );
-        session.breakpoints.set(id, {
-          id,
+        session.breakpoints.set(registration.id, {
+          id: registration.id,
           file: bp.file,
           line: bp.line,
           condition: bp.condition,
+          verified: registration.verified,
+          resolvedLocations: registration.resolvedLocations,
         });
       } catch (error) {
         // Continue with other breakpoints even if one fails

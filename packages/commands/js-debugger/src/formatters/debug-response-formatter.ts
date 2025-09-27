@@ -1,3 +1,4 @@
+import path from 'path';
 import type {
   IResponseFormatter,
   CallToolResult,
@@ -5,6 +6,9 @@ import type {
   ConsoleMessage,
   SessionLifecycleState,
   DebugState,
+  DebugLocation,
+  BreakpointStatusSummary,
+  BreakpointStatusEntry,
 } from '../types.js';
 
 /**
@@ -58,7 +62,9 @@ export class DebugResponseFormatter implements IResponseFormatter {
       const stackTrace = await session.adapter.getStackTrace();
       const topFrame = stackTrace[0];
       const scopes = topFrame
-        ? await session.adapter.getScopes(topFrame.id)
+        ? (await session.adapter.getScopes(topFrame.id)).filter(
+            (scope) => scope.type !== 'global',
+          )
         : [];
 
       const variables: Record<string, unknown> = {};
@@ -68,28 +74,56 @@ export class DebugResponseFormatter implements IResponseFormatter {
         );
       }
 
-      return this.success({
+      const formattedStackTrace = stackTrace.map((frame) => ({
+        frameId: frame.id,
+        functionName: frame.functionName,
+        file: frame.file,
+        relativePath: frame.relativePath,
+        origin: frame.origin,
+        line: frame.line,
+        column: frame.column,
+      }));
+
+      const currentLocation = this.deriveCurrentLocation(
+        session,
+        formattedStackTrace,
+      );
+      const breakpointSummary = this.buildBreakpointSummary(session);
+      const messaging = this.buildPauseMessaging(state, currentLocation);
+
+      const response: Record<string, unknown> = {
         sessionId,
         status: 'paused',
         pauseReason: state.pauseReason,
         breakpoint: state.breakpoint,
         exception: state.exception,
-        stackTrace: stackTrace.map((frame) => ({
+        location: currentLocation,
+        hint: messaging.hint,
+        stackTrace: formattedStackTrace.map((frame) => ({
+          frameId: frame.frameId,
           functionName: frame.functionName,
           file: frame.file,
+          relativePath: frame.relativePath,
+          origin: frame.origin,
           line: frame.line,
           column: frame.column,
         })),
         variables,
         consoleOutput: this.formatConsoleMessages(consoleOutput),
-        message: `Paused${state.pauseReason ? ` at ${state.pauseReason}` : ''}. Use js-debugger_continue tool to proceed.`,
-      });
+        message: messaging.message,
+      };
+
+      if (breakpointSummary) {
+        response.breakpoints = breakpointSummary;
+      }
+
+      return this.success(response);
     }
 
     return this.success({
       sessionId,
       status: state.status,
-      message: 'Debug session is running',
+      message: 'Running… Will pause at next breakpoint or completion.',
     });
   }
 
@@ -139,7 +173,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
     return this.success({
       sessionId,
       status: 'running',
-      message: `Debug session started. Use js-debugger_search_console_output with sessionId "${sessionId}" to search console output.`,
+      message: 'Running… Will pause at next breakpoint or completion.',
       platform,
       target,
     });
@@ -161,21 +195,38 @@ export class DebugResponseFormatter implements IResponseFormatter {
    */
   stackTrace(
     sessionId: string,
+    session: DebugSession,
     stackTrace: Array<{
       frameId: number;
       functionName: string;
       file: string;
       line: number;
       column?: number;
+      origin?: string;
+      relativePath?: string;
     }>,
   ): CallToolResult {
-    return this.success({
+    const location = this.deriveCurrentLocation(session, stackTrace);
+    const messaging = this.buildPauseMessaging(session.state, location);
+    const breakpointSummary = this.buildBreakpointSummary(session);
+
+    const response: Record<string, unknown> = {
       sessionId,
-      status: 'paused',
+      status: session.state.status,
+      pauseReason: session.state.pauseReason,
+      location,
+      hint: messaging.hint,
+      breakpoint: session.state.breakpoint,
       stackTrace,
       frameCount: stackTrace.length,
-      message: `Stack trace with ${stackTrace.length} frames`,
-    });
+      message: messaging.message,
+    };
+
+    if (breakpointSummary) {
+      response.breakpoints = breakpointSummary;
+    }
+
+    return this.success(response);
   }
 
   /**
@@ -184,26 +235,15 @@ export class DebugResponseFormatter implements IResponseFormatter {
   variables(
     sessionId: string,
     frameId: number,
-    data: {
-      path?: string;
-      maxDepth?: number;
-      scopes?: unknown[];
-      result?: unknown;
-    },
+    data: { path: string; result: unknown },
   ): CallToolResult {
-    const response: Record<string, unknown> = {
+    return this.success({
       sessionId,
       frameId,
-      ...data,
-    };
-
-    if (data.path) {
-      response.message = `Variable inspection for path: ${data.path}`;
-    } else {
-      response.message = `Variable inspection for frame ${frameId} with max depth ${data.maxDepth || 3}`;
-    }
-
-    return this.success(response);
+      path: data.path,
+      result: data.result,
+      message: `Variable inspection for path: ${data.path}`,
+    });
   }
 
   /**
@@ -236,5 +276,203 @@ export class DebugResponseFormatter implements IResponseFormatter {
       message: msg.message,
       args: msg.args,
     }));
+  }
+
+  private deriveCurrentLocation(
+    session: DebugSession,
+    frames: Array<{
+      file: string;
+      line: number;
+      column?: number;
+      origin?: string;
+      relativePath?: string;
+    }>,
+  ): DebugLocation | undefined {
+    const provided = session.state.location;
+    if (provided) {
+      if (!provided.relativePath && frames[0]?.relativePath) {
+        return { ...provided, relativePath: frames[0].relativePath };
+      }
+      return provided;
+    }
+
+    const topFrame = frames[0];
+    if (!topFrame) {
+      return undefined;
+    }
+
+    const origin = this.ensureOrigin(topFrame.origin);
+    return {
+      type: origin,
+      file: topFrame.file || undefined,
+      line: topFrame.line,
+      column: topFrame.column,
+      relativePath: topFrame.relativePath,
+      description:
+        origin === 'library'
+          ? 'Dependency code (node_modules)'
+          : origin === 'internal'
+            ? 'Runtime code'
+            : undefined,
+    };
+  }
+
+  private buildPauseMessaging(
+    state: DebugState,
+    location?: DebugLocation,
+  ): { message: string; hint?: string } {
+    if (state.status === 'running') {
+      return {
+        message: 'Running… Will pause at next breakpoint or completion.',
+      };
+    }
+
+    if (state.status === 'terminated') {
+      return { message: 'Debug session completed' };
+    }
+
+    if (state.status !== 'paused') {
+      return { message: `Debug session ${state.status}.` };
+    }
+
+    const locationLabel = location?.relativePath || location?.file;
+    const lineSuffix = location?.line ? `:${location.line}` : '';
+    const pauseReason = state.pauseReason;
+
+    if (location?.type === 'internal' && pauseReason === 'entry') {
+      return {
+        message:
+          'Debugger attached and paused at entry. Continue to run to your breakpoints.',
+        hint: 'Currently paused in runtime internals. Use js-debugger_continue to reach your code.',
+      };
+    }
+
+    if (location?.type === 'internal') {
+      const description = location.description || 'runtime internals';
+      return {
+        message: `Paused in ${description}. Continue to reach your code.`,
+        hint: 'Currently paused in runtime internals. Use js-debugger_continue to reach your code.',
+      };
+    }
+
+    if (location?.type === 'library' && locationLabel) {
+      return {
+        message: `Paused in dependency code at ${locationLabel}${lineSuffix}`,
+        hint: 'Paused inside dependency code. Step or continue to return to your application.',
+      };
+    }
+
+    if (pauseReason === 'breakpoint' && locationLabel) {
+      return {
+        message: `Paused at breakpoint in ${locationLabel}${lineSuffix}`,
+      };
+    }
+
+    if (locationLabel) {
+      return {
+        message: `Paused in ${locationLabel}${lineSuffix}`,
+      };
+    }
+
+    return {
+      message: 'Paused.',
+    };
+  }
+
+  private buildBreakpointSummary(
+    session: DebugSession,
+  ): BreakpointStatusSummary | undefined {
+    const requested = session.request.breakpoints ?? [];
+    const registered = Array.from(session.breakpoints.values());
+
+    if (requested.length === 0 && registered.length === 0) {
+      return undefined;
+    }
+
+    const pending: BreakpointStatusEntry[] = [];
+
+    for (const breakpoint of registered) {
+      if (!breakpoint.verified) {
+        pending.push({
+          file: breakpoint.file,
+          line: breakpoint.line,
+          condition: breakpoint.condition,
+          verified: false,
+          resolvedLocations: breakpoint.resolvedLocations,
+          status: 'pending',
+          message:
+            'Breakpoint registered but waiting for runtime confirmation.',
+        });
+      }
+    }
+
+    const registeredKeys = new Set(
+      registered.map((bp) =>
+        this.breakpointKey(bp.file, bp.line, bp.condition),
+      ),
+    );
+
+    for (const requestedBreakpoint of requested) {
+      const key = this.breakpointKey(
+        requestedBreakpoint.file,
+        requestedBreakpoint.line,
+        requestedBreakpoint.condition,
+      );
+      if (!registeredKeys.has(key)) {
+        pending.push({
+          file: requestedBreakpoint.file,
+          line: requestedBreakpoint.line,
+          condition: requestedBreakpoint.condition,
+          verified: false,
+          status: 'not-registered',
+          message: 'Breakpoint not yet registered with runtime.',
+        });
+      }
+    }
+
+    const setCount = registered.filter((bp) => bp.verified).length;
+    const requestedCount = Math.max(requested.length, registered.length);
+
+    return {
+      requested: requestedCount,
+      set: setCount,
+      pending,
+    };
+  }
+
+  private breakpointKey(
+    file: string,
+    line: number,
+    condition?: string,
+  ): string {
+    return `${this.normalizePathForKey(file)}:${line}:${condition ?? ''}`;
+  }
+
+  private normalizePathForKey(file: string): string {
+    if (!file || file.startsWith('[')) {
+      return file;
+    }
+
+    if (file.startsWith('node:') || file.startsWith('chrome-extension:')) {
+      return file;
+    }
+
+    try {
+      return path.resolve(file).replace(/\\/g, '/');
+    } catch {
+      return file;
+    }
+  }
+
+  private ensureOrigin(origin?: string): DebugLocation['type'] {
+    switch (origin) {
+      case 'user':
+      case 'internal':
+      case 'library':
+      case 'unknown':
+        return origin;
+      default:
+        return 'unknown';
+    }
   }
 }

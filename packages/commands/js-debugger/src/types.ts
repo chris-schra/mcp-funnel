@@ -1,3 +1,26 @@
+export type CodeOrigin = 'user' | 'internal' | 'library' | 'unknown';
+
+export interface DebugLocation {
+  type: CodeOrigin;
+  file?: string;
+  line?: number;
+  column?: number;
+  description?: string;
+  relativePath?: string;
+}
+
+export interface BreakpointLocation {
+  file: string;
+  line: number;
+  column: number | undefined;
+}
+
+export interface BreakpointRegistration {
+  id: string;
+  verified: boolean;
+  resolvedLocations?: BreakpointLocation[];
+}
+
 export interface IDebugAdapter {
   connect(target: string): Promise<void>;
   disconnect(): Promise<void>;
@@ -5,7 +28,7 @@ export interface IDebugAdapter {
     file: string,
     line: number,
     condition?: string,
-  ): Promise<string>;
+  ): Promise<BreakpointRegistration>;
   removeBreakpoint(id: string): Promise<void>;
   continue(): Promise<DebugState>;
   stepOver(): Promise<DebugState>;
@@ -17,6 +40,9 @@ export interface IDebugAdapter {
   onConsoleOutput(handler: ConsoleHandler): void;
   onPaused(handler: PauseHandler): void;
   onResumed(handler: ResumeHandler): void;
+  onBreakpointResolved?(
+    handler: (registration: BreakpointRegistration) => void,
+  ): void;
 }
 
 export interface DebugState {
@@ -24,6 +50,8 @@ export interface DebugState {
   pauseReason?: 'breakpoint' | 'step' | 'exception' | 'entry';
   breakpoint?: BreakpointInfo;
   exception?: ExceptionInfo;
+  location?: DebugLocation;
+  hint?: string;
 }
 
 export interface BreakpointInfo {
@@ -31,6 +59,24 @@ export interface BreakpointInfo {
   file: string;
   line: number;
   condition?: string;
+  verified: boolean;
+  resolvedLocations?: BreakpointLocation[];
+}
+
+export interface BreakpointStatusEntry {
+  file: string;
+  line: number;
+  condition?: string;
+  verified: boolean;
+  resolvedLocations?: BreakpointLocation[];
+  status?: 'not-registered' | 'pending';
+  message?: string;
+}
+
+export interface BreakpointStatusSummary {
+  requested: number;
+  set: number;
+  pending: BreakpointStatusEntry[];
 }
 
 export interface ExceptionInfo {
@@ -45,6 +91,8 @@ export interface StackFrame {
   file: string;
   line: number;
   column?: number;
+  origin?: CodeOrigin;
+  relativePath?: string;
 }
 
 export interface Scope {
@@ -84,6 +132,7 @@ export interface DebugRequest {
   platform: 'node' | 'browser';
   target: string;
   command?: string; // Runtime command for Node (e.g., "node", "tsx", "ts-node")
+  args?: string[]; // Additional CLI arguments passed to the script when launching Node runtime
   breakpoints?: Array<{
     file: string;
     line: number;
@@ -275,22 +324,23 @@ export interface IResponseFormatter {
   terminatedSession(sessionId: string, message: string): CallToolResult;
   stackTrace(
     sessionId: string,
+    session: DebugSession,
     stackTrace: Array<{
       frameId: number;
       functionName: string;
       file: string;
       line: number;
       column?: number;
+      origin?: CodeOrigin;
+      relativePath?: string;
     }>,
   ): CallToolResult;
   variables(
     sessionId: string,
     frameId: number,
     data: {
-      path?: string;
-      maxDepth?: number;
-      scopes?: unknown[];
-      result?: unknown;
+      path: string;
+      result: unknown;
     },
   ): CallToolResult;
   evaluation(
@@ -358,7 +408,7 @@ export interface IMockSessionManager {
   ): CallToolResult;
   getVariablesMock(args: {
     sessionId: string;
-    path?: string;
+    path: string;
     frameId?: number;
     maxDepth?: number;
   }): CallToolResult;

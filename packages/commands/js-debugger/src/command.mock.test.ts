@@ -12,6 +12,20 @@ interface DebugResponse {
   breakpoint?: {
     file: string;
     line: number;
+    verified?: boolean;
+  };
+  pauseReason?: string;
+  location?: {
+    file?: string;
+    relativePath?: string;
+    line?: number;
+    type?: string;
+  };
+  hint?: string;
+  breakpoints?: {
+    requested: number;
+    set: number;
+    pending: unknown[];
   };
 }
 
@@ -28,6 +42,7 @@ const MOCK_DEBUG_ARGS = {
   platform: 'node',
   target: 'mock-target.js',
   breakpoints: [{ file: 'mock-target.js', line: 10 }],
+  args: ['--demo-flag', '123'],
   useMock: true,
 };
 
@@ -78,34 +93,60 @@ describe('JsDebuggerCommand mock mode', () => {
     );
     const { sessionId } = parseResult<DebugResponse>(debugResult);
 
+    const storedSession = (
+      command as unknown as {
+        mockSessionManager: {
+          getMockSession(
+            id: string,
+          ): { request: { args?: string[] } } | undefined;
+        };
+      }
+    ).mockSessionManager.getMockSession(sessionId);
+
+    expect(storedSession?.request.args).toEqual(['--demo-flag', '123']);
+
     const stacktraceResult = await command.executeToolViaMCP('get_stacktrace', {
       sessionId,
     });
     const stacktracePayload = parseResult<{
       status: string;
+      pauseReason: string;
       stackTrace: Array<{ functionName: string }>;
+      location?: { type?: string; relativePath?: string; line?: number };
+      breakpoints?: { set: number; pending: unknown[] };
+      message: string;
+      hint?: string;
     }>(stacktraceResult);
 
     expect(stacktracePayload.status).toBe('paused');
+    expect(stacktracePayload.pauseReason).toBe('breakpoint');
     expect(stacktracePayload.stackTrace?.[0]?.functionName).toBe(
       'processUserData',
     );
+    expect(stacktracePayload.location?.type).toBe('user');
+    expect(stacktracePayload.location?.relativePath).toMatch(
+      /mock-target\.js$/,
+    );
+    expect(stacktracePayload.message).toMatch(/Paused at breakpoint/);
+    expect(stacktracePayload.breakpoints?.set).toBeGreaterThan(0);
+    expect(stacktracePayload.hint).toMatch(/continue/i);
 
     const variablesResult = await command.executeToolViaMCP('get_variables', {
       sessionId,
       frameId: 0,
+      path: 'userData.profile.settings.theme',
     });
     const variablesPayload = parseResult<{
       sessionId: string;
       frameId: number;
-      scopes: Array<{ type: string }>;
+      path: string;
+      result: { found: boolean; value?: unknown; type?: string };
     }>(variablesResult);
 
     expect(variablesPayload.sessionId).toBe(sessionId);
-    expect(Array.isArray(variablesPayload.scopes)).toBe(true);
-    expect(
-      variablesPayload.scopes.some((scope) => scope.type === 'local'),
-    ).toBe(true);
+    expect(variablesPayload.path).toBe('userData.profile.settings.theme');
+    expect(variablesPayload.result.found).toBe(true);
+    expect(variablesPayload.result.value).toBe('dark');
 
     const consoleResult = await command.executeToolViaMCP(
       'search_console_output',
@@ -164,6 +205,24 @@ describe('JsDebuggerCommand mock mode', () => {
     expect(continuePayload.message).toContain('completed');
   });
 
+  it('returns an error response when variable path is omitted', async () => {
+    const command = new JsDebuggerCommand();
+
+    const debugResult = await command.executeToolViaMCP(
+      'debug',
+      MOCK_DEBUG_ARGS,
+    );
+    const { sessionId } = parseResult<DebugResponse>(debugResult);
+
+    const resultWithoutPath = await command.executeToolViaMCP('get_variables', {
+      sessionId,
+    });
+
+    const payload = parseResult<{ error: string }>(resultWithoutPath);
+
+    expect(payload.error).toMatch(/Variable path is required/i);
+  });
+
   it('activates mock mode when JS_DEBUGGER_REAL is false', async () => {
     process.env.JS_DEBUGGER_REAL = 'false';
     const command = new JsDebuggerCommand();
@@ -177,6 +236,6 @@ describe('JsDebuggerCommand mock mode', () => {
     const payload = parseResult<DebugResponse>(debugResult);
     expect(payload.mock).toBe(true);
     expect(payload.status).toBe('paused');
-    expect(payload.breakpoint?.file).toBe('env-mock.js');
+    expect(payload.breakpoint?.file).toMatch(/env-mock\.js$/);
   });
 });

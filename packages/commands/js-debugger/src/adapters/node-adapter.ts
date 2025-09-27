@@ -14,6 +14,10 @@ import {
   PauseHandler,
   ResumeHandler,
   ConsoleMessage,
+  BreakpointRegistration,
+  BreakpointLocation,
+  DebugLocation,
+  CodeOrigin,
 } from '../types.js';
 import { CDPClient } from '../cdp/client.js';
 import {
@@ -31,6 +35,15 @@ interface CDPBreakpoint {
     lineNumber: number;
     columnNumber?: number;
   }>;
+}
+
+interface CDPBreakpointResolvedEventParams {
+  breakpointId: string;
+  location: {
+    scriptId: string;
+    lineNumber: number;
+    columnNumber?: number;
+  };
 }
 
 interface CDPPausedEventParams {
@@ -56,6 +69,7 @@ interface CDPPausedEventParams {
       name?: string;
     }>;
   }>;
+  hitBreakpoints?: string[];
   exception?: {
     type: string;
     value?: unknown;
@@ -118,6 +132,7 @@ type NodeDebugAdapterOptions = {
   cdpClient?: ICDPClient;
   request?: {
     command?: string;
+    args?: string[];
   };
 };
 /**
@@ -135,6 +150,11 @@ export class NodeDebugAdapter implements IDebugAdapter {
   private isConnected = false;
   private isPaused = false;
   private runtime: string;
+  private scriptArgs: string[];
+  private breakpointResolvedHandlers: Array<
+    (registration: BreakpointRegistration) => void
+  > = [];
+  private projectRoot: string;
   private hasResumedFromInitialPause = false;
 
   // Event handlers
@@ -146,6 +166,11 @@ export class NodeDebugAdapter implements IDebugAdapter {
     this.cdpClient = options?.cdpClient || new CDPClient();
     // Use the specified command or default to 'node'
     this.runtime = options?.request?.command || 'node';
+    const rawArgs = options?.request?.args ?? [];
+    this.scriptArgs = Array.isArray(rawArgs)
+      ? rawArgs.filter((value): value is string => typeof value === 'string')
+      : [];
+    this.projectRoot = path.resolve(process.cwd()).replace(/\\/g, '/');
   }
 
   async connect(target: string): Promise<void> {
@@ -181,7 +206,7 @@ export class NodeDebugAdapter implements IDebugAdapter {
     file: string,
     line: number,
     condition?: string,
-  ): Promise<string> {
+  ): Promise<BreakpointRegistration> {
     if (!this.isConnected) {
       throw new Error('Not connected to debugger');
     }
@@ -205,7 +230,16 @@ export class NodeDebugAdapter implements IDebugAdapter {
 
       if (result.breakpointId) {
         this.breakpoints.set(result.breakpointId, result);
-        return result.breakpointId;
+        const resolvedLocations = this.mapBreakpointLocations(result.locations);
+        const registration: BreakpointRegistration = {
+          id: result.breakpointId,
+          verified: resolvedLocations.length > 0,
+          resolvedLocations,
+        };
+        if (registration.verified) {
+          this.emitBreakpointResolved(registration);
+        }
+        return registration;
       }
 
       throw new Error('Failed to set breakpoint');
@@ -396,13 +430,22 @@ export class NodeDebugAdapter implements IDebugAdapter {
       return [];
     }
 
-    return this.currentCallFrames.map((frame, index) => ({
-      id: index,
-      functionName: frame.functionName || '<anonymous>',
-      file: this.convertScriptUrlToFilePath(frame.url || ''),
-      line: frame.location.lineNumber + 1, // Convert back to 1-based
-      column: frame.location.columnNumber,
-    }));
+    return this.currentCallFrames.map((frame, index) => {
+      const scriptUrl =
+        frame.url || this.scriptIdToUrl.get(frame.location.scriptId) || '';
+      const filePath = this.convertScriptUrlToFilePath(scriptUrl);
+      const origin = this.classifyFileOrigin(filePath);
+
+      return {
+        id: index,
+        functionName: frame.functionName || '<anonymous>',
+        file: filePath,
+        line: frame.location.lineNumber + 1, // Convert back to 1-based
+        column: frame.location.columnNumber,
+        origin,
+        relativePath: this.toRelativePath(filePath),
+      } satisfies StackFrame;
+    });
   }
 
   async getScopes(frameId: number): Promise<Scope[]> {
@@ -438,6 +481,12 @@ export class NodeDebugAdapter implements IDebugAdapter {
     this.resumeHandler = handler;
   }
 
+  onBreakpointResolved(
+    handler: (registration: BreakpointRegistration) => void,
+  ): void {
+    this.breakpointResolvedHandlers.push(handler);
+  }
+
   // Private methods
 
   private async spawnNodeProcess(scriptPath: string): Promise<void> {
@@ -454,6 +503,7 @@ export class NodeDebugAdapter implements IDebugAdapter {
       const args = [
         `--inspect-brk=${this.inspectorPort}`,
         path.resolve(scriptPath),
+        ...this.scriptArgs,
       ];
 
       this.nodeProcess = spawn(command, args, {
@@ -583,6 +633,10 @@ export class NodeDebugAdapter implements IDebugAdapter {
       this.handleScriptParsed(params as CDPScriptParsedEventParams);
     });
 
+    this.cdpClient.on('Debugger.breakpointResolved', (params) => {
+      this.handleBreakpointResolved(params as CDPBreakpointResolvedEventParams);
+    });
+
     this.cdpClient.on('Console.messageAdded', (params) => {
       this.handleConsoleMessage(params);
     });
@@ -651,6 +705,55 @@ export class NodeDebugAdapter implements IDebugAdapter {
       status: 'paused',
       pauseReason: this.mapCDPReasonToDebugReason(params.reason),
     };
+
+    const topFrame = params.callFrames[0];
+    if (topFrame) {
+      const location = this.createDebugLocation(topFrame);
+      if (location) {
+        debugState.location = location;
+      }
+    }
+
+    if (params.hitBreakpoints && params.hitBreakpoints.length > 0) {
+      const breakpointId = params.hitBreakpoints[0];
+      const storedBreakpoint = this.breakpoints.get(breakpointId);
+      const resolvedLocations = storedBreakpoint
+        ? this.mapBreakpointLocations(storedBreakpoint.locations)
+        : [];
+
+      if (resolvedLocations.length === 0 && topFrame && debugState.location) {
+        resolvedLocations.push({
+          file: debugState.location.file || '',
+          line: debugState.location.line || topFrame.location.lineNumber + 1,
+          column: debugState.location.column ?? topFrame.location.columnNumber,
+        });
+      }
+
+      debugState.breakpoint = {
+        id: breakpointId,
+        file:
+          resolvedLocations[0]?.file ||
+          debugState.location?.file ||
+          this.convertScriptUrlToFilePath(topFrame?.url || '') ||
+          '[unknown]',
+        line:
+          resolvedLocations[0]?.line ||
+          debugState.location?.line ||
+          (topFrame ? topFrame.location.lineNumber + 1 : 0),
+        condition: undefined,
+        verified: resolvedLocations.length > 0,
+        resolvedLocations:
+          resolvedLocations.length > 0 ? resolvedLocations : undefined,
+      };
+
+      if (resolvedLocations.length > 0) {
+        this.emitBreakpointResolved({
+          id: breakpointId,
+          verified: true,
+          resolvedLocations,
+        });
+      }
+    }
 
     if (params.exception) {
       debugState.exception = {
@@ -738,6 +841,157 @@ export class NodeDebugAdapter implements IDebugAdapter {
       default:
         return 'log';
     }
+  }
+
+  private emitBreakpointResolved(registration: BreakpointRegistration): void {
+    for (const handler of this.breakpointResolvedHandlers) {
+      try {
+        handler(registration);
+      } catch (error) {
+        console.warn('Error in breakpoint resolved handler:', error);
+      }
+    }
+  }
+
+  private handleBreakpointResolved(
+    params: CDPBreakpointResolvedEventParams,
+  ): void {
+    const breakpoint = this.breakpoints.get(params.breakpointId);
+    const normalizedLocation = {
+      scriptId: params.location.scriptId,
+      lineNumber: params.location.lineNumber,
+      columnNumber: params.location.columnNumber,
+    };
+
+    if (breakpoint) {
+      const locations = breakpoint.locations || [];
+      const alreadyRecorded = locations.some(
+        (loc) =>
+          loc.scriptId === normalizedLocation.scriptId &&
+          loc.lineNumber === normalizedLocation.lineNumber &&
+          loc.columnNumber === normalizedLocation.columnNumber,
+      );
+      if (!alreadyRecorded) {
+        locations.push(normalizedLocation);
+      }
+    } else {
+      this.breakpoints.set(params.breakpointId, {
+        breakpointId: params.breakpointId,
+        locations: [normalizedLocation],
+      });
+    }
+
+    const resolvedLocations = this.mapBreakpointLocations([normalizedLocation]);
+
+    this.emitBreakpointResolved({
+      id: params.breakpointId,
+      verified: resolvedLocations.length > 0,
+      resolvedLocations,
+    });
+  }
+
+  private mapBreakpointLocations(
+    locations: CDPBreakpoint['locations'],
+  ): BreakpointLocation[] {
+    return locations
+      .map((location) => {
+        const scriptUrl = this.scriptIdToUrl.get(location.scriptId) || '';
+        const filePath = this.convertScriptUrlToFilePath(scriptUrl);
+        if (!filePath) {
+          return undefined;
+        }
+        return {
+          file: filePath,
+          line: location.lineNumber + 1,
+          column: location.columnNumber,
+        } satisfies BreakpointLocation;
+      })
+      .filter((entry): entry is BreakpointLocation => Boolean(entry));
+  }
+
+  private createDebugLocation(
+    frame: CDPPausedEventParams['callFrames'][number],
+  ): DebugLocation | undefined {
+    const scriptUrl =
+      frame.url || this.scriptIdToUrl.get(frame.location.scriptId);
+    const filePath = this.convertScriptUrlToFilePath(scriptUrl || '');
+    const origin = this.classifyFileOrigin(filePath);
+
+    if (!filePath && origin === 'internal') {
+      return {
+        type: 'internal',
+        description: 'Node.js internal code',
+      };
+    }
+
+    return {
+      type: origin,
+      file: filePath || undefined,
+      line: frame.location.lineNumber + 1,
+      column: frame.location.columnNumber,
+      relativePath: this.toRelativePath(filePath),
+      description: this.describeOrigin(origin, filePath),
+    };
+  }
+
+  private classifyFileOrigin(filePath: string): CodeOrigin {
+    if (!filePath) {
+      return 'internal';
+    }
+
+    const normalized = filePath.replace(/\\/g, '/');
+
+    if (normalized.startsWith('node:')) {
+      return 'internal';
+    }
+
+    if (normalized.includes('/internal/')) {
+      return 'internal';
+    }
+
+    if (normalized.includes('/node_modules/')) {
+      return 'library';
+    }
+
+    if (normalized.startsWith(`${this.projectRoot}/`)) {
+      return 'user';
+    }
+
+    return 'unknown';
+  }
+
+  private describeOrigin(
+    origin: CodeOrigin,
+    filePath: string,
+  ): string | undefined {
+    if (origin === 'internal') {
+      if (filePath.includes('internal/modules/cjs/loader')) {
+        return 'Node.js module loader';
+      }
+      if (filePath.includes('internal/modules/run_main')) {
+        return 'Node.js bootstrap (run_main)';
+      }
+      return 'Node.js internal code';
+    }
+
+    if (origin === 'library') {
+      return 'Dependency code (node_modules)';
+    }
+
+    return undefined;
+  }
+
+  private toRelativePath(filePath: string): string | undefined {
+    if (!filePath) {
+      return undefined;
+    }
+
+    const normalized = filePath.replace(/\\/g, '/');
+    if (normalized.startsWith(`${this.projectRoot}/`)) {
+      return normalized.slice(this.projectRoot.length + 1);
+    }
+
+    return undefined;
   }
 
   private async getVariablesForScope(objectId?: string): Promise<Variable[]> {
