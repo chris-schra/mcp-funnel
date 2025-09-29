@@ -39,7 +39,7 @@ export class TestOAuthServer {
   private tokenLifetime: number;
   private issuedTokens: Map<string, TestToken> = new Map();
 
-  constructor(config: TestOAuthServerConfig = {}) {
+  public constructor(config: TestOAuthServerConfig = {}) {
     this.port = config.port ?? 0; // 0 = random available port
     this.validClientId = config.validClientId ?? 'test-client-id';
     this.validClientSecret = config.validClientSecret ?? 'test-client-secret';
@@ -51,7 +51,7 @@ export class TestOAuthServer {
   /**
    * Start the OAuth server
    */
-  async start(): Promise<{ port: number; url: string }> {
+  public async start(): Promise<{ port: number; url: string }> {
     return new Promise((resolve, reject) => {
       this.server.listen(this.port, (error?: Error) => {
         if (error) {
@@ -76,7 +76,7 @@ export class TestOAuthServer {
   /**
    * Stop the OAuth server
    */
-  async stop(): Promise<void> {
+  public async stop(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server.close((error?: Error) => {
         if (error) {
@@ -91,14 +91,14 @@ export class TestOAuthServer {
   /**
    * Get information about issued tokens (for test verification)
    */
-  getIssuedTokens(): TestToken[] {
+  public getIssuedTokens(): TestToken[] {
     return Array.from(this.issuedTokens.values());
   }
 
   /**
    * Check if a token is valid
    */
-  isTokenValid(token: string): boolean {
+  public isTokenValid(token: string): boolean {
     const issuedToken = this.issuedTokens.get(token);
     if (!issuedToken) {
       return false;
@@ -112,7 +112,7 @@ export class TestOAuthServer {
   /**
    * Expire a specific token (for testing token refresh scenarios)
    */
-  expireToken(token: string): void {
+  public expireToken(token: string): void {
     const issuedToken = this.issuedTokens.get(token);
     if (issuedToken) {
       issuedToken.expiresIn = 0; // Set to expired

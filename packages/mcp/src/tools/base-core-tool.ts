@@ -1,20 +1,20 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { ICoreTool, CoreToolContext } from './core-tool.interface.js';
-import { ProxyConfig } from '../config.js';
 import { matchesPattern } from '../utils/pattern-matcher.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 /**
  * Base class for core tools that provides common pattern matching functionality
  */
 export abstract class BaseCoreTool implements ICoreTool {
-  abstract readonly name: string;
-  abstract readonly tool: Tool;
+  public abstract readonly name: string;
+  public abstract readonly tool: Tool;
 
   /**
    * Check if this tool should be enabled based on config
    * Uses pattern matching against exposeCoreTools if specified
    */
-  isEnabled(config: ProxyConfig): boolean {
+  public isEnabled(config: ProxyConfig): boolean {
     // If exposeCoreTools is not specified (undefined), all core tools are enabled by default
     if (config.exposeCoreTools === undefined) {
       return true;
@@ -31,11 +31,11 @@ export abstract class BaseCoreTool implements ICoreTool {
     );
   }
 
-  abstract handle(
+  public abstract handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult>;
 
-  onInit?(context: CoreToolContext): void;
-  onDestroy?(): void;
+  public onInit?(context: CoreToolContext): void;
+  public onDestroy?(): void;
 }

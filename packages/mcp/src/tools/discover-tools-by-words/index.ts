@@ -1,7 +1,7 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
-import { RegistryContext } from '../../registry/index.js';
+import { RegistryContext } from '../../mcp-registry/index.js';
 
 export interface ToolMatch {
   name: string;
@@ -21,9 +21,9 @@ export interface ToolMatch {
  * @see file://../core-tool.interface.ts#L33
  */
 export class DiscoverToolsByWords extends BaseCoreTool {
-  readonly name = 'discover_tools_by_words';
+  public readonly name = 'discover_tools_by_words';
 
-  get tool(): Tool {
+  public get tool(): Tool {
     return {
       name: this.name,
       description:
@@ -76,7 +76,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     };
   }
 
-  constructor() {
+  public constructor() {
     super();
   }
 
@@ -103,7 +103,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     return description;
   }
 
-  async handle(
+  public async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {

@@ -3,7 +3,7 @@ import { spawn, ChildProcess } from 'child_process';
 import WebSocket from 'ws';
 import getPort from 'get-port';
 import { NodeDebugAdapter } from './node-adapter.js';
-import type { DebugState, ConsoleMessage } from '../types.js';
+import type { DebugState, ConsoleMessage } from '../types/index.js';
 import { waitFor, sleep } from '../../test/utils/async-helpers.js';
 import {
   FixtureHandle,

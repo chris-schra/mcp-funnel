@@ -22,18 +22,20 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { WebSocketClientTransport } from '../../src/transports/implementations/websocket-client-transport.js';
-import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
-import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 import { TestWebSocketServer } from '../fixtures/test-websocket-server.js';
 import { setupOAuthAndWebSocketServers } from '../helpers/server-setup.js';
-import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCResponse,
   JSONRPCRequest,
   JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
+import {
+  extractBearerToken,
+  MemoryTokenStorage,
+  OAuth2ClientCredentialsProvider,
+} from '@mcp-funnel/auth';
+import { WebSocketClientTransport } from '@mcp-funnel/core';
+import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
@@ -92,14 +94,7 @@ describe.skipIf(!runIntegrationTests)(
         // Step 4: Create WebSocket transport with OAuth integration
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Step 5: Establish authenticated WebSocket connection
@@ -140,14 +135,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Capture received messages
@@ -227,14 +215,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -297,14 +278,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Should fail during OAuth token acquisition
@@ -346,14 +320,7 @@ describe.skipIf(!runIntegrationTests)(
         for (let i = 0; i < 3; i++) {
           const transport = new WebSocketClientTransport({
             url: wsEndpoint,
-            authProvider: {
-              async getAuthHeaders() {
-                return await authProvider.getHeaders();
-              },
-              async refreshToken() {
-                await authProvider.refresh();
-              },
-            },
+            authProvider,
           });
           transports.push(transport);
         }
@@ -394,14 +361,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -435,14 +395,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -477,14 +430,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         const receivedMessages: JSONRPCMessage[] = [];
@@ -562,14 +508,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
           pingInterval: 500, // Frequent pings for load testing
         });
 

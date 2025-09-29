@@ -21,12 +21,14 @@
  */
 
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
-import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
 import {
   createTestOAuthServer,
   TestOAuthServer,
 } from '../fixtures/test-oauth-server.js';
+import {
+  MemoryTokenStorage,
+  OAuth2ClientCredentialsProvider,
+} from '@mcp-funnel/auth';
 
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';

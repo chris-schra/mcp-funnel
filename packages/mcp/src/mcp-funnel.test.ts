@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { MCPProxy } from './index.js';
-import { ProxyConfig } from './config.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 // Create hoisted mock for execAsync (needed for keychain-token-storage)
 const mockExecAsync = vi.hoisted(() => vi.fn());

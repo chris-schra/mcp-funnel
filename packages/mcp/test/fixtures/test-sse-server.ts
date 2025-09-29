@@ -39,7 +39,7 @@ export class TestSSEServer {
     timestamp: Date;
   }> = [];
 
-  constructor(config: TestSSEServerConfig = {}) {
+  public constructor(config: TestSSEServerConfig = {}) {
     this.port = config.port ?? 0; // 0 = random available port
     this.requireAuth = config.requireAuth ?? false;
     this.validToken = config.validToken;
@@ -50,7 +50,7 @@ export class TestSSEServer {
   /**
    * Start the SSE server
    */
-  async start(): Promise<{ port: number; url: string }> {
+  public async start(): Promise<{ port: number; url: string }> {
     return new Promise((resolve, reject) => {
       this.server.listen(this.port, (error?: Error) => {
         if (error) {
@@ -75,7 +75,7 @@ export class TestSSEServer {
   /**
    * Stop the SSE server
    */
-  async stop(): Promise<void> {
+  public async stop(): Promise<void> {
     // Close all client connections
     for (const client of this.clients.values()) {
       if (!client.response.destroyed) {
@@ -98,7 +98,7 @@ export class TestSSEServer {
   /**
    * Send a message to all connected clients
    */
-  broadcast(data: unknown): void {
+  public broadcast(data: unknown): void {
     const messageId = randomUUID();
     const message = {
       id: messageId,
@@ -128,7 +128,7 @@ export class TestSSEServer {
   /**
    * Send a message to a specific client
    */
-  sendToClient(clientId: string, data: unknown): boolean {
+  public sendToClient(clientId: string, data: unknown): boolean {
     const client = this.clients.get(clientId);
     if (!client || client.response.destroyed) {
       return false;
@@ -150,7 +150,7 @@ export class TestSSEServer {
   /**
    * Get connected client count
    */
-  getClientCount(): number {
+  public getClientCount(): number {
     // Clean up destroyed connections first
     for (const [clientId, client] of this.clients.entries()) {
       if (client.response.destroyed) {
@@ -163,21 +163,25 @@ export class TestSSEServer {
   /**
    * Get message history
    */
-  getMessageHistory(): Array<{ id: string; data: unknown; timestamp: Date }> {
+  public getMessageHistory(): Array<{
+    id: string;
+    data: unknown;
+    timestamp: Date;
+  }> {
     return [...this.messageHistory];
   }
 
   /**
    * Clear message history
    */
-  clearMessageHistory(): void {
+  public clearMessageHistory(): void {
     this.messageHistory = [];
   }
 
   /**
    * Set the valid token for authentication (for testing token changes)
    */
-  setValidToken(token: string): void {
+  public setValidToken(token: string): void {
     this.validToken = token;
   }
 

@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@mcp-funnel/core": [],
+      "@mcp-funnel/models": ["packages/models/src/index.ts"]
+    },
+    "outDir": "./dist"
+  }
+}

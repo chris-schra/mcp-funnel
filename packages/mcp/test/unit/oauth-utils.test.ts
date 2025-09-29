@@ -1,26 +1,26 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
 import {
-  resolveEnvironmentVariables,
-  resolveOAuth2ClientCredentialsConfig,
+  AUTH_DEFAULT_EXPIRY_SECONDS,
+  AuthenticationError,
+  AuthErrorCode,
+  type OAuth2ClientCredentialsConfigZod,
+  OAuth2ErrorCode,
+  OAuth2ErrorResponse,
+  type OAuth2TokenResponse,
+  OAuthUtils,
   resolveOAuth2AuthCodeConfig,
-  resolveEnvVar,
+  resolveOAuth2ClientCredentialsConfig,
+} from '@mcp-funnel/auth';
+import { resolveConfigFields, resolveEnvVar } from '@mcp-funnel/core';
+
+const {
   parseErrorResponse,
-  createOAuth2Error,
   parseTokenResponse,
   isRetryableError,
-} from '../../src/auth/utils/oauth-utils.js';
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-  AuthErrorCode,
-} from '../../src/auth/errors/authentication-error.js';
-import type {
-  OAuth2TokenResponse,
-  OAuth2ErrorResponse,
-} from '../../src/auth/utils/oauth-types.js';
-import { DEFAULT_EXPIRY_SECONDS } from '../../src/auth/utils/oauth-types.js';
-import type { OAuth2ClientCredentialsConfigZod } from '../../src/config.js';
-import type { OAuth2AuthCodeConfig } from '../../src/types/auth.types.js';
+  createOAuth2Error,
+} = OAuthUtils;
 
 describe('OAuth Utils', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -33,7 +33,7 @@ describe('OAuth Utils', () => {
     process.env = originalEnv;
   });
 
-  describe('resolveEnvironmentVariables', () => {
+  describe('resolveConfigFields', () => {
     it('should resolve environment variables in config', () => {
       process.env.TEST_VAR = 'resolved-value';
       process.env.ANOTHER_VAR = 'another-resolved';
@@ -44,7 +44,7 @@ describe('OAuth Utils', () => {
         field3: 'literal-value',
       };
 
-      const result = resolveEnvironmentVariables(config, ['field1', 'field2']);
+      const result = resolveConfigFields(config, ['field1', 'field2']);
 
       expect(result).toEqual({
         field1: 'resolved-value',
@@ -62,7 +62,7 @@ describe('OAuth Utils', () => {
 
       process.env.TEST_VAR = 'resolved';
 
-      const result = resolveEnvironmentVariables(config, [
+      const result = resolveConfigFields(config, [
         'field1',
         'field2',
         'field3',
@@ -84,7 +84,7 @@ describe('OAuth Utils', () => {
         ignoreThis: '${IGNORED_VAR}',
       };
 
-      const result = resolveEnvironmentVariables(config, ['resolveThis']);
+      const result = resolveConfigFields(config, ['resolveThis']);
 
       expect(result).toEqual({
         resolveThis: 'resolved',
@@ -96,11 +96,7 @@ describe('OAuth Utils', () => {
       const config = {
         field1: '${UNDEFINED_VAR}',
       };
-
-      expect(() => resolveEnvironmentVariables(config, ['field1'])).toThrow(
-        AuthenticationError,
-      );
-      expect(() => resolveEnvironmentVariables(config, ['field1'])).toThrow(
+      expect(() => resolveConfigFields(config, ['field1'])).toThrow(
         "Required environment variable 'UNDEFINED_VAR' is not defined",
       );
     });
@@ -266,7 +262,7 @@ describe('OAuth Utils', () => {
 
     it('should throw error for undefined environment variable', () => {
       expect(() => resolveEnvVar('${UNDEFINED_VAR}')).toThrow(
-        AuthenticationError,
+        "Required environment variable 'UNDEFINED_VAR' is not defined",
       );
       expect(() => resolveEnvVar('${UNDEFINED_VAR}')).toThrow(
         "Required environment variable 'UNDEFINED_VAR' is not defined",
@@ -306,7 +302,9 @@ describe('OAuth Utils', () => {
       ];
 
       validPatternsWithUndefinedVars.forEach((pattern) => {
-        expect(() => resolveEnvVar(pattern)).toThrow(AuthenticationError);
+        expect(() => resolveEnvVar(pattern)).toThrow(
+          "Required environment variable 'VAR' is not defined",
+        );
       });
     });
   });
@@ -499,7 +497,7 @@ describe('OAuth Utils', () => {
       const result = parseTokenResponse(tokenResponse);
 
       expect(result.expiresAt.getTime()).toBeCloseTo(
-        Date.now() + DEFAULT_EXPIRY_SECONDS * 1000,
+        Date.now() + AUTH_DEFAULT_EXPIRY_SECONDS * 1000,
         -3,
       );
     });
@@ -697,7 +695,7 @@ describe('OAuth Utils', () => {
       const config = { field: null as never as string | undefined };
 
       // Should not process the field since it's not a string
-      const result = resolveEnvironmentVariables(config, ['field']);
+      const result = resolveConfigFields(config, ['field']);
 
       expect(result.field).toBe(null);
     });

@@ -9,9 +9,9 @@ export interface BridgeToolRequestParams {
 }
 
 export class BridgeToolRequest extends BaseCoreTool {
-  readonly name = 'bridge_tool_request';
+  public readonly name = 'bridge_tool_request';
 
-  get tool(): Tool {
+  public get tool(): Tool {
     return {
       name: this.name,
       description:
@@ -36,7 +36,7 @@ export class BridgeToolRequest extends BaseCoreTool {
     };
   }
 
-  async handle(
+  public async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {

@@ -1,39 +1,22 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
-import { ICDPClient } from '../types.js';
-
-/**
- * JSON-RPC message types for the Chrome DevTools Protocol
- */
-interface JsonRpcRequest {
-  id: number;
-  method: string;
-  params?: Record<string, unknown>;
-}
-
-interface JsonRpcResponse<T = unknown> {
-  id: number;
-  result?: T;
-  error?: {
-    code: number;
-    message: string;
-    data?: unknown;
-  };
-}
-
-interface JsonRpcEvent {
-  method: string;
-  params: unknown;
-}
-
-/**
- * Pending promise tracking for request-response correlation
- */
-interface PendingPromise<T = unknown> {
-  resolve: (value: T) => void;
-  reject: (error: Error) => void;
-  timeout: NodeJS.Timeout;
-}
+import { ICDPClient } from '../types/index.js';
+import {
+  handleWebSocketMessage,
+  rejectAllPendingPromises,
+  sendCDPRequest,
+  type PendingPromise,
+} from './message-handler.js';
+import { ReconnectionManager } from './reconnection-manager.js';
+import {
+  isValidWebSocketUrl,
+  cleanupWebSocket,
+  disconnectWebSocket,
+} from './websocket-utils.js';
+import {
+  setupWebSocketConnection,
+  setupWebSocketEventHandlers,
+} from './connection-handler.js';
 
 /**
  * CDP Client configuration options
@@ -92,11 +75,10 @@ export class CDPClient extends EventEmitter implements ICDPClient {
   private pendingPromises = new Map<number, PendingPromise>();
   private isConnecting = false;
   private isConnected = false;
-  private reconnectAttempts = 0;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
   private readonly options: Required<CDPClientOptions>;
+  private reconnectionManager: ReconnectionManager;
 
-  constructor(options: CDPClientOptions = {}) {
+  public constructor(options: CDPClientOptions = {}) {
     super();
     this.options = {
       connectionTimeout: options.connectionTimeout ?? 30000,
@@ -105,6 +87,11 @@ export class CDPClient extends EventEmitter implements ICDPClient {
       reconnectDelay: options.reconnectDelay ?? 1000,
       autoReconnect: options.autoReconnect ?? true,
     };
+    this.reconnectionManager = new ReconnectionManager(
+      this.options.maxReconnectAttempts,
+      this.options.reconnectDelay,
+      this,
+    );
   }
 
   /**
@@ -113,12 +100,12 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @param url WebSocket URL (ws:// or wss://)
    * @throws {Error} If already connected or connection fails
    */
-  async connect(url: string): Promise<void> {
+  public async connect(url: string): Promise<void> {
     if (this.isConnected || this.isConnecting) {
       throw new Error('Client is already connected or connecting');
     }
 
-    if (!this.isValidWebSocketUrl(url)) {
+    if (!isValidWebSocketUrl(url)) {
       throw new Error(
         'Invalid WebSocket URL. Must use ws:// or wss:// protocol',
       );
@@ -127,94 +114,54 @@ export class CDPClient extends EventEmitter implements ICDPClient {
     this.url = url;
     this.isConnecting = true;
 
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.cleanup();
-        reject(
-          new Error(
-            `Connection timeout after ${this.options.connectionTimeout}ms`,
-          ),
-        );
-      }, this.options.connectionTimeout);
-
-      try {
-        this.ws = new WebSocket(url);
-
-        const onOpen = () => {
-          clearTimeout(timeout);
+    try {
+      this.ws = await setupWebSocketConnection(
+        url,
+        this.options.connectionTimeout,
+        () => {
           this.isConnecting = false;
           this.isConnected = true;
-          this.reconnectAttempts = 0;
+          this.reconnectionManager.reset();
           this.setupWebSocketHandlers();
           this.emit('connect');
-          resolve();
-        };
-
-        const onError = (error: Error) => {
-          clearTimeout(timeout);
+        },
+        () => {
           this.cleanup();
-          reject(new Error(`Failed to connect to ${url}: ${error.message}`));
-        };
-
-        const onClose = () => {
-          clearTimeout(timeout);
+        },
+        () => {
           if (this.isConnecting) {
-            // Connection failed during initial connection
-            reject(
-              new Error(
-                `Connection closed during initial connection to ${url}`,
-              ),
-            );
+            this.isConnecting = false;
           }
           this.handleDisconnection();
-        };
-
-        this.ws.once('open', onOpen);
-        this.ws.once('error', onError);
-        this.ws.once('close', onClose);
-      } catch (error) {
-        clearTimeout(timeout);
-        this.cleanup();
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
+        },
+      );
+    } catch (error) {
+      this.isConnecting = false;
+      throw error;
+    }
   }
 
   /**
    * Disconnect from the CDP endpoint
    */
-  async disconnect(): Promise<void> {
+  public async disconnect(): Promise<void> {
     // Disable reconnection for manual disconnect
     const originalAutoReconnect = this.options.autoReconnect;
     this.options.autoReconnect = false;
 
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
+    this.reconnectionManager.cancel();
 
     if (this.ws && (this.isConnected || this.isConnecting)) {
-      return new Promise<void>((resolve) => {
-        const cleanup = () => {
-          this.cleanup();
-          this.emit('disconnect');
-          // Restore original setting after disconnect
-          this.options.autoReconnect = originalAutoReconnect;
-          resolve();
-        };
-
-        if (this.ws!.readyState === WebSocket.OPEN) {
-          this.ws!.once('close', cleanup);
-          this.ws!.close();
-        } else {
-          cleanup();
-        }
+      await disconnectWebSocket(this.ws, () => {
+        this.cleanup();
+        this.emit('disconnect');
       });
+      this.options.autoReconnect = originalAutoReconnect;
+      return;
     }
 
     this.cleanup();
     this.emit('disconnect');
-    // Restore original setting
     this.options.autoReconnect = originalAutoReconnect;
   }
 
@@ -226,7 +173,7 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @returns Promise resolving to the method result
    * @throws {Error} If not connected or request fails
    */
-  async send<T = unknown>(
+  public async send<T = unknown>(
     method: string,
     params?: Record<string, unknown>,
   ): Promise<T> {
@@ -235,36 +182,14 @@ export class CDPClient extends EventEmitter implements ICDPClient {
     }
 
     const id = ++this.messageId;
-    const request: JsonRpcRequest = { id, method };
-
-    if (params && Object.keys(params).length > 0) {
-      request.params = params;
-    }
-
-    return new Promise<T>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingPromises.delete(id);
-        reject(
-          new Error(
-            `Request timeout after ${this.options.requestTimeout}ms for method: ${method}`,
-          ),
-        );
-      }, this.options.requestTimeout);
-
-      this.pendingPromises.set(id, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
-        timeout,
-      });
-
-      try {
-        this.ws!.send(JSON.stringify(request));
-      } catch (error) {
-        clearTimeout(timeout);
-        this.pendingPromises.delete(id);
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
+    return sendCDPRequest<T>(
+      this.ws,
+      id,
+      method,
+      params,
+      this.pendingPromises,
+      this.options.requestTimeout,
+    );
   }
 
   /**
@@ -273,7 +198,7 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @param event Event name (e.g., 'Runtime.consoleAPICalled')
    * @param handler Event handler function
    */
-  on(event: string, handler: (params: unknown) => void): this {
+  public on(event: string, handler: (params: unknown) => void): this {
     return super.on(event, handler);
   }
 
@@ -283,21 +208,21 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @param event Event name
    * @param handler Event handler function to remove
    */
-  off(event: string, handler: (params: unknown) => void): this {
+  public off(event: string, handler: (params: unknown) => void): this {
     return super.off(event, handler);
   }
 
   /**
    * Get connection status
    */
-  get connected(): boolean {
+  public get connected(): boolean {
     return this.isConnected;
   }
 
   /**
    * Get the current WebSocket URL
    */
-  get connectionUrl(): string | null {
+  public get connectionUrl(): string | null {
     return this.url;
   }
 
@@ -307,75 +232,12 @@ export class CDPClient extends EventEmitter implements ICDPClient {
   private setupWebSocketHandlers(): void {
     if (!this.ws) return;
 
-    this.ws.on('message', this.handleMessage.bind(this));
-    this.ws.on('close', this.handleDisconnection.bind(this));
-    this.ws.on('error', (error: Error) => {
-      this.emit('error', error);
-    });
-  }
-
-  /**
-   * Handle incoming WebSocket messages
-   */
-  private handleMessage(data: WebSocket.RawData): void {
-    try {
-      const message = JSON.parse(data.toString()) as
-        | JsonRpcResponse
-        | JsonRpcEvent;
-
-      if ('id' in message) {
-        // Response to a method call
-        this.handleResponse(message);
-      } else if ('method' in message) {
-        // Event notification
-        this.handleEvent(message);
-      }
-    } catch (error) {
-      this.emit(
-        'error',
-        new Error(
-          `Failed to parse message: ${error instanceof Error ? error.message : String(error)}`,
-        ),
-      );
-    }
-  }
-
-  /**
-   * Handle JSON-RPC responses
-   */
-  private handleResponse(response: JsonRpcResponse): void {
-    const pending = this.pendingPromises.get(response.id);
-    if (!pending) {
-      this.emit(
-        'error',
-        new Error(`Received response for unknown request ID: ${response.id}`),
-      );
-      return;
-    }
-
-    clearTimeout(pending.timeout);
-    this.pendingPromises.delete(response.id);
-
-    if (response.error) {
-      const error = new Error(response.error.message) as Error & {
-        code?: number;
-        data?: unknown;
-      };
-      error.code = response.error.code;
-      if ('data' in response.error) {
-        error.data = response.error.data;
-      }
-      pending.reject(error);
-    } else {
-      pending.resolve(response.result);
-    }
-  }
-
-  /**
-   * Handle CDP events
-   */
-  private handleEvent(event: JsonRpcEvent): void {
-    this.emit(event.method, event.params);
+    setupWebSocketEventHandlers(
+      this.ws,
+      (data) => handleWebSocketMessage(data, this.pendingPromises, this),
+      () => this.handleDisconnection(),
+      (error) => this.emit('error', error),
+    );
   }
 
   /**
@@ -387,7 +249,10 @@ export class CDPClient extends EventEmitter implements ICDPClient {
     this.isConnecting = false;
 
     // Reject all pending promises
-    this.rejectPendingPromises(new Error('Connection closed'));
+    rejectAllPendingPromises(
+      this.pendingPromises,
+      new Error('Connection closed'),
+    );
 
     if (wasConnected) {
       this.emit('disconnect');
@@ -397,58 +262,19 @@ export class CDPClient extends EventEmitter implements ICDPClient {
     if (
       this.options.autoReconnect &&
       this.url &&
-      this.reconnectAttempts < this.options.maxReconnectAttempts
+      this.reconnectionManager.canRetry()
     ) {
-      this.scheduleReconnection();
+      this.reconnectionManager.scheduleReconnection(
+        async () => {
+          if (this.url) {
+            await this.connect(this.url);
+          }
+        },
+        () => {
+          // Max attempts reached - no additional action needed
+        },
+      );
     }
-  }
-
-  /**
-   * Schedule automatic reconnection with exponential backoff
-   */
-  private scheduleReconnection(): void {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-    }
-
-    const delay =
-      this.options.reconnectDelay * Math.pow(2, this.reconnectAttempts);
-    this.reconnectAttempts++;
-
-    this.emit('reconnecting', { attempt: this.reconnectAttempts, delay });
-
-    this.reconnectTimeout = setTimeout(async () => {
-      if (!this.url) return;
-
-      try {
-        await this.connect(this.url);
-        this.emit('reconnected');
-      } catch (error) {
-        this.emit(
-          'error',
-          new Error(
-            `Reconnection attempt ${this.reconnectAttempts} failed: ${error instanceof Error ? error.message : String(error)}`,
-          ),
-        );
-
-        if (this.reconnectAttempts < this.options.maxReconnectAttempts) {
-          this.scheduleReconnection();
-        } else {
-          this.emit('error', new Error('Max reconnection attempts reached'));
-        }
-      }
-    }, delay);
-  }
-
-  /**
-   * Reject all pending promises with the given error
-   */
-  private rejectPendingPromises(error: Error): void {
-    for (const pending of this.pendingPromises.values()) {
-      clearTimeout(pending.timeout);
-      pending.reject(error);
-    }
-    this.pendingPromises.clear();
   }
 
   /**
@@ -458,31 +284,13 @@ export class CDPClient extends EventEmitter implements ICDPClient {
     this.isConnected = false;
     this.isConnecting = false;
 
-    if (this.ws) {
-      this.ws.removeAllListeners();
-      if (this.ws.readyState !== WebSocket.CLOSED) {
-        this.ws.close();
-      }
-      this.ws = null;
-    }
+    cleanupWebSocket(this.ws);
+    this.ws = null;
 
-    this.rejectPendingPromises(new Error('Client disconnected'));
-
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-  }
-
-  /**
-   * Validate WebSocket URL format
-   */
-  private isValidWebSocketUrl(url: string): boolean {
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === 'ws:' || parsed.protocol === 'wss:';
-    } catch {
-      return false;
-    }
+    rejectAllPendingPromises(
+      this.pendingPromises,
+      new Error('Client disconnected'),
+    );
+    this.reconnectionManager.cancel();
   }
 }

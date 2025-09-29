@@ -3,7 +3,7 @@ import type {
   ToolHandlerContext,
   CallToolResult,
   DebugState,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface ContinueHandlerArgs {
   sessionId: string;
@@ -16,9 +16,9 @@ export interface ContinueHandlerArgs {
  * Implements the IToolHandler SEAM for modular tool handling
  */
 export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
-  readonly name = 'continue';
+  public readonly name = 'continue';
 
-  async handle(
+  public async handle(
     args: ContinueHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

@@ -6,7 +6,16 @@ import { ManageCommands } from './index.js';
 import { CommandInstaller } from '@mcp-funnel/commands-core';
 import type { CoreToolContext } from '../core-tool.interface.js';
 import type { ICommand } from '@mcp-funnel/commands-core';
-import type { ToolRegistry } from '../../tool-registry.js';
+import type { ToolRegistry } from '../../tool-registry/index.js';
+
+// Mock readManifest
+vi.mock('@mcp-funnel/commands-core', async () => {
+  const actual = await vi.importActual('@mcp-funnel/commands-core');
+  return {
+    ...actual,
+    readManifest: vi.fn(),
+  };
+});
 
 interface SchemaProperty {
   type: string;
@@ -70,7 +79,7 @@ describe('ManageCommands', () => {
       install: vi.fn(),
       uninstall: vi.fn(),
       update: vi.fn(),
-      readManifest: vi.fn(),
+      getManifestPath: vi.fn().mockReturnValue('/mock/manifest.json'),
       loadInstalledCommand: vi.fn(),
     };
     mockInstaller = mockInstallerPartial as CommandInstaller;
@@ -185,7 +194,8 @@ describe('ManageCommands', () => {
       };
 
       // Mock readManifest to return existing command
-      mockInstaller.readManifest = vi.fn().mockResolvedValue({
+      const { readManifest } = await import('@mcp-funnel/commands-core');
+      vi.mocked(readManifest).mockResolvedValue({
         commands: [existingCommand],
         updatedAt: new Date().toISOString(),
       });

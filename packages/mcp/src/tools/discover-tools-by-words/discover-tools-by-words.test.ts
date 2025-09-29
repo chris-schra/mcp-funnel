@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DiscoverToolsByWords } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
-import { ToolRegistry, ToolState } from '../../tool-registry.js';
+import { ToolRegistry, ToolState } from '../../tool-registry/index.js';
 
 describe('DiscoverToolsByWords', () => {
   let tool: DiscoverToolsByWords;

@@ -21,17 +21,20 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { SSEClientTransport } from '../../src/transports/implementations/sse-client-transport.js';
-import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
-import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
+
 import { TestSSEServer } from '../fixtures/test-sse-server.js';
 import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
-import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCResponse,
   JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
+import {
+  extractBearerToken,
+  MemoryTokenStorage,
+  OAuth2ClientCredentialsProvider,
+} from '@mcp-funnel/auth';
+import { SSEClientTransport } from '@mcp-funnel/core';
+import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
@@ -89,14 +92,7 @@ describe.skipIf(!runIntegrationTests)(
         // Step 4: Create SSE transport with OAuth integration
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Step 5: Establish authenticated SSE connection
@@ -137,14 +133,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Capture received messages
@@ -200,14 +189,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -269,14 +251,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Should fail during OAuth token acquisition
@@ -318,14 +293,7 @@ describe.skipIf(!runIntegrationTests)(
         for (let i = 0; i < 3; i++) {
           const transport = new SSEClientTransport({
             url: sseEndpoint,
-            authProvider: {
-              async getAuthHeaders() {
-                return await authProvider.getHeaders();
-              },
-              async refreshToken() {
-                await authProvider.refresh();
-              },
-            },
+            authProvider,
           });
           transports.push(transport);
         }
@@ -366,14 +334,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -407,14 +368,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -449,14 +403,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         const receivedMessages: JSONRPCMessage[] = [];

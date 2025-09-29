@@ -26,11 +26,11 @@ interface MinimalContext {
 class WebSocketAuthContext implements MinimalContext {
   private request: IncomingMessage;
 
-  constructor(request: IncomingMessage) {
+  public constructor(request: IncomingMessage) {
     this.request = request;
   }
 
-  get req() {
+  public get req() {
     return {
       header: (name: string) => {
         return this.request.headers[name.toLowerCase()] as string | undefined;
@@ -41,8 +41,8 @@ class WebSocketAuthContext implements MinimalContext {
   }
 
   // Stub methods not used during auth validation
-  set(_key: string, _value: unknown) {}
-  get(_key: string) {}
+  public set(_key: string, _value: unknown) {}
+  public get(_key: string) {}
 }
 
 /**

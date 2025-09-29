@@ -5,14 +5,23 @@ import {
   ValidateOptions,
   ValidationSummary,
 } from './validator.js';
-import chalk from 'chalk';
 import path from 'path';
+import chalk from 'chalk';
+
+/*
+import { setupConsoleLogging, rootLogger } from '@mcp-funnel/core';
+
+// Setup console logging with redaction
+setupConsoleLogging();
+// Set log level from environment or default to info
+rootLogger.level = process.env.LOG_LEVEL || 'info';*/
 
 export class TsValidateCommand implements ICommand {
-  readonly name = 'ts-validate';
-  readonly description = 'Run prettier, eslint, and TypeScript validation';
+  public readonly name = 'ts-validate';
+  public readonly description =
+    'Run prettier, eslint, and TypeScript validation';
 
-  async executeToolViaMCP(
+  public async executeToolViaMCP(
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<CallToolResult> {
@@ -20,7 +29,9 @@ export class TsValidateCommand implements ICommand {
     return this.executeViaMCP(args);
   }
 
-  async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
+  public async executeViaMCP(
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
     const validator = new MonorepoValidator();
     const mcpFiles = ((): string[] | undefined => {
       if (Array.isArray(args.files)) return args.files as string[];
@@ -81,7 +92,7 @@ export class TsValidateCommand implements ICommand {
     };
   }
 
-  async executeViaCLI(args: string[]): Promise<void> {
+  public async executeViaCLI(args: string[]): Promise<void> {
     // Parse CLI args similar to original validate.ts
     const flags: string[] = [];
     const positional: string[] = [];
@@ -195,7 +206,9 @@ ${chalk.bold('Examples:')}
 
         for (const [file, results] of Object.entries(summary.fileResults)) {
           if (results.length > 0) {
-            const relativePath = path.relative(process.cwd(), file);
+            const relativePath = process.env.VALIDATE_FULL_FILE_PATH
+              ? `file:///${file}`
+              : path.relative(process.cwd(), file);
             console.error(chalk.yellow(`\n${relativePath}:`));
 
             for (const result of results) {
@@ -276,7 +289,7 @@ ${chalk.bold('Examples:')}
     }
   }
 
-  getMCPDefinitions(): Tool[] {
+  public getMCPDefinitions(): Tool[] {
     return [
       {
         name: this.name,

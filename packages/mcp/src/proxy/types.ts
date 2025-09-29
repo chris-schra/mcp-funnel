@@ -1,12 +1,12 @@
-// ChildProcess type removed - not used in interfaces
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type {
-  ReconnectionConfig,
-  ConnectionStateChange,
-} from '../reconnection-manager.js';
-import type { TargetServer, ProxyConfig } from '../config.js';
 import type { ICommand } from '@mcp-funnel/commands-core';
+import type {
+  ConnectionStateChange,
+  ReconnectionConfig,
+} from '@mcp-funnel/models';
+import { ILogger } from '@mcp-funnel/core';
+import type { TargetServer } from '@mcp-funnel/schemas';
 
 /**
  * Base transport options for spawning server processes
@@ -44,29 +44,9 @@ export interface ITransport {
 
 /**
  * SEAM: Logger interface for extensible logging strategies
+ * Imported from core for consistency across packages
  */
-export interface ILogger {
-  error(
-    message: string,
-    error?: unknown,
-    context?: Record<string, unknown>,
-  ): void;
-  warn(message: string, context?: Record<string, unknown>): void;
-  info(message: string, context?: Record<string, unknown>): void;
-  debug(message: string, context?: Record<string, unknown>): void;
-  logToFile(filename: string, content: string): void;
-}
-
-/**
- * SEAM: Environment resolver interface for different resolution strategies
- */
-export interface IEnvironmentResolver {
-  resolve(
-    targetServer: TargetServer,
-    config: ProxyConfig,
-    configPath: string,
-  ): Promise<Record<string, string>>;
-}
+export type { ILogger } from '@mcp-funnel/core';
 
 /**
  * Server connection state tracking

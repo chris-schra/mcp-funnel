@@ -4,14 +4,14 @@ import type {
   IMockSessionManager,
   DebugSession,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 /**
  * Session validation utilities - eliminates DRY violations across handlers
  * Provides standardized session validation and error responses
  */
 export class SessionValidator implements ISessionValidator {
-  constructor(
+  public constructor(
     private sessionManager: ISessionManager,
     private mockSessionManager?: IMockSessionManager,
   ) {}
@@ -20,7 +20,7 @@ export class SessionValidator implements ISessionValidator {
    * Validates that a session exists (real or mock)
    * Returns either the session or a standardized error response
    */
-  validateSession(
+  public validateSession(
     sessionId: string,
   ): { session: DebugSession } | { error: CallToolResult } {
     const session = this.sessionManager.getSession(sessionId);
@@ -72,7 +72,7 @@ export class SessionValidator implements ISessionValidator {
    * Validates that a session exists and is in paused state
    * Used by handlers that require the debugger to be paused (stack trace, variables, etc.)
    */
-  validatePausedSession(
+  public validatePausedSession(
     sessionId: string,
   ): { session: DebugSession } | { error: CallToolResult } {
     const validation = this.validateSession(sessionId);
@@ -109,7 +109,7 @@ export class SessionValidator implements ISessionValidator {
   /**
    * Creates a standardized "session not found" error for when mock session validation fails
    */
-  createSessionNotFoundError(sessionId: string): CallToolResult {
+  public createSessionNotFoundError(sessionId: string): CallToolResult {
     return {
       content: [
         {
@@ -128,7 +128,7 @@ export class SessionValidator implements ISessionValidator {
   /**
    * Creates a standardized error response for handler exceptions
    */
-  createHandlerError(
+  public createHandlerError(
     sessionId: string,
     error: unknown,
     operation?: string,

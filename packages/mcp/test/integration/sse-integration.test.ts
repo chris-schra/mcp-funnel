@@ -21,18 +21,20 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { SSEClientTransport } from '../../src/transports/implementations/sse-client-transport.js';
-import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
-import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 import { TestSSEServer } from '../fixtures/test-sse-server.js';
 import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
-import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
+import {
+  extractBearerToken,
+  MemoryTokenStorage,
+  OAuth2ClientCredentialsProvider,
+} from '@mcp-funnel/auth';
+import { SSEClientTransport } from '@mcp-funnel/core';
+import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
@@ -85,14 +87,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
       // Create SSE transport with real auth
       const transport = new SSEClientTransport({
         url: sseEndpoint,
-        authProvider: {
-          async getAuthHeaders() {
-            return await authProvider.getHeaders();
-          },
-          async refreshToken() {
-            await authProvider.refresh();
-          },
-        },
+        authProvider,
       });
 
       // Start transport - should establish real SSE connection
@@ -123,14 +118,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
 
       const transport = new SSEClientTransport({
         url: sseEndpoint,
-        authProvider: {
-          async getAuthHeaders() {
-            return await authProvider.getHeaders();
-          },
-          async refreshToken() {
-            await authProvider.refresh();
-          },
-        },
+        authProvider,
       });
 
       // Set up message handler
@@ -175,11 +163,14 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
       const transport = new SSEClientTransport({
         url: sseEndpoint,
         authProvider: {
-          async getAuthHeaders() {
+          async getHeaders() {
             return { Authorization: 'Bearer invalid-token-12345' };
           },
-          async refreshToken() {
+          async refresh() {
             // No-op for this test
+          },
+          async isValid() {
+            return false;
           },
         },
       });
@@ -220,14 +211,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
 
       const transport = new SSEClientTransport({
         url: sseEndpoint,
-        authProvider: {
-          async getAuthHeaders() {
-            return await authProvider.getHeaders();
-          },
-          async refreshToken() {
-            await authProvider.refresh();
-          },
-        },
+        authProvider,
       });
 
       await transport.start();
@@ -279,14 +263,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
 
       const transport = new SSEClientTransport({
         url: sseEndpoint,
-        authProvider: {
-          async getAuthHeaders() {
-            return await authProvider.getHeaders();
-          },
-          async refreshToken() {
-            await authProvider.refresh();
-          },
-        },
+        authProvider,
       });
 
       await transport.start();
@@ -333,14 +310,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
       for (let i = 0; i < 3; i++) {
         const transport = new SSEClientTransport({
           url: sseEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
         transports.push(transport);
       }
@@ -376,14 +346,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
 
       const transport = new SSEClientTransport({
         url: sseEndpoint,
-        authProvider: {
-          async getAuthHeaders() {
-            return await authProvider.getHeaders();
-          },
-          async refreshToken() {
-            await authProvider.refresh();
-          },
-        },
+        authProvider,
       });
 
       await transport.start();
@@ -402,11 +365,14 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
       const transport = new SSEClientTransport({
         url: 'http://localhost:65535/sse',
         authProvider: {
-          async getAuthHeaders() {
+          async getHeaders() {
             return { Authorization: 'Bearer test-token' };
           },
-          async refreshToken() {
+          async refresh() {
             // No-op
+          },
+          async isValid() {
+            return true;
           },
         },
       });
@@ -445,14 +411,7 @@ describe.skipIf(!runIntegrationTests)('SSE Integration Tests', () => {
 
       const transport = new SSEClientTransport({
         url: sseEndpoint,
-        authProvider: {
-          async getAuthHeaders() {
-            return await authProvider.getHeaders();
-          },
-          async refreshToken() {
-            await authProvider.refresh();
-          },
-        },
+        authProvider,
       });
 
       const receivedMessages: JSONRPCMessage[] = [];

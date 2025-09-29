@@ -3,11 +3,12 @@ import {
   getUserBasePath,
   resolveMergedProxyConfig,
 } from './index.js';
-import { ProxyConfig, normalizeServers } from './config.js';
 import { mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { logEvent, logError } from './logger.js';
+import { logError, logEvent } from '@mcp-funnel/core';
+import { normalizeServers } from './utils/normalizeServers.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../.logs');

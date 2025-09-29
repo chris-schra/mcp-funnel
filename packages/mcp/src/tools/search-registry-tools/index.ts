@@ -8,15 +8,15 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
-import { RegistryContext } from '../../registry/index.js';
+import { RegistryContext } from '../../mcp-registry/index.js';
 
 /**
  * Tool for searching MCP registry servers by keywords
  */
 export class SearchRegistryTools extends BaseCoreTool {
-  readonly name = 'search_registry_tools';
+  public readonly name = 'search_registry_tools';
 
-  get tool(): Tool {
+  public get tool(): Tool {
     return {
       name: this.name,
       description:
@@ -44,7 +44,7 @@ export class SearchRegistryTools extends BaseCoreTool {
   /**
    * Handle search request for registry servers
    */
-  async handle(
+  public async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {

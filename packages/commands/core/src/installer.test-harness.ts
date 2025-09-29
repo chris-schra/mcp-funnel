@@ -1,36 +1,33 @@
 /**
  * Test utilities for CommandInstaller
  *
- * This file provides a minimal test-only class that extends CommandInstaller
- * to expose ONLY the matching logic for testing, without duplicating the implementation.
+ * This file provides a minimal test-only wrapper that re-exports the
+ * findMatchingCommand utility function for testing purposes.
  */
 
-import {
-  CommandInstaller,
-  type CommandManifest,
-  type InstalledCommand,
-} from './installer.js';
+import { CommandInstaller } from './installer.js';
+import type { CommandManifest, InstalledCommand } from './types/index.js';
+import { findMatchingCommand } from './util/index.js';
 
 /**
- * Test-only extension of CommandInstaller that exposes the protected
- * findMatchingCommand method for testing purposes.
+ * Test-only wrapper that provides access to the findMatchingCommand utility
+ * for testing purposes.
  *
  * This approach:
  * - Tests the ACTUAL production code, not a duplicate
  * - Maintains DRY principle
- * - Uses inheritance as a proper seam for testing
+ * - Provides a clear seam for testing
  * - Is clearly marked as test-only
  */
 export class TestableCommandInstaller extends CommandInstaller {
   /**
-   * Expose the protected findMatchingCommand for testing
+   * Expose the findMatchingCommand utility for testing
    * This tests the REAL implementation, not a copy
    */
-  testFindMatchingCommand(
+  public testFindMatchingCommand(
     manifest: CommandManifest,
     packageSpec: string,
   ): InstalledCommand | undefined {
-    // Call the protected method - no casting needed
-    return this.findMatchingCommand(manifest, packageSpec);
+    return findMatchingCommand(manifest, packageSpec);
   }
 }

@@ -10,7 +10,10 @@ import type {
   AuthResult,
   InboundBearerAuthConfig,
 } from '../interfaces/inbound-auth.interface.js';
-import { EnvironmentResolver, EnvironmentResolutionError } from 'mcp-funnel';
+import {
+  EnvironmentResolutionError,
+  EnvVarPatternResolver,
+} from '@mcp-funnel/core';
 
 /**
  * Validates incoming requests using Bearer token authentication
@@ -28,9 +31,9 @@ import { EnvironmentResolver, EnvironmentResolutionError } from 'mcp-funnel';
  */
 export class BearerTokenValidator implements IInboundAuthValidator {
   private readonly validTokens: string[];
-  private readonly resolver: EnvironmentResolver;
+  private readonly resolver: EnvVarPatternResolver;
 
-  constructor(config: InboundBearerAuthConfig) {
+  public constructor(config: InboundBearerAuthConfig) {
     if (!config.tokens || config.tokens.length === 0) {
       throw new Error(
         'Bearer token configuration must include at least one token',
@@ -38,7 +41,7 @@ export class BearerTokenValidator implements IInboundAuthValidator {
     }
 
     // Initialize the environment resolver with strict mode
-    this.resolver = new EnvironmentResolver({ strict: true });
+    this.resolver = new EnvVarPatternResolver({ strict: true });
 
     // Resolve environment variables and validate tokens
     this.validTokens = [];
@@ -63,7 +66,7 @@ export class BearerTokenValidator implements IInboundAuthValidator {
     );
   }
 
-  async validateRequest(context: Context): Promise<AuthResult> {
+  public async validateRequest(context: Context): Promise<AuthResult> {
     try {
       // Extract Authorization header
       const authHeader = context.req.header('Authorization');
@@ -118,7 +121,7 @@ export class BearerTokenValidator implements IInboundAuthValidator {
     }
   }
 
-  getType(): string {
+  public getType(): string {
     return 'bearer';
   }
 

@@ -5,10 +5,10 @@ import {
 } from '@anthropic-ai/claude-code';
 import { spawn, type ChildProcess } from 'child_process';
 import { randomUUID } from 'crypto';
-import { ProxyConfig } from '../../src/config.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,11 +31,11 @@ export class E2ETestHelper {
   private funnelProcess?: ChildProcess;
   private configPath?: string;
 
-  constructor() {
+  public constructor() {
     this.sessionId = randomUUID();
   }
 
-  async startFunnel(config: ProxyConfig): Promise<void> {
+  public async startFunnel(config: ProxyConfig): Promise<void> {
     // Create temp config file
     this.configPath = path.join(
       __dirname,
@@ -75,7 +75,7 @@ export class E2ETestHelper {
     });
   }
 
-  async queryFunnel(prompt: string): Promise<E2ETestResult> {
+  public async queryFunnel(prompt: string): Promise<E2ETestResult> {
     this.toolCallLog = [];
     this.messages = [];
 
@@ -135,7 +135,7 @@ export class E2ETestHelper {
     };
   }
 
-  async cleanup(): Promise<void> {
+  public async cleanup(): Promise<void> {
     if (this.funnelProcess) {
       this.funnelProcess.kill();
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -157,25 +157,25 @@ export class E2ETestHelper {
   }
 
   // Helper methods for assertions
-  findToolCall(toolName: string): ToolCall | undefined {
+  public findToolCall(toolName: string): ToolCall | undefined {
     return this.toolCallLog.find((call) => call.name === toolName);
   }
 
-  findToolCalls(pattern: string | RegExp): ToolCall[] {
+  public findToolCalls(pattern: string | RegExp): ToolCall[] {
     if (typeof pattern === 'string') {
       return this.toolCallLog.filter((call) => call.name.includes(pattern));
     }
     return this.toolCallLog.filter((call) => pattern.test(call.name));
   }
 
-  getSystemMessage(): SDKMessage | undefined {
+  public getSystemMessage(): SDKMessage | undefined {
     return this.messages.find(
       (m) =>
         m.type === 'system' && (m as { subtype?: string }).subtype === 'init',
     );
   }
 
-  getExposedTools(): string[] {
+  public getExposedTools(): string[] {
     const systemMsg = this.getSystemMessage();
     if (systemMsg && systemMsg.type === 'system') {
       return (systemMsg as { tools?: string[] }).tools || [];

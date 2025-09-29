@@ -3,7 +3,7 @@ import type {
   ToolHandlerContext,
   CallToolResult,
   DebugRequest,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface DebugHandlerArgs {
   platform: 'node' | 'browser';
@@ -27,9 +27,9 @@ export interface DebugHandlerArgs {
  * Implements the IToolHandler SEAM for modular tool handling
  */
 export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
-  readonly name = 'debug';
+  public readonly name = 'debug';
 
-  async handle(
+  public async handle(
     args: DebugHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

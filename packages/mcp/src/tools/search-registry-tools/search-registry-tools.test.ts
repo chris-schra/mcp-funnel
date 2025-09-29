@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CoreToolContext } from '../core-tool.interface.js';
-import type { RegistrySearchResult } from '../../registry/types/registry.types.js';
-import type { ToolRegistry } from '../../tool-registry.js';
+import type { RegistrySearchResult } from '../../mcp-registry/types/registry.types.js';
+import type { ToolRegistry } from '../../tool-registry/index.js';
 import { SearchRegistryTools } from './index.js';
 
 // Mock fetch globally

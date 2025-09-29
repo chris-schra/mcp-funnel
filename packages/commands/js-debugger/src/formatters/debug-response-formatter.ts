@@ -5,14 +5,14 @@ import type {
   ConsoleMessage,
   SessionLifecycleState,
   DebugState,
-} from '../types.js';
+} from '../types/index.js';
 
 /**
  * Standard response formatter that eliminates JSON formatting duplication
  * Implements the IResponseFormatter SEAM for consistent output across all handlers
  */
 export class DebugResponseFormatter implements IResponseFormatter {
-  success(data: unknown): CallToolResult {
+  public success(data: unknown): CallToolResult {
     return {
       content: [
         {
@@ -23,7 +23,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
     };
   }
 
-  error(message: string, details?: unknown): CallToolResult {
+  public error(message: string, details?: unknown): CallToolResult {
     const errorData: Record<string, unknown> = { error: message };
     if (details !== undefined) {
       errorData.details = details;
@@ -40,7 +40,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
     };
   }
 
-  async debugState(
+  public async debugState(
     sessionId: string,
     session: DebugSession,
   ): Promise<CallToolResult> {
@@ -93,7 +93,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
     });
   }
 
-  sessionsList(
+  public sessionsList(
     sessions: Array<{
       id: string;
       platform: string;
@@ -112,7 +112,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
     return this.success({ sessions: allSessions });
   }
 
-  consoleOutput(data: {
+  public consoleOutput(data: {
     sessionId: string;
     consoleOutput: Array<{
       level: string;
@@ -131,7 +131,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
   /**
    * Formats debug session info for running sessions
    */
-  runningSession(
+  public runningSession(
     sessionId: string,
     platform: string,
     target: string,
@@ -148,7 +148,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
   /**
    * Formats session termination response
    */
-  terminatedSession(sessionId: string, message: string): CallToolResult {
+  public terminatedSession(sessionId: string, message: string): CallToolResult {
     return this.success({
       sessionId,
       status: 'terminated',
@@ -159,7 +159,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
   /**
    * Formats stack trace response
    */
-  stackTrace(
+  public stackTrace(
     sessionId: string,
     stackTrace: Array<{
       frameId: number;
@@ -181,7 +181,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
   /**
    * Formats variable inspection response
    */
-  variables(
+  public variables(
     sessionId: string,
     frameId: number,
     data: {
@@ -209,7 +209,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
   /**
    * Formats evaluation result
    */
-  evaluation(
+  public evaluation(
     sessionId: string,
     evaluation: {
       expression?: string;

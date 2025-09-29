@@ -5,25 +5,20 @@ import {
   beforeEach,
   afterEach,
   vi,
-  type MockInstance,
+  type Mock,
 } from 'vitest';
 type CryptoModule = typeof import('crypto');
 type TimingSafeEqualFn = CryptoModule['timingSafeEqual'];
 
-type TimingSafeEqualMock = MockInstance<
-  Parameters<TimingSafeEqualFn>,
-  ReturnType<TimingSafeEqualFn>
->;
-
-const timingSafeEqualSpy: TimingSafeEqualMock = vi.hoisted(() =>
+const timingSafeEqualSpy: Mock<TimingSafeEqualFn> = vi.hoisted(() =>
   vi.fn<TimingSafeEqualFn>(),
 );
 
 vi.mock('crypto', async () => {
   const actual = await vi.importActual<CryptoModule>('crypto');
 
-  timingSafeEqualSpy.mockImplementation((...args) =>
-    actual.timingSafeEqual(...args),
+  timingSafeEqualSpy.mockImplementation(
+    (...args: Parameters<TimingSafeEqualFn>) => actual.timingSafeEqual(...args),
   );
 
   return {
@@ -43,11 +38,26 @@ import {
   // type InboundAuthConfig, // Unused import
   type InboundBearerAuthConfig,
   type InboundNoAuthConfig,
+  InboundAuthConfig,
 } from '../../src/auth/index.js';
 import type { IncomingMessage } from 'node:http';
+import type { Context } from 'hono';
 
-// Helper type for mocking Hono context in tests
-type MockContext = Partial<import('hono').Context>;
+// Helper function to create a mock Hono context for tests
+// Only provides the minimal req.header() method that validators use
+const createMockContext = (
+  headerFn: (name?: string) => string | undefined | Record<string, string>,
+): Context => {
+  return {
+    req: {
+      header: headerFn,
+    },
+  } as Context;
+};
+
+// Helper type for testing invalid configurations
+// This allows us to pass intentionally malformed configs to validation functions
+type InvalidAuthConfig = { type?: string; tokens?: string[] };
 
 afterEach(() => {
   timingSafeEqualSpy.mockClear();
@@ -63,12 +73,9 @@ describe('Authentication System', () => {
 
       const validator = new BearerTokenValidator(config);
 
-      // Mock Hono context
-      const mockContext: MockContext = {
-        req: {
-          header: vi.fn().mockReturnValue('Bearer valid-token-123'),
-        },
-      };
+      const mockContext = createMockContext(
+        vi.fn().mockReturnValue('Bearer valid-token-123'),
+      );
 
       const result = await validator.validateRequest(mockContext);
 
@@ -85,11 +92,9 @@ describe('Authentication System', () => {
 
       const validator = new BearerTokenValidator(config);
 
-      const mockContext = {
-        req: {
-          header: vi.fn().mockReturnValue('Bearer invalid-token'),
-        },
-      } satisfies MockContext;
+      const mockContext = createMockContext(
+        vi.fn().mockReturnValue('Bearer invalid-token'),
+      );
 
       const result = await validator.validateRequest(mockContext);
 
@@ -105,11 +110,7 @@ describe('Authentication System', () => {
 
       const validator = new BearerTokenValidator(config);
 
-      const mockContext = {
-        req: {
-          header: vi.fn().mockReturnValue(undefined),
-        },
-      } satisfies MockContext;
+      const mockContext = createMockContext(vi.fn().mockReturnValue(undefined));
 
       const result = await validator.validateRequest(mockContext);
 
@@ -125,11 +126,9 @@ describe('Authentication System', () => {
 
       const validator = new BearerTokenValidator(config);
 
-      const mockContext = {
-        req: {
-          header: vi.fn().mockReturnValue('Basic dXNlcjpwYXNz'), // Basic auth instead of Bearer
-        },
-      } satisfies MockContext;
+      const mockContext = createMockContext(
+        vi.fn().mockReturnValue('Basic dXNlcjpwYXNz'), // Basic auth instead of Bearer
+      );
 
       const result = await validator.validateRequest(mockContext);
 
@@ -147,11 +146,7 @@ describe('Authentication System', () => {
 
       const validator = new BearerTokenValidator(config);
 
-      const mockContext = {
-        req: {
-          header: vi.fn().mockReturnValue('Bearer '),
-        },
-      } satisfies MockContext;
+      const mockContext = createMockContext(vi.fn().mockReturnValue('Bearer '));
 
       const result = await validator.validateRequest(mockContext);
 
@@ -205,11 +200,7 @@ describe('Authentication System', () => {
         headerValue: string,
         runs: number = defaultIterations,
       ): Promise<number> => {
-        const context = {
-          req: {
-            header: () => headerValue,
-          },
-        } satisfies MockContext;
+        const context = createMockContext(() => headerValue);
 
         const start = process.hrtime.bigint();
         for (let index = 0; index < runs; index += 1) {
@@ -228,11 +219,9 @@ describe('Authentication System', () => {
 
         const validator = new BearerTokenValidator(config);
 
-        const validContext = {
-          req: {
-            header: () => 'Bearer valid-token-12345',
-          },
-        } satisfies MockContext;
+        const validContext = createMockContext(
+          () => 'Bearer valid-token-12345',
+        );
 
         const timingSpy = timingSafeEqualSpy;
 
@@ -241,11 +230,9 @@ describe('Authentication System', () => {
         expect(validResult.isAuthenticated).toBe(true);
         expect(timingSpy).toHaveBeenCalledTimes(1);
 
-        const invalidContext = {
-          req: {
-            header: () => 'Bearer valid-token-1234x',
-          },
-        } satisfies MockContext;
+        const invalidContext = createMockContext(
+          () => 'Bearer valid-token-1234x',
+        );
 
         timingSpy.mockClear();
         const invalidResult = await validator.validateRequest(invalidContext);
@@ -331,11 +318,7 @@ describe('Authentication System', () => {
     it('should always authenticate successfully', async () => {
       const validator = new NoAuthValidator();
 
-      const mockContext = {
-        req: {
-          header: vi.fn().mockReturnValue(undefined),
-        },
-      } satisfies MockContext;
+      const mockContext = createMockContext(vi.fn().mockReturnValue(undefined));
 
       const result = await validator.validateRequest(mockContext);
 
@@ -379,7 +362,7 @@ describe('Authentication System', () => {
     it('should reject bearer config without tokens', () => {
       const invalidConfig = {
         type: 'bearer',
-      } satisfies MockContext;
+      } as InboundBearerAuthConfig;
 
       expect(() => validateAuthConfig(invalidConfig)).toThrow(
         'Bearer authentication requires a tokens array',
@@ -398,13 +381,13 @@ describe('Authentication System', () => {
     });
 
     it('should reject unsupported auth type', () => {
-      const invalidConfig = {
+      const invalidConfig: InvalidAuthConfig = {
         type: 'unsupported',
-      } satisfies MockContext;
+      };
 
-      expect(() => validateAuthConfig(invalidConfig)).toThrow(
-        'Unsupported authentication type: unsupported',
-      );
+      expect(() =>
+        validateAuthConfig(invalidConfig as InboundAuthConfig),
+      ).toThrow('Unsupported authentication type: unsupported');
     });
   });
 
@@ -433,13 +416,13 @@ describe('Authentication System', () => {
     });
 
     it('should throw error for unsupported type', () => {
-      const config = {
+      const invalidConfig: InvalidAuthConfig = {
         type: 'unsupported',
-      } satisfies MockContext;
+      };
 
-      expect(() => createAuthValidator(config)).toThrow(
-        'Unsupported authentication type: unsupported',
-      );
+      expect(() =>
+        createAuthValidator(invalidConfig as InboundAuthConfig),
+      ).toThrow('Unsupported authentication type: unsupported');
     });
   });
 

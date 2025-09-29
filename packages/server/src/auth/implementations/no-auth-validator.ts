@@ -23,13 +23,13 @@ import type {
  * - Authentication is handled externally
  */
 export class NoAuthValidator implements IInboundAuthValidator {
-  constructor() {
+  public constructor() {
     console.info(
       'Initialized no-auth validator - all requests will be allowed',
     );
   }
 
-  async validateRequest(_context: Context): Promise<AuthResult> {
+  public async validateRequest(_context: Context): Promise<AuthResult> {
     return {
       isAuthenticated: true,
       context: {
@@ -39,7 +39,7 @@ export class NoAuthValidator implements IInboundAuthValidator {
     };
   }
 
-  getType(): string {
+  public getType(): string {
     return 'none';
   }
 }

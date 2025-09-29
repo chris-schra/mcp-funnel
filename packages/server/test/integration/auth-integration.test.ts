@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { startWebServer, type ServerOptions } from '../../src/index.js';
 import type { MCPProxy } from 'mcp-funnel';
 import { WebSocket } from 'ws';
-import type { Server } from 'http';
 import type { AddressInfo } from 'net';
+import { ServerType } from '@hono/node-server';
 
 // Mock MCPProxy for testing
 const createMockMCPProxy = (): MCPProxy => {
   const mockProxy: Partial<MCPProxy> = {
+    // @ts-expect-error Partial mock
     server: {
       connect: vi.fn(),
       sendToolListChanged: vi.fn(),
@@ -46,7 +47,7 @@ const createMockMCPProxy = (): MCPProxy => {
 };
 
 describe('Server Authentication Integration', () => {
-  let server: Server | null;
+  let server: ServerType | null;
   let mcpProxy: MCPProxy;
   let testPort: number;
 
@@ -60,7 +61,7 @@ describe('Server Authentication Integration', () => {
     if (server) {
       // Close server if it was started
       await new Promise<void>((resolve) => {
-        server.close(() => {
+        server?.close(() => {
           resolve();
         });
       });

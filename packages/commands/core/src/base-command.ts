@@ -8,15 +8,15 @@ import type { ICommand, ICommandOptions } from './interfaces.js';
  * Abstract base class that provides common functionality for all commands
  */
 export abstract class BaseCommand implements ICommand {
-  abstract readonly name: string;
-  abstract readonly description: string;
+  public abstract readonly name: string;
+  public abstract readonly description: string;
 
-  abstract executeToolViaMCP(
+  public abstract executeToolViaMCP(
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<import('@modelcontextprotocol/sdk/types.js').CallToolResult>;
-  abstract executeViaCLI(args: string[]): Promise<void>;
-  abstract getMCPDefinitions(): import('@modelcontextprotocol/sdk/types.js').Tool[];
+  public abstract executeViaCLI(args: string[]): Promise<void>;
+  public abstract getMCPDefinitions(): import('@modelcontextprotocol/sdk/types.js').Tool[];
 
   /**
    * Parse common command options from arguments

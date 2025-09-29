@@ -2,7 +2,7 @@ import { homedir } from 'os';
 import { join, resolve } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import { deepmergeCustom } from 'deepmerge-ts';
-import { ProxyConfigSchema, type ProxyConfig } from './config.js';
+import { type ProxyConfig, ProxyConfigSchema } from '@mcp-funnel/schemas';
 
 function readJsonIfExists(path: string): unknown | undefined {
   if (!existsSync(path)) return undefined;

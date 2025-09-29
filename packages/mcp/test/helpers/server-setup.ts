@@ -1,6 +1,6 @@
-import { createTestOAuthServer } from '../fixtures/test-oauth-server.js';
 import { createTestSSEServer } from '../fixtures/test-sse-server.js';
 import { createTestWebSocketServer } from '../fixtures/test-websocket-server.js';
+import { createTestOAuthServer } from '../fixtures/test-oauth-server.js';
 
 export async function setupOAuthAndSSEServers(config: {
   clientId: string;

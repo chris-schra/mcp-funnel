@@ -1,11 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { MCPProxy } from '../../src/index.js';
-import { ProxyConfig } from '../../src/config.js';
 import { spawn, ChildProcess } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { MCPProxy } from 'mcp-funnel';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

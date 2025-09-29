@@ -2,7 +2,7 @@ import type {
   IToolHandler,
   ToolHandlerContext,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface CleanupSessionsHandlerArgs {
   force?: boolean;
@@ -16,9 +16,9 @@ export interface CleanupSessionsHandlerArgs {
 export class CleanupSessionsHandler
   implements IToolHandler<CleanupSessionsHandlerArgs>
 {
-  readonly name = 'cleanup_sessions';
+  public readonly name = 'cleanup_sessions';
 
-  async handle(
+  public async handle(
     args: CleanupSessionsHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

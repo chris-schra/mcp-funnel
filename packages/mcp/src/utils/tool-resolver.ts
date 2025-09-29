@@ -1,8 +1,7 @@
 /**
  * Utility for resolving tool names, including short name resolution
  */
-
-import { ProxyConfig } from '../config.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 export interface ToolResolverResult {
   resolved: boolean;

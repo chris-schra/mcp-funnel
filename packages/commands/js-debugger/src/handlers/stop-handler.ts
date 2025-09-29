@@ -2,7 +2,7 @@ import type {
   IToolHandler,
   ToolHandlerContext,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface StopHandlerArgs {
   sessionId: string;
@@ -13,9 +13,9 @@ export interface StopHandlerArgs {
  * Implements the IToolHandler SEAM for modular tool handling
  */
 export class StopHandler implements IToolHandler<StopHandlerArgs> {
-  readonly name = 'stop';
+  public readonly name = 'stop';
 
-  async handle(
+  public async handle(
     args: StopHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

@@ -1,0 +1,12 @@
+export { extractPackageNameFromSpec } from './extractPackageNameFromSpec.js';
+export { findMatchingCommand } from './findMatchingCommand.js';
+export { resolveInstalledPackageName } from './resolveInstalledPackageName.js';
+export { loadCommand } from './loadCommand.js';
+export { getPackagePath } from './getPackagePath.js';
+export { readManifest } from './readManifest.js';
+export { readPackagesPackageJson } from './readPackagesPackageJson.js';
+export { initialize } from './initialize.js';
+export { writeManifest } from './writeManifest.js';
+export { install } from './install.js';
+export { uninstall } from './uninstall.js';
+export { update } from './update.js';

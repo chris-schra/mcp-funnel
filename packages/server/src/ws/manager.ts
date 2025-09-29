@@ -16,12 +16,12 @@ export class WebSocketManager {
   private clients: Set<Client> = new Set();
   private mcpProxy: MCPProxy;
 
-  constructor(mcpProxy: MCPProxy) {
+  public constructor(mcpProxy: MCPProxy) {
     this.mcpProxy = mcpProxy;
     this.setupProxyEventListeners();
   }
 
-  handleConnection(ws: WebSocket) {
+  public handleConnection(ws: WebSocket) {
     const client: Client = {
       ws,
       subscriptions: new Set(['*']), // Subscribe to all events by default
@@ -229,7 +229,7 @@ export class WebSocketManager {
     });
   }
 
-  broadcast(event: WSEvent) {
+  public broadcast(event: WSEvent) {
     const message = JSON.stringify(event);
 
     for (const client of this.clients) {
@@ -256,7 +256,7 @@ export class WebSocketManager {
     return false;
   }
 
-  sendLog(
+  public sendLog(
     level: 'info' | 'warn' | 'error' | 'debug',
     message: string,
     source: string,

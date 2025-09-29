@@ -3,14 +3,21 @@ import type {
   MockDebugSession,
   DebugRequest,
   CallToolResult,
-  ConsoleMessage,
-} from '../types.js';
-
-type MockVariableScopes = {
-  local: Record<string, unknown>;
-  closure: Record<string, unknown>;
-  global: Record<string, unknown>;
-};
+} from '../types/index.js';
+import {
+  createSessionNotFoundResponse,
+  formatConsoleMessages,
+} from './mock-response-utils.js';
+import { createMockVariables } from './mock-variable-generator.js';
+import {
+  handleMockPathAccess,
+  handleMockScopeAccess,
+} from './mock-variable-access.js';
+import {
+  createBreakpointPausedResponse,
+  createInitialBreakpointResponse,
+  createStackTraceMockResponse,
+} from './mock-response-factory.js';
 
 /**
  * Mock session manager - separates mock logic from real debug logic
@@ -19,7 +26,7 @@ type MockVariableScopes = {
 export class MockSessionManager implements IMockSessionManager {
   private mockSessions = new Map<string, MockDebugSession>();
 
-  createMockSession(request: DebugRequest): string {
+  public createMockSession(request: DebugRequest): string {
     const sessionId = crypto.randomUUID();
     const startTime = new Date().toISOString();
 
@@ -61,15 +68,15 @@ export class MockSessionManager implements IMockSessionManager {
     return sessionId;
   }
 
-  getMockSession(sessionId: string): MockDebugSession | undefined {
+  public getMockSession(sessionId: string): MockDebugSession | undefined {
     return this.mockSessions.get(sessionId);
   }
 
-  deleteMockSession(sessionId: string): boolean {
+  public deleteMockSession(sessionId: string): boolean {
     return this.mockSessions.delete(sessionId);
   }
 
-  listMockSessions(): Array<{
+  public listMockSessions(): Array<{
     id: string;
     platform: string;
     target: string;
@@ -87,7 +94,7 @@ export class MockSessionManager implements IMockSessionManager {
     }));
   }
 
-  continueMockSession(
+  public continueMockSession(
     sessionId: string,
     args: {
       action?: string;
@@ -96,18 +103,7 @@ export class MockSessionManager implements IMockSessionManager {
   ): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              error: 'Mock session not found',
-              sessionId,
-            }),
-          },
-        ],
-        isError: true,
-      };
+      return createSessionNotFoundResponse(sessionId);
     }
 
     if (args.evaluate) {
@@ -168,69 +164,19 @@ export class MockSessionManager implements IMockSessionManager {
       };
     }
 
-    const bp = session.request.breakpoints![session.currentBreakpointIndex];
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              sessionId,
-              status: 'paused',
-              mock: true,
-              action: args.action || 'continue',
-              breakpoint: {
-                file: bp.file,
-                line: bp.line,
-                index: session.currentBreakpointIndex,
-                total: session.request.breakpoints!.length,
-              },
-              stackTrace: [
-                { functionName: 'processNext', file: bp.file, line: bp.line },
-                {
-                  functionName: 'main',
-                  file: bp.file,
-                  line: Math.max(1, bp.line - 10),
-                },
-              ],
-              variables: {
-                local: {
-                  index: 42 + session.currentBreakpointIndex * 10,
-                  iteration: session.currentBreakpointIndex,
-                },
-              },
-              consoleOutput: session.consoleOutput.slice(-5),
-              message: `[MOCK] Paused at breakpoint ${session.currentBreakpointIndex + 1} of ${session.request.breakpoints!.length}. Use js-debugger_continue tool to proceed.`,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return createBreakpointPausedResponse(sessionId, session, args.action);
   }
 
   /**
    * Create initial mock debug session response
    */
-  createInitialMockResponse(
+  public createInitialMockResponse(
     sessionId: string,
     request: DebugRequest,
   ): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              error: 'Mock session creation failed',
-              sessionId,
-            }),
-          },
-        ],
-        isError: true,
-      };
+      return createSessionNotFoundResponse(sessionId);
     }
 
     if (!request.breakpoints || request.breakpoints.length === 0) {
@@ -249,63 +195,20 @@ export class MockSessionManager implements IMockSessionManager {
       };
     }
 
-    const bp = request.breakpoints[0];
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              sessionId,
-              status: 'paused',
-              mock: true,
-              breakpoint: {
-                file: bp.file,
-                line: bp.line,
-                index: 0,
-                total: request.breakpoints.length,
-              },
-              stackTrace: [
-                { functionName: 'processData', file: bp.file, line: bp.line },
-                {
-                  functionName: 'main',
-                  file: bp.file,
-                  line: Math.max(1, bp.line - 10),
-                },
-              ],
-              variables: {
-                local: { index: 42, data: { type: 'mock', value: 'example' } },
-                closure: { config: { debug: true } },
-              },
-              consoleOutput: session.consoleOutput,
-              message: `[MOCK] Paused at breakpoint 1 of ${request.breakpoints.length}. Use js-debugger_continue tool with sessionId "${sessionId}" to proceed.`,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return createInitialBreakpointResponse(
+      sessionId,
+      request,
+      session.consoleOutput,
+    );
   }
 
   /**
    * Handle mock session stop
    */
-  stopMockSession(sessionId: string): CallToolResult {
+  public stopMockSession(sessionId: string): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              error: 'Mock session not found',
-              sessionId,
-            }),
-          },
-        ],
-        isError: true,
-      };
+      return createSessionNotFoundResponse(sessionId);
     }
 
     this.mockSessions.delete(sessionId);
@@ -326,71 +229,19 @@ export class MockSessionManager implements IMockSessionManager {
   /**
    * Get mock stack trace
    */
-  getStackTraceMock(sessionId: string): CallToolResult {
+  public getStackTraceMock(sessionId: string): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              error: 'Mock session not found',
-              sessionId,
-            }),
-          },
-        ],
-        isError: true,
-      };
+      return createSessionNotFoundResponse(sessionId);
     }
 
-    const mockStackTrace = [
-      {
-        frameId: 0,
-        functionName: 'processUserData',
-        file: session.request.breakpoints?.[0]?.file || 'main.js',
-        line: session.request.breakpoints?.[0]?.line || 15,
-        column: 12,
-      },
-      {
-        frameId: 1,
-        functionName: 'handleRequest',
-        file: session.request.breakpoints?.[0]?.file || 'main.js',
-        line: (session.request.breakpoints?.[0]?.line || 15) - 8,
-        column: 4,
-      },
-      {
-        frameId: 2,
-        functionName: 'main',
-        file: session.request.breakpoints?.[0]?.file || 'main.js',
-        line: 1,
-        column: 1,
-      },
-    ];
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              sessionId,
-              status: 'paused',
-              stackTrace: mockStackTrace,
-              frameCount: mockStackTrace.length,
-              message: `[MOCK] Stack trace with ${mockStackTrace.length} frames`,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return createStackTraceMockResponse(sessionId, session);
   }
 
   /**
    * Get mock console output with filtering
    */
-  getConsoleOutputMock(
+  public getConsoleOutputMock(
     sessionId: string,
     args: {
       levels?: Record<string, boolean>;
@@ -400,18 +251,7 @@ export class MockSessionManager implements IMockSessionManager {
   ): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              error: 'Mock session not found',
-              sessionId,
-            }),
-          },
-        ],
-        isError: true,
-      };
+      return createSessionNotFoundResponse(sessionId);
     }
 
     const output =
@@ -426,7 +266,7 @@ export class MockSessionManager implements IMockSessionManager {
           text: JSON.stringify(
             {
               sessionId,
-              consoleOutput: this.formatConsoleOutput(output),
+              consoleOutput: formatConsoleMessages(output),
               totalCount: session.consoleOutput.length,
               returnedCount: output.length,
               status: 'mock',
@@ -442,7 +282,7 @@ export class MockSessionManager implements IMockSessionManager {
   /**
    * Get mock variables with sophisticated inspection
    */
-  getVariablesMock(args: {
+  public getVariablesMock(args: {
     sessionId: string;
     path?: string;
     frameId?: number;
@@ -450,251 +290,28 @@ export class MockSessionManager implements IMockSessionManager {
   }): CallToolResult {
     const session = this.mockSessions.get(args.sessionId);
     if (!session) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              error: 'Mock session not found',
-              sessionId: args.sessionId,
-            }),
-          },
-        ],
-        isError: true,
-      };
+      return createSessionNotFoundResponse(args.sessionId);
     }
 
     const frameId = args.frameId ?? 0;
     const maxDepth = args.maxDepth ?? 3;
 
-    const mockVariables = this.createMockVariables(session);
+    const mockVariables = createMockVariables(session);
 
     if (args.path) {
-      return this.handleMockPathAccess(
+      return handleMockPathAccess(
         args.sessionId,
         args.path,
         frameId,
         mockVariables,
       );
     } else {
-      return this.handleMockScopeAccess(
+      return handleMockScopeAccess(
         args.sessionId,
         frameId,
         maxDepth,
         mockVariables,
       );
     }
-  }
-
-  /**
-   * Create comprehensive mock variables for testing
-   */
-  private createMockVariables(session: MockDebugSession): MockVariableScopes {
-    return {
-      local: {
-        userId: 12345,
-        userData: {
-          name: 'John Doe',
-          email: 'john@example.com',
-          profile: {
-            settings: {
-              theme: 'dark',
-              notifications: true,
-              privacy: {
-                public: false,
-                trackingEnabled: false,
-              },
-            },
-            preferences: ['email', 'sms'],
-          },
-        },
-        processedCount: session.currentBreakpointIndex * 10 + 42,
-        isProcessing: true,
-        config: {
-          debug: true,
-          timeout: 5000,
-          retryCount: 3,
-        },
-        largeArray: Array.from({ length: 150 }, (_, i) => `item-${i}`),
-        circularRef: '[Circular reference detected]',
-        dateObj: { __type: 'Date', value: '2023-12-01T10:30:00.000Z' },
-        regexObj: { __type: 'RegExp', value: '/test/gi' },
-        mapObj: {
-          __type: 'Map',
-          size: 3,
-          entries: [
-            ['key1', 'value1'],
-            ['key2', 'value2'],
-            ['key3', 'value3'],
-          ],
-        },
-        setObj: {
-          __type: 'Set',
-          size: 2,
-          values: ['item1', 'item2'],
-        },
-        promiseObj: { __type: 'Promise', state: 'pending' },
-      },
-      closure: {
-        outerVariable: 'from closure',
-        counter: session.currentBreakpointIndex,
-      },
-      global: {
-        process: '[Node.js process object]',
-        console: '[Console object]',
-        Buffer: '[Buffer constructor]',
-      },
-    };
-  }
-
-  private handleMockPathAccess(
-    sessionId: string,
-    path: string,
-    frameId: number,
-    mockVariables: MockVariableScopes,
-  ): CallToolResult {
-    const pathParts = path.split('.');
-    let current: unknown = mockVariables;
-    let found = true;
-
-    try {
-      for (const part of pathParts) {
-        if (
-          current &&
-          typeof current === 'object' &&
-          part in (current as Record<string, unknown>)
-        ) {
-          current = (current as Record<string, unknown>)[part];
-        } else {
-          found = false;
-          break;
-        }
-      }
-
-      const result = {
-        found,
-        value: found ? current : undefined,
-        type: found
-          ? Array.isArray(current)
-            ? 'array'
-            : typeof current
-          : undefined,
-        error: found
-          ? undefined
-          : `Variable path '${path}' not found in mock session`,
-      };
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              {
-                sessionId,
-                frameId,
-                path,
-                result,
-                message: `[MOCK] Variable inspection for path: ${path}`,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              sessionId,
-              frameId,
-              path,
-              result: {
-                found: false,
-                error: `[MOCK] Error accessing path '${path}': ${error instanceof Error ? error.message : 'Unknown error'}`,
-              },
-            }),
-          },
-        ],
-        isError: true,
-      };
-    }
-  }
-
-  private handleMockScopeAccess(
-    sessionId: string,
-    frameId: number,
-    maxDepth: number,
-    mockVariables: MockVariableScopes,
-  ): CallToolResult {
-    const scopes = [
-      {
-        type: 'local',
-        name: 'Local',
-        variables: Object.entries(mockVariables.local).map(([name, value]) => ({
-          name,
-          value,
-          type: Array.isArray(value) ? 'array' : typeof value,
-          configurable: true,
-          enumerable: true,
-        })),
-      },
-      {
-        type: 'closure',
-        name: 'Closure',
-        variables: Object.entries(mockVariables.closure).map(
-          ([name, value]) => ({
-            name,
-            value,
-            type: typeof value,
-            configurable: true,
-            enumerable: true,
-          }),
-        ),
-      },
-      {
-        type: 'global',
-        name: 'Global',
-        variables: Object.entries(mockVariables.global).map(
-          ([name, value]) => ({
-            name,
-            value,
-            type: typeof value,
-            configurable: false,
-            enumerable: false,
-          }),
-        ),
-      },
-    ];
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              sessionId,
-              frameId,
-              maxDepth,
-              scopes,
-              message: `[MOCK] Variable inspection for frame ${frameId} with max depth ${maxDepth}`,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
-  }
-
-  private formatConsoleOutput(messages: ConsoleMessage[]) {
-    return messages.slice(-10).map((msg) => ({
-      level: msg.level,
-      timestamp: msg.timestamp,
-      message: msg.message,
-      args: msg.args,
-    }));
   }
 }

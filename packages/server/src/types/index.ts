@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { ServerStatus as ProxyServerStatus } from 'mcp-funnel';
+import type { ServerStatus } from '@mcp-funnel/models';
 
 export const ServerStatusSchema = z.object({
   name: z.string(),
   status: z.enum(['connected', 'disconnected', 'error']),
   connectedAt: z.string().datetime().optional(),
   error: z.string().optional(),
-}) satisfies z.ZodType<ProxyServerStatus>;
+}) satisfies z.ZodType<ServerStatus>;
 
 export const ToolSchema = z.object({
   name: z.string(),
@@ -110,10 +110,11 @@ export const WSEventSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
-export type ServerStatus = ProxyServerStatus;
 export type Tool = z.infer<typeof ToolSchema>;
 export type ExecuteTool = z.infer<typeof ExecuteToolSchema>;
 export type ExecuteToolBody = z.infer<typeof ExecuteToolBodySchema>;
 export type ConfigUpdate = z.infer<typeof ConfigUpdateSchema>;
 export type WSMessage = z.infer<typeof WSMessageSchema>;
 export type WSEvent = z.infer<typeof WSEventSchema>;
+
+export type { ServerStatus } from '@mcp-funnel/models';

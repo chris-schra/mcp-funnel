@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, MockedFunction } from 'vitest';
 import { BridgeToolRequest } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { ToolRegistry, ToolState } from '../../tool-registry.js';
+import { ToolRegistry, ToolState } from '../../tool-registry/index.js';
 
 describe('BridgeToolRequest', () => {
   let tool: BridgeToolRequest;

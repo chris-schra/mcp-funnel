@@ -1,8 +1,9 @@
 import { startWebServer } from './index.js';
 import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { ProxyConfig, resolveMergedProxyConfig } from 'mcp-funnel';
+import { resolveMergedProxyConfig } from 'mcp-funnel';
 import type { InboundAuthConfig } from './auth/index.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 function loadConfig(): ProxyConfig {
   const configPathEnv = process.env.MCP_FUNNEL_CONFIG_PATH;

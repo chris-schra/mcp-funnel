@@ -21,10 +21,11 @@ export {
   discoverCommandsFromDefault,
   discoverAllCommands,
 } from './discovery.js';
-export {
-  CommandInstaller,
-  type InstalledCommand,
-  type CommandManifest,
-  type InstallOptions,
-  type UninstallOptions,
-} from './installer.js';
+export { CommandInstaller } from './installer.js';
+export type {
+  InstalledCommand,
+  CommandManifest,
+  InstallOptions,
+  UninstallOptions,
+} from './types/index.js';
+export { readManifest } from './util/index.js';
