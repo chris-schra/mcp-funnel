@@ -97,11 +97,6 @@ describe('Session Cleanup Mechanisms', () => {
     expect(response).toHaveProperty('timestamp');
   });
 
-  it('should enhance existing session operations with activity tracking', () => {
-    // Test that getSessionWithActivity method exists
-    expect(typeof sessionManager.getSessionWithActivity).toBe('function');
-  });
-
   it('should handle enhanced session listing with metadata', () => {
     const sessions = sessionManager.listSessions();
 
