@@ -4,29 +4,29 @@ import type {
   DebugRequest,
   CallToolResult,
 } from '../types/index.js';
+import { createMockConsoleOutput } from './mock/mock-data.js';
 import {
-  createSessionNotFoundResponse,
-  formatConsoleMessages,
-} from './mock-response-utils.js';
-import { createMockVariables } from './mock-variable-generator.js';
-import {
-  handleMockPathAccess,
-  handleMockScopeAccess,
-} from './mock-variable-access.js';
-import {
-  createBreakpointPausedResponse,
-  createInitialBreakpointResponse,
-  createStackTraceMockResponse,
-} from './mock-response-factory.js';
+  createMockErrorResponse,
+  validateAndNormalizePath,
+  shouldAutoTerminateSession,
+  hasReachedEndOfBreakpoints,
+} from './mock/mock-helpers.js';
+import { MockDebugAdapter } from './mock/mock-adapter.js';
 
 /**
  * Mock session manager - separates mock logic from real debug logic
  * Implements the IMockSessionManager interface for clean separation
+ *
+ * Refactored to use extracted modules for better maintainability:
+ * - mock-data.ts: Mock data structures and generators
+ * - mock-helpers.ts: Utility functions for mock operations
+ * - mock-adapter.ts: Response generation logic
  */
 export class MockSessionManager implements IMockSessionManager {
   private mockSessions = new Map<string, MockDebugSession>();
+  private adapter = new MockDebugAdapter();
 
-  public createMockSession(request: DebugRequest): string {
+  createMockSession(request: DebugRequest): string {
     const sessionId = crypto.randomUUID();
     const startTime = new Date().toISOString();
 
@@ -41,42 +41,22 @@ export class MockSessionManager implements IMockSessionManager {
     // Add mock console output based on verbosity settings
     if (request.captureConsole !== false) {
       const verbosity = request.consoleVerbosity || 'all';
-
-      if (verbosity === 'all') {
-        session.consoleOutput.push({
-          level: 'log',
-          timestamp: new Date().toISOString(),
-          message: 'Starting application...',
-          args: ['Starting application...'],
-        });
-      }
-
-      if (['all', 'warn-error', 'error-only'].includes(verbosity)) {
-        session.consoleOutput.push({
-          level: 'error',
-          timestamp: new Date().toISOString(),
-          message:
-            'Error: Potential memory leak detected! EventEmitter has 11 listeners attached',
-          args: [
-            'Error: Potential memory leak detected! EventEmitter has 11 listeners attached',
-          ],
-        });
-      }
+      session.consoleOutput = createMockConsoleOutput(verbosity);
     }
 
     this.mockSessions.set(sessionId, session);
     return sessionId;
   }
 
-  public getMockSession(sessionId: string): MockDebugSession | undefined {
+  getMockSession(sessionId: string): MockDebugSession | undefined {
     return this.mockSessions.get(sessionId);
   }
 
-  public deleteMockSession(sessionId: string): boolean {
+  deleteMockSession(sessionId: string): boolean {
     return this.mockSessions.delete(sessionId);
   }
 
-  public listMockSessions(): Array<{
+  listMockSessions(): Array<{
     id: string;
     platform: string;
     target: string;
@@ -94,7 +74,7 @@ export class MockSessionManager implements IMockSessionManager {
     }));
   }
 
-  public continueMockSession(
+  continueMockSession(
     sessionId: string,
     args: {
       action?: string;
@@ -103,145 +83,77 @@ export class MockSessionManager implements IMockSessionManager {
   ): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return createSessionNotFoundResponse(sessionId);
+      return createMockErrorResponse(sessionId, 'Mock session not found');
     }
 
-    if (args.evaluate) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              sessionId,
-              evaluation: {
-                expression: args.evaluate,
-                result: `[Mock evaluated: ${args.evaluate}]`,
-                type: 'string',
-              },
-              status: 'paused',
-              message: '[MOCK] Evaluation complete. Session still paused.',
-            }),
-          },
-        ],
-      };
-    }
-
+    // Handle session termination actions first
     if (args.action === 'stop') {
       this.mockSessions.delete(sessionId);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              sessionId,
-              status: 'terminated',
-              message: '[MOCK] Debug session terminated by user',
-            }),
-          },
-        ],
-      };
+      return this.adapter.createStopResponse(sessionId);
     }
 
-    session.currentBreakpointIndex++;
+    // Advance to next breakpoint (unless evaluating)
+    if (!args.evaluate) {
+      session.currentBreakpointIndex++;
+    }
 
-    if (
-      session.currentBreakpointIndex >=
-      (session.request.breakpoints?.length || 0)
-    ) {
+    // Check if session should end
+    if (!args.evaluate && hasReachedEndOfBreakpoints(session)) {
       this.mockSessions.delete(sessionId);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              sessionId,
-              status: 'completed',
-              message:
-                '[MOCK] Debug session completed. All breakpoints visited.',
-            }),
-          },
-        ],
-      };
     }
 
-    return createBreakpointPausedResponse(sessionId, session, args.action);
+    return this.adapter.createContinueResponse(sessionId, session, args);
   }
 
   /**
    * Create initial mock debug session response
    */
-  public createInitialMockResponse(
+  createInitialMockResponse(
     sessionId: string,
-    request: DebugRequest,
+    _request: DebugRequest,
   ): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return createSessionNotFoundResponse(sessionId);
+      return createMockErrorResponse(sessionId, 'Mock session creation failed');
     }
 
-    if (!request.breakpoints || request.breakpoints.length === 0) {
+    // Auto-terminate sessions with no breakpoints
+    if (shouldAutoTerminateSession(session)) {
       this.mockSessions.delete(sessionId);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              sessionId,
-              status: 'completed',
-              message: 'Debug session completed with no breakpoints (mock)',
-            }),
-          },
-        ],
-      };
     }
 
-    return createInitialBreakpointResponse(
-      sessionId,
-      request,
-      session.consoleOutput,
-    );
+    return this.adapter.createInitialResponse(sessionId, session);
   }
 
   /**
    * Handle mock session stop
    */
-  public stopMockSession(sessionId: string): CallToolResult {
+  stopMockSession(sessionId: string): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return createSessionNotFoundResponse(sessionId);
+      return createMockErrorResponse(sessionId, 'Mock session not found');
     }
 
     this.mockSessions.delete(sessionId);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            sessionId,
-            status: 'terminated',
-            message: '[MOCK] Debug session stopped and cleaned up successfully',
-          }),
-        },
-      ],
-    };
+    return this.adapter.createStopResponse(sessionId);
   }
 
   /**
    * Get mock stack trace
    */
-  public getStackTraceMock(sessionId: string): CallToolResult {
+  getStackTraceMock(sessionId: string): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return createSessionNotFoundResponse(sessionId);
+      return createMockErrorResponse(sessionId, 'Mock session not found');
     }
 
-    return createStackTraceMockResponse(sessionId, session);
+    return this.adapter.createStackTraceResponse(sessionId, session);
   }
 
   /**
    * Get mock console output with filtering
    */
-  public getConsoleOutputMock(
+  getConsoleOutputMock(
     sessionId: string,
     args: {
       levels?: Record<string, boolean>;
@@ -251,67 +163,37 @@ export class MockSessionManager implements IMockSessionManager {
   ): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
-      return createSessionNotFoundResponse(sessionId);
+      return createMockErrorResponse(sessionId, 'Mock session not found');
     }
 
-    const output =
-      args.since !== undefined
-        ? session.consoleOutput.slice(args.since)
-        : session.consoleOutput;
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              sessionId,
-              consoleOutput: formatConsoleMessages(output),
-              totalCount: session.consoleOutput.length,
-              returnedCount: output.length,
-              status: 'mock',
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return this.adapter.createConsoleOutputResponse(sessionId, session, args);
   }
 
   /**
    * Get mock variables with sophisticated inspection
    */
-  public getVariablesMock(args: {
+  getVariablesMock(args: {
     sessionId: string;
-    path?: string;
+    path: string;
     frameId?: number;
     maxDepth?: number;
   }): CallToolResult {
     const session = this.mockSessions.get(args.sessionId);
     if (!session) {
-      return createSessionNotFoundResponse(args.sessionId);
+      return createMockErrorResponse(args.sessionId, 'Mock session not found');
     }
 
-    const frameId = args.frameId ?? 0;
-    const maxDepth = args.maxDepth ?? 3;
-
-    const mockVariables = createMockVariables(session);
-
-    if (args.path) {
-      return handleMockPathAccess(
+    const trimmedPath = validateAndNormalizePath(args.path);
+    if (!trimmedPath) {
+      return createMockErrorResponse(
         args.sessionId,
-        args.path,
-        frameId,
-        mockVariables,
-      );
-    } else {
-      return handleMockScopeAccess(
-        args.sessionId,
-        frameId,
-        maxDepth,
-        mockVariables,
+        'Variable path is required. Provide the dot-notation path using the "path" parameter.',
       );
     }
+
+    return this.adapter.createVariablesResponse(args.sessionId, session, {
+      ...args,
+      path: trimmedPath,
+    });
   }
 }

@@ -15,9 +15,6 @@ import {
   type FixtureHandle,
 } from '../../test/utils/fixture-manager.js';
 
-const runRealCdpTests = process.env.JS_DEBUGGER_RUN_REAL === 'true';
-const describeReal = runRealCdpTests ? describe : describe.skip;
-
 interface ChromeHandle {
   process: ChildProcess;
   port: number;
@@ -155,7 +152,7 @@ async function startStaticServer(rootDir: string): Promise<StaticServerHandle> {
   };
 }
 
-describeReal('BrowserAdapter integration', () => {
+describe('BrowserAdapter integration', () => {
   let fixturesRoot: FixtureHandle;
 
   beforeAll(async () => {
@@ -169,7 +166,10 @@ describeReal('BrowserAdapter integration', () => {
   it('pauses on debugger statement, inspects state, and captures console output', async () => {
     const chrome = await launchHeadlessChromium();
     const staticServer = await startStaticServer(fixturesRoot.tempPath);
-    const adapter = new BrowserAdapter('127.0.0.1', chrome.port);
+    const adapter = new BrowserAdapter({
+      host: '127.0.0.1',
+      port: chrome.port,
+    });
     const cdpClient = await chromium.connectOverCDP(
       `http://127.0.0.1:${chrome.port}`,
     );

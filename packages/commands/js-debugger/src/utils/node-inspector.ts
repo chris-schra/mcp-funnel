@@ -107,6 +107,19 @@ export async function validateScriptPath(scriptPath: string): Promise<void> {
   } catch (error) {
     if (error instanceof Error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        if (scriptPath.includes(' ')) {
+          const [potentialPath] = scriptPath.split(' ');
+          try {
+            const potentialStat = await fs.stat(potentialPath);
+            if (potentialStat.isFile()) {
+              throw new Error(
+                `Script file not found: ${scriptPath}. The path appears to include additional arguments. Pass the script via "target" and provide extra arguments using the "args" option.`,
+              );
+            }
+          } catch (_innerError) {
+            // Ignore secondary stat errors and fall through to default message
+          }
+        }
         throw new Error(`Script file not found: ${scriptPath}`);
       }
       throw error;

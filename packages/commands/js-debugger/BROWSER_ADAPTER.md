@@ -54,7 +54,10 @@ const debugger = new BrowserAdapter();
 await debugger.connect('auto');
 
 // Set a breakpoint
-const bpId = await debugger.setBreakpoint('https://example.com/script.js', 42);
+const { id: bpId } = await debugger.setBreakpoint(
+  'https://example.com/script.js',
+  42,
+);
 
 // Set up event handlers
 debugger.onPaused((state) => {
@@ -102,7 +105,7 @@ await debugger.connect('My App - Dashboard');
 ### Conditional Breakpoints
 
 ```typescript
-const bpId = await debugger.setBreakpoint(
+const { id: conditionalBreakpointId } = await debugger.setBreakpoint(
   'app.js',
   100,
   'user.role === "admin" && user.active === true'
@@ -310,7 +313,7 @@ describe('Browser Debugging', () => {
   });
 
   test('should pause at breakpoint', async () => {
-    const bpId = await debugger.setBreakpoint('app.js', 10);
+    const { id: bpId } = await debugger.setBreakpoint('app.js', 10);
 
     // Trigger code execution in browser...
 
@@ -341,7 +344,7 @@ await debugger.connect('auto');
 const page = await browser.newPage();
 await page.goto('https://example.com');
 
-const bpId = await debugger.setBreakpoint('app.js', 50);
+const { id: nextBreakpointId } = await debugger.setBreakpoint('app.js', 50);
 await page.click('#trigger-button');
 // Breakpoint hit!
 ```

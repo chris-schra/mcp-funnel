@@ -13,9 +13,9 @@ export interface StopHandlerArgs {
  * Implements the IToolHandler SEAM for modular tool handling
  */
 export class StopHandler implements IToolHandler<StopHandlerArgs> {
-  public readonly name = 'stop';
+  readonly name = 'stop';
 
-  public async handle(
+  async handle(
     args: StopHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {
@@ -33,11 +33,8 @@ export class StopHandler implements IToolHandler<StopHandlerArgs> {
         return validation.error;
       }
 
-      const { session } = validation;
-
-      // Clean disconnect and termination - the session manager handles comprehensive cleanup
-      await session.adapter.disconnect();
-      context.sessionManager.deleteSession(args.sessionId);
+      // Clean disconnect and termination - delegate to session manager cleanup
+      await context.sessionManager.deleteSession(args.sessionId);
 
       return context.responseFormatter.success({
         sessionId: args.sessionId,

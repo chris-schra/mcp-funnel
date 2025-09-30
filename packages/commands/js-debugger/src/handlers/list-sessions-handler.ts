@@ -13,9 +13,9 @@ export type ListSessionsHandlerArgs = Record<string, never>;
 export class ListSessionsHandler
   implements IToolHandler<ListSessionsHandlerArgs>
 {
-  public readonly name = 'list_sessions';
+  readonly name = 'list_sessions';
 
-  public async handle(
+  async handle(
     _args: ListSessionsHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

@@ -1,3 +1,4 @@
+import path from 'path';
 import type {
   IToolHandler,
   ToolHandlerContext,
@@ -9,6 +10,8 @@ export interface DebugHandlerArgs {
   platform: 'node' | 'browser';
   target: string;
   command?: string;
+  args?: string[];
+  runtimeArgs?: string[];
   breakpoints?: Array<{
     file: string;
     line: number;
@@ -18,7 +21,6 @@ export interface DebugHandlerArgs {
   evalExpressions?: string[];
   captureConsole?: boolean;
   consoleVerbosity?: 'all' | 'warn-error' | 'error-only' | 'none';
-  stopOnEntry?: boolean;
   useMock?: boolean;
 }
 
@@ -27,18 +29,40 @@ export interface DebugHandlerArgs {
  * Implements the IToolHandler SEAM for modular tool handling
  */
 export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
-  public readonly name = 'debug';
+  readonly name = 'debug';
 
-  public async handle(
+  async handle(
     args: DebugHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {
     try {
+      let target = args.target;
+      let breakpoints = args.breakpoints;
+
+      const isMock = Boolean(args.useMock);
+      const isNodePlatform = args.platform === 'node';
+      const isInspectorTarget =
+        typeof target === 'string' &&
+        (target.startsWith('ws://') || target.startsWith('wss://'));
+
+      if (isNodePlatform && !isMock && !isInspectorTarget) {
+        target = path.isAbsolute(target) ? target : path.resolve(target);
+        if (breakpoints) {
+          breakpoints = breakpoints.map((bp) => ({
+            ...bp,
+            file: path.isAbsolute(bp.file) ? bp.file : path.resolve(bp.file),
+          }));
+        }
+      }
+
       const request: DebugRequest = {
         platform: args.platform,
-        target: args.target,
+        target,
         command: args.command,
-        breakpoints: args.breakpoints,
+        args: args.args,
+        runtimeArgs: args.runtimeArgs,
+        stopOnEntry: true,
+        breakpoints,
         timeout: args.timeout,
         evalExpressions: args.evalExpressions,
         captureConsole: args.captureConsole,
@@ -65,8 +89,7 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
       }
 
       // Create real debug session
-      const sessionId = await context.sessionManager.createSession(request);
-      const session = context.sessionManager.getSession(sessionId);
+      const session = await context.sessionManager.createSession(request);
 
       if (!session) {
         return context.responseFormatter.error(
@@ -74,17 +97,33 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
         );
       }
 
-      // For running sessions (not paused), return session info immediately
-      if (session.state.status === 'running') {
+      const awaitedSession = await context.sessionManager.waitForPause(
+        session.id,
+        request.timeout ?? 30000,
+      );
+
+      const latestSession = awaitedSession
+        ? awaitedSession
+        : context.sessionManager.getSession(session.id);
+
+      if (!latestSession) {
+        return context.responseFormatter.error(
+          'Debug session unavailable after initialization',
+        );
+      }
+
+      if (latestSession.state.status !== 'paused') {
         return context.responseFormatter.runningSession(
-          sessionId,
+          session.id,
           request.platform,
           request.target,
         );
       }
 
-      // For paused sessions, return full debug info
-      return await context.responseFormatter.debugState(sessionId, session);
+      return await context.responseFormatter.debugState(
+        session.id,
+        latestSession,
+      );
     } catch (error) {
       return context.responseFormatter.error(
         error instanceof Error ? error.message : 'Unknown error',

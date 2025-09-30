@@ -15,9 +15,9 @@ export interface GetStacktraceHandlerArgs {
 export class GetStacktraceHandler
   implements IToolHandler<GetStacktraceHandlerArgs>
 {
-  public readonly name = 'get_stacktrace';
+  readonly name = 'get_stacktrace';
 
-  public async handle(
+  async handle(
     args: GetStacktraceHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {
@@ -41,12 +41,15 @@ export class GetStacktraceHandler
 
       return context.responseFormatter.stackTrace(
         args.sessionId,
+        session,
         stackTrace.map((frame) => ({
           frameId: frame.id,
           functionName: frame.functionName,
           file: frame.file,
           line: frame.line,
           column: frame.column,
+          origin: frame.origin,
+          relativePath: frame.relativePath,
         })),
       );
     } catch (error) {

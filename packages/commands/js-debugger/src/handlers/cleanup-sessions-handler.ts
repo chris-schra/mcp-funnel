@@ -16,9 +16,9 @@ export interface CleanupSessionsHandlerArgs {
 export class CleanupSessionsHandler
   implements IToolHandler<CleanupSessionsHandlerArgs>
 {
-  public readonly name = 'cleanup_sessions';
+  readonly name = 'cleanup_sessions';
 
-  public async handle(
+  async handle(
     args: CleanupSessionsHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {
@@ -65,7 +65,9 @@ export class CleanupSessionsHandler
 
       // Perform actual cleanup
       const cleanedCount =
-        (await context.sessionManager.cleanupInactiveSessions?.()) || 0;
+        (await context.sessionManager.cleanupInactiveSessions?.({
+          force: args.force === true,
+        })) || 0;
 
       return context.responseFormatter.success({
         totalSessions: allSessions.length,

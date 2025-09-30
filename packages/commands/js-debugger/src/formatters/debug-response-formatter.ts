@@ -1,99 +1,36 @@
 import type {
-  IResponseFormatter,
   CallToolResult,
   DebugSession,
-  ConsoleMessage,
   SessionLifecycleState,
   DebugState,
+  CodeOrigin,
 } from '../types/index.js';
+import { BaseResponseFormatter } from './base-formatter.js';
+import { SessionFormatter } from './session-formatter.js';
+import { StackFormatter } from './stack-formatter.js';
+import { VariableFormatter } from './variable-formatter.js';
 
 /**
- * Standard response formatter that eliminates JSON formatting duplication
- * Implements the IResponseFormatter SEAM for consistent output across all handlers
+ * Main response formatter that coordinates specialized formatters
+ *
+ * Implements the IResponseFormatter SEAM by delegating to focused modules:
+ * - BaseResponseFormatter: Core success/error formatting
+ * - SessionFormatter: Session lifecycle and list operations
+ * - StackFormatter: Debug state and stack trace formatting
+ * - VariableFormatter: Variable inspection and evaluation
+ *
+ * This eliminates the original 415-line monolithic formatter
  */
-export class DebugResponseFormatter implements IResponseFormatter {
-  public success(data: unknown): CallToolResult {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(data, null, 2),
-        },
-      ],
-    };
-  }
-
-  public error(message: string, details?: unknown): CallToolResult {
-    const errorData: Record<string, unknown> = { error: message };
-    if (details !== undefined) {
-      errorData.details = details;
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(errorData, null, 2),
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  public async debugState(
+export class DebugResponseFormatter extends BaseResponseFormatter {
+  async debugState(
     sessionId: string,
     session: DebugSession,
   ): Promise<CallToolResult> {
-    const { state, consoleOutput } = session;
-
-    if (state.status === 'terminated') {
-      return this.success({
-        sessionId,
-        status: 'completed',
-        message: 'Debug session completed',
-      });
-    }
-
-    if (state.status === 'paused') {
-      const stackTrace = await session.adapter.getStackTrace();
-      const topFrame = stackTrace[0];
-      const scopes = topFrame
-        ? await session.adapter.getScopes(topFrame.id)
-        : [];
-
-      const variables: Record<string, unknown> = {};
-      for (const scope of scopes) {
-        variables[scope.type] = Object.fromEntries(
-          scope.variables.map((v) => [v.name, v.value]),
-        );
-      }
-
-      return this.success({
-        sessionId,
-        status: 'paused',
-        pauseReason: state.pauseReason,
-        breakpoint: state.breakpoint,
-        exception: state.exception,
-        stackTrace: stackTrace.map((frame) => ({
-          functionName: frame.functionName,
-          file: frame.file,
-          line: frame.line,
-          column: frame.column,
-        })),
-        variables,
-        consoleOutput: this.formatConsoleMessages(consoleOutput),
-        message: `Paused${state.pauseReason ? ` at ${state.pauseReason}` : ''}. Use js-debugger_continue tool to proceed.`,
-      });
-    }
-
-    return this.success({
-      sessionId,
-      status: state.status,
-      message: 'Debug session is running',
-    });
+    const data = await StackFormatter.formatDebugState(sessionId, session);
+    return this.success(data);
   }
 
-  public sessionsList(
+  sessionsList(
     sessions: Array<{
       id: string;
       platform: string;
@@ -108,11 +45,11 @@ export class DebugResponseFormatter implements IResponseFormatter {
     }>,
     mockSessions?: Array<{ id: string; mock: true; [key: string]: unknown }>,
   ): CallToolResult {
-    const allSessions = [...sessions, ...(mockSessions || [])];
-    return this.success({ sessions: allSessions });
+    const data = SessionFormatter.sessionsList(sessions, mockSessions);
+    return this.success(data);
   }
 
-  public consoleOutput(data: {
+  consoleOutput(data: {
     sessionId: string;
     consoleOutput: Array<{
       level: string;
@@ -125,91 +62,55 @@ export class DebugResponseFormatter implements IResponseFormatter {
     filteredCount?: number;
     status: string;
   }): CallToolResult {
-    return this.success(data);
+    const formattedData = SessionFormatter.consoleOutput(data);
+    return this.success(formattedData);
   }
 
-  /**
-   * Formats debug session info for running sessions
-   */
-  public runningSession(
+  runningSession(
     sessionId: string,
     platform: string,
     target: string,
   ): CallToolResult {
-    return this.success({
-      sessionId,
-      status: 'running',
-      message: `Debug session started. Use js-debugger_search_console_output with sessionId "${sessionId}" to search console output.`,
-      platform,
-      target,
-    });
+    const data = SessionFormatter.runningSession(sessionId, platform, target);
+    return this.success(data);
   }
 
-  /**
-   * Formats session termination response
-   */
-  public terminatedSession(sessionId: string, message: string): CallToolResult {
-    return this.success({
-      sessionId,
-      status: 'terminated',
-      message,
-    });
+  terminatedSession(sessionId: string, message: string): CallToolResult {
+    const data = SessionFormatter.terminatedSession(sessionId, message);
+    return this.success(data);
   }
 
-  /**
-   * Formats stack trace response
-   */
-  public stackTrace(
+  stackTrace(
     sessionId: string,
+    session: DebugSession,
     stackTrace: Array<{
       frameId: number;
       functionName: string;
       file: string;
       line: number;
       column?: number;
+      origin?: CodeOrigin;
+      relativePath?: string;
     }>,
   ): CallToolResult {
-    return this.success({
+    const data = StackFormatter.formatStackTrace(
       sessionId,
-      status: 'paused',
+      session,
       stackTrace,
-      frameCount: stackTrace.length,
-      message: `Stack trace with ${stackTrace.length} frames`,
-    });
+    );
+    return this.success(data);
   }
 
-  /**
-   * Formats variable inspection response
-   */
-  public variables(
+  variables(
     sessionId: string,
     frameId: number,
-    data: {
-      path?: string;
-      maxDepth?: number;
-      scopes?: unknown[];
-      result?: unknown;
-    },
+    data: { path: string; result: unknown },
   ): CallToolResult {
-    const response: Record<string, unknown> = {
-      sessionId,
-      frameId,
-      ...data,
-    };
-
-    if (data.path) {
-      response.message = `Variable inspection for path: ${data.path}`;
-    } else {
-      response.message = `Variable inspection for frame ${frameId} with max depth ${data.maxDepth || 3}`;
-    }
-
-    return this.success(response);
+    const formattedData = VariableFormatter.variables(sessionId, frameId, data);
+    return this.success(formattedData);
   }
 
-  /**
-   * Formats evaluation result
-   */
-  public evaluation(
+  evaluation(
     sessionId: string,
     evaluation: {
       expression?: string;
@@ -218,23 +119,7 @@ export class DebugResponseFormatter implements IResponseFormatter {
       error?: string;
     },
   ): CallToolResult {
-    return this.success({
-      sessionId,
-      evaluation,
-      status: 'paused',
-      message: 'Evaluation complete. Session still paused.',
-    });
-  }
-
-  /**
-   * Formats console messages for output
-   */
-  private formatConsoleMessages(messages: ConsoleMessage[]) {
-    return messages.slice(-10).map((msg) => ({
-      level: msg.level,
-      timestamp: msg.timestamp,
-      message: msg.message,
-      args: msg.args,
-    }));
+    const data = VariableFormatter.evaluation(sessionId, evaluation);
+    return this.success(data);
   }
 }

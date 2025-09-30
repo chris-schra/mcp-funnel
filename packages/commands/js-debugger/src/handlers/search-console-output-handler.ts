@@ -19,9 +19,9 @@ export interface SearchConsoleOutputHandlerArgs {
 export class SearchConsoleOutputHandler
   implements IToolHandler<SearchConsoleOutputHandlerArgs>
 {
-  public readonly name = 'search_console_output';
+  readonly name = 'search_console_output';
 
-  public async handle(
+  async handle(
     args: SearchConsoleOutputHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

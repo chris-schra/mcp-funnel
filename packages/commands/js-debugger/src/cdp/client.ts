@@ -1,22 +1,7 @@
 import { EventEmitter } from 'events';
-import WebSocket from 'ws';
 import { ICDPClient } from '../types/index.js';
-import {
-  handleWebSocketMessage,
-  rejectAllPendingPromises,
-  sendCDPRequest,
-  type PendingPromise,
-} from './message-handler.js';
-import { ReconnectionManager } from './reconnection-manager.js';
-import {
-  isValidWebSocketUrl,
-  cleanupWebSocket,
-  disconnectWebSocket,
-} from './websocket-utils.js';
-import {
-  setupWebSocketConnection,
-  setupWebSocketEventHandlers,
-} from './connection-handler.js';
+import { WebSocketClient } from './websocket-client.js';
+import { MessageHandler } from './message-handler.js';
 
 /**
  * CDP Client configuration options
@@ -67,18 +52,18 @@ export interface CDPClientOptions {
  * - Automatic reconnection with exponential backoff
  * - Proper resource cleanup
  * - Comprehensive error handling
+ *
+ * Architecture:
+ * - WebSocketClient: Handles connection lifecycle and WebSocket management
+ * - MessageHandler: Manages JSON-RPC message parsing and promise correlation
+ * - CDPClient: Provides high-level CDP interface and event coordination
  */
 export class CDPClient extends EventEmitter implements ICDPClient {
-  private ws: WebSocket | null = null;
-  private url: string | null = null;
-  private messageId = 0;
-  private pendingPromises = new Map<number, PendingPromise>();
-  private isConnecting = false;
-  private isConnected = false;
+  private wsClient: WebSocketClient;
+  private messageHandler: MessageHandler;
   private readonly options: Required<CDPClientOptions>;
-  private reconnectionManager: ReconnectionManager;
 
-  public constructor(options: CDPClientOptions = {}) {
+  constructor(options: CDPClientOptions = {}) {
     super();
     this.options = {
       connectionTimeout: options.connectionTimeout ?? 30000,
@@ -87,11 +72,18 @@ export class CDPClient extends EventEmitter implements ICDPClient {
       reconnectDelay: options.reconnectDelay ?? 1000,
       autoReconnect: options.autoReconnect ?? true,
     };
-    this.reconnectionManager = new ReconnectionManager(
-      this.options.maxReconnectAttempts,
-      this.options.reconnectDelay,
-      this,
-    );
+
+    // Initialize composed components
+    this.wsClient = new WebSocketClient({
+      connectionTimeout: this.options.connectionTimeout,
+      maxReconnectAttempts: this.options.maxReconnectAttempts,
+      reconnectDelay: this.options.reconnectDelay,
+      autoReconnect: this.options.autoReconnect,
+    });
+
+    this.messageHandler = new MessageHandler(this.options.requestTimeout);
+
+    this.setupEventForwarding();
   }
 
   /**
@@ -100,69 +92,19 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @param url WebSocket URL (ws:// or wss://)
    * @throws {Error} If already connected or connection fails
    */
-  public async connect(url: string): Promise<void> {
-    if (this.isConnected || this.isConnecting) {
-      throw new Error('Client is already connected or connecting');
-    }
-
-    if (!isValidWebSocketUrl(url)) {
-      throw new Error(
-        'Invalid WebSocket URL. Must use ws:// or wss:// protocol',
-      );
-    }
-
-    this.url = url;
-    this.isConnecting = true;
-
-    try {
-      this.ws = await setupWebSocketConnection(
-        url,
-        this.options.connectionTimeout,
-        () => {
-          this.isConnecting = false;
-          this.isConnected = true;
-          this.reconnectionManager.reset();
-          this.setupWebSocketHandlers();
-          this.emit('connect');
-        },
-        () => {
-          this.cleanup();
-        },
-        () => {
-          if (this.isConnecting) {
-            this.isConnecting = false;
-          }
-          this.handleDisconnection();
-        },
-      );
-    } catch (error) {
-      this.isConnecting = false;
-      throw error;
-    }
+  async connect(url: string): Promise<void> {
+    return this.wsClient.connect(url);
   }
 
   /**
    * Disconnect from the CDP endpoint
    */
-  public async disconnect(): Promise<void> {
-    // Disable reconnection for manual disconnect
-    const originalAutoReconnect = this.options.autoReconnect;
-    this.options.autoReconnect = false;
-
-    this.reconnectionManager.cancel();
-
-    if (this.ws && (this.isConnected || this.isConnecting)) {
-      await disconnectWebSocket(this.ws, () => {
-        this.cleanup();
-        this.emit('disconnect');
-      });
-      this.options.autoReconnect = originalAutoReconnect;
-      return;
-    }
-
-    this.cleanup();
-    this.emit('disconnect');
-    this.options.autoReconnect = originalAutoReconnect;
+  async disconnect(): Promise<void> {
+    // Clean up pending promises before disconnecting
+    this.messageHandler.rejectAllPendingPromises(
+      new Error('Client disconnected'),
+    );
+    return this.wsClient.disconnect();
   }
 
   /**
@@ -173,22 +115,18 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @returns Promise resolving to the method result
    * @throws {Error} If not connected or request fails
    */
-  public async send<T = unknown>(
+  async send<T = unknown>(
     method: string,
     params?: Record<string, unknown>,
   ): Promise<T> {
-    if (!this.isConnected || !this.ws) {
+    if (!this.connected) {
       throw new Error('Client is not connected');
     }
 
-    const id = ++this.messageId;
-    return sendCDPRequest<T>(
-      this.ws,
-      id,
+    return this.messageHandler.sendRequest<T>(
       method,
+      (data) => this.wsClient.send(data),
       params,
-      this.pendingPromises,
-      this.options.requestTimeout,
     );
   }
 
@@ -198,7 +136,7 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @param event Event name (e.g., 'Runtime.consoleAPICalled')
    * @param handler Event handler function
    */
-  public on(event: string, handler: (params: unknown) => void): this {
+  on(event: string, handler: (params: unknown) => void): this {
     return super.on(event, handler);
   }
 
@@ -208,89 +146,75 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @param event Event name
    * @param handler Event handler function to remove
    */
-  public off(event: string, handler: (params: unknown) => void): this {
+  off(event: string, handler: (params: unknown) => void): this {
     return super.off(event, handler);
   }
 
   /**
    * Get connection status
    */
-  public get connected(): boolean {
-    return this.isConnected;
+  get connected(): boolean {
+    return this.wsClient.connected;
   }
 
   /**
    * Get the current WebSocket URL
    */
-  public get connectionUrl(): string | null {
-    return this.url;
+  get connectionUrl(): string | null {
+    return this.wsClient.connectionUrl;
   }
 
   /**
-   * Initialize WebSocket event handlers after connection
+   * Get the count of pending requests
    */
-  private setupWebSocketHandlers(): void {
-    if (!this.ws) return;
-
-    setupWebSocketEventHandlers(
-      this.ws,
-      (data) => handleWebSocketMessage(data, this.pendingPromises, this),
-      () => this.handleDisconnection(),
-      (error) => this.emit('error', error),
-    );
+  get pendingRequestCount(): number {
+    return this.messageHandler.pendingRequestCount;
   }
 
   /**
-   * Handle WebSocket disconnection
+   * Set up event forwarding between components
    */
-  private handleDisconnection(): void {
-    const wasConnected = this.isConnected;
-    this.isConnected = false;
-    this.isConnecting = false;
-
-    // Reject all pending promises
-    rejectAllPendingPromises(
-      this.pendingPromises,
-      new Error('Connection closed'),
-    );
-
-    if (wasConnected) {
-      this.emit('disconnect');
-    }
-
-    // Attempt reconnection if enabled and we have a URL
-    if (
-      this.options.autoReconnect &&
-      this.url &&
-      this.reconnectionManager.canRetry()
-    ) {
-      this.reconnectionManager.scheduleReconnection(
-        async () => {
-          if (this.url) {
-            await this.connect(this.url);
-          }
-        },
-        () => {
-          // Max attempts reached - no additional action needed
-        },
+  private setupEventForwarding(): void {
+    // Forward WebSocket events
+    this.wsClient.on('connect', () => this.emit('connect'));
+    this.wsClient.on('disconnect', () => {
+      // Clean up pending promises on disconnect
+      this.messageHandler.rejectAllPendingPromises(
+        new Error('Connection closed'),
       );
-    }
-  }
+      this.emit('disconnect');
+    });
+    this.wsClient.on('reconnecting', (data) => this.emit('reconnecting', data));
+    this.wsClient.on('reconnected', () => this.emit('reconnected'));
+    this.wsClient.on('error', (error) => this.emit('error', error));
 
-  /**
-   * Clean up resources
-   */
-  private cleanup(): void {
-    this.isConnected = false;
-    this.isConnecting = false;
+    // Forward message handler events (CDP events)
+    this.messageHandler.on('error', (error) => this.emit('error', error));
 
-    cleanupWebSocket(this.ws);
-    this.ws = null;
+    // Forward all CDP events from message handler
+    this.messageHandler.on('newListener', (event, listener) => {
+      // When someone listens for a CDP event on this client,
+      // make sure we forward it from the message handler
+      if (event.includes('.')) {
+        // CDP events contain dots (e.g., 'Runtime.consoleAPICalled')
+        this.messageHandler.on(event, listener);
+      }
+    });
 
-    rejectAllPendingPromises(
-      this.pendingPromises,
-      new Error('Client disconnected'),
-    );
-    this.reconnectionManager.cancel();
+    // Handle incoming WebSocket messages
+    this.wsClient.on('message', (data) => {
+      this.messageHandler.handleMessage(data);
+    });
+
+    // Forward all CDP method events from message handler
+    const originalEmit = this.messageHandler.emit.bind(this.messageHandler);
+    this.messageHandler.emit = (event: string | symbol, ...args: unknown[]) => {
+      const result = originalEmit(event, ...args);
+      // Forward CDP events (those with dots in the name) to the main client
+      if (typeof event === 'string' && event.includes('.')) {
+        this.emit(event, ...args);
+      }
+      return result;
+    };
   }
 }

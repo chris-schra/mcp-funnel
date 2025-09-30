@@ -1,3 +1,4 @@
+import Emittery from 'emittery';
 import {
   IDebugAdapter,
   DebugState,
@@ -7,34 +8,29 @@ import {
   ConsoleHandler,
   PauseHandler,
   ResumeHandler,
+  BreakpointRegistration,
+  DebugRequest,
+  DebugSessionEvents,
 } from '../types/index.js';
-import {
-  CDPClient,
-  TargetDiscovery,
-  BrowserTarget,
-  CDPBreakpoint,
-  CDPCallFrame,
-  CDPDebuggerPausedParams,
-  CDPScriptParsedParams,
-  CDPConsoleAPICalledParams,
-  CDPExceptionThrownParams,
-  CDPEvaluateResult,
-} from '../cdp/index.js';
-import { SourceMapConsumer } from 'source-map';
+import { CDPClient, CDPCallFrame } from '../cdp/index.js';
+import { deriveProjectRootFromRequest } from '../utils/locations.js';
+import { PageManager } from './browser/page-manager.js';
+import { BrowserConsoleHandler } from './browser/console-handler.js';
+import { BrowserEventHandlers } from './browser/event-handlers.js';
+import { BreakpointManager } from './browser/breakpoint-manager.js';
+import { ExecutionControl } from './browser/execution-control.js';
 import {
   filePathToUrl,
-  urlToFilePath,
-  getScopesForFrame,
-  invokeHandlers,
-} from './browser-adapter-utils.js';
-import { enableCDPDomains, disableCDPDomains } from './browser-cdp-setup.js';
-import { findOrCreateTarget } from './browser-target-utils.js';
-import {
-  handleDebuggerPaused,
-  handleScriptParsed,
-  handleConsoleMessage,
-  handleException,
-} from './browser-event-handlers.js';
+  buildStackTrace,
+  getFrameScopes,
+} from './browser/utils.js';
+import type { ScriptInfo } from './browser/handlers/script-handler.js';
+
+type BrowserAdapterOptions = {
+  host?: string;
+  port?: number;
+  request?: DebugRequest;
+};
 
 /**
  * Browser debugging adapter using Chrome DevTools Protocol
@@ -42,351 +38,270 @@ import {
  */
 export class BrowserAdapter implements IDebugAdapter {
   private cdpClient: CDPClient;
-  private targetDiscovery: TargetDiscovery;
-  private currentTarget: BrowserTarget | null = null;
+  private pageManager: PageManager;
+  private consoleHandler: BrowserConsoleHandler;
+  private eventHandlers: BrowserEventHandlers;
+  private breakpointManager: BreakpointManager;
+  private executionControl: ExecutionControl;
   private isConnected = false;
-  private scripts = new Map<
-    string,
-    { url: string; source?: string; sourceMap?: SourceMapConsumer }
-  >();
-  private breakpoints = new Map<string, CDPBreakpoint>();
+  private scripts = new Map<string, ScriptInfo>();
   private currentCallFrames: CDPCallFrame[] = [];
   private debugState: DebugState = { status: 'running' };
+  private projectRoot?: string;
 
-  // Event handlers
-  private consoleHandlers: ConsoleHandler[] = [];
-  private pauseHandlers: PauseHandler[] = [];
-  private resumeHandlers: ResumeHandler[] = [];
+  // Event emitter for typed events
+  private eventEmitter = new Emittery<DebugSessionEvents>();
 
-  public constructor(host = 'localhost', port = 9222) {
+  // Pause state management
+  private pausePromises = new Set<{
+    resolve: (state: DebugState) => void;
+    reject: (error: Error) => void;
+    timeout?: NodeJS.Timeout;
+  }>();
+
+  constructor(options?: BrowserAdapterOptions) {
+    const host = options?.host ?? 'localhost';
+    const port = options?.port ?? 9222;
+
     this.cdpClient = new CDPClient();
-    this.targetDiscovery = new TargetDiscovery(host, port);
+    this.pageManager = new PageManager(host, port);
+    this.consoleHandler = new BrowserConsoleHandler(this.eventEmitter);
+    this.projectRoot = deriveProjectRootFromRequest(options?.request);
 
-    this.setupEventHandlers();
+    this.breakpointManager = new BreakpointManager(
+      this.cdpClient,
+      this.scripts,
+      this.projectRoot,
+    );
+
+    this.eventHandlers = new BrowserEventHandlers(
+      this.cdpClient,
+      this.eventEmitter,
+      this.consoleHandler,
+      this.scripts,
+      this.breakpointManager.getBreakpoints(),
+      this.debugState,
+      this.pausePromises,
+      this.currentCallFrames,
+      this.projectRoot,
+      (state: DebugState) => {
+        this.debugState = state;
+      },
+    );
+
+    this.executionControl = new ExecutionControl(
+      this.cdpClient,
+      this.eventHandlers,
+    );
+
+    this.eventHandlers.setupEventHandlers();
   }
 
-  /**
-   * Connect to a browser debugging target
-   * @param target URL pattern, target ID, or 'auto' to connect to first page
-   */
-  public async connect(target: string): Promise<void> {
+  async connect(target: string): Promise<void> {
     if (this.isConnected) {
       throw new Error('Already connected to a debugging target');
     }
 
-    // Check if endpoint is available
-    const isAvailable = await this.targetDiscovery.isAvailable();
-    if (!isAvailable) {
-      throw new Error(
-        'Chrome DevTools endpoint not available. Make sure Chrome is running with --remote-debugging-port=9222',
-      );
-    }
-
-    // Find or create target
-    const browserTarget = await findOrCreateTarget(
-      this.targetDiscovery,
-      target,
-    );
-    this.currentTarget = browserTarget;
-
-    // Connect CDP client to target's WebSocket
+    const browserTarget = await this.pageManager.findTarget(target);
     await this.cdpClient.connect(browserTarget.webSocketDebuggerUrl);
-
-    // Enable required CDP domains
-    await enableCDPDomains(this.cdpClient);
+    await this.enableCDPDomains();
 
     this.isConnected = true;
     this.debugState = { status: 'running' };
   }
 
-  /**
-   * Disconnect from debugging target
-   */
-  public async disconnect(): Promise<void> {
-    if (!this.isConnected) {
-      return;
-    }
+  async disconnect(): Promise<void> {
+    if (!this.isConnected) return;
 
-    await disableCDPDomains(this.cdpClient);
+    this.rejectPendingPausePromises();
+    await this.disableCDPDomains();
     await this.cdpClient.disconnect();
-
-    this.isConnected = false;
-    this.currentTarget = null;
-    this.scripts.clear();
-    this.breakpoints.clear();
-    this.currentCallFrames = [];
-    this.debugState = { status: 'terminated' };
+    this.resetState();
+    this.eventEmitter.emit('terminated', undefined);
   }
 
-  /**
-   * Navigate the connected target to a URL
-   */
-  public async navigate(url: string): Promise<void> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    await this.cdpClient.send('Page.navigate', { url });
+  async navigate(url: string): Promise<void> {
+    this.ensureConnected();
+    await this.pageManager.navigate(this.cdpClient, url);
   }
 
-  /**
-   * Set a breakpoint at specified file and line
-   */
-  public async setBreakpoint(
+  async setBreakpoint(
     file: string,
     line: number,
     condition?: string,
-  ): Promise<string> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    // Convert file path to URL for browser context
+  ): Promise<BreakpointRegistration> {
+    this.ensureConnected();
     const url = filePathToUrl(file);
+    const registration = await this.breakpointManager.setBreakpoint(
+      url,
+      line,
+      condition,
+    );
 
-    try {
-      const result = await this.cdpClient.send<{
-        breakpointId: string;
-        locations: Array<{
-          scriptId: string;
-          lineNumber: number;
-          columnNumber?: number;
-        }>;
-      }>('Debugger.setBreakpointByUrl', {
-        url,
-        lineNumber: line - 1, // CDP uses 0-based line numbers
-        condition,
-      });
-
-      this.breakpoints.set(result.breakpointId, result);
-
-      return result.breakpointId;
-    } catch (error) {
-      throw new Error(
-        `Failed to set breakpoint: ${error instanceof Error ? error.message : error}`,
-      );
+    if (registration.verified) {
+      this.eventEmitter.emit('breakpointResolved', registration);
     }
+
+    return registration;
   }
 
-  /**
-   * Remove a breakpoint by ID
-   */
-  public async removeBreakpoint(id: string): Promise<void> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    try {
-      await this.cdpClient.send('Debugger.removeBreakpoint', {
-        breakpointId: id,
-      });
-
-      this.breakpoints.delete(id);
-    } catch (error) {
-      throw new Error(
-        `Failed to remove breakpoint: ${error instanceof Error ? error.message : error}`,
-      );
-    }
+  async removeBreakpoint(id: string): Promise<void> {
+    this.ensureConnected();
+    await this.breakpointManager.removeBreakpoint(id);
   }
 
-  /**
-   * Continue execution
-   */
-  public async continue(): Promise<DebugState> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    try {
-      await this.cdpClient.send('Debugger.resume');
-      this.debugState = { status: 'running' };
-
-      // Notify resume handlers
-      invokeHandlers(this.resumeHandlers, undefined, 'resume');
-
-      return this.debugState;
-    } catch (error) {
-      throw new Error(
-        `Failed to continue: ${error instanceof Error ? error.message : error}`,
-      );
-    }
+  async continue(): Promise<DebugState> {
+    this.ensureConnected();
+    this.debugState = await this.executionControl.continue();
+    this.eventHandlers.updateState(this.debugState, this.projectRoot);
+    return this.debugState;
   }
 
-  /**
-   * Step over current line
-   */
-  public async stepOver(): Promise<DebugState> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    try {
-      await this.cdpClient.send('Debugger.stepOver');
-      return this.debugState;
-    } catch (error) {
-      throw new Error(
-        `Failed to step over: ${error instanceof Error ? error.message : error}`,
-      );
-    }
+  async stepOver(): Promise<DebugState> {
+    this.ensureConnected();
+    this.debugState = await this.executionControl.stepOver(this.debugState);
+    this.eventHandlers.updateState(this.debugState, this.projectRoot);
+    return this.debugState;
   }
 
-  /**
-   * Step into function call
-   */
-  public async stepInto(): Promise<DebugState> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    try {
-      await this.cdpClient.send('Debugger.stepInto');
-      return this.debugState;
-    } catch (error) {
-      throw new Error(
-        `Failed to step into: ${error instanceof Error ? error.message : error}`,
-      );
-    }
+  async stepInto(): Promise<DebugState> {
+    this.ensureConnected();
+    this.debugState = await this.executionControl.stepInto(this.debugState);
+    this.eventHandlers.updateState(this.debugState, this.projectRoot);
+    return this.debugState;
   }
 
-  /**
-   * Step out of current function
-   */
-  public async stepOut(): Promise<DebugState> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    try {
-      await this.cdpClient.send('Debugger.stepOut');
-      return this.debugState;
-    } catch (error) {
-      throw new Error(
-        `Failed to step out: ${error instanceof Error ? error.message : error}`,
-      );
-    }
+  async stepOut(): Promise<DebugState> {
+    this.ensureConnected();
+    this.debugState = await this.executionControl.stepOut(this.debugState);
+    this.eventHandlers.updateState(this.debugState, this.projectRoot);
+    return this.debugState;
   }
 
-  /**
-   * Evaluate an expression in the current context
-   */
-  public async evaluate(expression: string): Promise<EvaluationResult> {
-    if (!this.isConnected) {
-      throw new Error('Not connected to debugging target');
-    }
-
-    try {
-      const callFrameId = this.currentCallFrames[0]?.callFrameId;
-
-      const result = await this.cdpClient.send<CDPEvaluateResult>(
-        'Debugger.evaluateOnCallFrame',
-        {
-          callFrameId,
-          expression,
-          generatePreview: true,
-        },
-      );
-
-      if (result.exceptionDetails) {
-        return {
-          value: undefined,
-          type: 'undefined',
-          error:
-            result.exceptionDetails.exception.description || 'Evaluation error',
-        };
-      }
-
-      return {
-        value: result.result.value,
-        type: result.result.type,
-        description: result.result.description,
-      };
-    } catch (error) {
-      return {
-        value: undefined,
-        type: 'undefined',
-        error: `Evaluation failed: ${error instanceof Error ? error.message : error}`,
-      };
-    }
+  async evaluate(expression: string): Promise<EvaluationResult> {
+    this.ensureConnected();
+    return await this.executionControl.evaluate(
+      expression,
+      this.currentCallFrames,
+    );
   }
 
-  /**
-   * Get current stack trace
-   */
-  public async getStackTrace(): Promise<StackFrame[]> {
+  async getStackTrace(): Promise<StackFrame[]> {
     if (!this.isConnected || this.debugState.status !== 'paused') {
       return [];
     }
 
-    return this.currentCallFrames.map((frame, index) => ({
-      id: index,
-      functionName: frame.functionName || '(anonymous)',
-      file: urlToFilePath(frame.url),
-      line: frame.location.lineNumber + 1, // Convert to 1-based
-      column: frame.location.columnNumber,
-    }));
+    return buildStackTrace(this.currentCallFrames, this.projectRoot);
   }
 
-  /**
-   * Get variable scopes for a stack frame
-   */
-  public async getScopes(frameId: number): Promise<Scope[]> {
+  async getScopes(frameId: number): Promise<Scope[]> {
     if (!this.isConnected || frameId >= this.currentCallFrames.length) {
       return [];
     }
 
     const frame = this.currentCallFrames[frameId];
-    return getScopesForFrame(this.cdpClient, frame);
+    return getFrameScopes(this.cdpClient, frame);
   }
 
-  /**
-   * Register console output handler
-   */
-  public onConsoleOutput(handler: ConsoleHandler): void {
-    this.consoleHandlers.push(handler);
+  onConsoleOutput(handler: ConsoleHandler): void {
+    this.consoleHandler.onConsoleOutput(handler);
   }
 
-  /**
-   * Register pause handler
-   */
-  public onPaused(handler: PauseHandler): void {
-    this.pauseHandlers.push(handler);
+  onPaused(handler: PauseHandler): void {
+    this.eventHandlers.onPaused(handler);
   }
 
-  /**
-   * Register resume handler
-   */
-  public onResumed(handler: ResumeHandler): void {
-    this.resumeHandlers.push(handler);
+  onResumed(handler: ResumeHandler): void {
+    this.eventHandlers.onResumed(handler);
   }
 
-  /**
-   * Setup CDP event handlers
-   */
-  private setupEventHandlers(): void {
-    this.cdpClient.on('Debugger.paused', (params: unknown) => {
-      const result = handleDebuggerPaused(
-        params as CDPDebuggerPausedParams,
-        this.breakpoints,
-        this.pauseHandlers,
-      );
-      this.currentCallFrames = result.callFrames;
-      this.debugState = result.debugState;
+  onBreakpointResolved(
+    handler: (registration: BreakpointRegistration) => void,
+  ): void {
+    this.eventHandlers.onBreakpointResolved(handler);
+  }
+
+  on<K extends keyof DebugSessionEvents>(
+    event: K,
+    handler: (data: DebugSessionEvents[K]) => void,
+  ): () => void {
+    return this.eventEmitter.on(event, handler);
+  }
+
+  off<K extends keyof DebugSessionEvents>(
+    event: K,
+    handler: (data: DebugSessionEvents[K]) => void,
+  ): void {
+    this.eventEmitter.off(event, handler);
+  }
+
+  async waitForPause(timeoutMs = 30000): Promise<DebugState> {
+    if (this.debugState.status === 'paused') {
+      return this.debugState;
+    }
+
+    return new Promise<DebugState>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pausePromises.delete(promiseInfo);
+        reject(new Error(`waitForPause timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      const promiseInfo = { resolve, reject, timeout };
+      this.pausePromises.add(promiseInfo);
     });
-    this.cdpClient.on('Debugger.resumed', () => {
-      this.debugState = { status: 'running' };
-      this.currentCallFrames = [];
+  }
+
+  getCurrentState(): DebugState {
+    return { ...this.debugState };
+  }
+
+  private async enableCDPDomains(): Promise<void> {
+    await Promise.all([
+      this.cdpClient.send('Runtime.enable'),
+      this.cdpClient.send('Debugger.enable'),
+      this.cdpClient.send('Console.enable'),
+      this.cdpClient.send('Page.enable'),
+    ]);
+
+    await this.cdpClient.send('Debugger.setPauseOnExceptions', {
+      state: 'uncaught',
     });
-    this.cdpClient.on('Debugger.scriptParsed', (params: unknown) =>
-      handleScriptParsed(params as CDPScriptParsedParams, this.scripts),
-    );
-    this.cdpClient.on('Runtime.consoleAPICalled', (params: unknown) =>
-      handleConsoleMessage(
-        params as CDPConsoleAPICalledParams,
-        this.consoleHandlers,
-      ),
-    );
-    this.cdpClient.on('Runtime.exceptionThrown', (params: unknown) =>
-      handleException(params as CDPExceptionThrownParams, this.consoleHandlers),
-    );
+  }
+
+  private async disableCDPDomains(): Promise<void> {
+    try {
+      await Promise.all([
+        this.cdpClient.send('Debugger.disable'),
+        this.cdpClient.send('Runtime.disable'),
+        this.cdpClient.send('Console.disable'),
+        this.cdpClient.send('Page.disable'),
+      ]);
+    } catch (_error) {
+      // Ignore errors during cleanup
+    }
+  }
+
+  private rejectPendingPausePromises(): void {
+    const terminationError = new Error('Debug session terminated');
+    Array.from(this.pausePromises).forEach((promise) => {
+      if (promise.timeout) clearTimeout(promise.timeout);
+      promise.reject(terminationError);
+    });
+    this.pausePromises.clear();
+  }
+
+  private resetState(): void {
+    this.isConnected = false;
+    this.pageManager.clearTarget();
+    this.scripts.clear();
+    this.breakpointManager.clearBreakpoints();
+    this.currentCallFrames = [];
+    this.debugState = { status: 'terminated' };
+  }
+
+  private ensureConnected(): void {
+    if (!this.isConnected) {
+      throw new Error('Not connected to debugging target');
+    }
   }
 }
