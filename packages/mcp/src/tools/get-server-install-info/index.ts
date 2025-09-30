@@ -1,15 +1,15 @@
 import { BaseCoreTool } from '../base-core-tool.js';
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from '../core-tool.interface.js';
-import { RegistryContext } from '../../registry/index.js';
+import { RegistryContext } from '../../mcp-registry/index.js';
 
 /**
  * Tool for getting server installation information from the MCP registry
  */
 export class GetServerInstallInfo extends BaseCoreTool {
-  readonly name = 'get_server_install_info';
+  public readonly name = 'get_server_install_info';
 
-  readonly tool: Tool = {
+  public readonly tool: Tool = {
     name: this.name,
     description:
       'Get installation instructions and configuration for a specific MCP server from the registry',
@@ -25,7 +25,7 @@ export class GetServerInstallInfo extends BaseCoreTool {
     },
   };
 
-  async handle(
+  public async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {

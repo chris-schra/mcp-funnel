@@ -14,7 +14,7 @@
 import express, { type Express, type Request, type Response } from 'express';
 import { createServer, type Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
-import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
+import { extractBearerToken } from '@mcp-funnel/auth';
 
 export interface MockSSEServerConfig {
   port?: number;

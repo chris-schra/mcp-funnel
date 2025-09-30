@@ -20,4 +20,4 @@ export type {
   ConsoleMessage,
   IMockSessionManager,
   MockDebugSession,
-} from '../types.js';
+} from '../types/index.js';

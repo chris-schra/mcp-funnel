@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
-import { ServerResponse } from 'node:http';
-import { serve, type HttpBindings } from '@hono/node-server';
+import { type HttpBindings } from '@hono/node-server';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
 import type { MCPProxy } from 'mcp-funnel';
@@ -243,88 +242,3 @@ streamableRoute.get('/health', (c) => {
     },
   });
 });
-
-/**
- * ENDPOINT DOCUMENTATION
- *
- * StreamableHTTP MCP Transport Server
- * ==================================
- *
- * Base URL: /api/streamable/mcp
- *
- * This endpoint exposes the full MCPProxy server (with all aggregated tools from
- * multiple MCP servers) through the StreamableHTTP transport, which supports both
- * Server-Sent Events (SSE) streaming and direct JSON responses.
- *
- * Supported HTTP Methods:
- * ----------------------
- *
- * GET:
- * - Establishes an SSE stream for real-time bidirectional communication
- * - Returns a persistent connection that streams MCP messages
- * - Supports session resumption via Last-Event-ID header
- * - Example: GET /api/streamable/mcp
- *
- * POST:
- * - Sends JSON-RPC messages to the MCP server
- * - Requires valid JSON-RPC 2.0 message in request body
- * - Returns JSON response or continues SSE stream
- * - Example: POST /api/streamable/mcp with {"jsonrpc":"2.0","method":"tools/list","id":1}
- *
- * DELETE:
- * - Terminates active sessions and cleans up resources
- * - Useful for graceful session cleanup
- * - Example: DELETE /api/streamable/mcp
- *
- * Authentication Integration:
- * --------------------------
- *
- * The StreamableHTTP transport supports authentication through the
- * IncomingMessage.auth property. To integrate with auth middleware:
- *
- * 1. Add auth middleware before the streamable route
- * 2. Set req.auth with AuthInfo object containing authentication details
- * 3. The transport will automatically include auth context in MCP messages
- *
- * Session Management:
- * ------------------
- *
- * - Uses UUID-based session IDs for stateful connections
- * - Session state is maintained in memory
- * - Sessions are automatically created on first request
- * - Sessions can be explicitly terminated via DELETE requests
- *
- * Error Handling:
- * --------------
- *
- * - Invalid JSON in POST requests: 400 Bad Request
- * - Server errors: 500 Internal Server Error with details
- * - Transport errors are logged and handled gracefully
- *
- * Usage Examples:
- * --------------
- *
- * Connect StreamableHTTP client to access all MCPProxy tools:
- * ```typescript
- * import { StreamableHTTPClientTransport } from 'mcp-funnel';
- *
- * const transport = new StreamableHTTPClientTransport({
- *   url: 'http://localhost:3456/api/streamable/mcp',
- *   authProvider: yourAuthProvider, // optional
- * });
- *
- * await transport.start();
- * // Now you have access to all MCPProxy aggregated tools!
- * ```
- *
- * Direct HTTP requests:
- * ```bash
- * # Establish SSE stream
- * curl -N -H "Accept: text/event-stream" http://localhost:3456/api/streamable/mcp
- *
- * # Send MCP request
- * curl -X POST -H "Content-Type: application/json" \
- *   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}' \
- *   http://localhost:3456/api/streamable/mcp
- * ```
- */

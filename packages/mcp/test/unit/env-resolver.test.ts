@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { resolveServerEnvironment } from '../../src/proxy/env.js';
-import type { ProxyConfig, TargetServer } from '../../src/config.js';
+import type { ProxyConfig, TargetServer } from '@mcp-funnel/schemas';
+import { buildServerEnvironment } from '../../src/env/index.js';
 
 const baseConfigPath = new URL('../fixtures/test-config.json', import.meta.url)
   .pathname;
@@ -16,7 +16,7 @@ const createConfig = (overrides: Partial<ProxyConfig> = {}): ProxyConfig => ({
   ...overrides,
 });
 
-describe('resolveServerEnvironment', () => {
+describe('buildServerEnvironment', () => {
   beforeEach(() => {
     delete process.env.INLINE_SECRET;
     delete process.env.SERVER_SECRET;
@@ -30,7 +30,7 @@ describe('resolveServerEnvironment', () => {
       env: { CUSTOM: 'value' },
     };
 
-    const env = await resolveServerEnvironment(server, config, baseConfigPath);
+    const env = await buildServerEnvironment(server, config, baseConfigPath);
 
     expect(env.CUSTOM).toBe('value');
   });
@@ -61,7 +61,7 @@ describe('resolveServerEnvironment', () => {
       ],
     };
 
-    const env = await resolveServerEnvironment(server, config, baseConfigPath);
+    const env = await buildServerEnvironment(server, config, baseConfigPath);
 
     expect(env.DEFAULT_SECRET).toBe('default-secret-value');
     expect(env.SERVER_SECRET).toBe('server-secret-value');

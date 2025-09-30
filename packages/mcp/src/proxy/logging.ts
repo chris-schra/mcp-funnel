@@ -1,8 +1,8 @@
 import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { logEvent, logError, getServerStreamLogPath } from '../logger.js';
 import type { ILogger, ErrorContext } from './types.js';
+import { getServerStreamLogPath, logError, logEvent } from '@mcp-funnel/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../../.logs');
@@ -19,7 +19,7 @@ try {
  * with structured logging via the logger module
  */
 export class DefaultLogger implements ILogger {
-  error(
+  public error(
     message: string,
     error?: unknown,
     context?: Record<string, unknown>,
@@ -33,31 +33,23 @@ export class DefaultLogger implements ILogger {
     }
   }
 
-  warn(message: string, context?: Record<string, unknown>): void {
+  public warn(message: string, context?: Record<string, unknown>): void {
     console.error(message);
     if (context) {
       logEvent('warn', message, context);
     }
   }
 
-  info(message: string, context?: Record<string, unknown>): void {
+  public info(message: string, context?: Record<string, unknown>): void {
     console.error(message);
     if (context) {
       logEvent('info', message, context);
     }
   }
 
-  debug(message: string, context?: Record<string, unknown>): void {
+  public debug(message: string, context?: Record<string, unknown>): void {
     if (context) {
       logEvent('debug', message, context);
-    }
-  }
-
-  logToFile(filename: string, content: string): void {
-    try {
-      appendFileSync(filename, content);
-    } catch {
-      // Failed to append to log file
     }
   }
 

@@ -1,15 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { IAuthProvider, ITokenStorage } from '@mcp-funnel/core';
+
 import type {
-  TransportConfig,
-  StdioTransportConfig,
   SSETransportConfig,
-} from '../../src/types/transport.types.js';
-import type { IAuthProvider } from '../../src/auth/interfaces/auth-provider.interface.js';
-import type { ITokenStorage } from '../../src/auth/interfaces/token-storage.interface.js';
-import {
-  createTransport,
-  clearTransportCache,
-} from '../../src/transports/transport-factory.js';
+  StdioTransportConfig,
+  TransportConfig,
+} from '@mcp-funnel/models';
+import { clearTransportCache } from '../../src/utils/transport/transport-cache';
+import { createTransport } from '../../src/utils/transport/index.js';
 
 // Type definitions for testing
 
@@ -287,7 +285,6 @@ describe('TransportFactory', () => {
 
       const transport = await createTransport(config);
 
-      // The new EnvironmentResolver supports nested resolution
       expect((transport.config as StdioTransportConfig).command).toBe(
         '/usr/bin/node',
       );

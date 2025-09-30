@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { type CommandManifest } from './installer.js';
+import { type CommandManifest } from './types/index.js';
 import { TestableCommandInstaller } from './installer.test-harness.js';
 
 describe('CommandInstaller - packageMatchesSpec', () => {

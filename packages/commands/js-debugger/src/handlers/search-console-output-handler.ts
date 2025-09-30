@@ -3,7 +3,7 @@ import type {
   ToolHandlerContext,
   CallToolResult,
   ConsoleMessage,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface SearchConsoleOutputHandlerArgs {
   sessionId: string;
@@ -19,9 +19,9 @@ export interface SearchConsoleOutputHandlerArgs {
 export class SearchConsoleOutputHandler
   implements IToolHandler<SearchConsoleOutputHandlerArgs>
 {
-  readonly name = 'search_console_output';
+  public readonly name = 'search_console_output';
 
-  async handle(
+  public async handle(
     args: SearchConsoleOutputHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

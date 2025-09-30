@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LoadToolset } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
-import { ProxyConfig } from '../../config.js';
-import { ToolRegistry, ToolState } from '../../tool-registry.js';
+import { ToolRegistry, ToolState } from '../../tool-registry/index.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 describe('LoadToolset', () => {
   let loadToolset: LoadToolset;

@@ -18,14 +18,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
-import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import { SSEClientTransport } from '../../src/transports/implementations/sse-client-transport.js';
+
+import { SSEClientTransport } from '@mcp-funnel/core';
 import {
-  MockSSEServer,
+  MemoryTokenStorage,
+  OAuth2ClientCredentialsProvider,
+} from '@mcp-funnel/auth';
+import {
   createMockSSEServer,
+  MockSSEServer,
 } from '../mocks/mock-sse-server.js';
-import type { MockEventSource } from '../mocks/mock-eventsource';
+import type { MockEventSource } from '../mocks/mock-eventsource.js';
 
 // Mock EventSource globally - must be before SSE imports
 vi.mock('eventsource', async () => {
@@ -161,14 +164,7 @@ describe('OAuth + SSE Integration Unit Tests (Mocked)', () => {
       // Create transport with auth
       const transport = new SSEClientTransport({
         url: `${serverInfo.url}/sse`,
-        authProvider: {
-          async getAuthHeaders() {
-            return await authProvider.getHeaders();
-          },
-          async refreshToken() {
-            await authProvider.refresh();
-          },
-        },
+        authProvider,
       });
 
       // Start transport - should acquire token automatically
@@ -257,14 +253,7 @@ describe('OAuth + SSE Integration Unit Tests (Mocked)', () => {
       for (let i = 0; i < 3; i++) {
         const transport = new SSEClientTransport({
           url: `${serverInfo.url}/sse`,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
         transports.push(transport);
       }

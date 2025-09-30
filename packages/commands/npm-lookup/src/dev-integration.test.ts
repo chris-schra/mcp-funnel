@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MCPProxy, type ProxyConfig } from 'mcp-funnel';
+import { MCPProxy } from 'mcp-funnel';
 import { NPMCommand } from './command.js';
 import type { NPMClient } from './npm-client.js';
+import { z } from 'zod';
+import { ProxyConfigSchema } from '@mcp-funnel/schemas';
+
+type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
 
 // Mock NPMClient to avoid real network calls
 vi.mock('./npm-client.js', () => {

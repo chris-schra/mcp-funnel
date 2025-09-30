@@ -1,0 +1,85 @@
+import type { RegistryServer, ServerDetail } from '../types/registry.types.js';
+
+/**
+ * HTTP response interface for registry API responses.
+ */
+interface RegistryResponse<T> {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  json(): Promise<T>;
+}
+
+/**
+ * Checks if a string is a valid UUID.
+ *
+ * @param identifier - String to validate
+ * @returns True if the identifier is a valid UUID
+ */
+export function isUuid(identifier: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    identifier,
+  );
+}
+
+/**
+ * Fetches server details directly from the registry API by UUID.
+ *
+ * @param baseUrl - Registry base URL
+ * @param uuid - Server UUID
+ * @returns Server details or null if not found
+ * @throws Error on HTTP errors (non-404)
+ */
+export async function fetchServerByUuid(
+  baseUrl: string,
+  uuid: string,
+): Promise<RegistryServer | null> {
+  console.info(
+    `[MCPRegistryClient] Using direct API endpoint for UUID: ${uuid}`,
+  );
+
+  const response = (await fetch(`${baseUrl}/v0/servers/${uuid}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+  })) as RegistryResponse<RegistryServer>;
+
+  if (response.ok) {
+    const server = await response.json();
+    console.info(
+      `[MCPRegistryClient] Server details retrieved for: ${uuid} (matched: ${server.name})`,
+    );
+    return server;
+  }
+
+  if (response.status === 404) {
+    console.info(`[MCPRegistryClient] Server not found: ${uuid}`);
+    return null;
+  }
+
+  // Log HTTP error with consistent format
+  console.error(
+    `[MCPRegistryClient] HTTP error during server fetch for ${uuid}: ${response.status} ${response.statusText}`,
+  );
+  throw new Error(
+    `Registry server fetch failed: ${response.status} ${response.statusText}`,
+  );
+}
+
+/**
+ * Finds a server by exact name match from search results.
+ *
+ * @param servers - Array of servers from search results
+ * @param name - Server name to find (case-insensitive)
+ * @returns Matching server or null if not found
+ */
+export function findServerByName(
+  servers: ServerDetail[],
+  name: string,
+): RegistryServer | null {
+  return (
+    servers.find((s) => s.name.toLowerCase() === name.toLowerCase()) || null
+  );
+}

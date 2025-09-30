@@ -5,7 +5,7 @@ export { JsDebuggerCommand };
 export default new JsDebuggerCommand();
 
 // Export types
-export * from './types.js';
+export * from './types/index.js';
 
 // Export adapters
 export * from './adapters/index.js';

@@ -26,6 +26,8 @@ export default tseslint.config(
     extends: [importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript],
     rules: {
       'import/no-unresolved': 'off',
+      'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
+      '@typescript-eslint/explicit-member-accessibility': 'warn'
     },
     "settings": {
       "import/resolver": {
@@ -37,6 +39,18 @@ export default tseslint.config(
         }
       }
     }
+  },
+  {
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/test/**/*.ts',
+      '**/test-*.ts',
+      '**/__tests__/**/*.ts',
+    ],
+    rules: {
+      'max-lines': ['warn', { max: 1000, skipBlankLines: true, skipComments: true }],
+      '@typescript-eslint/explicit-member-accessibility': 'off',
+    },
   },
   {
     rules: {

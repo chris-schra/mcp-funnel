@@ -8,9 +8,9 @@ export interface GetToolSchemaParams {
 }
 
 export class GetToolSchema extends BaseCoreTool {
-  readonly name = 'get_tool_schema';
+  public readonly name = 'get_tool_schema';
 
-  get tool(): Tool {
+  public get tool(): Tool {
     return {
       name: this.name,
       description:
@@ -29,7 +29,7 @@ export class GetToolSchema extends BaseCoreTool {
     };
   }
 
-  async handle(
+  public async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {

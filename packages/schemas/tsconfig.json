@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@mcp-funnel/schemas": [],
+      "@mcp-funnel/auth": ["packages/auth/src/index.ts"]
+    },
+    "outDir": "./dist"
+  }
+}

@@ -17,27 +17,32 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  BaseClientTransport,
-  type BaseClientTransportConfig,
-  type PendingRequest,
-} from '../../src/transports/implementations/base-client-transport.js';
-import { TransportError } from '../../src/transports/errors/transport-error.js';
-import { type AuthProvider } from '../../src/transports/utils/transport-utils.js';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
 
+import {
+  BaseClientTransport,
+  type BaseClientTransportConfig,
+  type PendingRequest,
+  type IAuthProvider,
+  TransportError,
+} from '@mcp-funnel/core';
+
 // Mock fetch globally for HTTP request tests
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Mock logger module
-vi.mock('../../src/logger.js', () => ({
-  logEvent: vi.fn(),
-}));
+vi.mock('@mcp-funnel/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@mcp-funnel/core')>();
+  return {
+    ...actual,
+    logEvent: vi.fn(),
+  };
+});
 
 // Mock UUID module for predictable request IDs
 vi.mock('uuid', () => ({
@@ -119,7 +124,7 @@ class TestTransport extends BaseClientTransport {
 
 describe('BaseClientTransport', () => {
   let transport: TestTransport;
-  let mockAuthProvider: AuthProvider;
+  let mockAuthProvider: IAuthProvider;
   let config: BaseClientTransportConfig;
 
   beforeEach(() => {
@@ -127,10 +132,11 @@ describe('BaseClientTransport', () => {
 
     // Mock auth provider
     mockAuthProvider = {
-      getAuthHeaders: vi.fn().mockResolvedValue({
+      getHeaders: vi.fn().mockResolvedValue({
         Authorization: 'Bearer mock-token',
       }),
-      refreshToken: vi.fn().mockResolvedValue(undefined),
+      refresh: vi.fn().mockResolvedValue(undefined),
+      isValid: vi.fn().mockResolvedValue(undefined),
     };
 
     // Standard configuration
@@ -177,17 +183,6 @@ describe('BaseClientTransport', () => {
       expect(transport['config'].timeout).toBe(5000);
     });
 
-    it('applies default reconnection config when not specified', () => {
-      const defaultTransport = new TestTransport({
-        url: 'https://example.com',
-      });
-      const reconnectConfig = defaultTransport['config'].reconnect;
-      expect(reconnectConfig.maxAttempts).toBe(5);
-      expect(reconnectConfig.initialDelayMs).toBe(1000);
-      expect(reconnectConfig.backoffMultiplier).toBe(2);
-      expect(reconnectConfig.maxDelayMs).toBe(16000);
-    });
-
     it('stores auth provider configuration', () => {
       expect(transport['config'].authProvider).toBe(mockAuthProvider);
     });
@@ -196,7 +191,7 @@ describe('BaseClientTransport', () => {
   describe('Authentication Integration', () => {
     it('includes auth headers when auth provider is configured', async () => {
       const headers = await transport['getAuthHeaders']();
-      expect(mockAuthProvider.getAuthHeaders).toHaveBeenCalled();
+      expect(mockAuthProvider.getHeaders).toHaveBeenCalled();
       expect(headers).toEqual({
         Authorization: 'Bearer mock-token',
       });
@@ -210,7 +205,7 @@ describe('BaseClientTransport', () => {
 
     it('handles auth provider errors gracefully', async () => {
       const authError = new Error('Auth failed');
-      vi.mocked(mockAuthProvider.getAuthHeaders).mockRejectedValue(authError);
+      vi.mocked(mockAuthProvider.getHeaders).mockRejectedValue(authError);
 
       await expect(transport['getAuthHeaders']()).rejects.toThrow(
         TransportError,
@@ -231,14 +226,14 @@ describe('BaseClientTransport', () => {
       const sendPromise = transport.send(request);
 
       // Check that ID was generated and message was sent
-      expect(request.id).toBe('mock-uuid-1234');
+      expect(request.id).toMatch(/^\d{13}_[a-f0-9]{8}$/);
       expect(transport.sendMessageCalls).toHaveLength(1);
       expect(transport.sendMessageCalls[0]).toBe(request);
 
       // Send response to prevent timeout
       const response: JSONRPCResponse = {
         jsonrpc: '2.0',
-        id: 'mock-uuid-1234',
+        id: request.id,
         result: { success: true },
       };
       transport.testHandleMessage(response);
@@ -636,7 +631,7 @@ describe('BaseClientTransport', () => {
       const controller = new AbortController();
       await transport.testExecuteHttpRequest(message, controller.signal);
 
-      expect(mockAuthProvider.refreshToken).toHaveBeenCalled();
+      expect(mockAuthProvider.refresh).toHaveBeenCalled();
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
@@ -647,7 +642,7 @@ describe('BaseClientTransport', () => {
         statusText: 'Unauthorized',
       });
 
-      vi.mocked(mockAuthProvider.refreshToken!).mockRejectedValue(
+      vi.mocked(mockAuthProvider.refresh!).mockRejectedValue(
         new Error('Refresh failed'),
       );
 

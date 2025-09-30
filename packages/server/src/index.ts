@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { serve } from '@hono/node-server';
+import { serve, ServerType } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { WebSocketServer } from 'ws';
@@ -124,7 +124,7 @@ export async function startWebServer(
   }
 
   // Create HTTP server with Hono and wait for it to be listening
-  return new Promise((resolve, reject) => {
+  return new Promise<ServerType>((resolve, reject) => {
     const server = serve(
       {
         fetch: app.fetch,

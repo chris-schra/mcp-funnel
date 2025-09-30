@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GetToolSchema } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { ToolRegistry, ToolState } from '../../tool-registry.js';
+import { ToolRegistry, ToolState } from '../../tool-registry/index.js';
 
 describe('GetToolSchema', () => {
   let tool: GetToolSchema;

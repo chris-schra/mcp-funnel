@@ -7,7 +7,7 @@ export { GetVariablesHandler } from './get-variables-handler.js';
 export { SearchConsoleOutputHandler } from './search-console-output-handler.js';
 export { CleanupSessionsHandler } from './cleanup-sessions-handler.js';
 
-export type { IToolHandler, ToolHandlerContext } from '../types.js';
+export type { IToolHandler, ToolHandlerContext } from '../types/index.js';
 
 // Re-export all handler argument types for convenience
 export type { DebugHandlerArgs } from './debug-handler.js';

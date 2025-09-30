@@ -2,7 +2,7 @@ import type {
   IToolHandler,
   ToolHandlerContext,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 export type ListSessionsHandlerArgs = Record<string, never>;
 
@@ -13,9 +13,9 @@ export type ListSessionsHandlerArgs = Record<string, never>;
 export class ListSessionsHandler
   implements IToolHandler<ListSessionsHandlerArgs>
 {
-  readonly name = 'list_sessions';
+  public readonly name = 'list_sessions';
 
-  async handle(
+  public async handle(
     _args: ListSessionsHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

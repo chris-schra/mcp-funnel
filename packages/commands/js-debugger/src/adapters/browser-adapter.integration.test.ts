@@ -8,7 +8,7 @@ import { tmpdir } from 'os';
 import getPort from 'get-port';
 import { chromium } from 'playwright';
 import { BrowserAdapter } from './browser-adapter.js';
-import type { DebugState, ConsoleMessage } from '../types.js';
+import type { DebugState, ConsoleMessage } from '../types/index.js';
 import { waitFor } from '../../test/utils/async-helpers.js';
 import {
   prepareBrowserFixturesRoot,

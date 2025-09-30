@@ -27,7 +27,7 @@ function isLoadByPatterns(
 
 function findMatchingTools(
   patterns: string[],
-  toolRegistry: import('../../tool-registry.js').ToolRegistry,
+  toolRegistry: import('../../tool-registry/index.js').ToolRegistry,
 ): string[] {
   const matchedTools: string[] = [];
   const allTools = toolRegistry.getAllTools();
@@ -46,9 +46,9 @@ function findMatchingTools(
 }
 
 export class LoadToolset extends BaseCoreTool {
-  readonly name = 'load_toolset';
+  public readonly name = 'load_toolset';
 
-  get tool(): Tool {
+  public get tool(): Tool {
     return {
       name: this.name,
       description:
@@ -73,7 +73,7 @@ export class LoadToolset extends BaseCoreTool {
     };
   }
 
-  async handle(
+  public async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {

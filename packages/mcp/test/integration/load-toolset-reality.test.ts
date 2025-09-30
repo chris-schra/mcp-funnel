@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MCPProxy } from '../../src/index.js';
-import { ProxyConfig } from '../../src/config.js';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 describe('LoadToolset - Reality Check', () => {
   let proxy: MCPProxy;

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MCPProxy } from '../../src/index.js';
-import { ProxyConfig } from '../../src/config.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 // Simplified integration test that actually tests the behavior
 

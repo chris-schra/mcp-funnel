@@ -22,18 +22,20 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { WebSocketClientTransport } from '../../src/transports/implementations/websocket-client-transport.js';
-import { OAuth2ClientCredentialsProvider } from '../../src/auth/implementations/oauth2-client-credentials.js';
-import { MemoryTokenStorage } from '../../src/auth/implementations/memory-token-storage.js';
-import { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 import { TestWebSocketServer } from '../fixtures/test-websocket-server.js';
 import { setupOAuthAndWebSocketServers } from '../helpers/server-setup.js';
-import { extractBearerToken } from '../../src/auth/utils/oauth-utils.js';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
+import {
+  extractBearerToken,
+  MemoryTokenStorage,
+  OAuth2ClientCredentialsProvider,
+} from '@mcp-funnel/auth';
+import { WebSocketClientTransport } from '@mcp-funnel/core';
+import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
@@ -89,14 +91,7 @@ describe.skipIf(!runIntegrationTests)(
         // Create WebSocket transport with real auth
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Start transport - should establish real WebSocket connection
@@ -129,14 +124,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         // Set up message handler
@@ -188,11 +176,14 @@ describe.skipIf(!runIntegrationTests)(
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
           authProvider: {
-            async getAuthHeaders() {
+            async getHeaders() {
               return { Authorization: 'Bearer invalid-token-12345' };
             },
-            async refreshToken() {
+            async refresh() {
               // No-op for this test
+            },
+            async isValid() {
+              return false;
             },
           },
         });
@@ -234,14 +225,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -288,14 +272,7 @@ describe.skipIf(!runIntegrationTests)(
         for (let i = 0; i < 3; i++) {
           const transport = new WebSocketClientTransport({
             url: wsEndpoint,
-            authProvider: {
-              async getAuthHeaders() {
-                return await authProvider.getHeaders();
-              },
-              async refreshToken() {
-                await authProvider.refresh();
-              },
-            },
+            authProvider,
           });
           transports.push(transport);
         }
@@ -334,14 +311,7 @@ describe.skipIf(!runIntegrationTests)(
 
         transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
           pingInterval: 1000, // Short interval for testing
         });
 
@@ -451,14 +421,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         await transport.start();
@@ -477,11 +440,14 @@ describe.skipIf(!runIntegrationTests)(
         const transport = new WebSocketClientTransport({
           url: 'ws://localhost:65535/ws',
           authProvider: {
-            async getAuthHeaders() {
+            async getHeaders() {
               return { Authorization: 'Bearer test-token' };
             },
-            async refreshToken() {
+            async refresh() {
               // No-op
+            },
+            async isValid() {
+              return true;
             },
           },
           timeout: 2000,
@@ -521,14 +487,7 @@ describe.skipIf(!runIntegrationTests)(
 
         const transport = new WebSocketClientTransport({
           url: wsEndpoint,
-          authProvider: {
-            async getAuthHeaders() {
-              return await authProvider.getHeaders();
-            },
-            async refreshToken() {
-              await authProvider.refresh();
-            },
-          },
+          authProvider,
         });
 
         const receivedMessages: JSONRPCMessage[] = [];

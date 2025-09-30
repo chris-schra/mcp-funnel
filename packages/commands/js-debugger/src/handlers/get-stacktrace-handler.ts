@@ -2,7 +2,7 @@ import type {
   IToolHandler,
   ToolHandlerContext,
   CallToolResult,
-} from '../types.js';
+} from '../types/index.js';
 
 export interface GetStacktraceHandlerArgs {
   sessionId: string;
@@ -15,9 +15,9 @@ export interface GetStacktraceHandlerArgs {
 export class GetStacktraceHandler
   implements IToolHandler<GetStacktraceHandlerArgs>
 {
-  readonly name = 'get_stacktrace';
+  public readonly name = 'get_stacktrace';
 
-  async handle(
+  public async handle(
     args: GetStacktraceHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

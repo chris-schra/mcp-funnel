@@ -3,7 +3,7 @@ import { CoreToolContext } from '../core-tool.interface.js';
 import {
   RegistryServer,
   RegistryInstallInfo,
-} from '../../registry/types/registry.types.js';
+} from '../../mcp-registry/types/registry.types.js';
 import { GetServerInstallInfo } from './index.js';
 
 // Mock fetch globally

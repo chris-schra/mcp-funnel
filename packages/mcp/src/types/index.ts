@@ -1,33 +1,15 @@
+import type { IAuthProvider, ITokenStorage } from '@mcp-funnel/core';
+import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { TransportConfig } from '@mcp-funnel/models';
+
 /**
- * Shared types for OAuth and transport configuration.
- * This module re-exports all shared types used across the MCP OAuth implementation.
+ * Extended transport interface that includes factory-specific properties
  */
-
-// Authentication types
-export type {
-  AuthConfig,
-  NoAuthConfig,
-  BearerAuthConfig,
-  OAuth2ClientCredentialsConfig,
-  OAuth2AuthCodeConfig,
-} from './auth.types.js';
-
-// Transport types
-export type {
-  TransportConfig,
-  StdioTransportConfig,
-  SSETransportConfig,
-  WebSocketTransportConfig,
-  ReconnectionConfig,
-} from './transport.types.js';
-
-// Server types
-export type {
-  BaseTargetServer,
-  TargetServer,
-  TargetServerWithoutName,
-  ServerStatus,
-  ServerConnectedEventPayload,
-  ServerDisconnectedEventPayload,
-  ServerReconnectingEventPayload,
-} from './server.types.js';
+export interface FactoryTransport extends Transport {
+  type: string;
+  config: TransportConfig;
+  authProvider?: IAuthProvider;
+  tokenStorage?: ITokenStorage;
+  dispose: () => Promise<void>;
+  isConnected: () => boolean;
+}

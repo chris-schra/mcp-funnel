@@ -14,28 +14,26 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { MCPProxy, type ProxyConfig } from '../../src/index.js';
+import { MCPProxy } from '../../src/index.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { TransportError } from '../../src/transports/errors/transport-error.js';
+import { TransportError } from '@mcp-funnel/core';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
-// Mock external dependencies
-vi.mock('../../src/logger.js', () => ({
-  logEvent: vi.fn(),
-  logError: vi.fn(),
-}));
+vi.mock('@mcp-funnel/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@mcp-funnel/core')>();
+  return {
+    ...actual,
+    logEvent: vi.fn(),
+    logError: vi.fn(),
+    StdioClientTransport: vi.fn(),
+  };
+});
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
   Client: vi.fn(),
 }));
 
-vi.mock(
-  '../../src/transports/implementations/stdio-client-transport.js',
-  () => ({
-    StdioClientTransport: vi.fn(),
-  }),
-);
-
-vi.mock('../../src/transports/index.js', () => ({
+vi.mock('../../src/utils/transports/index.js', () => ({
   createTransport: vi.fn(),
 }));
 
@@ -98,9 +96,7 @@ describe('MCPProxy Reconnection Logic', () => {
       onmessage: undefined,
     });
 
-    const { StdioClientTransport } = await import(
-      '../../src/transports/implementations/stdio-client-transport.js'
-    );
+    const { StdioClientTransport } = await import('@mcp-funnel/core');
     vi.mocked(StdioClientTransport).mockImplementation((serverName: string) => {
       const transport = createMockTransport();
       mockTransports.set(serverName, transport);
@@ -167,9 +163,7 @@ describe('MCPProxy Reconnection Logic', () => {
       };
 
       // Mock the transport creation
-      const { StdioClientTransport } = await import(
-        '../../src/transports/implementations/stdio-client-transport.js'
-      );
+      const { StdioClientTransport } = await import('@mcp-funnel/core');
       vi.mocked(StdioClientTransport).mockImplementation(
         () =>
           mockStdioTransport as unknown as InstanceType<
@@ -723,6 +717,7 @@ describe('MCPProxy Reconnection Logic', () => {
           initialDelayMs: 1000,
           backoffMultiplier: 2,
           maxDelayMs: 60000,
+          jitter: 0,
         },
       };
 
@@ -780,6 +775,7 @@ describe('MCPProxy Reconnection Logic', () => {
           initialDelayMs: 500,
           backoffMultiplier: 1.5,
           maxDelayMs: 5000,
+          jitter: 0, // Disable jitter for predictable test timing
         },
       };
 

@@ -18,7 +18,7 @@ export interface BrowserTarget {
 export class TargetDiscovery {
   private readonly baseUrl: string;
 
-  constructor(host = 'localhost', port = 9222) {
+  public constructor(host = 'localhost', port = 9222) {
     this.baseUrl = `http://${host}:${port}`;
   }
 
@@ -26,7 +26,7 @@ export class TargetDiscovery {
    * List all available debugging targets
    * @returns Array of available targets
    */
-  async listTargets(): Promise<BrowserTarget[]> {
+  public async listTargets(): Promise<BrowserTarget[]> {
     try {
       const response = await fetch(`${this.baseUrl}/json/list`);
       if (!response.ok) {
@@ -47,7 +47,7 @@ export class TargetDiscovery {
    * @param pattern URL pattern or title to match
    * @returns First matching target or undefined
    */
-  async findTarget(pattern: string): Promise<BrowserTarget | undefined> {
+  public async findTarget(pattern: string): Promise<BrowserTarget | undefined> {
     const targets = await this.listTargets();
     const regex = new RegExp(pattern, 'i');
 
@@ -60,7 +60,7 @@ export class TargetDiscovery {
    * Find the first page target (most common use case)
    * @returns First page target or undefined
    */
-  async findFirstPageTarget(): Promise<BrowserTarget | undefined> {
+  public async findFirstPageTarget(): Promise<BrowserTarget | undefined> {
     const targets = await this.listTargets();
     return targets.find((target) => target.type === 'page');
   }
@@ -70,7 +70,7 @@ export class TargetDiscovery {
    * @param url URL to navigate the new page to
    * @returns Created target information
    */
-  async createTarget(url = 'about:blank'): Promise<BrowserTarget> {
+  public async createTarget(url = 'about:blank'): Promise<BrowserTarget> {
     try {
       const response = await fetch(
         `${this.baseUrl}/json/new?${encodeURIComponent(url)}`,
@@ -92,7 +92,7 @@ export class TargetDiscovery {
    * Close a target
    * @param targetId Target ID to close
    */
-  async closeTarget(targetId: string): Promise<void> {
+  public async closeTarget(targetId: string): Promise<void> {
     try {
       const response = await fetch(`${this.baseUrl}/json/close/${targetId}`);
       if (!response.ok) {
@@ -111,7 +111,7 @@ export class TargetDiscovery {
    * Get version information from the browser
    * @returns Browser version info
    */
-  async getVersion(): Promise<{
+  public async getVersion(): Promise<{
     Browser: string;
     'Protocol-Version': string;
     'User-Agent': string;
@@ -138,7 +138,7 @@ export class TargetDiscovery {
    * Check if the debugging endpoint is available
    * @returns true if endpoint is available
    */
-  async isAvailable(): Promise<boolean> {
+  public async isAvailable(): Promise<boolean> {
     try {
       await this.getVersion();
       return true;

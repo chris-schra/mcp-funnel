@@ -41,6 +41,7 @@
     "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {
+    "@mcp-funnel/auth": "workspace:*",
     "@mcp-funnel/commands-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.18.0",
     "deepmerge-ts": "^7.0.5",

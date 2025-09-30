@@ -4,6 +4,6 @@
     "rootDirs": ["src"],
     "outDir": "./dist"
   },
-  "include": ["./src/**/*.ts"],
+  "include": ["./src/**/*.ts", "./test/**/*.ts"],
   "exclude": ["../packages/**/*", "**/dist/**/*", "**/node_modules/**/*"]
 }

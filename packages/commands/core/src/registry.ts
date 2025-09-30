@@ -14,28 +14,28 @@ export class CommandRegistry {
   /**
    * Register a command with the registry
    */
-  register(command: ICommand): void {
+  public register(command: ICommand): void {
     this.commands.set(command.name, command);
   }
 
   /**
    * Get a command by name for CLI execution
    */
-  getCommandForCLI(name: string): ICommand | undefined {
+  public getCommandForCLI(name: string): ICommand | undefined {
     return this.commands.get(name);
   }
 
   /**
    * Get all registered command names
    */
-  getAllCommandNames(): string[] {
+  public getAllCommandNames(): string[] {
     return Array.from(this.commands.keys());
   }
 
   /**
    * Get all commands as MCP Tool definitions
    */
-  getAllMCPDefinitions(): Tool[] {
+  public getAllMCPDefinitions(): Tool[] {
     const allTools: Tool[] = [];
     for (const command of this.commands.values()) {
       allTools.push(...command.getMCPDefinitions());
@@ -46,21 +46,21 @@ export class CommandRegistry {
   /**
    * Get a command by name for MCP execution
    */
-  getCommandForMCP(name: string): ICommand | undefined {
+  public getCommandForMCP(name: string): ICommand | undefined {
     return this.commands.get(name);
   }
 
   /**
    * Clear all registered commands
    */
-  clear(): void {
+  public clear(): void {
     this.commands.clear();
   }
 
   /**
    * Get count of registered commands
    */
-  size(): number {
+  public size(): number {
     return this.commands.size;
   }
 }

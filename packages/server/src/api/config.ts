@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { ConfigUpdateSchema } from '../types/index.js';
-import type { MCPProxy, ServersRecord } from 'mcp-funnel';
+import type { MCPProxy } from 'mcp-funnel';
+import type { ServersRecord } from '@mcp-funnel/schemas';
 
 type Variables = {
   mcpProxy: MCPProxy;

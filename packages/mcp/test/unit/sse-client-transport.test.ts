@@ -14,15 +14,17 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  MockEventSource,
-  createMockEventSourceConstructor,
-} from '../mocks/mock-eventsource.js';
-import {
-  MockSSEServer,
-  createMockSSEServer,
-} from '../mocks/mock-sse-server.js';
+
 import type { JSONRPCResponse } from '@modelcontextprotocol/sdk/types.js';
+import {
+  createMockSSEServer,
+  type MockSSEServer,
+} from '../mocks/mock-sse-server.js';
+import { SSEClientTransport } from '@mcp-funnel/core';
+import {
+  createMockEventSourceConstructor,
+  MockEventSource,
+} from '../mocks/mock-eventsource.js';
 
 // Mock the EventSource constructor
 const MockEventSourceConstructor = createMockEventSourceConstructor();
@@ -38,12 +40,13 @@ vi.mock('uuid', () => ({
 }));
 
 // Mock logger
-vi.mock('../../src/logger.js', () => ({
-  logEvent: vi.fn(),
-}));
-
-// Import the actual transport for integration tests
-import { SSEClientTransport } from '../../src/transports/implementations/sse-client-transport.js';
+vi.mock('@mcp-funnel/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@mcp-funnel/core')>();
+  return {
+    ...actual,
+    logEvent: vi.fn(),
+  };
+});
 
 describe('SSEClientTransport - SSE-Specific Tests', () => {
   let mockSSEServer: MockSSEServer;
