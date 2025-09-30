@@ -2,32 +2,21 @@ import {
   AuthenticationError,
   OAuth2ErrorCode,
 } from '../errors/authentication-error.js';
-import {
-  type ITokenStorage,
-  logEvent,
-  type TokenData,
-  ValidationUtils,
-} from '@mcp-funnel/core';
-import type { OAuth2TokenResponse } from '../utils/oauth-types.js';
+import { type ITokenStorage, logEvent, type TokenData } from '@mcp-funnel/core';
 import { BaseOAuthProvider } from './base-oauth-provider.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
 import { resolveOAuth2AuthCodeConfig } from '../utils/oauth-utils.js';
-import {
-  generateCodeChallenge,
-  generateCodeVerifier,
-  generateState,
-} from '../utils/pkce.js';
 import {
   type AuthFlowContext,
   cleanupExpiredStates,
   cleanupPendingAuth,
   type PendingAuth,
 } from '../utils/auth-flow.js';
-import { buildAuthorizationUrl } from '../utils/auth-url.js';
 import {
-  buildTokenExchangeBody,
-  buildTokenExchangeHeaders,
-} from '../utils/token-exchange.js';
+  completeOAuthFlow as completeOAuthFlowHelper,
+  acquireToken as acquireTokenHelper,
+  validateConfig as validateConfigHelper,
+} from './util/oauth2-authorization-code-helpers.js';
 
 /**
  * Cleanup registry for automatic resource cleanup when OAuth providers are garbage collected
@@ -234,44 +223,19 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * @see file:../utils/auth-flow.ts:32 - State cleanup utilities
    */
   public async completeOAuthFlow(state: string, code: string): Promise<void> {
-    const pending = this.authFlowContext.pendingAuthFlows.get(state);
-    if (!pending) {
-      throw new AuthenticationError(
-        'Invalid or expired OAuth state',
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
-
-    try {
-      const tokenResponse = await this.exchangeCodeForTokenResponse(
-        code,
-        pending.codeVerifier,
-      );
-
-      const requestId = this.generateRequestId();
-      await this.processTokenResponse(tokenResponse, requestId);
-
-      // Get the stored token to pass to the resolver
-      const tokenData = await this.storage.retrieve();
-      if (!tokenData) {
-        throw new AuthenticationError(
-          'Failed to retrieve stored token after OAuth flow completion',
-          OAuth2ErrorCode.INVALID_REQUEST,
-        );
-      }
-
-      logEvent('info', 'auth:oauth_flow_completed', {
-        expiresAt: tokenData.expiresAt.toISOString(),
-        scope: tokenData.scope,
-      });
-
-      pending.resolve(tokenData);
-    } catch (error) {
-      pending.reject(error as Error);
-    } finally {
-      // Clean up this specific state
-      cleanupPendingAuth(this.authFlowContext, state);
-    }
+    return completeOAuthFlowHelper(
+      {
+        authFlowContext: this.authFlowContext,
+        config: this.config,
+        storage: this.storage,
+        processTokenResponse: this.processTokenResponse.bind(this),
+        handleTokenRequestError: this.handleTokenRequestError.bind(this),
+        validateTokenResponse: this.validateTokenResponse.bind(this),
+        generateRequestId: this.generateRequestId.bind(this),
+      },
+      state,
+      code,
+    );
   }
 
   /**
@@ -294,113 +258,14 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * @see file:../utils/auth-url.ts - Authorization URL building
    */
   protected async acquireToken(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const state = generateState();
-      const codeVerifier = generateCodeVerifier();
-      const codeChallenge = generateCodeChallenge(codeVerifier);
-
-      // Set up pending auth state with expiry tracking
-      const timeout = setTimeout(() => {
-        cleanupPendingAuth(this.authFlowContext, state);
-        reject(
-          new AuthenticationError(
-            'Authorization timeout - please try again',
-            OAuth2ErrorCode.ACCESS_DENIED,
-          ),
-        );
-      }, this.AUTH_TIMEOUT_MS);
-
-      const pendingAuth: PendingAuth = {
-        state,
-        codeVerifier,
-        resolve: (_token: TokenData) => {
-          clearTimeout(timeout);
-          resolve();
-        },
-        reject: (error: Error) => {
-          clearTimeout(timeout);
-          reject(error);
-        },
-        timeout,
-        timestamp: Date.now(),
-      };
-
-      // Store in concurrent flow maps
-      this.authFlowContext.pendingAuthFlows.set(state, pendingAuth);
-      OAuth2AuthCodeProvider.stateToProvider.set(state, this);
-
-      // Build authorization URL with PKCE
-      const authUrl = buildAuthorizationUrl({
-        config: this.config,
-        state,
-        codeChallenge,
-      });
-
-      logEvent('info', 'auth:oauth_flow_initiated', {
-        authUrl: this.config.authorizationEndpoint,
-        redirectUri: this.config.redirectUri,
-        scope: this.config.scope,
-      });
-
-      // Log URL for user to open (following protocol - NO browser launch package)
-      console.info('\n🔐 Please open this URL in your browser to authorize:');
-      console.info(authUrl.toString());
-      console.info('\nWaiting for authorization callback...');
-      console.info(`Timeout in ${this.AUTH_TIMEOUT_MS / 1000} seconds\n`);
-
-      // Also log structured event for monitoring
-      logEvent('info', 'auth:oauth_authorization_required', {
-        authUrl: authUrl.toString(),
-        timeout: this.AUTH_TIMEOUT_MS / 1000,
-      });
-    });
-  }
-
-  /**
-   * Exchanges authorization code for access token with PKCE verification
-   *
-   * Makes a POST request to the token endpoint with the authorization code,
-   * code verifier (for PKCE), and client credentials. Validates the response
-   * contains required fields.
-   * @param code - Authorization code received from callback
-   * @param codeVerifier - PKCE code verifier matching the challenge sent in authorization request
-   * @returns Promise resolving to OAuth2 token response containing access token
-   * @throws \{AuthenticationError\} When token exchange fails or response is invalid
-   * @internal
-   * @see file:../utils/token-exchange.ts - Token exchange request building
-   */
-  private async exchangeCodeForTokenResponse(
-    code: string,
-    codeVerifier: string,
-  ): Promise<OAuth2TokenResponse> {
-    const body = buildTokenExchangeBody({
+    return acquireTokenHelper({
       config: this.config,
-      code,
-      codeVerifier,
+      authFlowContext: this.authFlowContext,
+      stateExpiryMs: this.STATE_EXPIRY_MS,
+      authTimeoutMs: this.AUTH_TIMEOUT_MS,
+      stateToProviderMap: OAuth2AuthCodeProvider.stateToProvider,
+      providerInstance: this,
     });
-
-    const headers = buildTokenExchangeHeaders(this.config);
-
-    try {
-      const response = await fetch(this.config.tokenEndpoint, {
-        method: 'POST',
-        headers,
-        body: body.toString(),
-      });
-
-      if (!response.ok) {
-        await this.handleTokenRequestError(undefined, response);
-      }
-
-      const tokenResponse = (await response.json()) as OAuth2TokenResponse;
-
-      this.validateTokenResponse(tokenResponse);
-
-      return tokenResponse;
-    } catch (error) {
-      // handleTokenRequestError always throws, execution never continues past this point
-      return await this.handleTokenRequestError(error);
-    }
   }
 
   /**
@@ -476,23 +341,6 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * @internal
    */
   private validateConfig(): void {
-    try {
-      // Validate required fields
-      ValidationUtils.validateRequired(
-        this.config,
-        ['clientId', 'authorizationEndpoint', 'tokenEndpoint', 'redirectUri'],
-        'OAuth2 Authorization Code config',
-      );
-
-      // Validate URL formats
-      ValidationUtils.validateOAuthUrls(this.config);
-    } catch (error) {
-      throw new AuthenticationError(
-        error instanceof Error
-          ? error.message
-          : 'Configuration validation failed',
-        OAuth2ErrorCode.INVALID_REQUEST,
-      );
-    }
+    validateConfigHelper(this.config);
   }
 }
