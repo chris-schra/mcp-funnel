@@ -124,8 +124,8 @@ export class TestOAuthServer {
 
   /**
    * Handles incoming HTTP requests to the OAuth server
-   * @param req
-   * @param res
+   * @param req - Incoming HTTP request
+   * @param res - HTTP response object
    */
   private async handleRequest(
     req: IncomingMessage,
@@ -186,8 +186,8 @@ export class TestOAuthServer {
 
   /**
    * Handles OAuth2 token requests using Client Credentials flow
-   * @param req
-   * @param res
+   * @param req - Incoming HTTP request
+   * @param res - HTTP response object
    */
   private async handleTokenRequest(
     req: IncomingMessage,
@@ -266,8 +266,8 @@ export class TestOAuthServer {
 
   /**
    * Handles requests to protected resources for testing token validation
-   * @param req
-   * @param res
+   * @param req - Incoming HTTP request
+   * @param res - HTTP response object
    */
   private async handleProtectedRequest(
     req: IncomingMessage,
@@ -307,7 +307,8 @@ export class TestOAuthServer {
 
   /**
    * Parses request body as text
-   * @param req
+   * @param req - Incoming HTTP request
+   * @returns Promise resolving to body text
    */
   private async parseRequestBody(req: IncomingMessage): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -324,9 +325,9 @@ export class TestOAuthServer {
 
   /**
    * Sends JSON response with given status code
-   * @param res
-   * @param statusCode
-   * @param data
+   * @param res - HTTP response object
+   * @param statusCode - HTTP status code
+   * @param data - Response data to serialize
    */
   private sendJsonResponse(
     res: ServerResponse,
@@ -342,7 +343,8 @@ export class TestOAuthServer {
 
 /**
  * Creates and starts a test OAuth server with given config
- * @param config
+ * @param config - Optional OAuth server configuration
+ * @returns Promise resolving to server instance and connection details
  */
 export async function createTestOAuthServer(
   config?: TestOAuthServerConfig,

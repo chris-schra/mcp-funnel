@@ -34,7 +34,7 @@ export class HealthCheckManager {
    * Starts periodic health checks on the provided process.
    * Only starts if health checks are enabled in config. Health checks run at the
    * configured interval and invoke the failure callback on error.
-   * @param {() => ChildProcess | undefined} process - Function returning the current child process (or undefined if not running)
+   * @param process - Function returning the current child process (or undefined if not running)
    * @public
    */
   public start(process: () => ChildProcess | undefined): void {
@@ -69,8 +69,8 @@ export class HealthCheckManager {
    * Performs a single health check on the process.
    * Currently checks if process exists and is not killed.
    * SEAM: Can be extended with ping messages, stream validation, or protocol-specific checks.
-   * @param {() => ChildProcess | undefined} getProcess - Function returning the current child process
-   * @throws {Error} When process is not running or killed
+   * @param getProcess - Function returning the current child process
+   * @throws Error when process is not running or killed
    * @internal
    */
   private async performHealthCheck(

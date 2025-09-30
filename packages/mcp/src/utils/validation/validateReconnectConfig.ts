@@ -9,8 +9,8 @@ import type { ReconnectionConfig } from '@mcp-funnel/models';
  * - initialDelayMs: Must be non-negative number
  * - maxDelayMs: Must be non-negative number
  * - backoffMultiplier: Must be greater than 1
- * @param {ReconnectionConfig} reconnect - Reconnection configuration to validate
- * @throws {TransportError} When any validation rule fails
+ * @param reconnect - Reconnection configuration to validate
+ * @throws TransportError when any validation rule fails
  * @public
  */
 export function validateReconnectConfig(reconnect: ReconnectionConfig): void {

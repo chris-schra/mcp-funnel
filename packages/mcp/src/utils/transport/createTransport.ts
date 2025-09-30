@@ -28,7 +28,7 @@ import { LegacyConfig } from './LegacyConfig.js';
  * @param config - Transport configuration (stdio, sse, websocket, or streamable-http)
  * @param dependencies - Optional auth provider and token storage for authenticated transports
  * @returns Promise resolving to transport instance (cached if previously created)
- * @throws {TransportError} When config is invalid, auth fails, or transport creation fails
+ * @throws TransportError when config is invalid, auth fails, or transport creation fails
  * @public
  * @see file:./createTransportImplementation.ts - Transport creation logic
  * @see file:./transport-cache.ts - Caching implementation

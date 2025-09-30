@@ -22,7 +22,7 @@ export interface ReconnectionSchedulerConfig {
  * @param config - Reconnection configuration including manager and limits
  * @param reconnectFn - Async function to execute reconnection logic
  * @returns Promise that resolves on success or rejects on failure
- * @throws {Error} When max reconnection attempts exceeded
+ * @throws Error when max reconnection attempts exceeded
  * @public
  * @see file:./reconnection-handler.ts - ReconnectionManager creation
  */

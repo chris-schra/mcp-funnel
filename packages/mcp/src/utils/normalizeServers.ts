@@ -16,8 +16,8 @@ import type {
  * repeating the name in both the key and configuration object.
  *
  * Handles both legacy (TargetServer) and extended (with auth/transport) configurations.
- * @param {(TargetServer | TargetServerZod)[] | ServersRecord | ExtendedServersRecord} servers - Server configurations in either array or record format
- * @returns {(TargetServer | TargetServerZod)[]} Normalized array of server configurations with name property included
+ * @param servers - Server configurations in either array or record format
+ * @returns Normalized array of server configurations with name property included
  * @example Array format (already normalized)
  * ```typescript
  * const arrayServers = [{ name: "github", command: "gh-server" }];

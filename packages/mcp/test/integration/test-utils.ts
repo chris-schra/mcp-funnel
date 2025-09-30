@@ -5,6 +5,7 @@ import type {
   SecretProviderConfig,
 } from '@mcp-funnel/schemas';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TestContext {
   // Empty for now, but available for future shared state
 }

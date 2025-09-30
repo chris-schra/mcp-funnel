@@ -57,6 +57,7 @@ export default tseslint.config(
     ],
     rules: {
       '@typescript-eslint/explicit-member-accessibility': 'off',
+      'jsdoc/require-yields': 'off',
     },
   },
   {

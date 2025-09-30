@@ -56,8 +56,7 @@ export class ServerConnectionManager {
   ) {}
 
   /**
-   * Initializes the disconnected servers list at startup.
-   * @param servers - Array of target server configurations to mark as disconnected
+   * @param servers - Target server configurations
    * @public
    */
   public initializeDisconnectedServers(
@@ -68,16 +67,7 @@ export class ServerConnectionManager {
     });
   }
 
-  /**
-   * Handles server disconnection events from transports.
-   *
-   * Called by transport close/error handlers to update state, clean up resources,
-   * and potentially trigger automatic reconnection if enabled.
-   * @param targetServer - Server that disconnected
-   * @param reason - Disconnection reason ('manual_disconnect', 'error', etc.)
-   * @param errorMessage - Optional error message if disconnection was due to error
-   * @internal
-   */
+  /** @internal */
   private onServerDisconnect = (
     targetServer: TargetServer | TargetServerZod,
     reason: string,
@@ -115,13 +105,7 @@ export class ServerConnectionManager {
     }
   };
 
-  /**
-   * Sets up automatic reconnection for a disconnected server.
-   *
-   * Creates or reuses a ReconnectionManager and schedules the first reconnection attempt.
-   * @param targetServer - Server configuration to reconnect
-   * @internal
-   */
+  /** @internal */
   private setupAutoReconnection(
     targetServer: TargetServer | TargetServerZod,
   ): void {
@@ -149,14 +133,7 @@ export class ServerConnectionManager {
     }
   }
 
-  /**
-   * Attempts automatic reconnection to a disconnected server.
-   *
-   * Used by ReconnectionManager for scheduled reconnection attempts with backoff.
-   * Handles success by resetting the manager and failure by rescheduling.
-   * @param targetServer - Server configuration to reconnect
-   * @internal
-   */
+  /** @internal */
   private async attemptAutoReconnection(
     targetServer: TargetServer | TargetServerZod,
   ): Promise<void> {
@@ -188,13 +165,8 @@ export class ServerConnectionManager {
 
   /**
    * Connects to a single target server and sets up disconnect handling.
-   *
-   * Creates transport, establishes MCP client connection, registers tools,
-   * and tracks connection state. Emits server.connected event on success.
    * @param targetServer - Server configuration to connect to
-   * @throws {Error} When connection fails (transport, authentication, or protocol errors)
    * @public
-   * @see file:./connection-setup.ts:11 - connectToServer implementation
    */
   public async connectToSingleServer(
     targetServer: TargetServer | TargetServerZod,
@@ -234,9 +206,6 @@ export class ServerConnectionManager {
 
   /**
    * Connects to all configured target servers in parallel.
-   *
-   * Continues proxy startup even if individual servers fail to connect.
-   * Failed servers remain in disconnected state for later reconnection.
    * @param servers - Array of target server configurations
    * @public
    */
@@ -257,7 +226,6 @@ export class ServerConnectionManager {
           command: targetServer.command,
           args: targetServer.args,
         });
-        // Do not throw; continue starting proxy with remaining servers
         return { name: targetServer.name, status: 'failed' as const, error };
       }
     });
@@ -271,11 +239,8 @@ export class ServerConnectionManager {
 
   /**
    * Manually reconnects to a disconnected server.
-   *
-   * Finds the server in disconnectedServers, resets its ReconnectionManager,
-   * and attempts connection. Emits server.reconnecting event.
    * @param name - Server name to reconnect
-   * @throws {Error} When server is already connected, reconnection in progress, or server not found
+   * @returns Promise that resolves when reconnection completes
    * @public
    */
   public async reconnectServer(name: string): Promise<void> {
@@ -341,11 +306,7 @@ export class ServerConnectionManager {
 
   /**
    * Manually disconnects from a connected server.
-   *
-   * Closes transport connection, cancels pending reconnection attempts,
-   * and moves server to disconnected state. Does not trigger auto-reconnection.
    * @param name - Server name to disconnect
-   * @throws {Error} When server is not currently connected
    * @public
    */
   public async disconnectServer(name: string): Promise<void> {
@@ -397,23 +358,42 @@ export class ServerConnectionManager {
     }
   }
 
-  // Getters for external access
+  /**
+   * @returns Map of currently connected servers
+   * @public
+   */
   public getConnectedServers() {
     return this.connectedServers;
   }
 
+  /**
+   * @returns Map of disconnected servers
+   * @public
+   */
   public getDisconnectedServers() {
     return this.disconnectedServers;
   }
 
+  /**
+   * @returns Map of connection timestamps
+   * @public
+   */
   public getConnectionTimestamps() {
     return this.connectionTimestamps;
   }
 
+  /**
+   * @returns Map of active transports
+   * @public
+   */
   public getTransports() {
     return this.transports;
   }
 
+  /**
+   * @returns Map of reconnection managers
+   * @public
+   */
   public getReconnectionManagers() {
     return this.reconnectionManagers;
   }

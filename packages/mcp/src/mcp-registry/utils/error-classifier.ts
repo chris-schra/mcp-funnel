@@ -1,8 +1,9 @@
 /**
  * Classifies errors into specific categories for better logging and debugging.
- * @param error
- * @param operation
- * @param context
+ * @param error - Error object to classify
+ * @param operation - Operation that failed (for logging)
+ * @param context - Optional context string for additional logging details
+ * @returns Error category: 'network', 'parsing', or 'unexpected'
  * @internal
  */
 export function classifyAndLogError(

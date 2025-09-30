@@ -15,7 +15,8 @@ import type {
 
 /**
  * Converts headers from RegistryConfigEntry format to ServerConfig format.
- * @param headers
+ * @param headers - Headers in either object or array format
+ * @returns Converted headers as a record object, or undefined if input is undefined
  * @internal
  */
 export function convertHeaders(
@@ -44,7 +45,8 @@ export function convertHeaders(
  * **MVP Implementation:** Returns default registry URL as registries configuration
  * is not yet defined in the main config schema.
  * **Phase 2:** Will extract actual registry URLs from config.registries field.
- * @param config
+ * @param config - Proxy configuration object
+ * @returns Array of registry URLs
  * @internal
  */
 export function extractRegistryUrls(config: ProxyConfig): string[] {
@@ -69,8 +71,9 @@ export function extractRegistryUrls(config: ProxyConfig): string[] {
 /**
  * Determines if a failed registry request should be retried.
  * This is a seam for future retry logic implementation.
- * @param _error
- * @param _attemptNumber
+ * @param _error - Error that occurred during the request
+ * @param _attemptNumber - Current attempt number
+ * @returns True if request should be retried, false otherwise
  * @internal
  */
 export function shouldRetryRequest(
@@ -83,7 +86,8 @@ export function shouldRetryRequest(
 
 /**
  * Converts ServerDetail to RegistrySearchResult server entry format.
- * @param server
+ * @param server - Server detail object from registry API
+ * @returns Converted server entry for search results
  * @internal
  */
 export function convertServerDetailToSearchResult(
@@ -105,7 +109,8 @@ export function convertServerDetailToSearchResult(
 
 /**
  * Aggregates search results from multiple registries, handling errors gracefully.
- * @param searchResults
+ * @param searchResults - Array of results from each registry including errors
+ * @returns Aggregated search result with combined servers and error messages
  * @internal
  */
 export function aggregateSearchResults(

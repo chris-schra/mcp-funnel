@@ -57,9 +57,9 @@ export class DefaultLogger implements ILogger {
   /**
    * Legacy error logging for backward compatibility
    * Creates detailed error log files for debugging
-   * @param error
-   * @param context
-   * @param serverName
+   * @param error - Error object to log
+   * @param context - Error context (defaults to 'general')
+   * @param serverName - Optional server name for log file naming
    * @internal
    */
   private legacyErrorLog(
@@ -115,7 +115,8 @@ export class DefaultLogger implements ILogger {
  * Factory function to create loggers
  * SEAM: Can be extended to return different logger implementations
  * based on configuration (e.g., remote logging, different formats)
- * @param type
+ * @param type - Logger type identifier (currently only 'default' is implemented)
+ * @returns Logger instance
  * @internal
  */
 export function createLogger(type: 'default' | string = 'default'): ILogger {
@@ -136,9 +137,9 @@ export const logger = createLogger();
 
 /**
  * Helper to log server stream output
- * @param serverName
- * @param streamType
- * @param line
+ * @param serverName - Name of the server
+ * @param streamType - Type of stream (stdout or stderr)
+ * @param line - Log line to write
  * @internal
  */
 export function logServerStream(
@@ -160,8 +161,9 @@ export function logServerStream(
 
 /**
  * Helper to create prefixed log messages
- * @param serverName
- * @param message
+ * @param serverName - Name of the server
+ * @param message - Log message to prefix
+ * @returns Prefixed log message
  * @internal
  */
 export function prefixedLog(serverName: string, message: string): string {

@@ -94,9 +94,9 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Simulate receiving an SSE message
-   * @param data
-   * @param eventType
-   * @param id
+   * @param data - Message data payload
+   * @param eventType - Event type name
+   * @param id - Optional event ID for resume capability
    */
   simulateMessage(data: string, eventType = 'message', id?: string): void {
     if (this.readyState !== MockEventSource.OPEN) {
@@ -121,8 +121,8 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Simulate an error condition
-   * @param error
-   * @param shouldReconnect
+   * @param error - Error object or message string
+   * @param shouldReconnect - Whether to attempt reconnection after error
    */
   simulateError(error?: Error | string, shouldReconnect = true): void {
     const errorEvent: MockErrorEvent = {
@@ -163,7 +163,7 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Control whether the mock should attempt reconnections
-   * @param shouldReconnect
+   * @param shouldReconnect - Enable or disable automatic reconnection
    */
   setReconnectionBehavior(shouldReconnect: boolean): void {
     this.shouldReconnect = shouldReconnect;
@@ -174,7 +174,7 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Set custom connection delay for testing timing scenarios
-   * @param delayMs
+   * @param delayMs - Delay in milliseconds before connection opens
    */
   setConnectionDelay(delayMs: number): void {
     this.simulateConnectionDelay = delayMs;
@@ -182,6 +182,7 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Get connection statistics for testing
+   * @returns Object containing connection state and statistics
    */
   getConnectionStats(): {
     attempts: number;
@@ -243,8 +244,9 @@ export class MockEventSource extends EventEmitter {
 /**
  * Factory function for creating MockEventSource instances
  * Useful for mocking the global EventSource constructor
- * @param url - URL string or object
- * @param init
+ * @param url - URL string or object for SSE endpoint
+ * @param init - Optional initialization configuration
+ * @returns New MockEventSource instance
  */
 export function createMockEventSource(
   url: string | URL,
@@ -255,6 +257,7 @@ export function createMockEventSource(
 
 /**
  * Create a mock EventSource constructor for vi.mock()
+ * @returns Mock EventSource constructor class
  */
 export function createMockEventSourceConstructor(): typeof MockEventSource {
   const MockConstructor = class extends MockEventSource {

@@ -4,9 +4,9 @@ import { join, resolve } from 'path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 
 /**
- *
- * @param file
- * @param value
+ * Writes JSON data to a file, creating parent directories as needed.
+ * @param file - File path to write to
+ * @param value - Data to serialize as JSON
  */
 function writeJson(file: string, value: unknown) {
   mkdirSync(resolve(file, '..'), { recursive: true });

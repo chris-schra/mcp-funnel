@@ -13,6 +13,13 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { URL } from 'url';
 import { randomUUID } from 'crypto';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import {
+  sendJsonResponse,
+  createWelcomeMessage,
+  createEchoResponse,
+  createParseErrorResponse,
+  recordMessage,
+} from './websocket-server-helpers.js';
 
 export interface TestWebSocketServerConfig {
   port?: number;
@@ -92,26 +99,19 @@ export class TestWebSocketServer {
 
   /** Stops the WebSocket server and closes all connections */
   async stop(): Promise<void> {
-    // Close all client connections
     for (const client of this.clients.values()) {
       if (client.ws.readyState === WebSocket.OPEN) {
         client.ws.close(1000, 'Server shutting down');
       }
     }
     this.clients.clear();
-
-    // Close WebSocket server
     this.wsServer.close();
 
     // Close HTTP server
     return new Promise((resolve, reject) => {
-      this.httpServer.close((error?: Error) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
+      this.httpServer.close((error?: Error) =>
+        error ? reject(error) : resolve(),
+      );
     });
   }
 
@@ -120,21 +120,18 @@ export class TestWebSocketServer {
    * @param message - JSON-RPC message to broadcast
    */
   broadcast(message: JSONRPCMessage): void {
-    const messageId = randomUUID();
     const messageText = JSON.stringify(message);
 
     for (const [clientId, client] of this.clients.entries()) {
       if (client.ws.readyState === WebSocket.OPEN) {
         try {
           client.ws.send(messageText);
-
-          this.messageHistory.push({
-            id: messageId,
+          recordMessage(
+            this.messageHistory,
             clientId,
-            data: message,
-            timestamp: new Date(),
-            direction: 'outgoing',
-          });
+            message,
+            'outgoing',
+          );
         } catch (error) {
           console.error(`Error broadcasting to client ${clientId}:`, error);
           this.clients.delete(clientId);
@@ -161,15 +158,7 @@ export class TestWebSocketServer {
     try {
       const messageText = JSON.stringify(message);
       client.ws.send(messageText);
-
-      this.messageHistory.push({
-        id: randomUUID(),
-        clientId,
-        data: message,
-        timestamp: new Date(),
-        direction: 'outgoing',
-      });
-
+      recordMessage(this.messageHistory, clientId, message, 'outgoing');
       return true;
     } catch (error) {
       console.error(`Error sending to client ${clientId}:`, error);
@@ -178,24 +167,30 @@ export class TestWebSocketServer {
     }
   }
 
-  /** Returns count of connected clients */
+  /**
+   * Returns count of connected clients
+   * @returns Number of active connections
+   */
   getClientCount(): number {
-    // Clean up disconnected clients first
     for (const [clientId, client] of this.clients.entries()) {
-      if (client.ws.readyState === WebSocket.CLOSED) {
-        this.clients.delete(clientId);
-      }
+      if (client.ws.readyState === WebSocket.CLOSED) this.clients.delete(clientId);
     }
     return this.clients.size;
   }
 
-  /** Returns list of connected client IDs */
+  /**
+   * Returns list of connected client IDs
+   * @returns Array of client ID strings
+   */
   getConnectedClients(): string[] {
-    this.getClientCount(); // Clean up first
+    this.getClientCount();
     return Array.from(this.clients.keys());
   }
 
-  /** Returns all message history */
+  /**
+   * Returns all message history
+   * @returns Array of all sent and received messages with metadata
+   */
   getMessageHistory(): Array<{
     id: string;
     clientId: string;
@@ -213,7 +208,7 @@ export class TestWebSocketServer {
 
   /**
    * Sets valid token for authentication during token change testing
-   * @param token
+   * @param token - Valid bearer token for authentication
    */
   setValidToken(token: string): void {
     this.validToken = token;
@@ -221,9 +216,10 @@ export class TestWebSocketServer {
 
   /**
    * Disconnects specific client with given code and reason
-   * @param clientId
-   * @param code
-   * @param reason
+   * @param clientId - ID of client to disconnect
+   * @param code - WebSocket close code
+   * @param reason - Human-readable close reason
+   * @returns True if client was found and disconnected
    */
   disconnectClient(
     clientId: string,
@@ -242,10 +238,8 @@ export class TestWebSocketServer {
 
   /**
    * Verifies client connection by checking authentication
-   * @param info
-   * @param info.origin
-   * @param info.secure
-   * @param info.req
+   * @param info - Connection verification info with origin, security status, and HTTP request
+   * @returns True if client is authorized to connect
    */
   private verifyClient(info: {
     origin: string;
@@ -262,8 +256,7 @@ export class TestWebSocketServer {
       return false;
     }
 
-    const token = authHeader.slice(7);
-    return this.validToken ? token === this.validToken : true;
+    return this.validToken ? authHeader.slice(7) === this.validToken : true;
   }
 
   /** Sets up WebSocket connection handlers */
@@ -272,75 +265,24 @@ export class TestWebSocketServer {
       'connection',
       (ws: WebSocket, _request: IncomingMessage) => {
         const clientId = randomUUID();
-
-        // Check connection limits
         if (this.clients.size >= this.maxConnections) {
           ws.close(1013, 'Server overloaded');
           return;
         }
 
-        const client: WebSocketClient = {
-          id: clientId,
-          ws,
-          connectedAt: new Date(),
-        };
-
+        const client: WebSocketClient = { id: clientId, ws, connectedAt: new Date() };
         this.clients.set(clientId, client);
-
-        // Send welcome message
-        const welcomeMessage = {
-          jsonrpc: '2.0' as const,
-          method: 'server/welcome',
-          params: {
-            clientId,
-            serverTime: new Date().toISOString(),
-            message: 'Connected to test WebSocket server',
-          },
-        };
-
-        ws.send(JSON.stringify(welcomeMessage));
-
-        // Setup client event handlers
+        ws.send(JSON.stringify(createWelcomeMessage(clientId)));
         ws.on('message', (data: Buffer) => {
           try {
-            const messageText = data.toString('utf8');
-            const message = JSON.parse(messageText) as JSONRPCMessage;
-
-            this.messageHistory.push({
-              id: randomUUID(),
-              clientId,
-              data: message,
-              timestamp: new Date(),
-              direction: 'incoming',
-            });
-
-            // Echo back any JSON-RPC requests for testing
+            const message = JSON.parse(data.toString('utf8')) as JSONRPCMessage;
+            recordMessage(this.messageHistory, clientId, message, 'incoming');
             if ('method' in message && 'id' in message) {
-              const response = {
-                jsonrpc: '2.0' as const,
-                id: message.id,
-                result: {
-                  echo: message,
-                  processedAt: new Date().toISOString(),
-                },
-              };
-              ws.send(JSON.stringify(response));
+              ws.send(JSON.stringify(createEchoResponse(message)));
             }
           } catch (error) {
-            console.error(
-              `Error processing message from client ${clientId}:`,
-              error,
-            );
-            ws.send(
-              JSON.stringify({
-                jsonrpc: '2.0',
-                id: null,
-                error: {
-                  code: -32700,
-                  message: 'Parse error',
-                },
-              }),
-            );
+            console.error(`Error processing message from client ${clientId}:`, error);
+            ws.send(JSON.stringify(createParseErrorResponse()));
           }
         });
 
@@ -371,34 +313,23 @@ export class TestWebSocketServer {
 
   /**
    * Handles HTTP requests for health checks
-   * @param req
-   * @param res
+   * @param req - Incoming HTTP request
+   * @param res - HTTP response object
    */
-  private async handleHttpRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleHttpRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const url = new URL(req.url!, `http://localhost:${this.port}`);
-
-      // Set CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, Cache-Control',
-      );
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
 
-      // Handle preflight requests
       if (req.method === 'OPTIONS') {
         res.writeHead(200);
         res.end();
         return;
       }
-
-      // Health check endpoint
       if (url.pathname === '/health' && req.method === 'GET') {
-        this.sendJsonResponse(res, 200, {
+        sendJsonResponse(res, 200, {
           status: 'ok',
           clients: this.getClientCount(),
           timestamp: new Date().toISOString(),
@@ -407,48 +338,22 @@ export class TestWebSocketServer {
         return;
       }
 
-      // WebSocket upgrade is handled by ws library
       if (url.pathname === '/ws') {
-        // This should be handled by the WebSocket server
-        this.sendJsonResponse(res, 426, {
-          error: 'Upgrade Required',
-          message: 'This endpoint requires WebSocket upgrade',
-        });
+        sendJsonResponse(res, 426, { error: 'Upgrade Required', message: 'This endpoint requires WebSocket upgrade' });
         return;
       }
-
-      // Not found
-      this.sendJsonResponse(res, 404, { error: 'Not found' });
+      sendJsonResponse(res, 404, { error: 'Not found' });
     } catch (error) {
       console.error('HTTP server error:', error);
-      this.sendJsonResponse(res, 500, { error: 'Internal server error' });
+      sendJsonResponse(res, 500, { error: 'Internal server error' });
     }
-  }
-
-  /**
-   * Sends JSON response with given status code
-   * @param res
-   * @param statusCode
-   * @param data
-   */
-  private sendJsonResponse(
-    res: ServerResponse,
-    statusCode: number,
-    data: unknown,
-  ): void {
-    res.writeHead(statusCode, {
-      'Content-Type': 'application/json',
-    });
-    res.end(JSON.stringify(data));
   }
 }
 
-// Fix the import issue
-import type { ServerResponse } from 'http';
-
 /**
  * Creates and starts a test WebSocket server with given config
- * @param config
+ * @param config - Optional server configuration
+ * @returns Promise resolving to server instance and connection details
  */
 export async function createTestWebSocketServer(
   config?: TestWebSocketServerConfig,

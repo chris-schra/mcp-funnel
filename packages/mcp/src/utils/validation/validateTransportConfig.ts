@@ -10,8 +10,8 @@ import { validateReconnectConfig } from './validateReconnectConfig';
 
 /**
  * Validates stdio transport configuration.
- * @param {StdioTransportConfig} config - Stdio transport config
- * @throws {TransportError} When command field is missing
+ * @param config - Stdio transport config
+ * @throws TransportError when command field is missing
  * @internal
  */
 function validateStdioConfig(config: StdioTransportConfig): void {
@@ -24,9 +24,9 @@ function validateStdioConfig(config: StdioTransportConfig): void {
 
 /**
  * Validates SSE transport configuration.
- * @param {SSETransportConfig} config - SSE transport config
- * @throws {TransportError} When URL is missing or invalid
- * @throws {TransportError} When reconnect config fails validation
+ * @param config - SSE transport config
+ * @throws TransportError when URL is missing or invalid
+ * @throws TransportError when reconnect config fails validation
  * @internal
  */
 function validateSSEConfig(config: SSETransportConfig): void {
@@ -52,11 +52,11 @@ function validateSSEConfig(config: SSETransportConfig): void {
 
 /**
  * Validates WebSocket transport configuration.
- * @param {WebSocketTransportConfig} config - WebSocket transport config
- * @throws {TransportError} When URL is missing or invalid
- * @throws {TransportError} When URL protocol is not ws:/wss:/http:/https:
- * @throws {TransportError} When timeout is not positive
- * @throws {TransportError} When reconnect config fails validation
+ * @param config - WebSocket transport config
+ * @throws TransportError when URL is missing or invalid
+ * @throws TransportError when URL protocol is not ws:/wss:/http:/https:
+ * @throws TransportError when timeout is not positive
+ * @throws TransportError when reconnect config fails validation
  * @internal
  */
 function validateWebSocketConfig(config: WebSocketTransportConfig): void {
@@ -99,11 +99,11 @@ function validateWebSocketConfig(config: WebSocketTransportConfig): void {
 
 /**
  * Validates StreamableHTTP transport configuration.
- * @param {StreamableHTTPTransportConfig} config - StreamableHTTP transport config
- * @throws {TransportError} When URL is missing or invalid
- * @throws {TransportError} When URL protocol is not http: or https:
- * @throws {TransportError} When timeout is not positive
- * @throws {TransportError} When reconnect config fails validation
+ * @param config - StreamableHTTP transport config
+ * @throws TransportError when URL is missing or invalid
+ * @throws TransportError when URL protocol is not http: or https:
+ * @throws TransportError when timeout is not positive
+ * @throws TransportError when reconnect config fails validation
  * @internal
  */
 function validateStreamableHTTPConfig(
@@ -149,9 +149,9 @@ function validateStreamableHTTPConfig(
  *
  * Routes to type-specific validators and performs exhaustive type checking
  * to ensure all transport types are handled.
- * @param {TransportConfig} config - Transport configuration with explicit type
- * @throws {TransportError} When transport type is unsupported
- * @throws {TransportError} When type-specific validation fails
+ * @param config - Transport configuration with explicit type
+ * @throws TransportError when transport type is unsupported
+ * @throws TransportError when type-specific validation fails
  * @public
  * @see file:./validateReconnectConfig.ts - Shared reconnection validation
  */

@@ -26,8 +26,8 @@ export interface NormalizedReconnectionOptions {
  * - jitter: 0.25
  * Also creates alias fields (initialDelay, maxDelay, maxRetries) for backward compatibility.
  * Extracted as pure function for testability.
- * @param {ReconnectableTransportOptions} options - Partial reconnection options from configuration
- * @returns {NormalizedReconnectionOptions} Normalized options with all defaults applied
+ * @param options - Partial reconnection options from configuration
+ * @returns Normalized options with all defaults applied
  * @public
  * @see file:../transports/reconnectable-transport.ts:71 - Usage in transport constructor
  */
