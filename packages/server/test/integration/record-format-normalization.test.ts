@@ -18,8 +18,10 @@ type TargetServerWithoutName = {
 type ServersRecord = Record<string, TargetServerWithoutName>;
 
 /**
+ * Normalizes server configuration from record or array format to array format
  *
- * @param servers
+ * @param servers - Server configuration in either record or array format
+ * @returns Array of server configurations with names
  */
 function normalizeServers(
   servers: TargetServer[] | ServersRecord,
