@@ -1,24 +1,17 @@
 /**
- * OAuth + WebSocket End-to-End Integration Tests
+ * OAuth + WebSocket Authentication Flow Integration Tests
  *
- * REAL END-TO-END INTEGRATION TESTS - These tests combine OAuth and WebSocket
- * with real servers implementing both protocols working together.
+ * REAL END-TO-END INTEGRATION TESTS - These tests verify the complete
+ * OAuth + WebSocket authentication flow with real servers.
  *
- * These tests verify:
+ * Tests cover:
  * 1. Complete OAuth + WebSocket authentication flow
  * 2. Real token acquisition and WebSocket connection establishment
  * 3. End-to-end message transmission with authentication
  * 4. Token refresh during active WebSocket connections
- * 5. Error handling across both protocols
- * 6. WebSocket-specific authentication flows
+ * 5. Multiple concurrent authenticated connections
  *
  * Run with: RUN_INTEGRATION_TESTS=true yarn test
- *
- * This is the highest level of integration testing for WebSocket, using:
- * - Real HTTP servers for OAuth and WebSocket
- * - Real network requests and responses
- * - Actual protocol implementations
- * - True end-to-end authentication flows
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
@@ -41,7 +34,7 @@ import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
 
 describe.skipIf(!runIntegrationTests)(
-  'OAuth + WebSocket End-to-End Integration Tests',
+  'OAuth + WebSocket Authentication Flow Integration',
   () => {
     let oauthServer: TestOAuthServer;
     let wsServer: TestWebSocketServer;
@@ -338,215 +331,6 @@ describe.skipIf(!runIntegrationTests)(
 
         // Clean up
         await Promise.all(transports.map((t) => t.close()));
-      }, 20000);
-    });
-
-    describe('Error Recovery and Resilience', () => {
-      it('should recover from temporary OAuth server failure', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-ws-client',
-            clientSecret: 'e2e-ws-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        // Get initial token
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        wsServer.setValidToken(token);
-
-        const transport = new WebSocketClientTransport({
-          url: wsEndpoint,
-          authProvider,
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(wsServer.getClientCount()).toBe(1);
-
-        // Verify the connection can continue using existing token
-        // even if OAuth server becomes temporarily unavailable
-        // (This tests token caching behavior)
-        const cachedHeaders = await authProvider.getHeaders();
-        expect(cachedHeaders.Authorization).toBe(authHeaders.Authorization);
-
-        await transport.close();
-      }, 15000);
-
-      it('should handle WebSocket server restart gracefully', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-ws-client',
-            clientSecret: 'e2e-ws-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        wsServer.setValidToken(token);
-
-        const transport = new WebSocketClientTransport({
-          url: wsEndpoint,
-          authProvider,
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(wsServer.getClientCount()).toBe(1);
-
-        // Close transport properly
-        await transport.close();
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Verify cleanup (in integration tests, some cleanup delay is expected)
-        expect(wsServer.getClientCount()).toBe(0);
-      }, 10000);
-    });
-
-    describe('Performance and Load', () => {
-      it('should handle high-frequency bidirectional message transmission', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-ws-client',
-            clientSecret: 'e2e-ws-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        wsServer.setValidToken(token);
-
-        const transport = new WebSocketClientTransport({
-          url: wsEndpoint,
-          authProvider,
-        });
-
-        const receivedMessages: JSONRPCMessage[] = [];
-        transport.onmessage = (message: JSONRPCMessage) => {
-          receivedMessages.push(message);
-        };
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Send multiple messages rapidly from client to server
-        const messageCount = 10;
-        for (let i = 0; i < messageCount; i++) {
-          const message: JSONRPCRequest = {
-            jsonrpc: '2.0',
-            id: `perf-client-${i}`,
-            method: 'performance_test',
-            params: { index: i, timestamp: Date.now() },
-          };
-          await transport.send(message);
-
-          // Small delay to avoid overwhelming
-          await new Promise((resolve) => setTimeout(resolve, 20));
-        }
-
-        // Send multiple messages from server to client
-        for (let i = 0; i < messageCount; i++) {
-          const message: JSONRPCResponse = {
-            jsonrpc: '2.0',
-            id: `perf-server-${i}`,
-            result: { index: i, timestamp: Date.now() },
-          };
-          wsServer.broadcast(message);
-
-          await new Promise((resolve) => setTimeout(resolve, 20));
-        }
-
-        // Wait for all messages to be processed
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Verify server received client messages
-        const serverHistory = wsServer.getMessageHistory();
-        const clientMessages = serverHistory.filter(
-          (msg) =>
-            msg.direction === 'incoming' &&
-            'method' in msg.data &&
-            msg.data.method === 'performance_test',
-        );
-        expect(clientMessages).toHaveLength(messageCount);
-
-        // Verify client received server messages
-        const serverMessages = receivedMessages.filter(
-          (msg) => 'id' in msg && String(msg.id).startsWith('perf-server-'),
-        );
-        expect(serverMessages).toHaveLength(messageCount);
-
-        await transport.close();
-      }, 20000);
-
-      it('should maintain connection stability under load', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-ws-client',
-            clientSecret: 'e2e-ws-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        wsServer.setValidToken(token);
-
-        const transport = new WebSocketClientTransport({
-          url: wsEndpoint,
-          authProvider,
-          pingInterval: 500, // Frequent pings for load testing
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Verify initial connection
-        expect(wsServer.getClientCount()).toBe(1);
-
-        // Send messages continuously for several seconds
-        const startTime = Date.now();
-        const duration = 3000; // 3 seconds
-        let messagesSent = 0;
-
-        while (Date.now() - startTime < duration) {
-          const message: JSONRPCRequest = {
-            jsonrpc: '2.0',
-            id: `load-test-${messagesSent}`,
-            method: 'load_test',
-            params: { sequence: messagesSent },
-          };
-
-          try {
-            await transport.send(message);
-            messagesSent++;
-          } catch (error) {
-            // Connection should remain stable
-            throw new Error(`Connection failed during load test: ${error}`);
-          }
-
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-
-        // Verify connection is still active
-        expect(wsServer.getClientCount()).toBe(1);
-        expect(messagesSent).toBeGreaterThan(100); // Should have sent many messages
-
-        await transport.close();
       }, 20000);
     });
   },

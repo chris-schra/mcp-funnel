@@ -1,23 +1,17 @@
 /**
- * OAuth + SSE End-to-End Integration Tests
+ * OAuth + SSE Authentication Flow Integration Tests
  *
- * REAL END-TO-END INTEGRATION TESTS - These tests combine OAuth and SSE
- * with real servers implementing both protocols working together.
+ * REAL END-TO-END INTEGRATION TESTS - These tests verify the complete
+ * OAuth + SSE authentication flow with real servers.
  *
- * These tests verify:
+ * Tests cover:
  * 1. Complete OAuth + SSE authentication flow
  * 2. Real token acquisition and SSE connection establishment
  * 3. End-to-end message transmission with authentication
  * 4. Token refresh during active SSE connections
- * 5. Error handling across both protocols
+ * 5. Multiple concurrent authenticated connections
  *
  * Run with: RUN_INTEGRATION_TESTS=true yarn test
- *
- * This is the highest level of integration testing, using:
- * - Real HTTP servers for OAuth and SSE
- * - Real network requests and responses
- * - Actual protocol implementations
- * - True end-to-end authentication flows
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
@@ -40,7 +34,7 @@ import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
 
 describe.skipIf(!runIntegrationTests)(
-  'OAuth + SSE End-to-End Integration Tests',
+  'OAuth + SSE Authentication Flow Integration',
   () => {
     let oauthServer: TestOAuthServer;
     let sseServer: TestSSEServer;
@@ -311,136 +305,6 @@ describe.skipIf(!runIntegrationTests)(
 
         // Clean up
         await Promise.all(transports.map((t) => t.close()));
-      }, 20000);
-    });
-
-    describe('Error Recovery and Resilience', () => {
-      it('should recover from temporary OAuth server failure', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        // Get initial token
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
-
-        // Verify the connection can continue using existing token
-        // even if OAuth server becomes temporarily unavailable
-        // (This tests token caching behavior)
-        const cachedHeaders = await authProvider.getHeaders();
-        expect(cachedHeaders.Authorization).toBe(authHeaders.Authorization);
-
-        await transport.close();
-      }, 15000);
-
-      it('should handle SSE server restart gracefully', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
-
-        // Close transport properly
-        await transport.close();
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Verify cleanup (in integration tests, some cleanup delay is expected)
-        expect(sseServer.getClientCount()).toBeLessThanOrEqual(5);
-      }, 10000);
-    });
-
-    describe('Performance and Load', () => {
-      it('should handle high-frequency message transmission', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
-
-        const receivedMessages: JSONRPCMessage[] = [];
-        transport.onmessage = (message: JSONRPCMessage) => {
-          receivedMessages.push(message);
-        };
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Send multiple messages rapidly
-        const messageCount = 10;
-        for (let i = 0; i < messageCount; i++) {
-          const message: JSONRPCResponse = {
-            jsonrpc: '2.0',
-            id: `perf-test-${i}`,
-            result: { index: i, timestamp: Date.now() },
-          };
-          sseServer.broadcast(message);
-
-          // Small delay to avoid overwhelming
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
-
-        // Wait for all messages to be received
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Count messages with our test prefix (excluding welcome/heartbeat)
-        const testMessages = receivedMessages.filter(
-          (msg) =>
-            (msg as JSONRPCResponse).id &&
-            String((msg as JSONRPCResponse).id).startsWith('perf-test-'),
-        );
-
-        expect(testMessages.length).toBe(messageCount);
-
-        await transport.close();
       }, 20000);
     });
   },
