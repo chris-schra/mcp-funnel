@@ -7,6 +7,10 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { waitForServerReady } from './test-utils.js';
+import path from 'node:path';
+
+const tsxPath = path.resolve('node_modules/.bin/tsx');
+const cwd = path.resolve('packages/server');
 
 describe('Security Verification', () => {
   let serverProcess: ChildProcess | null = null;
@@ -161,8 +165,8 @@ describe('Security Verification', () => {
     const testToken = randomBytes(32).toString('hex');
 
     // Start server with auth
-    serverProcess = spawn('node', ['node_modules/.bin/tsx', 'src/dev.ts'], {
-      cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
+    serverProcess = spawn('node', [tsxPath, 'src/dev.ts'], {
+      cwd,
       env: {
         ...process.env,
         MCP_FUNNEL_AUTH_TOKEN: testToken,

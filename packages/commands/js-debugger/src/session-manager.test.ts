@@ -180,10 +180,9 @@ describe('SessionManager (Node integration)', () => {
     const expectedPath = tsBreakpointFixture.tempPath.replace(/\\/g, '/');
     const actualPath = session?.state.location?.file?.replace(/\\/g, '/');
     // Handle both file:// URLs and plain paths (CI returns file:// URLs)
-    const normalizedPath = actualPath
-      ?.replace('file:///private', '')
-      ?.replace('file://', '')
-      || actualPath;
+    const normalizedPath =
+      actualPath?.replace('file:///private', '')?.replace('file://', '') ||
+      actualPath;
     expect(normalizedPath).toBe(expectedPath);
     // Line numbers may differ due to TypeScript transpilation without source maps
     expect(session?.state.location?.line).toBeGreaterThan(0);

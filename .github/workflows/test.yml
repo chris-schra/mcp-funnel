@@ -54,11 +54,12 @@ jobs:
         run: npx playwright install-deps chromium
 
       - name: Run tests
-        run: yarn test --reporter=default --reporter=github-actions
+        if: github.event_name != 'pull_request'
+        run: yarn test
 
       - name: Run tests with coverage
         if: github.event_name == 'pull_request'
-        run: yarn test:coverage --reporter=default --reporter=github-actions
+        run: yarn test:coverage
 
       - name: Report coverage
         if: github.event_name == 'pull_request'

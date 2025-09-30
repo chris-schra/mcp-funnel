@@ -22,7 +22,7 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: (process.env.CI) ? ['github-actions']:  ['text', 'json', 'html'],
       exclude: ['node_modules/', 'test/', '*.config.ts', 'src/cli.ts'],
     },
     testTimeout: 10000,
