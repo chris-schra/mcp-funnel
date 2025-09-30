@@ -59,8 +59,8 @@ vi.mock('uuid', () => ({
 }));
 
 // Mock logger
-vi.mock('@mcp-funnel/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@mcp-funnel/core')>();
+vi.mock('../../../logger.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../logger.js')>();
   return {
     ...actual,
     logEvent: vi.fn(),

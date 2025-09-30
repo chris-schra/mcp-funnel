@@ -161,7 +161,7 @@ describe('Default Authentication with Environment Variables', () => {
     const testToken = randomBytes(32).toString('hex');
 
     // Start server with explicit auth token
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
+    serverProcess = spawn('npx', ['tsx', 'src/dev.ts'], {
       cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
       env: {
         ...process.env,
@@ -195,7 +195,7 @@ describe('Default Authentication with Environment Variables', () => {
     let capturedOutput = '';
 
     // Start server without auth token
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
+    serverProcess = spawn('npx', ['tsx', 'src/dev.ts'], {
       cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
       env: {
         ...process.env,
@@ -245,7 +245,7 @@ describe('Default Authentication with Environment Variables', () => {
     let capturedOutput = '';
 
     // Start server with auth disabled
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
+    serverProcess = spawn('npx', ['tsx', 'src/dev.ts'], {
       cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
       env: {
         ...process.env,
@@ -282,7 +282,7 @@ describe('Default Authentication with Environment Variables', () => {
     const shortToken = 'short'; // Less than 16 characters
 
     // Start server with short token - should fail
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
+    serverProcess = spawn('npx', ['tsx', 'src/dev.ts'], {
       cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
       env: {
         ...process.env,
