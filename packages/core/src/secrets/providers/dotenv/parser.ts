@@ -13,7 +13,7 @@ const DEFAULT_OPTIONS: DotEnvParserOptions = {
  * Main entry point for .env parsing. Orchestrates:
  * 1. Line preprocessing (multiline handling)
  * 2. Logical line parsing (key-value extraction)
- * 3. Variable interpolation (${VAR} resolution)
+ * 3. Variable interpolation (resolves variable references)
  * @param content - Raw .env file contents
  * @param options - Parser options (environment for interpolation fallback)
  * @returns Parsed and interpolated variables as key-value pairs

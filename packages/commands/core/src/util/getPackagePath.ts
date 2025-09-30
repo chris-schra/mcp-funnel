@@ -6,7 +6,7 @@ import { join } from 'path';
  * Joins the base packages directory with 'node_modules' and the package name to create
  * the expected installation path for npm packages managed by the command installer.
  * @param packagesDir - Absolute path to the base packages directory containing node_modules
- * @param packageName - The npm package name (e.g., '@scope/package' or 'package-name')
+ * @param packageName - The npm package name (e.g., '\@scope/package' or 'package-name')
  * @returns Absolute path to the package directory within node_modules
  * @example
  * ```typescript

@@ -26,7 +26,7 @@ const __dirname = dirname(__filename);
  * sanitized using context-appropriate escaping (HTML or attribute escaping).
  * @param data - Consent page data containing client, user, and OAuth flow information
  * @returns Rendered HTML string with all user inputs safely escaped and ready to serve
- * @throws {Error} When the consent.html template file cannot be loaded from disk
+ * @throws \{Error\} When the consent.html template file cannot be loaded from disk
  * @example
  * ```typescript
  * const html = renderConsentPage({
@@ -210,16 +210,14 @@ export function validateConsentPageData(data: Partial<ConsentPageData>): {
  * authorization flow parameters. It automatically generates the clientInitial,
  * converts requestedScopes array to ScopeInfo objects with descriptions, creates
  * the scopeString, and constructs the actionUrl from the baseUrl.
+ *
+ * The params object shape is defined inline and includes clientId (OAuth client
+ * identifier), clientName (human-readable client application name), userEmail
+ * (email of user granting consent), requestedScopes (array of OAuth scope strings),
+ * redirectUri (redirect URI from authorization request), state (optional state for
+ * CSRF protection), codeChallenge (optional PKCE challenge), codeChallengeMethod
+ * (optional PKCE method S256 or plain), and baseUrl (authorization server base URL).
  * @param params - Parameters from OAuth authorization request
- * @param params.clientId - OAuth client identifier
- * @param params.clientName - Human-readable client application name
- * @param params.userEmail - Email address of the user granting consent
- * @param params.requestedScopes - Array of OAuth scope strings being requested
- * @param params.redirectUri - Redirect URI from the authorization request
- * @param params.state - Optional state parameter for CSRF protection
- * @param params.codeChallenge - Optional PKCE code challenge
- * @param params.codeChallengeMethod - Optional PKCE code challenge method (S256 or plain)
- * @param params.baseUrl - Base URL of the authorization server (e.g., 'https://auth.example.com')
  * @returns Complete consent page data ready for rendering
  * @example
  * ```typescript

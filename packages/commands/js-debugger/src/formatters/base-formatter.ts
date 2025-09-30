@@ -36,8 +36,8 @@ export abstract class BaseResponseFormatter implements IResponseFormatter {
    * Wraps arbitrary data in the MCP CallToolResult structure with pretty-printed
    * JSON (2-space indentation). Used by all formatter methods to standardize
    * successful response format across the debugger command.
-   * @param {unknown} data - Any serializable data to return to the MCP client
-   * @returns {CallToolResult} MCP-compliant tool result with JSON text content
+   * @param data - Any serializable data to return to the MCP client
+   * @returns MCP-compliant tool result with JSON text content
    * @example
    * ```typescript
    * const result = formatter.success({ sessionId: 'abc123', state: 'paused' });
@@ -63,9 +63,9 @@ export abstract class BaseResponseFormatter implements IResponseFormatter {
    * allowing MCP clients to distinguish failures from successful results.
    * The details parameter accepts any additional context (stack traces,
    * error codes, session state) useful for debugging.
-   * @param {string} message - Human-readable error message describing what went wrong
-   * @param {unknown} [details] - Optional diagnostic information (error objects, session state, etc.)
-   * @returns {CallToolResult} MCP-compliant error result with isError flag
+   * @param message - Human-readable error message describing what went wrong
+   * @param details - Optional diagnostic information (error objects, session state, etc.)
+   * @returns MCP-compliant error result with isError flag
    * @example
    * ```typescript
    * // Simple error

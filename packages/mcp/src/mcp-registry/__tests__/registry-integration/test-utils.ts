@@ -27,6 +27,7 @@ global.fetch = mockFetch;
 
 /**
  * Setup function for registry integration tests
+ * @returns Object containing test utilities including mockProxyConfig and mockFetch
  */
 export function setupRegistryIntegrationTest() {
   let mockProxyConfig: ProxyConfig = {

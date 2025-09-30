@@ -3,11 +3,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { IAuthProvider } from '@mcp-funnel/core';
+import { BaseClientTransport } from '../../../core/src/transports/implementations/base-client-transport.js';
 import {
-  BaseClientTransport,
-  type BaseClientTransportConfig,
   TransportError,
+  type IAuthProvider,
+  type BaseClientTransportConfig,
 } from '@mcp-funnel/core';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { createMockAuthProvider } from './test-utils.js';

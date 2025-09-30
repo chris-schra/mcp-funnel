@@ -22,7 +22,7 @@ import { VariableFormatter } from './variable-formatter.js';
  * This eliminates the original 415-line monolithic formatter
  */
 export class DebugResponseFormatter extends BaseResponseFormatter {
-  async debugState(
+  public async debugState(
     sessionId: string,
     session: DebugSession,
   ): Promise<CallToolResult> {
@@ -30,7 +30,7 @@ export class DebugResponseFormatter extends BaseResponseFormatter {
     return this.success(data);
   }
 
-  sessionsList(
+  public sessionsList(
     sessions: Array<{
       id: string;
       platform: string;
@@ -49,7 +49,7 @@ export class DebugResponseFormatter extends BaseResponseFormatter {
     return this.success(data);
   }
 
-  consoleOutput(data: {
+  public consoleOutput(data: {
     sessionId: string;
     consoleOutput: Array<{
       level: string;
@@ -66,7 +66,7 @@ export class DebugResponseFormatter extends BaseResponseFormatter {
     return this.success(formattedData);
   }
 
-  runningSession(
+  public runningSession(
     sessionId: string,
     platform: string,
     target: string,
@@ -75,12 +75,12 @@ export class DebugResponseFormatter extends BaseResponseFormatter {
     return this.success(data);
   }
 
-  terminatedSession(sessionId: string, message: string): CallToolResult {
+  public terminatedSession(sessionId: string, message: string): CallToolResult {
     const data = SessionFormatter.terminatedSession(sessionId, message);
     return this.success(data);
   }
 
-  stackTrace(
+  public stackTrace(
     sessionId: string,
     session: DebugSession,
     stackTrace: Array<{
@@ -101,7 +101,7 @@ export class DebugResponseFormatter extends BaseResponseFormatter {
     return this.success(data);
   }
 
-  variables(
+  public variables(
     sessionId: string,
     frameId: number,
     data: { path: string; result: unknown },
@@ -110,7 +110,7 @@ export class DebugResponseFormatter extends BaseResponseFormatter {
     return this.success(formattedData);
   }
 
-  evaluation(
+  public evaluation(
     sessionId: string,
     evaluation: {
       expression?: string;

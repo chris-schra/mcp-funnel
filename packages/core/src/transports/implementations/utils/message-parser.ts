@@ -17,7 +17,7 @@ import { logEvent } from '../../../logger.js';
  * @param logPrefix - Prefix for logging parse errors
  * @param onerror - Optional callback invoked when parsing fails
  * @returns Parsed and validated JSON-RPC message
- * @throws {Error} When JSON parsing fails or jsonrpc field is invalid
+ * @throws \{Error\} When JSON parsing fails or jsonrpc field is invalid
  * @internal
  */
 export function parseMessage(

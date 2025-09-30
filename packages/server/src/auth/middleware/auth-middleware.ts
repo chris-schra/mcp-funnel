@@ -26,8 +26,8 @@ import type { IInboundAuthValidator } from '../interfaces/inbound-auth.interface
  *
  * Returns 401 Unauthorized with WWW-Authenticate header when authentication
  * fails. Attaches auth context to request via c.set('authContext') on success.
- * @param {IInboundAuthValidator} validator - Authentication validator to use for request validation
- * @returns {MiddlewareHandler} Hono middleware function
+ * @param validator - Authentication validator to use for request validation
+ * @returns Hono middleware function
  * @public
  */
 export function createAuthMiddleware(
@@ -94,8 +94,8 @@ export function createAuthMiddleware(
 
 /**
  * Returns WWW-Authenticate header value based on authentication type.
- * @param {string} authType - Authentication type identifier (e.g., 'bearer', 'none')
- * @returns {string} RFC 7235 compliant WWW-Authenticate header value
+ * @param authType - Authentication type identifier (e.g., 'bearer', 'none')
+ * @returns RFC 7235 compliant WWW-Authenticate header value
  * @internal
  */
 function getWWWAuthenticateHeader(authType: string): string {
@@ -112,8 +112,8 @@ function getWWWAuthenticateHeader(authType: string): string {
  *
  * Returns the context object attached via c.set('authContext') during
  * authentication. Returns undefined if middleware hasn't run or auth failed.
- * @param {Context} c - Hono context from request handler
- * @returns {Record<string, unknown> | undefined} Authentication context or undefined
+ * @param c - Hono context from request handler
+ * @returns Authentication context or undefined
  * @public
  */
 export function getAuthContext(

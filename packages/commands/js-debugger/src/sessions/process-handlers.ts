@@ -45,14 +45,14 @@ export class ProcessHandlerManager {
     void this.handleProcessCleanup();
   };
 
-  constructor(context: ProcessHandlerContext) {
+  public constructor(context: ProcessHandlerContext) {
     this.context = context;
   }
 
   /**
    * Setup process exit handlers for proper cleanup
    */
-  setupHandlers(): void {
+  public setupHandlers(): void {
     if (this.processHandlersRegistered) {
       return;
     }
@@ -68,7 +68,7 @@ export class ProcessHandlerManager {
   /**
    * Remove process exit handlers
    */
-  removeHandlers(): void {
+  public removeHandlers(): void {
     if (!this.processHandlersRegistered) {
       return;
     }
@@ -83,22 +83,24 @@ export class ProcessHandlerManager {
 
   /**
    * Check if process handlers are registered
+   * @returns True if process handlers are registered
    */
-  isRegistered(): boolean {
+  public isRegistered(): boolean {
     return this.processHandlersRegistered;
   }
 
   /**
    * Mark shutdown as in progress
    */
-  markShuttingDown(): void {
+  public markShuttingDown(): void {
     this.isShuttingDown = true;
   }
 
   /**
    * Check if shutdown is in progress
+   * @returns True if shutdown is in progress
    */
-  isShutdownInProgress(): boolean {
+  public isShutdownInProgress(): boolean {
     return this.isShuttingDown;
   }
 }

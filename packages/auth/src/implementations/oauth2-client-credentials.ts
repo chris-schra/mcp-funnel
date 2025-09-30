@@ -53,7 +53,7 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
    * Creates an OAuth2 Client Credentials provider
    * @param config - OAuth2 client credentials configuration with clientId, clientSecret, and tokenEndpoint
    * @param storage - Token storage implementation for persisting tokens
-   * @throws {AuthenticationError} When required configuration fields are missing or invalid
+   * @throws \{AuthenticationError\} When required configuration fields are missing or invalid
    */
   public constructor(
     config: OAuth2ClientCredentialsConfigZod,
@@ -71,8 +71,8 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
    *
    * Makes a POST request to the token endpoint with client credentials in Basic Auth header.
    * Automatically retries on network errors and validates the response before storing.
-   * @throws {AuthenticationError} When token request fails, credentials are invalid, or audience validation fails
-   * @protected
+   * @throws \{AuthenticationError\} When token request fails, credentials are invalid, or audience validation fails
+   * @internal
    */
   protected async acquireToken(): Promise<void> {
     const requestId = this.generateRequestId();
@@ -105,7 +105,7 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
    * Uses HTTP Basic Authentication with base64-encoded client credentials.
    * @param requestId - Unique identifier for request correlation and logging
    * @returns Promise resolving to OAuth2 token response containing access_token and metadata
-   * @throws {AuthenticationError} When request fails, response is invalid, or server returns error
+   * @throws \{AuthenticationError\} When request fails, response is invalid, or server returns error
    * @internal
    */
   private async makeTokenRequest(
@@ -159,7 +159,7 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
    *
    * Ensures clientId, clientSecret, and tokenEndpoint are present and that
    * tokenEndpoint is a valid URL format.
-   * @throws {AuthenticationError} When required fields are missing or tokenEndpoint is not a valid URL
+   * @throws \{AuthenticationError\} When required fields are missing or tokenEndpoint is not a valid URL
    * @internal
    */
   private validateConfig(): void {

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { describe, expect, test } from 'vitest';
 import {
   query,
@@ -64,8 +65,9 @@ const expectStrictNumber = (response: string, expected?: number) => {
       let isShutdown = false;
 
       /**
-       * Generator that yields messages on demand
-       * @yields User messages from the queue
+       * Generator that yields messages on demand.
+       * Yields user messages from the queue as they become available.
+       * @returns Async generator yielding SDKUserMessage objects
        */
       async function* messageGenerator(): AsyncGenerator<SDKUserMessage> {
         while (!isShutdown) {

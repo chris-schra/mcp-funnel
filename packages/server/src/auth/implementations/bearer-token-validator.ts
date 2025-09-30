@@ -139,8 +139,8 @@ export class BearerTokenValidator implements IInboundAuthValidator {
 
   /**
    * Validates token against configured allowlist using constant-time comparison.
-   * @param {string} token - Token to validate
-   * @returns {boolean} True if token matches any configured valid token
+   * @param token - Token to validate
+   * @returns True if token matches any configured valid token
    * @internal
    */
   private isValidToken(token: string): boolean {

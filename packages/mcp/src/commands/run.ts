@@ -9,20 +9,20 @@ import { existsSync } from 'fs';
  * Searches for commands in multiple locations with fallback precedence:
  * 1. Local development commands (packages/commands) - for monorepo development
  * 2. Bundled commands within this package - for distributed package
- * 3. Installed command packages (node_modules/@mcp-funnel/command-*) - for extensions
- * @param {string} name - Command name to execute (e.g., 'validate', 'debug')
- * @param {string[]} args - Command-line arguments to pass to the command
- * @throws {Error} When no commands are found in any location
- * @throws {Error} When the specified command name is not found in the registry
- * @throws {Error} When command execution fails
+ * 3. Installed command packages (node_modules/\@mcp-funnel/command-*) - for extensions
+ * @param name - Command name to execute (e.g., 'validate', 'debug')
+ * @param args - Command-line arguments to pass to the command
+ * @throws \{Error\} When no commands are found in any location
+ * @throws \{Error\} When the specified command name is not found in the registry
+ * @throws \{Error\} When command execution fails
  * @example
  * ```typescript
  * // Execute a validation command with fix flag
  * await runCommand('validate', ['--fix']);
  * ```
  * @public
- * @see file:../../commands-core/src/discovery.ts - Command discovery implementation
- * @see file:../../commands-core/src/registry.ts - Command registry
+ * @see {@link discoverCommands} - Command discovery implementation
+ * @see {@link CommandRegistry} - Command registry
  */
 export async function runCommand(name: string, args: string[]): Promise<void> {
   try {

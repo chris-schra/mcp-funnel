@@ -16,9 +16,9 @@ export interface ToolResolverResult {
 
 /**
  * Resolve a tool name, including short name resolution if enabled
- * @param inputName The tool name provided by the user
- * @param toolMapping Map of full tool names to their clients
- * @param config Proxy configuration
+ * @param inputName - The tool name provided by the user
+ * @param toolMapping - Map of full tool names to their clients
+ * @param config - Proxy configuration
  * @returns Resolution result with either resolved name or error details
  */
 export function resolveToolName(

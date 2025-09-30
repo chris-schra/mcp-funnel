@@ -23,7 +23,7 @@ export function processValue(rawValue: string): string {
 /**
  * Parses a double-quoted dotenv value with escape sequence processing.
  *
- * Handles standard escape sequences (\n, \t, \r, \\, \", \') and Unicode escapes (\uXXXX).
+ * Handles standard escape sequences (newline, tab, carriage return, backslash, quotes) and Unicode escapes.
  * If the closing quote is missing, truncates at first newline and returns with leading quote.
  * @param value - Value string starting with double quote
  * @returns Parsed value with escape sequences resolved and quotes removed

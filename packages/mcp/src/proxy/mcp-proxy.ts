@@ -159,7 +159,8 @@ export class MCPProxy extends EventEmitter {
   /**
    * Get the status of a single server by name
    * Returns ServerStatus object with current connection state
-   * @param name
+   * @param name - Server name to query
+   * @returns Server status object with connection state
    * @public
    */
   public getServerStatus(name: string): ServerStatus {
@@ -171,6 +172,12 @@ export class MCPProxy extends EventEmitter {
     );
   }
 
+  /**
+   * Check if a server is currently connected
+   * @param name - Server name to check
+   * @returns True if server is connected, false otherwise
+   * @public
+   */
   public isServerConnected(name: string): boolean {
     return isServerConnected(
       name,
@@ -181,7 +188,8 @@ export class MCPProxy extends EventEmitter {
   /**
    * Reconnect to a disconnected server
    * Finds the server in disconnectedServers and attempts to reconnect
-   * @param name
+   * @param name - Server name to reconnect
+   * @returns Promise that resolves when reconnection is complete
    * @public
    */
   public async reconnectServer(name: string): Promise<void> {
@@ -191,7 +199,8 @@ export class MCPProxy extends EventEmitter {
   /**
    * Disconnect from a connected server
    * Closes the connection and moves server to disconnected state
-   * @param name
+   * @param name - Server name to disconnect
+   * @returns Promise that resolves when disconnection is complete
    * @public
    */
   public async disconnectServer(name: string): Promise<void> {
@@ -340,8 +349,8 @@ export class MCPProxy extends EventEmitter {
   /**
    * Complete OAuth2 authorization code flow
    * Uses O(1) static state lookup instead of O(n) iteration
-   * @param state
-   * @param code
+   * @param state - OAuth state parameter from callback
+   * @param code - OAuth authorization code from callback
    * @public
    */
   public async completeOAuthFlow(state: string, code: string): Promise<void> {

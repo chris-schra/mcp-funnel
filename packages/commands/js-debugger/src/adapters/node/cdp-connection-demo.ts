@@ -6,9 +6,8 @@
 import { CDPConnection } from './cdp-connection.js';
 import type { CDPDebuggerPausedParams } from '../../cdp/types.js';
 
-// Example of using the refactored CDP connection
 /**
- *
+ * Demo function showing Emittery-based CDP connection usage
  */
 async function demoEmitterySupport() {
   const cdpConnection = new CDPConnection();

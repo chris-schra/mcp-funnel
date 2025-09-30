@@ -51,6 +51,7 @@ export class TransportError extends Error {
 
   /**
    * Convert the error to a JSON representation (useful for logging/debugging)
+   * @returns JSON object containing error details
    */
   public toJSON(): Record<string, unknown> {
     return {

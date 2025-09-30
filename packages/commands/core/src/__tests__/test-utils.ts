@@ -13,6 +13,8 @@ export interface TestCommandManifestOptions {
 export const TestUtils = {
   /**
    * Create a mock manifest with various package types for testing
+   * @param options - Configuration for which package types to include in the mock manifest
+   * @returns Mock command manifest with configured package entries
    */
   createMockManifest(
     options: TestCommandManifestOptions = {

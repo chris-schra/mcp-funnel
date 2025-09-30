@@ -18,13 +18,13 @@ const execAsync = promisify(exec);
  * 4. Optionally deletes associated data directory if removeData option is set
  *
  * The function supports flexible lookup - it can find commands by either their
- * npm package name (e.g., '@mcp-funnel/commands-js-debugger') or their
+ * npm package name (e.g., '\@mcp-funnel/commands-js-debugger') or their
  * registered command name (e.g., 'js-debugger').
  * @param context - Installer context containing directory paths and manifest location
  * @param packageNameOrCommandName - Either the npm package name or the registered command name to uninstall
  * @param options - Uninstall options controlling data cleanup behavior
- * @throws {Error} When the specified command is not found in the manifest
- * @throws {Error} When npm uninstall operation fails
+ * @throws When the specified command is not found in the manifest
+ * @throws When npm uninstall operation fails
  * @public
  * @see file:./writeManifest.ts - Manifest persistence after uninstall
  * @see file:./readManifest.ts - Manifest loading

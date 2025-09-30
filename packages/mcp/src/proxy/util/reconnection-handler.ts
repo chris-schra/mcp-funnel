@@ -26,8 +26,8 @@ export interface ReconnectionManagerConfig {
  * - maxDelayMs: 60000ms
  * - jitter: 0.25
  * Sets up state change listener to invoke callback when max attempts are reached.
- * @param {ReconnectionManagerConfig} managerConfig - Manager configuration
- * @returns {ReconnectionManager} Configured ReconnectionManager instance
+ * @param managerConfig - Manager configuration
+ * @returns Configured ReconnectionManager instance
  * @public
  * @see file:./server-connection-manager.ts:95 - Usage in server connection manager
  */
@@ -90,7 +90,7 @@ export interface ReconnectionAttemptConfig {
  * 3. On success: resets reconnection manager and emits success events
  * 4. On failure: logs error and invokes failure callback
  * Used by ReconnectionManager's automatic reconnection logic.
- * @param {ReconnectionAttemptConfig} attemptConfig - Reconnection attempt configuration
+ * @param attemptConfig - Reconnection attempt configuration
  * @public
  * @see file:./server-connection-manager.ts:201 - Usage in connection manager
  */
@@ -142,9 +142,9 @@ export async function attemptReconnection(
  * Returns true only if:
  * - autoReconnect.enabled is not explicitly false in config
  * - AND disconnect was not manually requested by user
- * @param {ProxyConfig} config - Proxy configuration
- * @param {boolean} isManualDisconnect - Whether disconnect was manually triggered
- * @returns {boolean} True if automatic reconnection should be attempted
+ * @param config - Proxy configuration
+ * @param isManualDisconnect - Whether disconnect was manually triggered
+ * @returns True if automatic reconnection should be attempted
  * @public
  * @see file:./server-connection-manager.ts:197 - Usage in disconnect handler
  */

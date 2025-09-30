@@ -29,7 +29,7 @@ export interface DisconnectHandlingConfig {
  * Wraps the transport's onclose and onerror handlers to trigger disconnect callbacks.
  * The onDisconnect callback is called with 'transport_closed' for clean closes and
  * 'transport_error' for connection errors.
- * @param {DisconnectHandlingConfig} config - Disconnect handling configuration
+ * @param config - Disconnect handling configuration
  * @public
  * @see file:./server-connection-manager.ts:168 - Usage in connection manager
  */
@@ -115,7 +115,7 @@ export interface ServerDisconnectionConfig {
  * - Deletes connection timestamp and transport references
  * - Emits 'server.disconnected' event
  * Manual disconnects are marked as 'manual_disconnect' regardless of the provided reason.
- * @param {ServerDisconnectionConfig} config - Disconnection configuration with all necessary state maps
+ * @param config - Disconnection configuration with all necessary state maps
  * @public
  * @see file:./server-connection-manager.ts:186 - Usage in disconnect callback
  */

@@ -27,8 +27,8 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
 export interface IConfigManager {
   /**
    * Reads the current proxy configuration.
-   * @returns {Promise<ProxyConfig>} Promise resolving to the current ProxyConfig
-   * @throws {Error} if configuration cannot be read or is invalid
+   * @returns Promise resolving to the current ProxyConfig
+   * @throws if configuration cannot be read or is invalid
    */
   readConfig(): Promise<ProxyConfig>;
 
@@ -37,9 +37,9 @@ export interface IConfigManager {
    *
    * **MVP Behavior:** Logs the server that would be added
    * **Phase 2 Behavior:** Actually adds server to config file
-   * @param {ServerConfig} server - The server configuration to add
-   * @throws {Error} if server name conflicts with existing server
-   * @throws {Error} if server configuration is invalid
+   * @param server - The server configuration to add
+   * @throws if server name conflicts with existing server
+   * @throws if server configuration is invalid
    */
   addServer(server: ServerConfig): Promise<void>;
 
@@ -48,8 +48,8 @@ export interface IConfigManager {
    *
    * **MVP Behavior:** Logs the server that would be removed
    * **Phase 2 Behavior:** Actually removes server from config file
-   * @param {string} serverName - Name of the server to remove
-   * @throws {Error} if server does not exist
+   * @param serverName - Name of the server to remove
+   * @throws if server does not exist
    */
   removeServer(serverName: string): Promise<void>;
 
@@ -58,10 +58,10 @@ export interface IConfigManager {
    *
    * **MVP Behavior:** Logs the updates that would be applied
    * **Phase 2 Behavior:** Actually updates server in config file
-   * @param {string} serverName - Name of the server to update
-   * @param {Partial<ServerConfig>} updates - Partial server configuration with fields to update
-   * @throws {Error} if server does not exist
-   * @throws {Error} if updates would create invalid configuration
+   * @param serverName - Name of the server to update
+   * @param updates - Partial server configuration with fields to update
+   * @throws if server does not exist
+   * @throws if updates would create invalid configuration
    */
   updateServer(
     serverName: string,

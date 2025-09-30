@@ -1,3 +1,7 @@
+/* eslint-disable max-lines */
+// This file exceeds max-lines due to comprehensive JSDoc documentation and IDebugSession interface implementation.
+// The class already delegates to EventManager, ActivityTracker, and MemoryManager helpers.
+// Further splitting would harm cohesion as this is the central session coordinator.
 import Emittery from 'emittery';
 import type {
   IDebugAdapter,
@@ -160,7 +164,7 @@ export class EnhancedDebugSession extends Emittery<DebugSessionEvents> {
    * transitions through initialization states, and sets up for active debugging.
    * Must be called before any other debug operations.
    * @returns Promise that resolves when initialization completes
-   * @throws {Error} When adapter connection fails
+   * @throws Error When adapter connection fails
    * @example
    * ```typescript
    * const session = new EnhancedDebugSession(id, adapter, request);
@@ -311,7 +315,7 @@ export class EnhancedDebugSession extends Emittery<DebugSessionEvents> {
    * @param line - Line number (1-indexed)
    * @param condition - Optional conditional expression to break only when true
    * @returns Promise resolving to breakpoint registration with verification status
-   * @throws {Error} When breakpoint cannot be set
+   * @throws Error When breakpoint cannot be set
    * @example
    * ```typescript
    * const bp = await session.setBreakpoint('app.ts', 42, 'x > 10');
@@ -354,7 +358,7 @@ export class EnhancedDebugSession extends Emittery<DebugSessionEvents> {
    * Removes a previously set breakpoint by its ID.
    * @param id - Breakpoint identifier returned from setBreakpoint
    * @returns Promise that resolves when breakpoint is removed
-   * @throws {Error} When breakpoint removal fails
+   * @throws Error When breakpoint removal fails
    * @public
    */
   public async removeBreakpoint(id: string): Promise<void> {
@@ -374,7 +378,7 @@ export class EnhancedDebugSession extends Emittery<DebugSessionEvents> {
    * Can be used to inspect variables, call functions, or modify state during debugging.
    * @param expression - JavaScript expression to evaluate
    * @returns Promise resolving to evaluation result with type and value
-   * @throws {Error} When evaluation fails or session is not paused
+   * @throws Error When evaluation fails or session is not paused
    * @example
    * ```typescript
    * const result = await session.evaluate('x + y');
@@ -395,7 +399,7 @@ export class EnhancedDebugSession extends Emittery<DebugSessionEvents> {
   /**
    * Retrieves the current call stack when execution is paused.
    * @returns Promise resolving to array of stack frames, top frame first
-   * @throws {Error} When session is not paused or stack retrieval fails
+   * @throws Error When session is not paused or stack retrieval fails
    * @public
    */
   public async getStackTrace(): Promise<StackFrame[]> {
@@ -414,7 +418,7 @@ export class EnhancedDebugSession extends Emittery<DebugSessionEvents> {
    * at the specified frame.
    * @param frameId - Stack frame index (0 is top frame)
    * @returns Promise resolving to array of scopes with variable references
-   * @throws {Error} When session is not paused or frame doesn't exist
+   * @throws Error When session is not paused or frame doesn't exist
    * @public
    */
   public async getScopes(frameId: number): Promise<Scope[]> {
@@ -432,7 +436,7 @@ export class EnhancedDebugSession extends Emittery<DebugSessionEvents> {
    * Disconnects from the debug adapter, clears all timers, resets console output,
    * and emits termination event. After termination, the session cannot be reused.
    * @returns Promise that resolves when termination completes
-   * @throws {Error} When adapter disconnection fails
+   * @throws Error When adapter disconnection fails
    * @example
    * ```typescript
    * session.on('terminated', () => {

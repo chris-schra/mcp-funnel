@@ -13,7 +13,7 @@ const sharedOptions: BuildOptions = {
 };
 
 /**
- *
+ * Builds the js-debugger command package, compiling TypeScript types and bundling ESM.
  */
 async function buildAll() {
   console.log('🔨 Building @mcp-funnel/js-debugger...\n');

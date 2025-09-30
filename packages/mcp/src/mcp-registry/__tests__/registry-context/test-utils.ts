@@ -10,6 +10,15 @@ export const mockConfig: ProxyConfig = {
   ],
 };
 
+/**
+ * Creates a mock fetch response for testing HTTP requests.
+ *
+ * @param data - Response body data to return
+ * @param ok - Whether the response is successful (default: true)
+ * @param status - HTTP status code (default: 200)
+ * @param statusText - HTTP status text (default: 'OK')
+ * @returns Mock response object with ok, status, statusText, and json method
+ */
 export function createMockFetchResponse(
   data: unknown,
   ok = true,
@@ -24,6 +33,11 @@ export function createMockFetchResponse(
   };
 }
 
+/**
+ * Creates a mock empty registry response with no servers.
+ *
+ * @returns Mock fetch response with empty server list
+ */
 export function createEmptyRegistryResponse() {
   return createMockFetchResponse({
     servers: [],
@@ -34,6 +48,12 @@ export function createEmptyRegistryResponse() {
   });
 }
 
+/**
+ * Creates a mock registry response with a list of servers.
+ *
+ * @param servers - Array of server objects to include in the response
+ * @returns Mock fetch response with server list and metadata
+ */
 export function createServerListResponse(servers: unknown[]) {
   return createMockFetchResponse({
     servers,

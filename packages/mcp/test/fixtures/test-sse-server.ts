@@ -7,6 +7,7 @@
  * This is NOT a mock - it's a real HTTP server that implements
  * the SSE protocol for testing purposes.
  */
+/* eslint-disable max-lines */
 
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
 import { URL } from 'url';
@@ -150,7 +151,10 @@ export class TestSSEServer {
     }
   }
 
-  /** Returns count of connected clients */
+  /**
+   * Returns count of connected clients
+   * @returns Number of currently connected clients
+   */
   public getClientCount(): number {
     // Clean up destroyed connections first
     for (const [clientId, client] of this.clients.entries()) {
@@ -161,7 +165,10 @@ export class TestSSEServer {
     return this.clients.size;
   }
 
-  /** Returns all message history */
+  /**
+   * Returns all message history
+   * @returns Array of all broadcast messages with timestamps
+   */
   public getMessageHistory(): Array<{
     id: string;
     data: unknown;
@@ -177,7 +184,7 @@ export class TestSSEServer {
 
   /**
    * Sets valid token for authentication during token change testing
-   * @param token
+   * @param token - New valid token to accept for authentication
    */
   public setValidToken(token: string): void {
     this.validToken = token;
@@ -185,8 +192,8 @@ export class TestSSEServer {
 
   /**
    * Handles incoming HTTP requests to the SSE server
-   * @param req
-   * @param res
+   * @param req - Incoming HTTP request
+   * @param res - HTTP response object
    */
   private async handleRequest(
     req: IncomingMessage,
@@ -242,8 +249,8 @@ export class TestSSEServer {
 
   /**
    * Handles SSE connection requests and sets up event stream
-   * @param req
-   * @param res
+   * @param req - Incoming HTTP request
+   * @param res - HTTP response object
    */
   private async handleSSEConnection(
     req: IncomingMessage,
@@ -325,8 +332,8 @@ export class TestSSEServer {
 
   /**
    * Handles message sending requests for testing
-   * @param req
-   * @param res
+   * @param req - Incoming HTTP request
+   * @param res - HTTP response object
    */
   private async handleSendMessage(
     req: IncomingMessage,
@@ -358,8 +365,9 @@ export class TestSSEServer {
 
   /**
    * Formats data as SSE message with id and data fields
-   * @param id
-   * @param data
+   * @param id - Message ID for SSE event
+   * @param data - Data to send in message
+   * @returns Formatted SSE message string
    */
   private formatSSEMessage(id: string, data: unknown): string {
     const jsonData = typeof data === 'string' ? data : JSON.stringify(data);
@@ -368,7 +376,8 @@ export class TestSSEServer {
 
   /**
    * Parses request body as text
-   * @param req
+   * @param req - Incoming HTTP request
+   * @returns Promise resolving to body text
    */
   private async parseRequestBody(req: IncomingMessage): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -385,9 +394,9 @@ export class TestSSEServer {
 
   /**
    * Sends JSON response with given status code
-   * @param res
-   * @param statusCode
-   * @param data
+   * @param res - HTTP response object
+   * @param statusCode - HTTP status code
+   * @param data - Response data to serialize
    */
   private sendJsonResponse(
     res: ServerResponse,
@@ -403,7 +412,8 @@ export class TestSSEServer {
 
 /**
  * Creates and starts a test SSE server with given config
- * @param config
+ * @param config - Optional SSE server configuration
+ * @returns Promise resolving to server instance and connection details
  */
 export async function createTestSSEServer(
   config?: TestSSEServerConfig,

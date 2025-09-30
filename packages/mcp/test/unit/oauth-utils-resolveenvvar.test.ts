@@ -1,26 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
-import {
-  AUTH_DEFAULT_EXPIRY_SECONDS,
-  AuthenticationError,
-  AuthErrorCode,
-  type OAuth2ClientCredentialsConfigZod,
-  OAuth2ErrorCode,
-  OAuth2ErrorResponse,
-  type OAuth2TokenResponse,
-  OAuthUtils,
-  resolveOAuth2AuthCodeConfig,
-  resolveOAuth2ClientCredentialsConfig,
-} from '@mcp-funnel/auth';
-import { resolveConfigFields, resolveEnvVar } from '@mcp-funnel/core';
-
-const {
-  parseErrorResponse,
-  parseTokenResponse,
-  isRetryableError,
-  createOAuth2Error,
-} = OAuthUtils;
+import { resolveEnvVar } from '@mcp-funnel/core';
 
 describe('OAuth Utils - resolveEnvVar', () => {
   it('should resolve environment variable with ${VAR} syntax', () => {

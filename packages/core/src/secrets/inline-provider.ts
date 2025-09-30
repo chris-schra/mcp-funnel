@@ -55,6 +55,7 @@ export class InlineProvider extends BaseSecretProvider {
    * This method simply returns the configured values object.
    * No processing or transformation is performed on the values.
    * Defensive copying is handled by the base class.
+   * @returns Promise resolving to configured secret values
    * @internal
    */
   protected async doResolveSecrets(): Promise<Record<string, string>> {

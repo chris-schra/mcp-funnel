@@ -4,6 +4,8 @@ import type { ChildProcess } from 'node:child_process';
 /**
  * Helper function to create a mock Hono context for tests
  * Only provides the minimal req.header() method that validators use
+ * @param headerFn - Function to simulate header retrieval behavior
+ * @returns Minimal mock Hono context with request header functionality
  */
 export const createMockContext = (
   headerFn: (name?: string) => string | undefined | Record<string, string>,
@@ -23,6 +25,9 @@ export type InvalidAuthConfig = { type?: string; tokens?: string[] };
 
 /**
  * Helper to wait for development server to be ready
+ * @param child - The spawned child process running the server
+ * @param timeout - Maximum time in milliseconds to wait (default: 10000)
+ * @returns Promise resolving to the port number the server is running on
  */
 export const waitForServerReady = (
   child: ChildProcess,

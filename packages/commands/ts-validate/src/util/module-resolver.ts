@@ -5,10 +5,24 @@ import { createRequire } from 'module';
 const requireFromHere = createRequire(import.meta.url);
 
 /**
- * Resolves a local module (prettier, eslint, or typescript) from given directories
+ * Resolves a local module (prettier, eslint, or typescript) from given directories.
+ *
+ * Searches for the specified module in the provided directories using Node's
+ * require resolution algorithm. Returns the module path and version if found.
+ *
  * @param name - Module name to resolve
- * @param fromDirs - Directories to search from
- * @returns Module path and version, or null if not found
+ * @param fromDirs - Directories to search from (in order of precedence)
+ * @returns Promise resolving to module path and version, or null if not found
+ *
+ * @example
+ * ```typescript
+ * const result = await resolveLocalModule('prettier', [process.cwd()]);
+ * if (result) {
+ *   console.log(`Found prettier ${result.version} at ${result.modulePath}`);
+ * }
+ * ```
+ *
+ * @public
  */
 export async function resolveLocalModule(
   name: 'prettier' | 'eslint' | 'typescript',
@@ -44,9 +58,15 @@ export async function resolveLocalModule(
 }
 
 /**
- * Extracts ESLint constructor from a dynamically loaded module
+ * Extracts ESLint constructor from a dynamically loaded module.
+ *
+ * Handles various export formats (direct export, default export, nested exports)
+ * to extract the ESLint class constructor from a dynamically imported module.
+ *
  * @param mod - Dynamically imported ESLint module
- * @returns ESLint constructor or undefined
+ * @returns ESLint constructor if found, undefined otherwise
+ *
+ * @public
  */
 export function extractESLintCtor(
   mod: unknown,
@@ -70,9 +90,15 @@ export function extractESLintCtor(
 }
 
 /**
- * Type guard to check if a module is a valid Prettier namespace
- * @param x - Potential Prettier module
- * @returns True if x is a valid Prettier namespace
+ * Type guard to check if a module is a valid Prettier namespace.
+ *
+ * Verifies that the module has the required Prettier methods (format,
+ * getFileInfo, resolveConfig) to be considered a valid Prettier instance.
+ *
+ * @param x - Potential Prettier module to validate
+ * @returns True if x is a valid Prettier namespace, false otherwise
+ *
+ * @public
  */
 export function isPrettierNS(x: unknown): x is typeof import('prettier') {
   if (!x || (typeof x !== 'object' && typeof x !== 'function')) return false;

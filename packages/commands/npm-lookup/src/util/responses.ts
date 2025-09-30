@@ -9,8 +9,8 @@ import type { CallToolResult } from '@mcp-funnel/commands-core';
 
 /**
  * Creates an error response for MCP tool calls.
- * @param {string} message - Error message to return to the caller
- * @returns {CallToolResult} CallToolResult with isError flag set
+ * @param message - Error message to return to the caller
+ * @returns CallToolResult with isError flag set
  * @public
  * @see file:../../command.ts:97 - Usage in tool execution
  */
@@ -31,9 +31,9 @@ export function createErrorResponse(message: string): CallToolResult {
  *
  * Formats one or two text content blocks into a CallToolResult structure.
  * The optional additional text is useful for providing usage hints or context.
- * @param {string} text - Primary response text (typically JSON-stringified data)
- * @param {string} [additionalText] - Optional secondary text for hints or instructions
- * @returns {CallToolResult} CallToolResult with text content blocks
+ * @param text - Primary response text (typically JSON-stringified data)
+ * @param additionalText - Optional secondary text for hints or instructions
+ * @returns CallToolResult with text content blocks
  * @public
  * @see file:../../command.ts:104 - Usage in tool execution
  */

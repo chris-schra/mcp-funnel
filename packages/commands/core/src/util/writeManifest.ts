@@ -10,7 +10,7 @@ import * as fs from 'node:fs/promises';
  * @param manifestPath - Absolute path where the manifest JSON file will be written
  * @param manifest - Command manifest object containing installed commands and metadata
  * @returns Promise that resolves when the file write completes
- * @throws {Error} When the file cannot be written (permissions, disk space, invalid path)
+ * @throws \{Error\} When the file cannot be written (permissions, disk space, invalid path)
  * @public
  * @see file:./readManifest.ts - Corresponding read operation
  * @see file:../types/index.ts:9 - CommandManifest type definition

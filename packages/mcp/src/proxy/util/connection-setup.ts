@@ -44,10 +44,10 @@ export interface ConnectionResult {
  * SECURITY: Always uses buildServerEnvironment to ensure proper filtering of sensitive
  * variables and secret resolution from configured providers.
  * Handles both legacy (command/args at root) and extended (transport object) server formats.
- * @param {TargetServer | TargetServerZod} targetServer - Server configuration
- * @param {ProxyConfig} config - Proxy configuration
- * @param {string} configPath - Config file path for secret resolution
- * @returns {Promise<Record<string, string>>} Resolved environment variables map
+ * @param targetServer - Server configuration
+ * @param config - Proxy configuration
+ * @param configPath - Config file path for secret resolution
+ * @returns Resolved environment variables map
  * @internal
  */
 async function buildConnectionEnvironment(
@@ -86,10 +86,10 @@ async function buildConnectionEnvironment(
  * Creates a transport for server connection with authentication support.
  * Handles both extended transport configuration (SSE, WebSocket, stdio) and legacy
  * stdio-only format. Creates auth providers for OAuth2 and bearer token flows when configured.
- * @param {TargetServer | TargetServerZod} targetServer - Server configuration
- * @param {Record<string, string>} resolvedEnv - Resolved environment variables
- * @returns {Promise<Transport>} Configured transport instance
- * @throws {Error} When server has no command field in legacy format
+ * @param targetServer - Server configuration
+ * @param resolvedEnv - Resolved environment variables
+ * @returns Configured transport instance
+ * @throws Error when server has no command field in legacy format
  * @internal
  */
 async function createServerTransport(
@@ -171,9 +171,9 @@ async function createServerTransport(
  * Discovers and registers tools from a connected server with timeout protection.
  * Calls client.listTools() with a 5-second timeout to prevent hanging if the server
  * crashes during discovery. Registers discovered tools with server name prefix.
- * @param {Client} client - Connected MCP client
- * @param {TargetServer | TargetServerZod} targetServer - Server configuration
- * @param {ToolRegistry} toolRegistry - Registry for storing discovered tools
+ * @param client - Connected MCP client
+ * @param targetServer - Server configuration
+ * @param toolRegistry - Registry for storing discovered tools
  * @internal
  */
 async function discoverServerTools(
@@ -215,20 +215,20 @@ async function discoverServerTools(
  * 3. Connect MCP client to transport
  * 4. Discover and register server tools
  * Emits 'server:connect_start' and 'server:connect_success' events.
- * @param {ConnectionConfig} connectionConfig - Connection configuration
- * @returns {Promise<ConnectionResult>} Client, transport, and connection timestamp
+ * @param connectionConfig - Connection configuration
+ * @returns Client, transport, and connection timestamp
  * @throws Various errors from transport creation, client connection, or tool discovery
  * @example
  * ```typescript
- * const result = await connectToServer({
- *   targetServer: { name: 'my-server', command: 'node', args: ['server.js'] },
+ * const result = await connectToServer(\{
+ *   targetServer: \{ name: 'my-server', command: 'node', args: ['server.js'] \},
  *   config: proxyConfig,
  *   configPath: '/path/to/config.json',
  *   toolRegistry
- * });
+ * \});
  * ```
  * @public
- * @see file:./server-connection-manager.ts:156 - Usage in connection manager
+ * @see {@link ServerConnectionManager} - Usage in connection manager
  */
 export async function connectToServer(
   connectionConfig: ConnectionConfig,

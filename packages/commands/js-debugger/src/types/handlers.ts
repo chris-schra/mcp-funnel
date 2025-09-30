@@ -177,7 +177,7 @@ export interface MockDebugSession {
 }
 
 /**
- * CallToolResult interface - matches @mcp-funnel/commands-core format
+ * CallToolResult interface - matches \@mcp-funnel/commands-core format
  */
 export interface CallToolResult {
   [x: string]: unknown;

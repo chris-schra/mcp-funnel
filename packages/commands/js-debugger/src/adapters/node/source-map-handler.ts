@@ -37,12 +37,9 @@ export class SourceMapHandler {
 
   /**
    * Process a script parsed event and extract source map information
-   * @param params
-   * @param params.scriptId
-   * @param params.url
-   * @param params.sourceMapURL
+   * @param params - Script parsed event parameters
    */
-  async handleScriptParsed(params: {
+  public async handleScriptParsed(params: {
     scriptId: string;
     url: string;
     sourceMapURL?: string;
@@ -72,10 +69,11 @@ export class SourceMapHandler {
 
   /**
    * Resolve a breakpoint target from original source to generated source
-   * @param file
-   * @param line
+   * @param file - Original source file path
+   * @param line - Line number in original source
+   * @returns Resolved breakpoint location in generated code
    */
-  async resolveBreakpointTarget(
+  public async resolveBreakpointTarget(
     file: string,
     line: number,
   ): Promise<{ url: string; lineNumber: number; columnNumber?: number }> {
@@ -115,17 +113,10 @@ export class SourceMapHandler {
 
   /**
    * Map a call frame from generated source back to original source
-   * @param frame
-   * @param frame.callFrameId
-   * @param frame.functionName
-   * @param frame.location
-   * @param frame.location.scriptId
-   * @param frame.location.lineNumber
-   * @param frame.location.columnNumber
-   * @param frame.url
-   * @param frame.scopeChain
+   * @param frame - CDP call frame to map
+   * @returns Mapping result with original source location, or undefined if no mapping found
    */
-  mapCallFrameToOriginal(frame: {
+  public mapCallFrameToOriginal(frame: {
     callFrameId: string;
     functionName: string;
     location: {
@@ -184,9 +175,10 @@ export class SourceMapHandler {
 
   /**
    * Normalize file paths for consistent handling
-   * @param filePath
+   * @param filePath - File path to normalize
+   * @returns Normalized file path
    */
-  normalizeFilePath(filePath: string): string {
+  public normalizeFilePath(filePath: string): string {
     // Convert file URLs to regular paths
     if (filePath.startsWith('file://')) {
       try {
@@ -204,7 +196,8 @@ export class SourceMapHandler {
 
   /**
    * Fetch source map content from URL
-   * @param sourceMapUrl
+   * @param sourceMapUrl - URL or data URI of the source map
+   * @returns Parsed source map or null if fetch fails
    */
   private async fetchSourceMapContent(
     sourceMapUrl: string,
@@ -237,7 +230,7 @@ export class SourceMapHandler {
   /**
    * Cleanup resources
    */
-  destroy(): void {
+  public destroy(): void {
     // Destroy all source map consumers to free resources
     for (const entry of this.sourceMaps.values()) {
       try {

@@ -20,7 +20,7 @@ import WebSocket from 'ws';
  * - `disconnect`: Fired when connection is closed (manual or unexpected)
  * - `message`: Fired when WebSocket receives data (payload is WebSocket.RawData)
  * - `error`: Fired on connection errors or when max reconnect attempts reached
- * - `reconnecting`: Fired before each reconnection attempt (payload: {attempt: number, delay: number})
+ * - `reconnecting`: Fired before each reconnection attempt (payload: \{attempt: number, delay: number\})
  * - `reconnected`: Fired after successful reconnection
  * @example Basic usage
  * ```typescript
@@ -69,10 +69,10 @@ export class WebSocketClient extends EventEmitter {
    * multiple simultaneous connection attempts.
    * @param url - WebSocket URL to connect to (e.g., 'ws://localhost:9229/abc123')
    * @returns Promise that resolves when connection is established
-   * @throws {Error} When already connected or connecting
-   * @throws {Error} When URL format is invalid (not ws:// or wss://)
-   * @throws {Error} When connection times out (after connectionTimeout ms)
-   * @throws {Error} When WebSocket connection fails
+   * @throws Error When already connected or connecting
+   * @throws Error When URL format is invalid (not ws:// or wss://)
+   * @throws Error When connection times out (after connectionTimeout ms)
+   * @throws Error When WebSocket connection fails
    * @see file:./client.ts:94 - Called by CDPClient.connect()
    */
   public async connect(url: string): Promise<void> {
@@ -194,7 +194,7 @@ export class WebSocketClient extends EventEmitter {
    * Used for sending JSON-RPC messages to the CDP endpoint. Must be connected
    * before calling - will throw if not connected.
    * @param data - String data to send (typically JSON-serialized CDP protocol message)
-   * @throws {Error} When WebSocket is not connected
+   * @throws Error When WebSocket is not connected
    * @see file:./client.ts:126 - Called by CDPClient.send() via callback
    */
   public send(data: string): void {

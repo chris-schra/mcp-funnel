@@ -7,6 +7,7 @@
  * @param prefix - Optional prefix that should be present in the ID
  * @returns True if the ID matches the expected format
  * @public
+ * @see {@link generateRequestId} - Function that generates IDs validated by this function
  */
 export function isValidRequestId(requestId: string, prefix?: string): boolean {
   return new RegExp(`^${prefix ? `${prefix}_` : ''}\\d+_[a-f0-9]{8}$`).test(

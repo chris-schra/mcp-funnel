@@ -31,9 +31,9 @@ interface DebugResponse {
 
 /**
  * Test helper to extract and parse JSON from MCP CallToolResult response.
- * @param {CallToolResult} result - MCP tool execution result containing text content
- * @returns {T} Parsed JSON data from the result's text content
- * @throws {Error} When result lacks text content or content is not a string
+ * @param result - MCP tool execution result containing text content
+ * @returns Parsed JSON data from the result's text content
+ * @throws Error When result lacks text content or content is not a string
  * @internal
  * @see file:./command.ts - JsDebuggerCommand implementation being tested
  */

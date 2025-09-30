@@ -4,20 +4,52 @@ import type {
   CallToolResult,
 } from '../types/index.js';
 
+/**
+ * Arguments for retrieving stack trace from a debug session.
+ * @public
+ * @see file:./get-stacktrace-handler.ts:15 - GetStacktraceHandler implementation
+ */
 export interface GetStacktraceHandlerArgs {
+  /** Session identifier from debug or continue operations */
   sessionId: string;
 }
 
 /**
- * Handler for getting stack trace from paused debug sessions
- * Implements the IToolHandler SEAM for modular tool handling
+ * Handler for getting stack trace from paused debug sessions.
+ *
+ * Retrieves and formats the call stack from a paused debug session, including
+ * location context, breakpoint status, and pause reason messaging.
+ * Implements the IToolHandler SEAM for modular tool handling within the debugger command.
+ * @example
+ * ```typescript
+ * const handler = new GetStacktraceHandler();
+ * const result = await handler.handle(
+ *   \{ sessionId: 'debug-123' \},
+ *   context
+ * );
+ * ```
+ * @public
+ * @see file:../types/handlers.ts:14 - IToolHandler interface
+ * @see file:../sessions/session-validator.ts:77 - Session validation
  */
 export class GetStacktraceHandler
   implements IToolHandler<GetStacktraceHandlerArgs>
 {
-  readonly name = 'get_stacktrace';
+  /** Tool name identifier for MCP registration */
+  public readonly name = 'get_stacktrace';
 
-  async handle(
+  /**
+   * Handles stack trace retrieval for paused sessions.
+   *
+   * Validates session state, retrieves stack frames from the debug adapter,
+   * and formats the stack trace with location and breakpoint context.
+   * All errors are caught and returned as CallToolResult.
+   * @param args - Stack trace request parameters with session ID
+   * @param context - Handler context with session manager and formatters
+   * @returns MCP-formatted response with stack trace data or error
+   * @public
+   */
+  public async handle(
     args: GetStacktraceHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

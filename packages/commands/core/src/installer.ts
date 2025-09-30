@@ -61,22 +61,22 @@ export class CommandInstaller {
    * Downloads and installs the specified package to the isolated packages directory.
    * Validates the package exports implement the ICommand interface before completing installation.
    * Updates the manifest to track the newly installed command.
-   * @param packageSpec - npm package specifier (e.g., 'package-name', '@scope/package', 'package@1.0.0')
+   * @param packageSpec - npm package specifier (e.g., 'package-name', '\@scope/package', 'package\@1.0.0')
    * @param options - Installation options controlling force reinstall and version pinning
    * @returns Metadata about the installed command including name, version, and installation timestamp
-   * @throws {Error} When package is already installed and force option is not set
-   * @throws {Error} When npm installation fails or package is not found
-   * @throws {Error} When installed package does not export a valid ICommand
+   * @throws When package is already installed and force option is not set
+   * @throws When npm installation fails or package is not found
+   * @throws When installed package does not export a valid ICommand
    * @example
    * ```typescript
    * // Install latest version
-   * const cmd = await installer.install('@mcp-funnel/commands-js-debugger');
+   * const cmd = await installer.install('\@mcp-funnel/commands-js-debugger');
    *
    * // Install specific version
-   * const cmd = await installer.install('weather-tool', { version: '2.1.0' });
+   * const cmd = await installer.install('weather-tool', \{ version: '2.1.0' \});
    *
    * // Force reinstall
-   * const cmd = await installer.install('weather-tool', { force: true });
+   * const cmd = await installer.install('weather-tool', \{ force: true \});
    * ```
    * @see file:./util/install.ts - Implementation details
    */
@@ -92,20 +92,21 @@ export class CommandInstaller {
    *
    * Removes the npm package from the packages directory and updates the manifest.
    * Optionally removes associated command data from the cache directory.
-   * @param packageNameOrCommandName - Package name (e.g., '@org/package') or command name to uninstall
+   * @param packageNameOrCommandName - Package name (e.g., '\@org/package') or command name to uninstall
    * @param options - Uninstall options controlling whether to remove associated data
-   * @throws {Error} When the specified command is not found in the manifest
-   * @throws {Error} When npm uninstall operation fails
+   * @returns Promise that resolves when uninstall is complete
+   * @throws When the specified command is not found in the manifest
+   * @throws When npm uninstall operation fails
    * @example
    * ```typescript
    * // Uninstall by package name
-   * await installer.uninstall('@mcp-funnel/commands-js-debugger');
+   * await installer.uninstall('\@mcp-funnel/commands-js-debugger');
    *
    * // Uninstall by command name
    * await installer.uninstall('js-debugger');
    *
    * // Also remove command data
-   * await installer.uninstall('weather-tool', { removeData: true });
+   * await installer.uninstall('weather-tool', \{ removeData: true \});
    * ```
    * @see file:./util/uninstall.ts - Implementation details
    */
@@ -121,14 +122,14 @@ export class CommandInstaller {
    *
    * Uses npm to update the package to the latest version available in the registry.
    * Updates the manifest with the new version number after successful update.
-   * @param packageNameOrCommandName - Package name (e.g., '@org/package') or command name to update
+   * @param packageNameOrCommandName - Package name (e.g., '\@org/package') or command name to update
    * @returns Updated command metadata with new version information
-   * @throws {Error} When the specified command is not found in the manifest
-   * @throws {Error} When npm update operation fails
+   * @throws When the specified command is not found in the manifest
+   * @throws When npm update operation fails
    * @example
    * ```typescript
    * // Update by package name
-   * const updated = await installer.update('@mcp-funnel/commands-js-debugger');
+   * const updated = await installer.update('\@mcp-funnel/commands-js-debugger');
    * console.log(`Updated to version ${updated.version}`);
    *
    * // Update by command name
@@ -165,11 +166,11 @@ export class CommandInstaller {
    * Attempts to dynamically import the command package and extract an object
    * implementing the ICommand interface. Searches the default export first,
    * then other named exports if necessary.
-   * @param packageName - Package name (e.g., '@org/package' or 'package-name')
+   * @param packageName - Package name (e.g., '\@org/package' or 'package-name')
    * @returns Command instance if found and valid, null if package doesn't export a valid command
    * @example
    * ```typescript
-   * const command = await installer.loadInstalledCommand('@mcp-funnel/commands-js-debugger');
+   * const command = await installer.loadInstalledCommand('\@mcp-funnel/commands-js-debugger');
    * if (command) {
    *   const tools = command.getMCPDefinitions();
    *   console.log(`Loaded ${tools.length} tools from ${command.name}`);

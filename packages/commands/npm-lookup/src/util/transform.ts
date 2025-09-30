@@ -21,8 +21,8 @@ import { truncateText } from './text.js';
  *
  * NPM API can return author as string, object with name property, or undefined.
  * This function extracts the author name string consistently.
- * @param {string | { name?: string } | undefined} author - Author data from NPM API in any supported format
- * @returns {string | undefined} Author name string or undefined if not present
+ * @param author - Author data from NPM API in any supported format
+ * @returns Author name string or undefined if not present
  * @internal
  */
 function normalizeAuthor(
@@ -42,8 +42,8 @@ function normalizeAuthor(
  *
  * NPM API can return license as string, object with type property, or undefined.
  * This function extracts the license type string consistently.
- * @param {string | { type?: string } | undefined} license - License data from NPM API in any supported format
- * @returns {string | undefined} License type string or undefined if not present
+ * @param license - License data from NPM API in any supported format
+ * @returns License type string or undefined if not present
  * @internal
  */
 function normalizeLicense(
@@ -70,13 +70,13 @@ function normalizeLicense(
  * - Normalizes author and license fields (string or object)
  * - Truncates README to 5000 chars and description to 500 chars
  * - Falls back to version-specific data when package-level data missing
- * @param {NPMPackageResponse} data - Raw NPM Registry package response
- * @returns {PackageInfo} Normalized package information
+ * @param data - Raw NPM Registry package response
+ * @returns Normalized package information
  * @example
  * ```typescript
  * const raw = await fetch('https://registry.npmjs.org/react');
  * const packageInfo = transformPackageResponse(raw);
- * // { name: 'react', version: '18.2.0', description: '...', ... }
+ * // \{ name: 'react', version: '18.2.0', description: '...', ... \}
  * ```
  * @public
  * @see file:../../npm-client.ts:92 - Used after fetching package data
@@ -121,13 +121,13 @@ export function transformPackageResponse(
  * Maps the NPM Registry search endpoint response into a simplified format,
  * extracting key fields and applying description truncation to keep response
  * size manageable.
- * @param {NPMSearchResponse} data - Raw NPM Registry search response
- * @returns {SearchResults} Normalized search results with total count
+ * @param data - Raw NPM Registry search response
+ * @returns Normalized search results with total count
  * @example
  * ```typescript
  * const raw = await fetch('https://registry.npmjs.org/-/v1/search?text=react');
  * const results = transformSearchResponse(raw);
- * // { results: [...], total: 15234 }
+ * // \{ results: [...], total: 15234 \}
  * ```
  * @public
  * @see file:../../npm-client.ts:148 - Used after searching packages

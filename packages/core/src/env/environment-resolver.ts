@@ -48,9 +48,9 @@ export class EnvironmentResolutionError extends Error {
 }
 
 /**
- * Resolves environment variable patterns (${VAR}) in strings with security protections.
+ * Resolves environment variable patterns (\$\{VAR\}) in strings with security protections.
  *
- * Supports ${VAR_NAME} and ${VAR_NAME:default_value} syntax with:
+ * Supports \$\{VAR_NAME\} and \$\{VAR_NAME:default_value\} syntax with:
  * - Recursive resolution of nested patterns
  * - Circular reference detection
  * - Maximum depth limits to prevent infinite loops
@@ -59,7 +59,7 @@ export class EnvironmentResolutionError extends Error {
  * @example
  * ```typescript
  * const resolver = new EnvVarPatternResolver({ strict: true });
- * const resolved = resolver.resolve('${HOME}/config/${APP_ENV:production}');
+ * const resolved = resolver.resolve('\$\{HOME\}/config/\$\{APP_ENV:production\}');
  * // Returns: '/Users/alice/config/production'
  * ```
  * @public
@@ -78,12 +78,13 @@ export class EnvVarPatternResolver {
   /**
    * Resolves environment variables in a string value.
    *
-   * Recursively processes all ${VAR} patterns while tracking visited variables
+   * Recursively processes all \$\{VAR\} patterns while tracking visited variables
    * to detect circular references and respecting the maximum depth limit.
    * @param value - String containing environment variable patterns
    * @param visitedVars - Set of variables being resolved (for circular detection)
    * @param depth - Current resolution depth
-   * @throws {EnvironmentResolutionError} When circular reference, depth limit exceeded, or missing required variable
+   * @returns Resolved string with all environment variables expanded
+   * @throws When circular reference, depth limit exceeded, or missing required variable
    * @public
    */
   public resolve(
@@ -95,7 +96,7 @@ export class EnvVarPatternResolver {
       throw EnvironmentResolutionError.maxDepthExceeded(this.maxDepth);
     }
 
-    // Pattern: ${VAR_NAME} or ${VAR_NAME:default_value}
+    // Pattern: \$\{VAR_NAME\} or \$\{VAR_NAME:default_value\}
     const envPattern = /\$\{([A-Z_][A-Z0-9_]*)(?::([^}]*))?\}/gi;
 
     return value.replace(
@@ -141,6 +142,7 @@ export class EnvVarPatternResolver {
    * Enforces uppercase letters, numbers, and underscores only,
    * starting with a letter or underscore to prevent injection attacks.
    * @param varName - Variable name to validate
+   * @returns True if the variable name is valid
    * @internal
    */
   private isValidVariableName(varName: string): boolean {
@@ -152,6 +154,7 @@ export class EnvVarPatternResolver {
   /**
    * Checks if a string contains environment variable patterns.
    * @param value - String to check for patterns
+   * @returns True if the string contains environment variable patterns
    * @public
    */
   public static containsPattern(value: string): boolean {
@@ -165,6 +168,7 @@ export class EnvVarPatternResolver {
    * For repeated resolutions, create a resolver instance directly for better performance.
    * @param value - String to resolve
    * @param config - Optional resolver configuration
+   * @returns Resolved string with all environment variables expanded
    * @public
    */
   public static resolvePattern(
@@ -184,7 +188,8 @@ export class EnvVarPatternResolver {
  * @param config - Configuration object with potential environment variables
  * @param fields - Fields to check and resolve
  * @param envSource - Optional custom environment source
- * @throws {Error} When environment variable resolution fails
+ * @returns New configuration object with resolved environment variables
+ * @throws When environment variable resolution fails
  * @public
  */
 export function resolveConfigFields<
@@ -225,7 +230,8 @@ export function resolveConfigFields<
  *
  * Simple wrapper around EnvVarPatternResolver for resolving a single value.
  * @param value - String potentially containing environment variable patterns
- * @throws {Error} When environment variable resolution fails
+ * @returns Resolved string with all environment variables expanded
+ * @throws When environment variable resolution fails
  * @public
  */
 export function resolveEnvVar(value: string): string {

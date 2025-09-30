@@ -18,7 +18,7 @@ import { type IAuthProvider, logEvent } from '@mcp-funnel/core';
 export interface BearerTokenConfig {
   /**
    * The Bearer token to use for authentication
-   * Can include environment variable references like ${TOKEN_VAR}
+   * Can include environment variable references like $\{TOKEN_VAR\}
    */
   token: string;
   /**
@@ -68,7 +68,7 @@ export class BearerTokenAuthProvider implements IAuthProvider {
    * Validates the token format and stores it for use in subsequent requests.
    * Logs provider creation for audit purposes without exposing the actual token.
    * @param config - Configuration containing the Bearer token
-   * @throws {AuthenticationError} When token is empty, malformed, or invalid
+   * @throws {@link AuthenticationError} when token is empty, malformed, or invalid
    */
   public constructor(config: BearerTokenConfig) {
     // Resolve environment variables in token
@@ -130,7 +130,7 @@ export class BearerTokenAuthProvider implements IAuthProvider {
   /**
    * Validates that the token is properly formatted and not empty.
    * @param token - The token to validate
-   * @throws {AuthenticationError} When token is invalid
+   * @throws {@link AuthenticationError} when token is invalid
    * @internal
    */
   private validateToken(token: string): void {

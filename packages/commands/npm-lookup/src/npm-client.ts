@@ -61,8 +61,8 @@ export class NPMClient {
    * Lookup a package by name
    * @param packageName - Name of the package to lookup
    * @returns Package information
-   * @throws {PackageNotFoundError} When package is not found
-   * @throws {NPMRegistryError} When registry returns an error
+   * @throws PackageNotFoundError When package is not found
+   * @throws NPMRegistryError When registry returns an error
    */
   public async getPackage(packageName: string): Promise<PackageInfo> {
     // Check cache first
@@ -115,7 +115,7 @@ export class NPMClient {
    * @param query - Search query
    * @param limit - Maximum number of results to return (default: 20, max: 50)
    * @returns Search results
-   * @throws {NPMRegistryError} When registry returns an error
+   * @throws NPMRegistryError When registry returns an error
    */
   public async searchPackages(
     query: string,

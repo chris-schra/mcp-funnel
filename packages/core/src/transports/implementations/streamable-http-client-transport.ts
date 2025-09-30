@@ -142,8 +142,8 @@ export class StreamableHTTPClientTransport implements Transport {
    * Starts the transport connection.
    *
    * Fetches auth headers if provider configured and recreates transport with auth.
-   * @throws {Error} When transport is closed
-   * @throws {TransportError} When connection or auth fails
+   * @throws \{Error\} When transport is closed
+   * @throws \{TransportError\} When connection or auth fails
    * @public
    */
   public async start(): Promise<void> {
@@ -186,8 +186,8 @@ export class StreamableHTTPClientTransport implements Transport {
    * Delegates to SDK transport which handles HTTP requests and session management.
    * @param message - JSON-RPC message to send
    * @param options - Optional send options (resumption token support)
-   * @throws {Error} When transport is closed or not started
-   * @throws {TransportError} When send fails
+   * @throws \{Error\} When transport is closed or not started
+   * @throws \{TransportError\} When send fails
    * @public
    */
   public async send(
@@ -269,7 +269,7 @@ export class StreamableHTTPClientTransport implements Transport {
    *
    * Delegates to SDK transport's OAuth handling.
    * @param authorizationCode - Authorization code from OAuth callback
-   * @throws {TransportError} When authorization completion fails
+   * @throws \{TransportError\} When authorization completion fails
    * @public
    */
   public async finishAuth(authorizationCode: string): Promise<void> {
@@ -311,6 +311,7 @@ export class StreamableHTTPClientTransport implements Transport {
 
   /**
    * Gets the current protocol version.
+   * @returns Current protocol version string or undefined if not set
    * @public
    */
   public get protocolVersion(): string | undefined {
@@ -320,7 +321,7 @@ export class StreamableHTTPClientTransport implements Transport {
   /**
    * Upgrades transport type while preserving auth headers and state.
    * @param _type - Target transport type (currently unused)
-   * @throws {Error} When transport is closed
+   * @throws \{Error\} When transport is closed
    * @public
    */
   public async upgradeTransport(
@@ -338,7 +339,7 @@ export class StreamableHTTPClientTransport implements Transport {
    * Recreates SDK transport with current auth headers.
    *
    * Used during start() and upgrade operations to inject auth headers.
-   * @private
+   * @internal
    */
   private async recreateTransportWithAuth(): Promise<void> {
     const requestInitWithAuth = mergeAuthHeaders(

@@ -25,6 +25,7 @@ const LEVELS: Record<LogLevel, number> = {
 /**
  * Reads the current log level from MCP_FUNNEL_LOG_LEVEL environment variable.
  * Defaults to 'info' if not set or invalid.
+ * @returns Current log level from environment or default
  * @internal
  */
 function currentLevel(): LogLevel {
@@ -38,6 +39,7 @@ function currentLevel(): LogLevel {
 /**
  * Checks if logging is enabled for a given level based on current configuration.
  * @param min - Minimum log level to check
+ * @returns True if the given level should be logged
  * @internal
  */
 function enabled(min: LogLevel): boolean {
@@ -48,6 +50,7 @@ function enabled(min: LogLevel): boolean {
 /**
  * Gets or generates a stable per-process run identifier for log correlation.
  * This allows multiple log files and events from the same process to be linked together.
+ * @returns Stable run identifier for the current process
  * @internal
  */
 function runId(): string {
@@ -60,6 +63,7 @@ function runId(): string {
 
 /**
  * Constructs the path to the main JSON Lines log file for the current run.
+ * @returns Path to the JSON Lines log file
  * @internal
  */
 function logFile(): string {
@@ -136,6 +140,7 @@ export function logError(
  * the current run ID for correlation with main event logs.
  * @param serverName - Identifier for the server
  * @param stream - Which stream to get the path for
+ * @returns Path to the server's stream log file
  * @public
  */
 export function getServerStreamLogPath(
@@ -282,6 +287,7 @@ export function setDefaultLogger(logger: ILogger): void {
 /**
  * Creates a scoped logger with a specific prefix.
  * @param scope - The scope/prefix for the logger
+ * @returns A new logger instance with the scoped prefix
  * @public
  */
 export function createScopedLogger(scope: string): ILogger {

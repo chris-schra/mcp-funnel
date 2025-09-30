@@ -16,14 +16,11 @@ export interface WaitOptions {
  * a truthy result. If the factory throws an error, polling stops immediately and
  * the error is propagated. This is useful in tests for waiting on async conditions
  * like process state, debugger pause events, or session initialization.
- * @template T - The expected return type from the factory function
- * @param {() => Promise<T | null | undefined> | T | null | undefined} factory - Function that returns the value to wait for, or null/undefined if not ready
- * @param {WaitOptions} options - Polling configuration
- * @param {number} [options.timeoutMs] - Maximum time to wait in milliseconds
- * @param {number} [options.intervalMs] - Polling interval in milliseconds
- * @returns {Promise<T>} Promise resolving to the first non-null/non-undefined value from factory
- * @throws {Error} When the timeout is exceeded without a successful result
- * @throws {Error} Any error thrown by the factory function is rethrown immediately
+ * @param factory - Function that returns the value to wait for, or null/undefined if not ready
+ * @param options - Polling configuration containing timeoutMs and intervalMs properties
+ * @returns Promise resolving to the first non-null/non-undefined value from factory
+ * @throws When the timeout is exceeded without a successful result
+ * @throws Any error thrown by the factory function is rethrown immediately
  * @example Waiting for process exit
  * ```typescript
  * await waitFor(() => (child.exitCode !== null ? true : null), {
@@ -61,7 +58,7 @@ export async function waitFor<T>(
 
 /**
  * Pauses execution for the specified duration.
- * @param {number} durationMs - Time to sleep in milliseconds
+ * @param durationMs - Time to sleep in milliseconds
  * @example
  * ```typescript
  * await sleep(100); // Wait 100ms before next operation

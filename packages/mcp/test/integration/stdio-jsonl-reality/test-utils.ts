@@ -8,7 +8,9 @@ const __dirname = path.dirname(__filename);
 // Shared process tracking
 export const processes: ChildProcess[] = [];
 
-// Clean up all spawned processes
+/**
+ * Clean up all spawned processes
+ */
 export function cleanupProcesses(): void {
   for (const proc of processes) {
     if (!proc.killed) {
@@ -18,7 +20,10 @@ export function cleanupProcesses(): void {
   processes.length = 0;
 }
 
-// Get test file paths
+/**
+ * Get test file paths
+ * @returns Object containing directory paths for tests
+ */
 export function getTestPaths() {
   return {
     __dirname,

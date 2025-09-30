@@ -1,49 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { IAuthProvider, ITokenStorage } from '@mcp-funnel/core';
+import { describe, it, expect } from 'vitest';
 
-import type {
-  SSETransportConfig,
-  StdioTransportConfig,
-  TransportConfig,
-} from '@mcp-funnel/models';
-import { clearTransportCache } from '../../src/utils/transport/transport-cache';
+import type { SSETransportConfig, TransportConfig } from '@mcp-funnel/models';
 import { createTransport } from '../../src/utils/transport/index.js';
-
-// Type definitions for testing
-
-type InvalidConfig = {
-  type?: string;
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  timeout?: number;
-  reconnect?: {
-    maxAttempts?: number;
-    initialDelayMs?: number;
-    maxDelayMs?: number;
-    backoffMultiplier?: number;
-  };
-} & Record<string, unknown>;
-
-// Mock implementations for testing
-const mockAuthProvider: IAuthProvider = {
-  getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer test-token' }),
-  isValid: vi.fn().mockResolvedValue(true),
-  refresh: vi.fn().mockResolvedValue(undefined),
-};
-
-const mockTokenStorage: ITokenStorage = {
-  store: vi.fn().mockResolvedValue(undefined),
-  retrieve: vi.fn().mockResolvedValue({
-    accessToken: 'test-token',
-    expiresAt: new Date(Date.now() + 3600000),
-    tokenType: 'Bearer',
-  }),
-  clear: vi.fn().mockResolvedValue(undefined),
-  isExpired: vi.fn().mockResolvedValue(false),
-  scheduleRefresh: vi.fn(),
-};
 
 describe('TransportFactory - Transport Configuration', () => {
   it('should apply default timeout for SSE transport', async () => {

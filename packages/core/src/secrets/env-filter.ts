@@ -62,6 +62,7 @@ const PLATFORM_ENV_ALLOWLIST: PlatformEnvAllowlist = {
  * platform. The list combines the platform-independent core variables with any
  * platform-specific requirements.
  * @param platform - The platform to get allowlist for (defaults to current platform)
+ * @returns Array of environment variable names to preserve
  * @public
  */
 export function getDefaultPassthroughEnv(
@@ -81,6 +82,7 @@ export function getDefaultPassthroughEnv(
  * Filters out any undefined values and only includes keys present in the allowlist.
  * @param env - Environment variables object to filter
  * @param allowlist - Array of environment variable names to include
+ * @returns Filtered environment variables object
  * @example
  * ```typescript
  * const filtered = filterEnvVars(process.env, ['PATH', 'NODE_ENV']);

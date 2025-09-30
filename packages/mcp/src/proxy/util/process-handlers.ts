@@ -21,7 +21,7 @@ export interface ProcessHandlerConfig {
  * Attaches 'error' and 'close' event listeners to the process. Non-zero exit codes
  * are logged as errors with code and signal information. Extracted as pure function
  * for testability and reuse across transport implementations.
- * @param {ProcessHandlerConfig} config - Process handler configuration
+ * @param config - Process handler configuration
  * @public
  * @see file:../transports/base-transport.ts:123 - Usage in base transport
  */

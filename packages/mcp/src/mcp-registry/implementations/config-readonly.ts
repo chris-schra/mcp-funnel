@@ -34,7 +34,7 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
 export class ReadOnlyConfigManager implements IConfigManager {
   /**
    * Creates a new ReadOnlyConfigManager instance.
-   * @param {string} configPath - Absolute path to the configuration file (.mcp-funnel.json)
+   * @param configPath - Absolute path to the configuration file (.mcp-funnel.json)
    */
   public constructor(private readonly configPath: string) {}
 
@@ -42,9 +42,9 @@ export class ReadOnlyConfigManager implements IConfigManager {
    * Checks if a server with the given name exists in the configuration.
    *
    * Handles both array and object server configurations.
-   * @param {ProxyConfig} config - The proxy configuration to check
-   * @param {string} serverName - Name of the server to check for
-   * @returns {boolean} true if the server exists, false otherwise
+   * @param config - The proxy configuration to check
+   * @param serverName - Name of the server to check for
+   * @returns true if the server exists, false otherwise
    * @internal
    */
   private serverExists(config: ProxyConfig, serverName: string): boolean {
@@ -57,9 +57,8 @@ export class ReadOnlyConfigManager implements IConfigManager {
    * Reads and parses the current proxy configuration from the file system.
    *
    * This is the only method that performs actual file operations in the MVP.
-   * @returns {Promise<ProxyConfig>} Promise resolving to the current ProxyConfig
-   * @throws {Error} if configuration file cannot be read or contains invalid JSON
-   * @inheritDoc
+   * @returns Promise resolving to the current ProxyConfig
+   * @throws if configuration file cannot be read or contains invalid JSON
    */
   public async readConfig(): Promise<ProxyConfig> {
     try {
@@ -80,13 +79,12 @@ export class ReadOnlyConfigManager implements IConfigManager {
   }
 
   /**
-   * [MVP SIMULATION] Logs the server configuration that would be added.
+   * Logs the server configuration that would be added (MVP simulation).
    *
    * In the full implementation, this would add the server to the configuration
    * file and validate that the name doesn't conflict with existing servers.
-   * @param {ServerConfig} server - The server configuration to add
-   * @throws {Error} if server name conflicts with existing server (simulated validation)
-   * @inheritDoc
+   * @param server - The server configuration to add
+   * @throws if server name conflicts with existing server (simulated validation)
    */
   public async addServer(server: ServerConfig): Promise<void> {
     // Simulate basic validation by checking existing config
@@ -115,13 +113,12 @@ export class ReadOnlyConfigManager implements IConfigManager {
   }
 
   /**
-   * [MVP SIMULATION] Logs the server name that would be removed.
+   * Logs the server name that would be removed (MVP simulation).
    *
    * In the full implementation, this would remove the server from the
    * configuration file and validate that the server exists.
    * @param serverName - Name of the server to remove
-   * @throws Error if server does not exist (simulated validation)
-   * @inheritDoc
+   * @throws if server does not exist (simulated validation)
    */
   public async removeServer(serverName: string): Promise<void> {
     // Simulate validation by checking if server exists
@@ -147,15 +144,14 @@ export class ReadOnlyConfigManager implements IConfigManager {
   }
 
   /**
-   * [MVP SIMULATION] Logs the updates that would be applied to a server.
+   * Logs the updates that would be applied to a server (MVP simulation).
    *
    * In the full implementation, this would update the server configuration
    * in the file and validate that the server exists and updates are valid.
    * @param serverName - Name of the server to update
    * @param updates - Partial server configuration with fields to update
-   * @throws Error if server does not exist (simulated validation)
-   * @throws Error if updates would create invalid configuration (simulated validation)
-   * @inheritDoc
+   * @throws if server does not exist (simulated validation)
+   * @throws if updates would create invalid configuration (simulated validation)
    */
   public async updateServer(
     serverName: string,

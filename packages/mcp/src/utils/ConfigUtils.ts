@@ -5,11 +5,11 @@ import type { LegacyConfig } from './transport/LegacyConfig.js';
 /**
  * Resolves environment variable patterns in transport configuration strings.
  *
- * Processes string fields (command, args, url) for ${VAR_NAME} patterns
+ * Processes string fields (command, args, url) for `$\{VAR_NAME\}` patterns
  * and replaces them with actual environment variable values.
- * @param {TransportConfig | LegacyConfig} config - Transport or legacy config with potential env var patterns
- * @returns {ResolvedConfig} Config with all env var patterns resolved to actual values
- * @throws {TransportError} When referenced environment variable doesn't exist
+ * @param config - Transport or legacy config with potential env var patterns
+ * @returns Config with all env var patterns resolved to actual values
+ * @throws TransportError when referenced environment variable doesn't exist
  * @internal
  * @see file:../../core/src/env/environment-resolver.ts - EnvVarPatternResolver implementation
  */
@@ -93,9 +93,9 @@ type ResolvedConfig = {
  * - Explicit type field: Use as-is
  * - Has command field: Infer as stdio transport
  * - No type and no command: Invalid configuration
- * @param {ResolvedConfig} config - Resolved config that may lack explicit type
- * @returns {TransportConfig} Normalized config with explicit type field
- * @throws {TransportError} When config has neither type nor command field
+ * @param config - Resolved config that may lack explicit type
+ * @returns Normalized config with explicit type field
+ * @throws TransportError when config has neither type nor command field
  * @internal
  */
 function normalizeConfig(config: ResolvedConfig): TransportConfig {
@@ -156,8 +156,8 @@ const DEFAULT_WEBSOCKET_CONFIG = {
  * - sse: 30s timeout, reconnection with exponential backoff
  * - websocket: 30s timeout, reconnection with exponential backoff
  * - streamable-http: 30s timeout, optional reconnection
- * @param {TransportConfig} config - Transport config with explicit type
- * @returns {TransportConfig} Config with type-specific defaults applied
+ * @param config - Transport config with explicit type
+ * @returns Config with type-specific defaults applied
  * @internal
  */
 function applyDefaults(config: TransportConfig): TransportConfig {

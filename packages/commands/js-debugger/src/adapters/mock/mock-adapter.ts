@@ -46,7 +46,7 @@ export class MockDebugAdapter {
    * @param session - Mock session containing request details and state
    * @returns MCP tool result with paused or completed state
    */
-  createInitialResponse(
+  public createInitialResponse(
     sessionId: string,
     session: MockDebugSession,
   ): CallToolResult {
@@ -104,12 +104,10 @@ export class MockDebugAdapter {
    * 3. Continue/step actions (advances to next breakpoint or completes)
    * @param sessionId - Unique identifier for the debug session
    * @param session - Current mock session state
-   * @param args - Action parameters
-   * @param args.action - Debug action: 'continue', 'step_over', 'step_into', 'step_out', or 'stop'
-   * @param args.evaluate - JavaScript expression to evaluate in the mock context
+   * @param args - Action parameters containing action and evaluate options
    * @returns MCP tool result with updated session state (paused, terminated, or completed)
    */
-  createContinueResponse(
+  public createContinueResponse(
     sessionId: string,
     session: MockDebugSession,
     args: { action?: string; evaluate?: string },
@@ -194,7 +192,7 @@ export class MockDebugAdapter {
    * @param session - Current mock session state
    * @returns MCP tool result with mock stack trace and breakpoint info
    */
-  createStackTraceResponse(
+  public createStackTraceResponse(
     sessionId: string,
     session: MockDebugSession,
   ): CallToolResult {
@@ -240,13 +238,10 @@ export class MockDebugAdapter {
    * count metadata.
    * @param sessionId - Unique identifier for the debug session
    * @param session - Current mock session state with console output
-   * @param args - Filter parameters
-   * @param args.levels - Log level filters (currently not applied in mock implementation)
-   * @param args.search - Search string filter (currently not applied in mock implementation)
-   * @param args.since - Starting index for messages (0-based, undefined returns all messages)
+   * @param args - Filter parameters containing levels, search, and since options
    * @returns MCP tool result with formatted console output and message counts
    */
-  createConsoleOutputResponse(
+  public createConsoleOutputResponse(
     sessionId: string,
     session: MockDebugSession,
     args: { levels?: Record<string, boolean>; search?: string; since?: number },
@@ -272,13 +267,10 @@ export class MockDebugAdapter {
    * for nested properties.
    * @param sessionId - Unique identifier for the debug session
    * @param session - Current mock session state
-   * @param args - Variable access parameters
-   * @param args.path - Dot-notation path to variable (e.g., "userData.profile.settings")
-   * @param args.frameId - Stack frame to inspect (defaults to 0, currently unused in mock)
-   * @param args.maxDepth - Maximum traversal depth (currently unused in mock implementation)
+   * @param args - Variable access parameters containing path, frameId, and maxDepth
    * @returns MCP tool result with variable value and type information
    */
-  createVariablesResponse(
+  public createVariablesResponse(
     sessionId: string,
     session: MockDebugSession,
     args: { path: string; frameId?: number; maxDepth?: number },
@@ -297,7 +289,7 @@ export class MockDebugAdapter {
    * @param sessionId - Unique identifier for the debug session being stopped
    * @returns MCP tool result with terminated status
    */
-  createStopResponse(sessionId: string): CallToolResult {
+  public createStopResponse(sessionId: string): CallToolResult {
     return createMockSuccessResponse(
       sessionId,
       {
@@ -313,10 +305,7 @@ export class MockDebugAdapter {
    * Constructs a detailed breakpoint descriptor including its position in the
    * breakpoint sequence, verification status, and resolved location details.
    * All mock breakpoints are marked as verified.
-   * @param bp - Original breakpoint request
-   * @param bp.file - Requested file path
-   * @param bp.line - Requested line number
-   * @param bp.condition - Optional conditional expression
+   * @param bp - Original breakpoint request with file, line, and optional condition
    * @param location - Resolved debug location with absolute and relative paths
    * @param index - Zero-based position in the breakpoint sequence
    * @param total - Total number of breakpoints in the session

@@ -15,7 +15,36 @@ interface ToolsResponse {
 }
 
 /**
+ * Interactive tool browser and execution interface for MCP tools.
  *
+ * Provides a searchable list of all available MCP tools across connected servers.
+ * Users can enable/disable tools, view tool details, and execute tools with custom
+ * JSON arguments. Results are displayed inline after execution. Automatically
+ * refreshes when tools change via WebSocket events.
+ *
+ * Features:
+ * - Real-time search filtering by tool name/description
+ * - Toggle tool enabled/disabled state
+ * - Execute tools with optional JSON arguments
+ * - Display execution results as formatted JSON
+ * - Visual feedback for tool state and execution progress
+ *
+ * @returns React component rendering the tool explorer interface
+ *
+ * @example
+ * ```tsx
+ * import { ToolExplorer } from '~/components/ToolExplorer.js';
+ *
+ * function Dashboard() {
+ *   return (
+ *     <div>
+ *       <ToolExplorer />
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @public
  */
 export function ToolExplorer() {
   const [search, setSearch] = useState('');

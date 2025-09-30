@@ -116,11 +116,7 @@ export const handleMockPathAccess = (
  * @param sessionId - Debug session identifier
  * @param frameId - Stack frame identifier
  * @param path - Dot-notation variable path that was accessed
- * @param result - Inspection result object
- * @param result.found - Whether the variable was successfully located
- * @param result.value - The variable's value (when found)
- * @param result.type - The variable's type (when found)
- * @param result.error - Error message (when not found)
+ * @param result - Inspection result object with found flag, value, type, and error
  * @param isError - Whether this represents an error response (default: false)
  * @returns Formatted tool result with JSON-serialized content
  * @internal

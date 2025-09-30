@@ -15,7 +15,7 @@ import type { IRegistryCache } from '../interfaces/cache.interface.js';
  *
  * **Phase 2**: This will be replaced with a real cache implementation
  * (in-memory with TTL, Redis, etc.) without changing the interface.
- * @template T - The type of values stored in the cache
+ * @typeParam T - The type of values stored in the cache
  * @example
  * ```typescript
  * const cache = new NoOpCache<ToolDefinition>();
@@ -27,40 +27,43 @@ import type { IRegistryCache } from '../interfaces/cache.interface.js';
  */
 export class NoOpCache<T = unknown> implements IRegistryCache<T> {
   /**
-   * Always returns null (no-op implementation).
-   * @inheritDoc
+   * {@inheritDoc IRegistryCache.get}
+   * @param _key - Cache key
+   * @returns Always returns null (no-op)
    */
   public async get(_key: string): Promise<T | null> {
     return null;
   }
 
   /**
-   * Does nothing (no-op implementation).
-   * @inheritDoc
+   * {@inheritDoc IRegistryCache.set}
+   * @param _key - Cache key
+   * @param _value - Value to cache
+   * @param _ttlMs - Time-to-live in milliseconds
    */
   public async set(_key: string, _value: T, _ttlMs?: number): Promise<void> {
     // No-op: Accept parameters but don't store anything
   }
 
   /**
-   * Always returns false (no-op implementation).
-   * @inheritDoc
+   * {@inheritDoc IRegistryCache.has}
+   * @param _key - Cache key
+   * @returns Always returns false (no-op)
    */
   public async has(_key: string): Promise<boolean> {
     return false;
   }
 
   /**
-   * Does nothing (no-op implementation).
-   * @inheritDoc
+   * {@inheritDoc IRegistryCache.delete}
+   * @param _key - Cache key
    */
   public async delete(_key: string): Promise<void> {
     // No-op: Accept parameter but don't remove anything
   }
 
   /**
-   * Does nothing (no-op implementation).
-   * @inheritDoc
+   * {@inheritDoc IRegistryCache.clear}
    */
   public async clear(): Promise<void> {
     // No-op: Nothing to clear

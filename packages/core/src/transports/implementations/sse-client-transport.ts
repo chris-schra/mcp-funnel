@@ -61,7 +61,7 @@ export class SSEClientTransport extends BaseClientTransport {
 
   /**
    * Validate and normalize URL for SSE
-   * @param config
+   * @param config - SSE transport configuration
    */
   protected validateAndNormalizeUrl(config: SSEClientTransportConfig): void {
     try {
@@ -114,7 +114,7 @@ export class SSEClientTransport extends BaseClientTransport {
 
   /**
    * Send message via HTTP POST
-   * @param message
+   * @param message - JSON-RPC message to send
    */
   protected async sendMessage(message: JSONRPCMessage): Promise<void> {
     await this.executeHttpRequest(
@@ -147,6 +147,7 @@ export class SSEClientTransport extends BaseClientTransport {
    * - Browser history leakage
    * - Network monitoring interception
    * - Referrer header exposure
+   * @returns Promise resolving to connection details with clean URL and auth headers
    */
   private async buildAuthenticatedConnection(): Promise<{
     url: string;
@@ -175,7 +176,8 @@ export class SSEClientTransport extends BaseClientTransport {
    *
    * This ensures that authentication tokens are sent securely via headers
    * rather than being exposed in URLs.
-   * @param authHeaders
+   * @param authHeaders - Authentication headers to include in requests
+   * @returns Custom fetch function with auth headers injected
    */
   private createAuthenticatedFetch(authHeaders: Record<string, string>) {
     return async (
@@ -247,7 +249,7 @@ export class SSEClientTransport extends BaseClientTransport {
 
   /**
    * Handle EventSource message event
-   * @param event
+   * @param event - Message event from EventSource
    */
   private handleEventSourceMessage(event: MessageEvent): void {
     try {
@@ -269,8 +271,4 @@ export class SSEClientTransport extends BaseClientTransport {
 
     this.handleConnectionError(error);
   }
-
-  // Removed - this functionality is now handled by the base class ReconnectionManager
-
-  // Removed - these utilities are now in the base class
 }

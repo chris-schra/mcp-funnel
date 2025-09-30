@@ -76,9 +76,9 @@ export class SearchConsoleOutputHandler
    * Validates the session exists (or delegates to mock manager), applies
    * level and text filters, then formats the results using the response formatter.
    * Always returns at most 10 messages via formatConsoleMessages truncation.
-   * @param {SearchConsoleOutputHandlerArgs} args - Search parameters including session ID and optional filters
-   * @param {ToolHandlerContext} context - Shared handler context with session manager, validators, and formatters
-   * @returns {Promise<CallToolResult>} Promise resolving to formatted console output with filter metadata and counts
+   * @param args - Search parameters including session ID and optional filters
+   * @param context - Shared handler context with session manager, validators, and formatters
+   * @returns Promise resolving to formatted console output with filter metadata and counts
    * @public
    */
   public async handle(
@@ -146,9 +146,9 @@ export class SearchConsoleOutputHandler
    * Filters console messages by case-insensitive text search.
    * Searches both the message text and all args (converted to strings).
    * A message matches if the search term appears in either location.
-   * @param {ConsoleMessage[]} messages - Console messages to filter
-   * @param {string} search - Search term to match (case-insensitive)
-   * @returns {ConsoleMessage[]} Filtered array containing only messages that match the search term
+   * @param messages - Console messages to filter
+   * @param search - Search term to match (case-insensitive)
+   * @returns Filtered array containing only messages that match the search term
    * @internal
    */
   private filterBySearchString(
@@ -171,8 +171,8 @@ export class SearchConsoleOutputHandler
    * The hardcoded limit of 10 messages is a practical constraint to keep
    * response sizes manageable. Clients can use the `since` parameter for
    * pagination if they need to see earlier messages.
-   * @param {ConsoleMessage[]} messages - Console messages to format (already filtered by level/search)
-   * @returns {Array<{level: string, timestamp: string, message: string, args: unknown[]}>} Array of formatted messages, limited to the last 10 entries
+   * @param messages - Console messages to format (already filtered by level/search)
+   * @returns Array of formatted messages with level, timestamp, message, and args properties, limited to the last 10 entries
    * @internal
    */
   private formatConsoleMessages(messages: ConsoleMessage[]) {

@@ -8,9 +8,9 @@
  *
  * Returns the original text if it's within the limit or empty.
  * Otherwise, truncates to maxLength-3 and appends '...'.
- * @param {string} text - Text to truncate
- * @param {number} maxLength - Maximum allowed length including ellipsis
- * @returns {string} Truncated text with ellipsis or original text
+ * @param text - Text to truncate
+ * @param maxLength - Maximum allowed length including ellipsis
+ * @returns Truncated text with ellipsis or original text
  * @public
  * @see file:./transform.ts:62 - Used to truncate README and description fields
  */

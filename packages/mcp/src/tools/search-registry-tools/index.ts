@@ -57,7 +57,7 @@ export class SearchRegistryTools extends BaseCoreTool {
    * @param args - Search arguments with keywords and optional registry filter
    * @param context - Core tool context with configuration access
    * @returns CallToolResult with matching servers or error message
-   * @throws {Error} When keywords are invalid or registry search fails
+   * @throws Error when keywords are invalid or registry search fails
    * @public
    */
   public async handle(

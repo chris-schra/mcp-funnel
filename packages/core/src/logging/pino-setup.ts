@@ -7,6 +7,27 @@
 
 import pino from 'pino';
 
+/**
+ * Root logger instance with automatic redaction of sensitive data.
+ *
+ * Configured with path-based redaction patterns for OAuth tokens, API keys,
+ * passwords, and other sensitive fields. Uses the fast-redact library to
+ * censor values while preserving object structure.
+ *
+ * By default, the log level is set to 'silent' to avoid noise. Update the
+ * level when needed for debugging.
+ *
+ * @example
+ * ```typescript
+ * import { rootLogger } from './pino-setup.js';
+ *
+ * rootLogger.level = 'info'; // Enable logging
+ * rootLogger.info({ password: 'secret' }); // Logs: { password: '[REDACTED]' }
+ * ```
+ *
+ * @public
+ * @see {@link setupConsoleLogging} - Monkey-patch console methods
+ */
 const rootLogger = pino({
   level: 'silent',
   redact: {
@@ -72,8 +93,26 @@ const rootLogger = pino({
 });
 
 /**
- * Setup console monkey-patching to route all console.* calls through pino
- * Call this explicitly in your application entry point
+ * Routes all console.* calls through pino with automatic redaction.
+ *
+ * Monkey-patches console methods (debug, info, warn, error, log) to use
+ * the rootLogger, ensuring sensitive data is automatically redacted from
+ * all console output.
+ *
+ * Call this function once at your application entry point before any logging occurs.
+ *
+ * @example
+ * ```typescript
+ * import { setupConsoleLogging, rootLogger } from './pino-setup.js';
+ *
+ * setupConsoleLogging();
+ * rootLogger.level = 'info';
+ *
+ * console.info({ token: 'secret' }); // Automatically redacted
+ * ```
+ *
+ * @public
+ * @see {@link rootLogger} - The underlying logger instance
  */
 export function setupConsoleLogging(): void {
   (['debug', 'info', 'warn', 'error', 'log'] as const).forEach((name) => {

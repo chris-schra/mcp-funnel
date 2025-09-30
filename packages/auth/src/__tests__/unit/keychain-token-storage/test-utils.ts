@@ -28,7 +28,11 @@ vi.mock('fs', () => ({
 export const mockedFs = vi.mocked(fs);
 export const mockExecFileAsync = execFileAsyncMock;
 
-// Create a mock token for testing
+/**
+ * Creates a mock token for testing keychain storage operations
+ * @param expiresInMs - Time in milliseconds until token expires (default: 1 hour)
+ * @returns Mock token data with standard test values
+ */
 export function createMockToken(expiresInMs: number = 3600000): TokenData {
   return {
     accessToken: 'test-access-token',
@@ -38,7 +42,9 @@ export function createMockToken(expiresInMs: number = 3600000): TokenData {
   };
 }
 
-// Setup standard mocks for successful operations
+/**
+ * Sets up standard mocks for successful keychain operations
+ */
 export function setupSuccessfulMocks(): void {
   mockedFs.mkdir.mockResolvedValue(undefined);
   mockedFs.writeFile.mockResolvedValue(undefined);

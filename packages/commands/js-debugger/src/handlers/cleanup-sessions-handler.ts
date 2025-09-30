@@ -77,9 +77,9 @@ export class CleanupSessionsHandler
    * - In dry run mode: returns preview of sessions that would be cleaned
    * - In normal mode: invokes sessionManager.cleanupInactiveSessions() to terminate matching sessions
    * - Returns formatted response with cleanup statistics and configuration
-   * @param {CleanupSessionsHandlerArgs} args - Cleanup arguments controlling force and dryRun behavior
-   * @param {ToolHandlerContext} context - Handler context providing sessionManager and responseFormatter
-   * @returns {Promise<CallToolResult>} Promise resolving to formatted success or error response
+   * @param args - Cleanup arguments controlling force and dryRun behavior
+   * @param context - Handler context providing sessionManager and responseFormatter
+   * @returns Promise resolving to formatted success or error response
    * @example Dry run preview
    * ```typescript
    * await handler.handle({ dryRun: true }, context);

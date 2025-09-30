@@ -70,20 +70,20 @@ type Variables = {
  * - WebSocket endpoint at /ws with auth validation
  * - Streamable HTTP transport at /api/streamable/mcp
  * - Optional static file serving
- * @param {MCPProxy} mcpProxy - Initialized MCPProxy instance
- * @param {ServerOptions} options - Server configuration options
- * @returns {Promise<ServerType>} Promise resolving to Node.js HTTP server instance
- * @throws {Error} When inboundAuth is not provided (security requirement)
- * @throws {Error} When authentication configuration is invalid
+ * @param mcpProxy - Initialized MCPProxy instance
+ * @param options - Server configuration options
+ * @returns Promise resolving to Node.js HTTP server instance
+ * @throws When inboundAuth is not provided (security requirement)
+ * @throws When authentication configuration is invalid
  * @example
  * ```typescript
  * const proxy = new MCPProxy(config);
  * await proxy.initialize();
  *
- * const server = await startWebServer(proxy, {
+ * const server = await startWebServer(proxy, \{
  *   port: 3456,
- *   inboundAuth: { type: 'bearer', tokens: ['secret'] }
- * });
+ *   inboundAuth: \{ type: 'bearer', tokens: ['secret'] \}
+ * \});
  * ```
  * @public
  */

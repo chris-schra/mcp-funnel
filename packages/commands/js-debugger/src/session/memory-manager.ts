@@ -52,15 +52,15 @@ export class MemoryManager {
    * Implements a circular buffer pattern: when the buffer exceeds `maxEntries`, it retains
    * the most recent `keepRatio` fraction of messages, discarding older entries to prevent
    * unbounded memory growth.
-   * @param {ConsoleMessage[]} consoleOutput - Current array of console messages
-   * @param {ConsoleMessage} message - New message to append
-   * @param {ConsoleBufferConfig} config - Buffer configuration controlling pruning behavior
-   * @returns {ConsoleMessage[]} New array with message added and potentially pruned
+   * @param consoleOutput - Current array of console messages
+   * @param message - New message to append
+   * @param config - Buffer configuration controlling pruning behavior
+   * @returns New array with message added and potentially pruned
    * @example
    * ```typescript
    * const output = MemoryManager.addConsoleMessage(
    *   session.consoleOutput,
-   *   { level: 'log', timestamp: '2025-01-15T10:30:00Z', message: 'Hello', args: [] }
+   *   \{ level: 'log', timestamp: '2025-01-15T10:30:00Z', message: 'Hello', args: [] \}
    * );
    * // If output exceeds 1000 entries, keeps most recent 800 (80%)
    * ```
@@ -88,15 +88,15 @@ export class MemoryManager {
    *
    * Calculates current console output size and estimated memory usage
    * for inclusion in session metadata tracking.
-   * @param {MemoryContext} context - Memory context containing console output and breakpoints
-   * @returns {Pick<SessionMetadata, 'resourceUsage'>} Partial metadata object with resourceUsage field populated
+   * @param context - Memory context containing console output and breakpoints
+   * @returns Partial metadata object with resourceUsage field populated
    * @example
    * ```typescript
-   * const memoryData = MemoryManager.updateMemoryMetadata({
+   * const memoryData = MemoryManager.updateMemoryMetadata(\{
    *   consoleOutput: session.consoleOutput,
    *   breakpointsSize: session.breakpoints.size,
    *   metadata: session.metadata
-   * });
+   * \});
    * Object.assign(session.metadata, memoryData);
    * ```
    * @public
@@ -124,8 +124,8 @@ export class MemoryManager {
    *
    * Note: This is a rough approximation for resource tracking purposes, not an exact measurement.
    * Actual memory usage depends on console message content size and object overhead.
-   * @param {MemoryContext} context - Memory context with console output and breakpoint count
-   * @returns {number} Estimated memory usage in bytes
+   * @param context - Memory context with console output and breakpoint count
+   * @returns Estimated memory usage in bytes
    * @public
    */
   public static estimateMemoryUsage(context: MemoryContext): number {
@@ -141,7 +141,7 @@ export class MemoryManager {
    *
    * Used during session termination to clear accumulated console messages
    * and free associated memory.
-   * @returns {ConsoleMessage[]} Empty array ready for reuse or disposal
+   * @returns Empty array ready for reuse or disposal
    * @public
    * @see file:../enhanced-debug-session.ts:457 - Clears output on session termination
    */

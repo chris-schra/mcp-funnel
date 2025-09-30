@@ -24,7 +24,6 @@
  * const servers = await client.searchServers('github');
  * ```
  * @public
- * @module
  */
 
 // Export all interfaces

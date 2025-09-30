@@ -13,7 +13,13 @@ const sharedOptions: BuildOptions = {
 };
 
 /**
+ * Builds the mcp-funnel core package.
  *
+ * Performs a complete build process including:
+ * - TypeScript type generation (declarations and declaration maps)
+ * - ESM bundle compilation
+ *
+ * @throws Error When build steps fail
  */
 async function buildAll() {
   console.log('🔨 Building @mcp-funnel/core...\n');

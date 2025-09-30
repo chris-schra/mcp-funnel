@@ -8,8 +8,8 @@ import { twMerge } from 'tailwind-merge';
  * then applies tailwind-merge to resolve conflicting Tailwind utility classes.
  * This ensures the last specified Tailwind utility takes precedence without
  * class duplication.
- * @param {...ClassValue} inputs - Class names, objects, arrays, or conditionals to merge
- * @returns {string} Single merged class name string with conflicts resolved
+ * @param inputs - Class names, objects, arrays, or conditionals to merge
+ * @returns Single merged class name string with conflicts resolved
  * @example
  * ```typescript
  * // Basic usage

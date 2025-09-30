@@ -13,14 +13,9 @@
  * 5. Browser-Specific Features: Auth query params, withCredentials settings
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import type { JSONRPCResponse } from '@modelcontextprotocol/sdk/types.js';
-import {
-  createMockSSEServer,
-  type MockSSEServer,
-} from '../mocks/mock-sse-server.js';
-import { SSEClientTransport } from '@mcp-funnel/core';
 import {
   createMockEventSourceConstructor,
   MockEventSource,

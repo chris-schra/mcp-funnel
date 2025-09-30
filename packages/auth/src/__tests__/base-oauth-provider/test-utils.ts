@@ -115,6 +115,12 @@ export class MockTokenStorage implements ITokenStorage {
 }
 
 // Helper to create test token data
+/**
+ * Creates a test token with the specified expiration time.
+ *
+ * @param expiresInMs - Time in milliseconds until token expires
+ * @returns Test token data
+ */
 export function createTestToken(expiresInMs: number = 3600000): TokenData {
   return {
     accessToken:
@@ -126,6 +132,12 @@ export function createTestToken(expiresInMs: number = 3600000): TokenData {
 }
 
 // Helper to create test OAuth2 token response
+/**
+ * Creates a test OAuth2 token response with optional overrides.
+ *
+ * @param overrides - Partial token response properties to override defaults
+ * @returns OAuth2 token response
+ */
 export function createTestTokenResponse(
   overrides: Partial<OAuth2TokenResponse> = {},
 ): OAuth2TokenResponse {

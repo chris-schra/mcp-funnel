@@ -2,7 +2,7 @@
  * Tests for BaseClientTransport - Error Handling
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, vi } from 'vitest';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import {
   BaseClientTransport,
@@ -35,7 +35,7 @@ class TestTransport extends BaseClientTransport {
     this.handleConnectionOpen();
   }
 
-  protected async sendMessage(message: JSONRPCMessage): Promise<void> {
+  protected async sendMessage(_message: JSONRPCMessage): Promise<void> {
     // no-op
   }
 

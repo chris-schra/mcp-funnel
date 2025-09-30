@@ -28,8 +28,8 @@ export interface FixtureHandle {
 
 /**
  * Verifies that a fixture file or directory exists at the specified path.
- * @param {string} sourcePath - Absolute path to the fixture file or directory
- * @throws {Error} When the fixture does not exist
+ * @param sourcePath - Absolute path to the fixture file or directory
+ * @throws When the fixture does not exist
  * @internal
  */
 async function ensureExists(sourcePath: string): Promise<void> {
@@ -42,7 +42,7 @@ async function ensureExists(sourcePath: string): Promise<void> {
 
 /**
  * Creates a temporary directory with a unique name for fixture isolation.
- * @returns {Promise<string>} Promise resolving to the absolute path of the created temporary directory
+ * @returns Promise resolving to the absolute path of the created temporary directory
  * @internal
  */
 async function makeTempDir(): Promise<string> {
@@ -54,8 +54,8 @@ async function makeTempDir(): Promise<string> {
  *
  * Handles both files and directories, creating intermediate directories as needed.
  * Preserves directory structure during the copy operation.
- * @param {string} source - Absolute path to the source file or directory
- * @param {string} destination - Absolute path where the copy should be created
+ * @param source - Absolute path to the source file or directory
+ * @param destination - Absolute path where the copy should be created
  * @internal
  */
 async function copyRecursive(
@@ -85,9 +85,9 @@ async function copyRecursive(
  * Creates an isolated copy of the fixture in a temporary location to allow
  * tests to modify files without affecting the original fixtures. The returned
  * handle includes a cleanup function to remove temporary artifacts.
- * @param {string} relativePath - Path relative to the fixtures root directory
- * @returns {Promise<FixtureHandle>} Promise resolving to a handle for accessing and cleaning up the fixture
- * @throws {Error} When the fixture does not exist at the specified path
+ * @param relativePath - Path relative to the fixtures root directory
+ * @returns Promise resolving to a handle for accessing and cleaning up the fixture
+ * @throws When the fixture does not exist at the specified path
  * @internal
  */
 async function prepareFixture(relativePath: string): Promise<FixtureHandle> {
@@ -115,13 +115,13 @@ async function prepareFixture(relativePath: string): Promise<FixtureHandle> {
  * Creates an isolated copy of a Node.js fixture (JavaScript or TypeScript file)
  * from the `test/fixtures/node` directory. Tests can modify the copied fixture
  * without affecting the original source.
- * @param {string} fixtureName - Name of the fixture file (e.g., 'console-output.js', 'breakpoint-script.ts')
- * @returns {Promise<FixtureHandle>} Promise resolving to a handle for accessing and cleaning up the fixture
- * @throws {Error} When the fixture does not exist in the node fixtures directory
+ * @param fixtureName - Name of the fixture file (e.g., 'console-output.js', 'breakpoint-script.ts')
+ * @returns Promise resolving to a handle for accessing and cleaning up the fixture
+ * @throws When the fixture does not exist in the node fixtures directory
  * @example
  * ```typescript
  * const fixture = await prepareNodeFixture('console-output.js');
- * const session = await manager.debug({ platform: 'node', target: fixture.tempPath });
+ * const session = await manager.debug(\{ platform: 'node', target: fixture.tempPath \});
  * // ... run tests ...
  * await fixture.cleanup();
  * ```
@@ -140,13 +140,13 @@ export async function prepareNodeFixture(
  * Creates an isolated copy of a browser fixture (HTML, JavaScript, or related files)
  * from the `test/fixtures/browser` directory. Tests can modify the copied fixture
  * without affecting the original source.
- * @param {string} fixtureName - Name of the fixture file (e.g., 'simple-script.js', 'index.html')
- * @returns {Promise<FixtureHandle>} Promise resolving to a handle for accessing and cleaning up the fixture
- * @throws {Error} When the fixture does not exist in the browser fixtures directory
+ * @param fixtureName - Name of the fixture file (e.g., 'simple-script.js', 'index.html')
+ * @returns Promise resolving to a handle for accessing and cleaning up the fixture
+ * @throws When the fixture does not exist in the browser fixtures directory
  * @example
  * ```typescript
  * const fixture = await prepareBrowserFixture('simple-script.js');
- * const session = await manager.debug({ platform: 'browser', target: fixture.tempPath });
+ * const session = await manager.debug(\{ platform: 'browser', target: fixture.tempPath \});
  * // ... run tests ...
  * await fixture.cleanup();
  * ```
@@ -164,8 +164,8 @@ export async function prepareBrowserFixture(
  * Creates an isolated copy of all browser fixtures for tests that need access to multiple
  * fixture files or need to serve fixtures from a directory. This is particularly useful
  * for browser integration tests that require a full directory structure.
- * @returns {Promise<FixtureHandle>} Promise resolving to a handle for accessing the fixtures root and cleaning up
- * @throws {Error} When the browser fixtures directory does not exist
+ * @returns Promise resolving to a handle for accessing the fixtures root and cleaning up
+ * @throws When the browser fixtures directory does not exist
  * @example
  * ```typescript
  * const fixturesRoot = await prepareBrowserFixturesRoot();

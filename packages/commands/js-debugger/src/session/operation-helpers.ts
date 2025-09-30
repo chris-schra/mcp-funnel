@@ -12,22 +12,21 @@
  * throughout debug sessions where errors need to be both logged/emitted AND propagated.
  * The function always re-throws errors after emission, ensuring callers can handle
  * failures appropriately while guaranteeing error events are fired.
- * @template T - The return type of the async operation
- * @param {() => Promise<T>} operation - The async operation to execute
- * @param {(error: Error) => Promise<void>} emitError - Error handler that emits/logs the error (e.g., EventEmitter.emit)
- * @returns {Promise<T>} Promise resolving to the operation's result
- * @throws {Error} Re-throws any error caught from the operation after emitting it
+ * @param operation - The async operation to execute
+ * @param emitError - Error handler that emits/logs the error (e.g., EventEmitter.emit)
+ * @returns Promise resolving to the operation's result
+ * @throws Re-throws any error caught from the operation after emitting it
  * @example
  * ```typescript
  * // In EnhancedDebugSession.initialize()
  * return executeWithErrorHandling(
- *   async () => {
+ *   async () => \{
  *     await this.adapter.connect(this.request.target);
  *     this._lifecycleState = 'active';
- *   },
- *   async (error) => {
+ *   \},
+ *   async (error) => \{
  *     await this.emit('error', error);
- *   }
+ *   \}
  * );
  * ```
  * @public

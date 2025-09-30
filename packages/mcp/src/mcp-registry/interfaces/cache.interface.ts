@@ -10,7 +10,7 @@
  *
  * The generic type parameter allows for type-safe caching of specific data structures
  * while maintaining flexibility for different value types.
- * @template T - The type of values stored in the cache
+ * @typeParam T - The type of values stored in the cache
  * @public
  */
 export interface IRegistryCache<T = unknown> {
@@ -116,15 +116,16 @@ export const CacheKeys = {
     /**
      * Pattern: `tool:${serverName}__${toolName}`
      *
-     * @param {string} serverName - Server name
-     * @param {string} toolName - Tool name
-     * @returns {string} Cache key in format `tool:${serverName}__${toolName}`
+     * @param serverName - Server name
+     * @param toolName - Tool name
+     * @returns Cache key in format `tool:${serverName}__${toolName}`
      */
     SINGLE: (serverName: string, toolName: string) =>
       `tool:${serverName}__${toolName}`,
     /**
      * Pattern: `tools:server:${serverName}`
-     * @param serverName
+     * @param serverName - Server name
+     * @returns Cache key in format `tools:server:${serverName}`
      */
     BY_SERVER: (serverName: string) => `tools:server:${serverName}`,
     /** Pattern: `tools:all` */
@@ -141,7 +142,8 @@ export const CacheKeys = {
     STATS: 'registry:stats',
     /**
      * Pattern: `registry:config:${configHash}`
-     * @param configHash
+     * @param configHash - Configuration hash
+     * @returns Cache key in format `registry:config:${configHash}`
      */
     CONFIG: (configHash: string) => `registry:config:${configHash}`,
   },

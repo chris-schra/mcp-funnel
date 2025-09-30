@@ -3,16 +3,13 @@ import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { SecretManager } from '../secret-manager.js';
-import { SecretProviderRegistry } from '../secret-provider-registry.js';
 import { createInlineProvider } from './secret-manager-test-utils.js';
 
 describe('SecretManager - Caching', () => {
-  let registry: SecretProviderRegistry;
   let originalEnv: NodeJS.ProcessEnv;
   let workDir: string;
 
   beforeEach(() => {
-    registry = new SecretProviderRegistry();
     originalEnv = { ...process.env };
     workDir = mkdtempSync(join(tmpdir(), 'secret-manager-test-'));
   });

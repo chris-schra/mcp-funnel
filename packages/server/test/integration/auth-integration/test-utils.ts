@@ -44,6 +44,11 @@ export const createMockMCPProxy = (): MCPProxy => {
 };
 
 // Helper to close server
+/**
+ * Closes a Hono server instance and waits for completion.
+ *
+ * @param server - The server instance to close, or null if no server exists
+ */
 export async function closeServer(server: ServerType | null): Promise<void> {
   if (server) {
     await new Promise<void>((resolve) => {

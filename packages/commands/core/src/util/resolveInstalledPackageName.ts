@@ -29,14 +29,14 @@ function getDependencyNames(pkgJson: Record<string, unknown>): string[] {
  * 3. Try the dependency guess (from extractPackageNameFromSpec)
  * 4. Match by comparing specs with package.json values (handles git URLs)
  * 5. Fall back to dependency guess
- * @param params - Resolution parameters
- * @param params.installSpec - The actual spec passed to `npm install` (may include version, e.g., `@scope/pkg@1.0.0`)
- * @param params.packageSpec - The original package spec from the user (e.g., `@scope/pkg`, `git+https://...`)
- * @param params.dependencyGuess - Pre-computed guess of the package name from extractPackageNameFromSpec or existing manifest
- * @param params.manifest - Current command manifest containing previously installed commands
- * @param params.packagesJsonBefore - Package.json state before npm install
- * @param params.packagesJsonAfter - Package.json state after npm install
- * @returns The resolved package name that was actually installed (e.g., `@scope/package` or `package-name`)
+ * @param params - Resolution parameters object containing:
+ * - `installSpec`: The actual spec passed to `npm install` (may include version, e.g., `\@scope/pkg\@1.0.0`)
+ * - `packageSpec`: The original package spec from the user (e.g., `\@scope/pkg`, `git+https://...`)
+ * - `dependencyGuess`: Pre-computed guess of the package name from extractPackageNameFromSpec or existing manifest
+ * - `manifest`: Current command manifest containing previously installed commands
+ * - `packagesJsonBefore`: Package.json state before npm install
+ * - `packagesJsonAfter`: Package.json state after npm install
+ * @returns The resolved package name that was actually installed (e.g., `\@scope/package` or `package-name`)
  * @example Basic installation
  * ```typescript
  * const resolvedName = resolveInstalledPackageName({

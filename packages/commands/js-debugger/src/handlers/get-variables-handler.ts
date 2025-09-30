@@ -27,7 +27,7 @@ export interface GetVariablesHandlerArgs {
  *
  * Retrieves variable values by dot-notation path, navigating nested objects and
  * filtering out global scopes. Enriches values with type metadata and prevents
- * circular references. Truncates large collections (arrays >100, objects >50 props).
+ * circular references. Truncates large collections (arrays \>100, objects \>50 props).
  * @example
  * ```typescript
  * await handler.handle({
@@ -51,9 +51,9 @@ export class GetVariablesHandler
    *
    * Validates session state, retrieves non-global scopes, and navigates path to find
    * and enrich the variable. All errors are caught and returned as CallToolResult.
-   * @param {GetVariablesHandlerArgs} args - Variable request parameters
-   * @param {ToolHandlerContext} context - Handler context with session manager and formatters
-   * @returns {Promise<CallToolResult>} MCP-formatted response with variable data or error
+   * @param args - Variable request parameters
+   * @param context - Handler context with session manager and formatters
+   * @returns MCP-formatted response with variable data or error
    */
   public async handle(
     args: GetVariablesHandlerArgs,
@@ -114,10 +114,10 @@ export class GetVariablesHandler
    *
    * Searches scopes for root variable, then navigates nested properties. Returns first
    * match found (typically local scope). For nested paths, uses simple property access.
-   * @param {Scope[]} scopes - Debug scopes to search (local, closure, block)
-   * @param {string} path - Dot-notation path (e.g., 'user.profile.name')
-   * @param {number} maxDepth - Max traversal depth for enrichment
-   * @returns {Promise<{found: boolean; value?: unknown; type?: string; error?: string}>} Resolution result
+   * @param scopes - Debug scopes to search (local, closure, block)
+   * @param path - Dot-notation path (e.g., 'user.profile.name')
+   * @param maxDepth - Max traversal depth for enrichment
+   * @returns Resolution result with found flag, optional value, type, and error message
    */
   private async getVariableByPath(
     scopes: Scope[],
@@ -190,10 +190,10 @@ export class GetVariablesHandler
    * Recursively navigates object properties following a path array.
    *
    * Validates each step points to an object before property access.
-   * @param {unknown} currentValue - Current navigation value
-   * @param {string[]} remainingPath - Properties still to navigate
-   * @returns {{value: unknown; type: string}} Final value and type
-   * @throws {Error} When accessing property on null/undefined/primitives
+   * @param currentValue - Current navigation value
+   * @param remainingPath - Properties still to navigate
+   * @returns Final value and type
+   * @throws When accessing property on null/undefined/primitives
    */
   private navigateSimplePath(
     currentValue: unknown,
@@ -220,14 +220,14 @@ export class GetVariablesHandler
    *
    * Handles primitives, special objects (Date, RegExp, Map, Set), arrays, and plain objects.
    * Prevents infinite recursion via depth limit and circular detection. Truncates large
-   * collections: arrays >100 items (show 50), objects >50 props (show 50), Map/Set (show 20).
+   * collections: arrays greater than 100 items (show 50), objects greater than 50 props (show 50), Map/Set (show 20).
    * Uses string representation for circular detection (simple, safe, may have false positives).
-   * @param {unknown} value - Value to enrich
-   * @param {string} type - Type hint from debugger
-   * @param {number} maxDepth - Max recursion depth
-   * @param {Set<string>} visitedObjects - Circular reference tracker
-   * @param {number} currentDepth - Current recursion level
-   * @returns {Promise<unknown>} Enriched value with type info or truncation markers
+   * @param value - Value to enrich
+   * @param type - Type hint from debugger
+   * @param maxDepth - Max recursion depth
+   * @param visitedObjects - Circular reference tracker
+   * @param currentDepth - Current recursion level (default: 0)
+   * @returns Enriched value with type info or truncation markers
    */
   private async enrichVariableValue(
     value: unknown,
@@ -336,9 +336,9 @@ export class GetVariablesHandler
    *
    * Handles symbols, functions, and bigints with special formatting. Other primitives
    * (string, number, boolean, undefined) returned as-is.
-   * @param {unknown} value - Primitive value to format
-   * @param {string} type - Type string from debugger
-   * @returns {unknown} Formatted value for JSON serialization
+   * @param value - Primitive value to format
+   * @param type - Type string from debugger
+   * @returns Formatted value for JSON serialization
    */
   private formatPrimitiveValue(value: unknown, type: string): unknown {
     switch (type) {

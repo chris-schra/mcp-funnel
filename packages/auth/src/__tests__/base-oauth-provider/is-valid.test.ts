@@ -5,6 +5,10 @@ import {
   createTestToken,
 } from './test-utils.js';
 
+/**
+ * Tests token validation logic in BaseOAuthProvider.
+ * @see {@link BaseOAuthProvider.isValid}
+ */
 describe('BaseOAuthProvider - isValid', () => {
   let provider: TestOAuthProvider;
   let mockStorage: MockTokenStorage;

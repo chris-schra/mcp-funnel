@@ -18,7 +18,7 @@ interface JsonRpcRequest {
  * JSON-RPC response message from CDP method calls.
  *
  * Contains either a result (success) or error (failure), never both.
- * @template T - The expected result type for successful responses
+ * @typeParam T - The expected result type for successful responses
  * @internal
  */
 interface JsonRpcResponse<T = unknown> {
@@ -56,7 +56,7 @@ interface JsonRpcEvent {
  *
  * Each pending promise has an associated timeout to prevent indefinite hangs
  * when the debugger fails to respond.
- * @template T - The expected response type
+ * @typeParam T - The expected response type
  * @internal
  */
 interface PendingPromise<T = unknown> {
@@ -132,13 +132,13 @@ export class MessageHandler extends EventEmitter {
    *
    * The promise is resolved/rejected by {@link handleResponse} when the corresponding
    * response message arrives.
-   * @template T - Expected type of the CDP method result
+   * @typeParam T - Expected type of the CDP method result
    * @param method - CDP method name (e.g., 'Runtime.evaluate', 'Debugger.setBreakpoint')
    * @param sendFn - Function to transmit the serialized request (typically WebSocket.send)
    * @param params - Optional method parameters as key-value pairs
-   * @throws {Error} When the request times out after the configured timeout period
-   * @throws {Error} When the send function throws (e.g., WebSocket disconnected)
-   * @throws {Error} When the CDP response contains an error field (rejected with CDP error details)
+   * @throws When the request times out after the configured timeout period
+   * @throws When the send function throws (e.g., WebSocket disconnected)
+   * @throws When the CDP response contains an error field (rejected with CDP error details)
    * @example
    * ```typescript
    * // Evaluate JavaScript in the runtime

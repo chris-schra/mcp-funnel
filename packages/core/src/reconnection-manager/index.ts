@@ -149,7 +149,7 @@ export class ReconnectionManager {
    * Calculates backoff delay, increments retry count, and schedules the reconnection
    * callback. Updates state to Reconnecting and transitions to Failed if max retries exceeded.
    * @param connectFn - Async function to call for reconnection attempt
-   * @throws {Error} When max reconnection attempts exceeded
+   * @throws Error when max reconnection attempts exceeded
    * @public
    */
   public scheduleReconnect(connectFn: () => Promise<void>): Promise<void> {
@@ -207,6 +207,7 @@ export class ReconnectionManager {
 
   /**
    * Gets the current retry attempt count.
+   * @returns Current retry attempt count
    * @public
    */
   public getAttemptCount(): number {

@@ -124,7 +124,7 @@ export class CleanupManager {
 
   /**
    * Returns a copy of the current cleanup configuration.
-   * @returns {SessionCleanupConfig} Deep copy of configuration to prevent external mutation
+   * @returns Deep copy of configuration to prevent external mutation
    * @public
    */
   public getConfig(): SessionCleanupConfig {
@@ -137,7 +137,7 @@ export class CleanupManager {
    * Merges the provided partial configuration with existing settings.
    * If `cleanupIntervalMs` is updated and auto-cleanup is enabled, clears
    * the existing timer and creates a new one with the updated interval.
-   * @param {Partial<SessionCleanupConfig>} config - Partial configuration to merge with current settings
+   * @param config - Partial configuration to merge with current settings
    * @public
    */
   public setConfig(config: Partial<SessionCleanupConfig>): void {
@@ -165,11 +165,11 @@ export class CleanupManager {
    * - Force option is true (deletes all sessions)
    *
    * Failed deletions are logged as warnings but don't stop the cleanup process.
-   * @param {SessionCleanupOptions} options - Cleanup behavior options
-   * @returns {Promise<number>} Count of successfully cleaned sessions
+   * @param options - Cleanup behavior options
+   * @returns Count of successfully cleaned sessions
    * @example Force cleanup all sessions
    * ```typescript
-   * const count = await cleanupManager.cleanupInactiveSessions({ force: true });
+   * const count = await cleanupManager.cleanupInactiveSessions(\{ force: true \});
    * ```
    * @example Normal cleanup based on timeouts
    * ```typescript
@@ -260,7 +260,7 @@ export class CleanupManager {
    * Sorts all sessions by `lastActivityAt` (or `startTime` if no activity recorded),
    * then deletes the oldest N sessions. Used when total session count exceeds limits
    * to prevent unbounded resource growth.
-   * @param {number} count - Number of oldest sessions to remove
+   * @param count - Number of oldest sessions to remove
    * @internal
    */
   private async forceCleanupOldestSessions(count: number): Promise<void> {

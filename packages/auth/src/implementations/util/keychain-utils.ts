@@ -17,7 +17,7 @@ export function getFilename(key: string): string {
  * Parse stored token JSON back to TokenData
  * @param jsonString - JSON string representation of token
  * @returns Parsed TokenData object
- * @throws {SyntaxError} When JSON parsing fails due to invalid format
+ * @throws \{SyntaxError\} When JSON parsing fails due to invalid format
  * @internal
  */
 export function parseStoredToken(jsonString: string): TokenData {

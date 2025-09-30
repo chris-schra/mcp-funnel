@@ -4,11 +4,8 @@ import { createTestOAuthServer } from '../fixtures/test-oauth-server.js';
 
 /**
  * Sets up OAuth and SSE test servers with given credentials
- * @param config
- * @param config.clientId
- * @param config.clientSecret
- * @param config.tokenLifetime
- * @param config.requireAuth
+ * @param config - Configuration for OAuth and SSE servers
+ * @returns Promise resolving to server information objects
  */
 export async function setupOAuthAndSSEServers(config: {
   clientId: string;
@@ -42,11 +39,8 @@ export async function setupOAuthAndSSEServers(config: {
 
 /**
  * Sets up OAuth and WebSocket test servers with given credentials
- * @param config
- * @param config.clientId
- * @param config.clientSecret
- * @param config.tokenLifetime
- * @param config.requireAuth
+ * @param config - Configuration for OAuth and WebSocket servers
+ * @returns Promise resolving to server information objects
  */
 export async function setupOAuthAndWebSocketServers(config: {
   clientId: string;

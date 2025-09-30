@@ -49,7 +49,7 @@ export class KeychainTokenStorage implements ITokenStorage {
   /**
    * Store token data securely using OS keychain
    * @param token - Token data to store including access token and expiry
-   * @throws {Error} When neither keychain storage nor file fallback succeeds
+   * @throws {@link Error} when neither keychain storage nor file fallback succeeds
    * @public
    */
   public async store(token: TokenData): Promise<void> {
@@ -162,7 +162,7 @@ export class KeychainTokenStorage implements ITokenStorage {
    * Uses execFile with argument arrays to prevent command injection
    * @param key - Storage key in format serviceName:serverId
    * @param value - Serialized token data to store
-   * @throws {Error} When keychain command fails or platform is unsupported
+   * @throws {@link Error} when keychain command fails or platform is unsupported
    * @internal
    */
   private async storeInKeychain(key: string, value: string): Promise<void> {
@@ -196,7 +196,7 @@ export class KeychainTokenStorage implements ITokenStorage {
    * Uses execFile with argument arrays to prevent command injection
    * @param key - Storage key in format serviceName:serverId
    * @returns Serialized token data from keychain
-   * @throws {Error} When keychain command fails or platform is unsupported
+   * @throws {@link Error} when keychain command fails or platform is unsupported
    * @internal
    */
   private async retrieveFromKeychain(key: string): Promise<string> {
@@ -244,7 +244,7 @@ export class KeychainTokenStorage implements ITokenStorage {
    * Remove token from OS keychain using platform-specific commands
    * Uses execFile with argument arrays to prevent command injection
    * @param key - Storage key in format serviceName:serverId
-   * @throws {Error} When keychain command fails or platform is unsupported
+   * @throws {@link Error} when keychain command fails or platform is unsupported
    * @internal
    */
   private async removeFromKeychain(key: string): Promise<void> {
@@ -270,7 +270,7 @@ export class KeychainTokenStorage implements ITokenStorage {
    * Store token in secure file as fallback (Linux/when keychain fails)
    * @param key - Storage key in format serviceName:serverId
    * @param value - Serialized token data to store
-   * @throws {Error} When file system operations fail
+   * @throws {@link Error} when file system operations fail
    * @internal
    */
   private async storeInFile(key: string, value: string): Promise<void> {
@@ -293,7 +293,7 @@ export class KeychainTokenStorage implements ITokenStorage {
    * Retrieve token from secure file fallback
    * @param key - Storage key in format serviceName:serverId
    * @returns Serialized token data from file
-   * @throws {Error} When file read fails or file doesn't exist
+   * @throws {@link Error} when file read fails or file doesn't exist
    * @internal
    */
   private async retrieveFromFile(key: string): Promise<string> {
@@ -307,7 +307,7 @@ export class KeychainTokenStorage implements ITokenStorage {
   /**
    * Remove token from secure file fallback
    * @param key - Storage key in format serviceName:serverId
-   * @throws {Error} When file deletion fails (ignores ENOENT)
+   * @throws {@link Error} when file deletion fails (ignores ENOENT)
    * @internal
    */
   private async removeFromFile(key: string): Promise<void> {

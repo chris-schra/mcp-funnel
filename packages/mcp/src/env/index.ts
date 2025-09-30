@@ -15,6 +15,13 @@ import type { TargetServer, ProxyConfig } from '@mcp-funnel/schemas';
  * @public
  */
 export interface IServerEnvBuilder {
+  /**
+   * Builds environment variables for a server.
+   * @param targetServer - Server configuration
+   * @param config - Proxy configuration
+   * @param configPath - Configuration file path
+   * @returns Environment variable map
+   */
   build(
     targetServer: TargetServer,
     config: ProxyConfig,
@@ -91,8 +98,8 @@ export class DefaultServerEnvBuilder implements IServerEnvBuilder {
  *
  * SEAM: Extension point for alternative builder implementations
  * (e.g., 'vault', 'aws-secrets', 'azure-keyvault').
- * @param {string} [type] - Builder type identifier (currently only 'default' implemented)
- * @returns {IServerEnvBuilder} Environment builder instance
+ * @param type - Builder type identifier (currently only 'default' implemented)
+ * @returns Environment builder instance
  * @public
  */
 export function createServerEnvBuilder(
@@ -110,11 +117,11 @@ export function createServerEnvBuilder(
 
 /**
  * Builds environment variables for a server using the configured strategy.
- * @param {TargetServer} targetServer - Server configuration including env overrides and secret providers
- * @param {ProxyConfig} config - Global proxy configuration with default secret providers
- * @param {string} configPath - Absolute path to config file (for resolving relative secret paths)
- * @param {string} [builderType] - Optional builder type (defaults to 'default')
- * @returns {Promise<Record<string, string>>} Fully resolved environment variable map ready for process spawning
+ * @param targetServer - Server configuration including env overrides and secret providers
+ * @param config - Global proxy configuration with default secret providers
+ * @param configPath - Absolute path to config file (for resolving relative secret paths)
+ * @param builderType - Optional builder type (defaults to 'default')
+ * @returns Fully resolved environment variable map ready for process spawning
  * @example
  * ```typescript
  * const env = await buildServerEnvironment(
@@ -124,7 +131,7 @@ export function createServerEnvBuilder(
  * );
  * ```
  * @public
- * @see file:./index.ts:28 - DefaultServerEnvBuilder implementation
+ * @see {@link DefaultServerEnvBuilder} - Default implementation
  */
 export async function buildServerEnvironment(
   targetServer: TargetServer,

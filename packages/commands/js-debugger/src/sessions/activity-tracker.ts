@@ -13,7 +13,7 @@ export class SessionActivityTracker implements SessionActivity {
     }
   >();
 
-  recordActivity(
+  public recordActivity(
     sessionId: string,
     type: 'user_action' | 'console_output' | 'state_change' | 'heartbeat',
   ): void {
@@ -36,15 +36,15 @@ export class SessionActivityTracker implements SessionActivity {
     this.activities.set(sessionId, activity);
   }
 
-  getLastActivity(sessionId: string): string | undefined {
+  public getLastActivity(sessionId: string): string | undefined {
     return this.activities.get(sessionId)?.lastActivity;
   }
 
-  getActivityCount(sessionId: string): number {
+  public getActivityCount(sessionId: string): number {
     return this.activities.get(sessionId)?.activityCount || 0;
   }
 
-  isSessionActive(sessionId: string, thresholdMs: number): boolean {
+  public isSessionActive(sessionId: string, thresholdMs: number): boolean {
     const activity = this.activities.get(sessionId);
     if (!activity) return false;
 
@@ -53,11 +53,11 @@ export class SessionActivityTracker implements SessionActivity {
     return now.getTime() - lastActivity.getTime() < thresholdMs;
   }
 
-  cleanup(): void {
+  public cleanup(): void {
     this.activities.clear();
   }
 
-  removeSession(sessionId: string): void {
+  public removeSession(sessionId: string): void {
     this.activities.delete(sessionId);
   }
 }

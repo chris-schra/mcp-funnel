@@ -27,7 +27,7 @@ export class BreakpointManager {
   private scripts: Map<string, ScriptInfo>;
   private projectRoot?: string;
 
-  constructor(
+  public constructor(
     cdpClient: CDPClient,
     scripts: Map<string, ScriptInfo>,
     projectRoot?: string,
@@ -47,7 +47,7 @@ export class BreakpointManager {
    * @param line - 1-based line number where the breakpoint should be set
    * @param condition - Optional JavaScript expression that must evaluate to true for the breakpoint to trigger
    * @returns Promise resolving to breakpoint registration with ID, verification status, and resolved locations
-   * @throws {Error} When CDP communication fails or the breakpoint cannot be set
+   * @throws \{Error\} When CDP communication fails or the breakpoint cannot be set
    * @example
    * ```typescript
    * // Simple breakpoint
@@ -61,7 +61,7 @@ export class BreakpointManager {
    * );
    * ```
    */
-  async setBreakpoint(
+  public async setBreakpoint(
     url: string,
     line: number,
     condition?: string,
@@ -108,9 +108,9 @@ export class BreakpointManager {
   /**
    * Removes a previously set breakpoint by its ID.
    * @param id - Breakpoint ID returned from setBreakpoint()
-   * @throws {Error} When CDP communication fails or the breakpoint ID is invalid
+   * @throws \{Error\} When CDP communication fails or the breakpoint ID is invalid
    */
-  async removeBreakpoint(id: string): Promise<void> {
+  public async removeBreakpoint(id: string): Promise<void> {
     try {
       await this.cdpClient.send('Debugger.removeBreakpoint', {
         breakpointId: id,
@@ -129,7 +129,7 @@ export class BreakpointManager {
    * @param id - Breakpoint ID to look up
    * @returns CDP breakpoint object containing breakpoint ID and resolved locations, or undefined if not found
    */
-  getBreakpoint(id: string): CDPBreakpoint | undefined {
+  public getBreakpoint(id: string): CDPBreakpoint | undefined {
     return this.breakpoints.get(id);
   }
 
@@ -139,7 +139,7 @@ export class BreakpointManager {
    * Note: This only clears the local breakpoint registry. It does not communicate
    * with CDP to remove breakpoints from the actual debugging session.
    */
-  clearBreakpoints(): void {
+  public clearBreakpoints(): void {
     this.breakpoints.clear();
   }
 
@@ -147,7 +147,7 @@ export class BreakpointManager {
    * Returns the internal breakpoints map.
    * @returns Read-only reference to the breakpoints map, keyed by breakpoint ID
    */
-  getBreakpoints(): Map<string, CDPBreakpoint> {
+  public getBreakpoints(): Map<string, CDPBreakpoint> {
     return this.breakpoints;
   }
 
@@ -155,7 +155,7 @@ export class BreakpointManager {
    * Updates the project root path used for path resolution.
    * @param projectRoot - New project root path, or undefined to clear it
    */
-  updateProjectRoot(projectRoot?: string): void {
+  public updateProjectRoot(projectRoot?: string): void {
     this.projectRoot = projectRoot;
   }
 }

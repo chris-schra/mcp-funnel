@@ -17,14 +17,14 @@ const execAsync = promisify(exec);
  * 3. Reads the new version from the updated package.json
  * 4. Updates the manifest with the new version and timestamp
  *
- * The command can be identified by either its package name (e.g., '@mcp-funnel/commands-js-debugger')
+ * The command can be identified by either its package name (e.g., '\@mcp-funnel/commands-js-debugger')
  * or its command name (e.g., 'js-debugger').
- * @param {CommandInstallerContext} context - Installer context containing directory paths and manifest location
- * @param {string} packageNameOrCommandName - Package name or command name to update
- * @returns {Promise<InstalledCommand>} Updated command metadata with new version number
- * @throws {Error} When the specified command is not found in the manifest
- * @throws {Error} When npm update fails (network error, package not found, invalid state)
- * @throws {Error} When the updated package.json cannot be read
+ * @param context - Installer context containing directory paths and manifest location
+ * @param packageNameOrCommandName - Package name or command name to update
+ * @returns Updated command metadata with new version number
+ * @throws \{Error\} When the specified command is not found in the manifest
+ * @throws \{Error\} When npm update fails (network error, package not found, invalid state)
+ * @throws \{Error\} When the updated package.json cannot be read
  * @example
  * ```typescript
  * // Update by package name

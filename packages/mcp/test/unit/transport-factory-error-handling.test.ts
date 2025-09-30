@@ -1,12 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { IAuthProvider, ITokenStorage } from '@mcp-funnel/core';
+import { describe, it, expect, vi } from 'vitest';
 
-import type {
-  SSETransportConfig,
-  StdioTransportConfig,
-  TransportConfig,
-} from '@mcp-funnel/models';
-import { clearTransportCache } from '../../src/utils/transport/transport-cache';
+import type { TransportConfig } from '@mcp-funnel/models';
 import { createTransport } from '../../src/utils/transport/index.js';
 
 // Type definitions for testing
@@ -25,25 +19,6 @@ type InvalidConfig = {
     backoffMultiplier?: number;
   };
 } & Record<string, unknown>;
-
-// Mock implementations for testing
-const mockAuthProvider: IAuthProvider = {
-  getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer test-token' }),
-  isValid: vi.fn().mockResolvedValue(true),
-  refresh: vi.fn().mockResolvedValue(undefined),
-};
-
-const mockTokenStorage: ITokenStorage = {
-  store: vi.fn().mockResolvedValue(undefined),
-  retrieve: vi.fn().mockResolvedValue({
-    accessToken: 'test-token',
-    expiresAt: new Date(Date.now() + 3600000),
-    tokenType: 'Bearer',
-  }),
-  clear: vi.fn().mockResolvedValue(undefined),
-  isExpired: vi.fn().mockResolvedValue(false),
-  scheduleRefresh: vi.fn(),
-};
 
 describe('TransportFactory - Error Handling', () => {
   it('should throw for invalid stdio config missing command', async () => {
@@ -97,8 +72,11 @@ describe('TransportFactory - Error Handling', () => {
 
   it('should handle auth provider initialization failure', async () => {
     const failingAuthProvider = {
-      ...mockAuthProvider,
+      getHeaders: vi
+        .fn()
+        .mockResolvedValue({ Authorization: 'Bearer test-token' }),
       isValid: vi.fn().mockRejectedValue(new Error('Auth failure')),
+      refresh: vi.fn().mockResolvedValue(undefined),
     };
 
     const config: TransportConfig = {
@@ -113,8 +91,11 @@ describe('TransportFactory - Error Handling', () => {
 
   it('should handle token storage initialization failure', async () => {
     const failingTokenStorage = {
-      ...mockTokenStorage,
+      store: vi.fn().mockResolvedValue(undefined),
       retrieve: vi.fn().mockRejectedValue(new Error('Storage failure')),
+      clear: vi.fn().mockResolvedValue(undefined),
+      isExpired: vi.fn().mockResolvedValue(false),
+      scheduleRefresh: vi.fn(),
     };
 
     const config: TransportConfig = {

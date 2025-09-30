@@ -13,8 +13,9 @@ import { tmpdir } from 'node:os';
 // Since it's not exported, we'll create a test version that mirrors the logic
 // The actual dev.ts checks for Array.isArray but we need to support both formats
 /**
- *
- * @param configPath
+ * Test version of loadConfig that mirrors the logic from dev.ts.
+ * @param configPath - Path to the configuration file
+ * @returns Configuration object with servers and optional tool filters
  */
 function loadConfigTest(configPath: string): {
   servers:

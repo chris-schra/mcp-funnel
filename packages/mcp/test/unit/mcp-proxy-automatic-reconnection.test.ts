@@ -68,16 +68,6 @@ const ensureServerConnected = async (
   }
 };
 
-const ensureServerDisconnected = async (
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> => {
-  const status = proxy.getServerStatus(serverName);
-  if (status.status === 'connected') {
-    await proxy.disconnectServer(serverName);
-  }
-};
-
 const getMockTransport = (serverName: string): MockTransport | undefined =>
   mockTransports.get(serverName);
 

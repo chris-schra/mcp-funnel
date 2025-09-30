@@ -16,7 +16,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MCPProxy } from '../../src/index.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { TransportError } from '@mcp-funnel/core';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 vi.mock('@mcp-funnel/core', async (importOriginal) => {
@@ -77,9 +76,6 @@ const ensureServerDisconnected = async (
     await proxy.disconnectServer(serverName);
   }
 };
-
-const getMockTransport = (serverName: string): MockTransport | undefined =>
-  mockTransports.get(serverName);
 
 describe('MCPProxy Reconnection Logic - Edge Cases', () => {
   beforeEach(async () => {

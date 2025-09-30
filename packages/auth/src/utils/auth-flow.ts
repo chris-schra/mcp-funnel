@@ -29,10 +29,10 @@ export interface AuthFlowContext {
  *
  * Removes the pending authorization from the context and clears its timeout.
  * If no state is provided, cleans up all pending authorizations (legacy cleanup).
- * @param {AuthFlowContext} context - The authorization flow context containing pending flows
- * @param {string} [state] - Optional state key to clean up. If omitted, all pending flows are cleared
+ * @param context - The authorization flow context containing pending flows
+ * @param state - Optional state key to clean up. If omitted, all pending flows are cleared
  * @internal
- * @see file:./auth-flow.ts:10-17 - PendingAuth interface definition
+ * @see {@link PendingAuth}
  */
 export function cleanupPendingAuth(
   context: AuthFlowContext,
@@ -60,11 +60,10 @@ export function cleanupPendingAuth(
  *
  * Scans all pending authorization flows and removes those that have exceeded
  * the expiry time. Calls the optional callback for each expired state before cleanup.
- * @param {AuthFlowContext} context - The authorization flow context containing pending flows
- * @param {number} stateExpiryMs - Maximum age in milliseconds before a state is considered expired
- * @param {(state: string) => void} [onExpired] - Optional callback invoked for each expired state before cleanup
+ * @param context - The authorization flow context containing pending flows
+ * @param stateExpiryMs - Maximum age in milliseconds before a state is considered expired
+ * @param onExpired - Optional callback invoked for each expired state before cleanup
  * @internal
- * @see file:../implementations/oauth2-authorization-code.ts:169 - Usage in OAuth2 provider
  */
 export function cleanupExpiredStates(
   context: AuthFlowContext,

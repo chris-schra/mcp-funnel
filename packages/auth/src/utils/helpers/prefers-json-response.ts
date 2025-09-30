@@ -4,10 +4,10 @@
  * Checks two indicators in priority order:
  * 1. Query parameter `format=json` (case-insensitive)
  * 2. `Accept` header containing `application/json`
- * @param c - Request context object
- * @param c.req - Request object with header and query accessors
- * @param c.req.header - Function to retrieve request headers by name
- * @param c.req.query - Function to retrieve query parameters by name
+ *
+ * The context parameter contains nested `req.header(name)` and `req.query(name)` functions
+ * for retrieving HTTP headers and query parameters respectively.
+ * @param c - Request context object with req.header and req.query accessor functions
  * @returns True if client prefers JSON format, false otherwise
  * @public
  */

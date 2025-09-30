@@ -18,6 +18,10 @@ import {
   setupDisconnectHandling,
   handleServerDisconnection,
 } from './disconnect-handler.js';
+import {
+  performManualReconnect,
+  performManualDisconnect,
+} from './manual-connection-operations.js';
 
 /**
  * Manages server connection lifecycle including connections, disconnections, and reconnections.
@@ -56,8 +60,7 @@ export class ServerConnectionManager {
   ) {}
 
   /**
-   * Initializes the disconnected servers list at startup.
-   * @param servers - Array of target server configurations to mark as disconnected
+   * @param servers - Target server configurations
    * @public
    */
   public initializeDisconnectedServers(
@@ -69,13 +72,9 @@ export class ServerConnectionManager {
   }
 
   /**
-   * Handles server disconnection events from transports.
-   *
-   * Called by transport close/error handlers to update state, clean up resources,
-   * and potentially trigger automatic reconnection if enabled.
    * @param targetServer - Server that disconnected
-   * @param reason - Disconnection reason ('manual_disconnect', 'error', etc.)
-   * @param errorMessage - Optional error message if disconnection was due to error
+   * @param reason - Reason for disconnection
+   * @param errorMessage - Optional error message describing the disconnection
    * @internal
    */
   private onServerDisconnect = (
@@ -116,10 +115,7 @@ export class ServerConnectionManager {
   };
 
   /**
-   * Sets up automatic reconnection for a disconnected server.
-   *
-   * Creates or reuses a ReconnectionManager and schedules the first reconnection attempt.
-   * @param targetServer - Server configuration to reconnect
+   * @param targetServer - Server to set up automatic reconnection for
    * @internal
    */
   private setupAutoReconnection(
@@ -150,11 +146,7 @@ export class ServerConnectionManager {
   }
 
   /**
-   * Attempts automatic reconnection to a disconnected server.
-   *
-   * Used by ReconnectionManager for scheduled reconnection attempts with backoff.
-   * Handles success by resetting the manager and failure by rescheduling.
-   * @param targetServer - Server configuration to reconnect
+   * @param targetServer - Server to attempt reconnection to
    * @internal
    */
   private async attemptAutoReconnection(
@@ -188,13 +180,8 @@ export class ServerConnectionManager {
 
   /**
    * Connects to a single target server and sets up disconnect handling.
-   *
-   * Creates transport, establishes MCP client connection, registers tools,
-   * and tracks connection state. Emits server.connected event on success.
    * @param targetServer - Server configuration to connect to
-   * @throws {Error} When connection fails (transport, authentication, or protocol errors)
    * @public
-   * @see file:./connection-setup.ts:11 - connectToServer implementation
    */
   public async connectToSingleServer(
     targetServer: TargetServer | TargetServerZod,
@@ -234,9 +221,6 @@ export class ServerConnectionManager {
 
   /**
    * Connects to all configured target servers in parallel.
-   *
-   * Continues proxy startup even if individual servers fail to connect.
-   * Failed servers remain in disconnected state for later reconnection.
    * @param servers - Array of target server configurations
    * @public
    */
@@ -257,7 +241,6 @@ export class ServerConnectionManager {
           command: targetServer.command,
           args: targetServer.args,
         });
-        // Do not throw; continue starting proxy with remaining servers
         return { name: targetServer.name, status: 'failed' as const, error };
       }
     });
@@ -271,11 +254,8 @@ export class ServerConnectionManager {
 
   /**
    * Manually reconnects to a disconnected server.
-   *
-   * Finds the server in disconnectedServers, resets its ReconnectionManager,
-   * and attempts connection. Emits server.reconnecting event.
    * @param name - Server name to reconnect
-   * @throws {Error} When server is already connected, reconnection in progress, or server not found
+   * @returns Promise that resolves when reconnection completes
    * @public
    */
   public async reconnectServer(name: string): Promise<void> {
@@ -296,40 +276,24 @@ export class ServerConnectionManager {
       throw new Error(`Server '${name}' not found or not configured`);
     }
 
-    // Remove the error property if it exists for reconnection
-    const serverConfig = { ...disconnectedServer };
-    delete (serverConfig as { error?: string }).error;
-
     const reconnectionPromise = (async () => {
       try {
-        // Emit server reconnecting event
-        this.eventEmitter.emit('server.reconnecting', {
+        await performManualReconnect({
           serverName: name,
-          status: 'reconnecting',
-          timestamp: new Date().toISOString(),
+          disconnectedServer,
+          reconnectionManager: this.reconnectionManagers.get(name),
+          eventEmitter: this.eventEmitter,
+          connectFn: (server) => this.connectToSingleServer(server),
+          onSuccess: () => {
+            // Success is already logged in performManualReconnect
+          },
+          onFailure: (serverName, errorMessage) => {
+            this.disconnectedServers.set(serverName, {
+              ...disconnectedServer,
+              error: String(errorMessage),
+            });
+          },
         });
-
-        // Reset the ReconnectionManager if it exists
-        const reconnectionManager = this.reconnectionManagers.get(name);
-        if (reconnectionManager) {
-          reconnectionManager.reset();
-        }
-
-        await this.connectToSingleServer(serverConfig);
-        console.error(`[proxy] Successfully reconnected to: ${name}`);
-        logEvent('info', 'server:reconnected', { name });
-      } catch (error) {
-        // Add error info back to disconnected server
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        this.disconnectedServers.set(name, {
-          ...disconnectedServer,
-          error: errorMessage,
-        });
-
-        console.error(`[proxy] Failed to reconnect to ${name}:`, error);
-        logError('server:reconnect_failed', error, { name });
-        throw error;
       } finally {
         this.manualReconnections.delete(name);
       }
@@ -341,11 +305,7 @@ export class ServerConnectionManager {
 
   /**
    * Manually disconnects from a connected server.
-   *
-   * Closes transport connection, cancels pending reconnection attempts,
-   * and moves server to disconnected state. Does not trigger auto-reconnection.
    * @param name - Server name to disconnect
-   * @throws {Error} When server is not currently connected
    * @public
    */
   public async disconnectServer(name: string): Promise<void> {
@@ -360,60 +320,59 @@ export class ServerConnectionManager {
 
     this.manualDisconnectRequests.add(name);
 
-    // Cancel any pending reconnection attempts
-    const reconnectionManager = this.reconnectionManagers.get(name);
-    if (reconnectionManager) {
-      reconnectionManager.cancel();
-      this.reconnectionManagers.delete(name);
-    }
-
     try {
-      // Close the transport connection
-      if (transport) {
-        await transport.close();
-      } else if (client) {
-        // Fallback: access client's private transport if no transport reference
-        const clientWithTransport = client as unknown as {
-          _transport?: { close: () => Promise<void> };
-        };
-        if (clientWithTransport._transport?.close) {
-          await clientWithTransport._transport.close();
-        }
-      }
-
-      console.error(`[proxy] Manually disconnected from: ${name}`);
-      logEvent('info', 'server:manual_disconnect', { name });
-
-      // Clean up and move to disconnected state
-      // Note: handleServerDisconnection will be called by the transport's onclose handler
-      // But we also call it directly to ensure cleanup happens
-      this.onServerDisconnect(targetServer, 'manual_disconnect');
-    } catch (error) {
-      console.error(`[proxy] Error during disconnection from ${name}:`, error);
-      logError('server:disconnect_failed', error, { name });
-      throw error;
+      await performManualDisconnect({
+        serverName: name,
+        targetServer,
+        client,
+        transport,
+        reconnectionManager: this.reconnectionManagers.get(name),
+        onDisconnect: (server, reason) =>
+          this.onServerDisconnect(server, reason),
+        cleanupReconnectionManager: (serverName) =>
+          this.reconnectionManagers.delete(serverName),
+      });
     } finally {
       this.manualDisconnectRequests.delete(name);
     }
   }
 
-  // Getters for external access
+  /**
+   * @returns Map of currently connected servers
+   * @public
+   */
   public getConnectedServers() {
     return this.connectedServers;
   }
 
+  /**
+   * @returns Map of disconnected servers
+   * @public
+   */
   public getDisconnectedServers() {
     return this.disconnectedServers;
   }
 
+  /**
+   * @returns Map of connection timestamps
+   * @public
+   */
   public getConnectionTimestamps() {
     return this.connectionTimestamps;
   }
 
+  /**
+   * @returns Map of active transports
+   * @public
+   */
   public getTransports() {
     return this.transports;
   }
 
+  /**
+   * @returns Map of reconnection managers
+   * @public
+   */
   public getReconnectionManagers() {
     return this.reconnectionManagers;
   }

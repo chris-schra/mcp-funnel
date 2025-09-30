@@ -32,6 +32,8 @@ export default tseslint.config(
       "tsdoc/syntax": "warn",
       'import/no-unresolved': 'off',
       'jsdoc/require-example': 'off',
+      'jsdoc/require-throws-type': 'off',
+      'jsdoc/require-param': ['warn', { checkDestructured: false }],
       'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
       '@typescript-eslint/explicit-member-accessibility': 'warn'
     },
@@ -55,6 +57,7 @@ export default tseslint.config(
     ],
     rules: {
       '@typescript-eslint/explicit-member-accessibility': 'off',
+      'jsdoc/require-yields': 'off',
     },
   },
   {

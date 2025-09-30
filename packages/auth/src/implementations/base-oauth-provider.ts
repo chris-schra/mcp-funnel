@@ -41,8 +41,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
   /**
    * Returns authentication headers for requests
    * @returns Promise resolving to headers object with Authorization header
-   * @throws {AuthenticationError} When token acquisition fails
-   * @public
+   * @throws {@link AuthenticationError} when token acquisition fails
    */
   public async getHeaders(): Promise<Record<string, string>> {
     const token = await this.ensureValidToken();
@@ -74,8 +73,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
   /**
    * Refresh credentials by acquiring a new token
    * @returns Promise that resolves when token refresh is complete
-   * @throws {AuthenticationError} When token acquisition fails
-   * @public
+   * @throws {@link AuthenticationError} when token acquisition fails
    */
   public async refresh(): Promise<void> {
     if (this.refreshPromise) {
@@ -94,8 +92,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
   /**
    * Ensures a valid token is available, acquiring one if necessary
    * @returns Promise resolving to valid token data
-   * @throws {AuthenticationError} When token acquisition fails
-   * @protected
+   * @throws {@link AuthenticationError} when token acquisition fails
    */
   protected async ensureValidToken(): Promise<TokenData> {
     const existingToken = await this.storage.retrieve();
@@ -158,8 +155,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
    * @param makeTokenRequest - Function that executes the token request
    * @param requestId - Unique identifier for request correlation and logging
    * @returns Promise resolving to OAuth2 token response
-   * @throws {AuthenticationError} When all retry attempts fail or non-retryable error occurs
-   * @protected
+   * @throws {@link AuthenticationError} when all retry attempts fail or non-retryable error occurs
    */
   protected async requestTokenWithRetry(
     makeTokenRequest: () => Promise<OAuth2TokenResponse>,
@@ -204,8 +200,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
    * @param requestId - Unique identifier for request correlation and logging
    * @param validateAudience - Optional function to validate token audience claim
    * @returns Promise that resolves when token is processed and stored
-   * @throws {AuthenticationError} When audience validation fails
-   * @protected
+   * @throws {@link AuthenticationError} when audience validation fails
    */
   protected async processTokenResponse(
     tokenResponse: OAuth2TokenResponse,
@@ -258,8 +253,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
    * @param error - Error that occurred during token request
    * @param response - Optional HTTP response object for extracting error details
    * @returns Never returns normally, always throws
-   * @throws {AuthenticationError} Mapped authentication error based on error type
-   * @protected
+   * @throws {@link AuthenticationError} - Mapped authentication error based on error type
    */
   protected async handleTokenRequestError(
     error: unknown,
@@ -294,8 +288,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
   /**
    * Validates required fields in token response
    * @param tokenResponse - OAuth2 token response to validate
-   * @throws {AuthenticationError} When access_token field is missing
-   * @protected
+   * @throws {@link AuthenticationError} when access_token field is missing
    */
   protected validateTokenResponse(tokenResponse: OAuth2TokenResponse): void {
     if (!tokenResponse.access_token) {
@@ -309,7 +302,6 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
   /**
    * Generates a unique request ID for correlation
    * @returns Unique request identifier for tracking and logging
-   * @protected
    */
   protected generateRequestId(): string {
     return RequestUtils.generateRequestId();
@@ -318,8 +310,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
   /**
    * Abstract method for acquiring tokens - must be implemented by subclasses
    * @returns Promise that resolves when token acquisition is complete
-   * @throws {AuthenticationError} When token acquisition fails
-   * @protected
+   * @throws {@link AuthenticationError} when token acquisition fails
    */
   protected abstract acquireToken(): Promise<void>;
 }

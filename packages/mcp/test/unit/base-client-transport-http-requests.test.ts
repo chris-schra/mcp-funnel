@@ -44,7 +44,7 @@ class TestTransport extends BaseClientTransport {
     this.handleConnectionOpen();
   }
 
-  protected async sendMessage(message: JSONRPCMessage): Promise<void> {
+  protected async sendMessage(_message: JSONRPCMessage): Promise<void> {
     // no-op
   }
 

@@ -1,7 +1,7 @@
 /**
  * Extracts the token from a Bearer authorization header.
- * @param {string} authHeader - The Authorization header value (e.g., 'Bearer token123')
- * @returns {string | null} The extracted token or null if not a Bearer token
+ * @param authHeader - The Authorization header value (e.g., 'Bearer token123')
+ * @returns The extracted token or null if not a Bearer token
  * @public
  */
 export function extractBearerToken(authHeader: string): string | null {

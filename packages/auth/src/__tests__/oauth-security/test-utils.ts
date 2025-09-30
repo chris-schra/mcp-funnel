@@ -23,7 +23,12 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
   };
 });
 
-// Create standard test configuration
+/**
+ * Creates a standard test configuration for OAuth2 Authorization Code flow.
+ *
+ * @param overrides - Optional configuration overrides to merge with defaults
+ * @returns Complete OAuth2AuthCodeConfig with test values
+ */
 export function createTestConfig(
   overrides?: Partial<OAuth2AuthCodeConfig>,
 ): OAuth2AuthCodeConfig {
@@ -39,17 +44,30 @@ export function createTestConfig(
   };
 }
 
-// Create test storage instance
+/**
+ * Creates a new MemoryTokenStorage instance for testing.
+ *
+ * @returns Fresh MemoryTokenStorage instance
+ */
 export function createTestStorage(): MemoryTokenStorage {
   return new MemoryTokenStorage();
 }
 
-// Setup mock console spy
+/**
+ * Sets up a mock spy for console.info to capture OAuth URLs.
+ *
+ * @returns Vitest spy for console.info that can be restored later
+ */
 export function setupConsoleSpy(): ReturnType<typeof vi.spyOn> {
   return vi.spyOn(console, 'info').mockImplementation(() => {});
 }
 
-// Helper to extract URL from console.info mock
+/**
+ * Extracts the OAuth authorization URL from console.info spy calls.
+ *
+ * @param consoleSpy - The console.info spy to extract URL from
+ * @returns The authorization URL if found, null otherwise
+ */
 export function extractAuthUrl(
   consoleSpy: ReturnType<typeof vi.spyOn>,
 ): string | null {

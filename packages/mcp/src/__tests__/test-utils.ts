@@ -15,6 +15,11 @@ export type MockClient = {
   callTool: ReturnType<typeof vi.fn>;
 } & Client;
 
+/**
+ * Creates a mock MCP Server instance for testing.
+ *
+ * @returns Mock server with vitest-mocked methods
+ */
 export function createMockServer(): MockServer {
   return {
     setRequestHandler: vi.fn(),
@@ -24,6 +29,11 @@ export function createMockServer(): MockServer {
   } as MockServer;
 }
 
+/**
+ * Creates a mock MCP Client instance for testing.
+ *
+ * @returns Mock client with vitest-mocked methods and default tool responses
+ */
 export function createMockClient(): MockClient {
   return {
     connect: vi.fn(),
@@ -47,6 +57,12 @@ export function createMockClient(): MockClient {
   } as MockClient;
 }
 
+/**
+ * Finds the tools/list request handler from a mock server's registered handlers.
+ *
+ * @param mockServer - The mock server instance to search for the handler
+ * @returns The matching handler call or undefined if not found
+ */
 export function findListToolsHandler(mockServer: MockServer) {
   return mockServer.setRequestHandler.mock.calls.find((call) => {
     const schema = call[0] as { parse?: (data: unknown) => unknown };

@@ -2,9 +2,11 @@ import { beforeEach } from 'vitest';
 import type {
   ProxyConfig,
   TargetServerZod,
-  SecretProviderConfig,
+  SecretProviderConfigSchema,
 } from '@mcp-funnel/schemas';
+import type { z } from 'zod';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TestContext {
   // Empty for now, but available for future shared state
 }
@@ -43,7 +45,7 @@ export const createTestConfig = (
 // Helper to create secret provider configs
 export const createSecretProvider = (
   type: 'dotenv' | 'process' | 'inline',
-  config: SecretProviderConfig['config'],
-): SecretProviderConfig => {
-  return { type, config } as SecretProviderConfig;
+  config: z.infer<typeof SecretProviderConfigSchema>['config'],
+): z.infer<typeof SecretProviderConfigSchema> => {
+  return { type, config } as z.infer<typeof SecretProviderConfigSchema>;
 };

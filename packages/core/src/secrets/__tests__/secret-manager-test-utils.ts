@@ -31,6 +31,12 @@ export class DelayedProvider extends BaseSecretProvider {
   }
 }
 
+/**
+ * Creates an inline secret provider for testing.
+ *
+ * @param values - Key-value pairs of secrets to provide
+ * @returns Configured inline provider instance
+ */
 export function createInlineProvider(
   values: Record<string, string>,
 ): InlineProvider {
@@ -40,6 +46,14 @@ export function createInlineProvider(
   });
 }
 
+/**
+ * Writes an environment file to disk for testing.
+ *
+ * @param baseDir - Directory to write the file to
+ * @param filename - Name of the .env file
+ * @param content - Array of lines to write to the file
+ * @returns Absolute path to the created file
+ */
 export function writeEnvFile(
   baseDir: string,
   filename: string,

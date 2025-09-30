@@ -145,7 +145,7 @@ export function createStreamableHTTPTransport(
  * @param config - Transport configuration with discriminated type field
  * @param dependencies - Optional auth provider and token storage
  * @returns Wrapped transport instance for the specified type
- * @throws {TransportError} When transport type is unsupported
+ * @throws TransportError when transport type is unsupported
  * @public
  */
 export async function createTransportImplementation(

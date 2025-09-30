@@ -94,7 +94,7 @@ export class JsDebuggerCommand implements ICommand {
    * Delegates to ToolRegistration which maintains the centralized registry
    * of handlers and their corresponding MCP tool schemas. Each tool definition
    * includes the tool name, description, and input schema for MCP protocol.
-   * @returns {Tool[]} Array of MCP Tool definitions with schemas for debug, continue, get_stacktrace,
+   * @returns Array of MCP Tool definitions with schemas for debug, continue, get_stacktrace,
    *          get_variables, search_console_output, list_sessions, stop, and cleanup_sessions
    * @see file:./command/tool-registration.ts:110 - Tool definition generation
    */
@@ -109,10 +109,10 @@ export class JsDebuggerCommand implements ICommand {
    * in the handler registry, constructs a shared context with all necessary
    * dependencies, and delegates execution to the matched handler. Errors from
    * handlers are caught and formatted into MCP-compliant error responses.
-   * @param {string} toolName - Name of the debug tool (e.g., 'debug', 'continue', 'get_stacktrace')
-   * @param {Record<string, unknown>} args - Tool-specific arguments as a JSON object (structure varies per tool)
-   * @returns {Promise<CallToolResult>} MCP-compliant result with text content containing JSON response
-   * @throws {never} Never throws - all errors are caught and returned as formatted error responses
+   * @param toolName - Name of the debug tool (e.g., 'debug', 'continue', 'get_stacktrace')
+   * @param args - Tool-specific arguments as a JSON object (structure varies per tool)
+   * @returns MCP-compliant result with text content containing JSON response
+   * @throws Never throws - all errors are caught and returned as formatted error responses
    * @example Starting a debug session
    * ```typescript
    * const result = await command.executeToolViaMCP('debug', {
@@ -179,7 +179,7 @@ export class JsDebuggerCommand implements ICommand {
    *
    * Environment variables:
    * - JS_DEBUGGER_REAL: Set to 'false' to use mock mode, any other value uses real CDP
-   * @param {string[]} _args - Command line arguments (currently unused, reserved for future CLI options)
+   * @param _args - Command line arguments (currently unused, reserved for future CLI options)
    */
   public async executeViaCLI(_args: string[]): Promise<void> {
     const USE_REAL_CDP = process.env.JS_DEBUGGER_REAL !== 'false';

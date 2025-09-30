@@ -17,7 +17,8 @@ import type { ToolRegistry } from '../tool-registry/index.js';
 
 /**
  * Type guard to validate if an object is a valid ICommand
- * @param obj
+ * @param obj - Object to validate
+ * @returns True if object implements ICommand interface
  * @internal
  */
 function isValidCommand(obj: unknown): obj is ICommand {
@@ -34,9 +35,9 @@ function isValidCommand(obj: unknown): obj is ICommand {
 
 /**
  * Register tools from a command registry
- * @param registry
- * @param enabledCommands
- * @param toolRegistry
+ * @param registry - Command registry containing discovered commands
+ * @param enabledCommands - List of command names to enable (empty array enables all)
+ * @param toolRegistry - Tool registry for registering discovered tools
  * @internal
  */
 async function registerFromRegistry(
@@ -81,8 +82,8 @@ async function registerFromRegistry(
 
 /**
  * Load bundled commands from the commands directory
- * @param enabledCommands
- * @param toolRegistry
+ * @param enabledCommands - List of command names to enable (empty array enables all)
+ * @param toolRegistry - Tool registry for registering discovered tools
  * @internal
  */
 async function loadBundledCommands(
@@ -109,9 +110,9 @@ async function loadBundledCommands(
 }
 
 /**
- * Load command packages installed under node_modules/@mcp-funnel
- * @param enabledCommands
- * @param toolRegistry
+ * Load command packages installed under node_modules/\@mcp-funnel
+ * @param enabledCommands - List of command names to enable (empty array enables all)
+ * @param toolRegistry - Tool registry for registering discovered tools
  * @internal
  */
 async function loadInstalledCommandPackages(
@@ -196,8 +197,8 @@ async function loadInstalledCommandPackages(
 
 /**
  * Load user-installed commands from ~/.mcp-funnel/packages
- * @param enabledCommands
- * @param toolRegistry
+ * @param enabledCommands - List of command names to enable (empty array enables all)
+ * @param toolRegistry - Tool registry for registering discovered tools
  * @internal
  */
 async function loadUserCommands(
@@ -214,8 +215,8 @@ async function loadUserCommands(
 
 /**
  * Main entry point: Load all commands based on configuration
- * @param config
- * @param toolRegistry
+ * @param config - Proxy configuration containing command settings
+ * @param toolRegistry - Tool registry for registering discovered tools
  * @internal
  */
 export async function loadDevelopmentCommands(

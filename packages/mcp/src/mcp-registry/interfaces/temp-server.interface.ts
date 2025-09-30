@@ -43,37 +43,37 @@ export interface ServerConfig {
 export interface ITemporaryServerManager {
   /**
    * Spawn a new temporary MCP server
-   * @param {ServerConfig} config - Server configuration including command, args, and connection details
-   * @returns {Promise<string>} Promise resolving to unique server identifier
-   * @throws {Error} if server cannot be spawned or configuration is invalid
+   * @param config - Server configuration including command, args, and connection details
+   * @returns Promise resolving to unique server identifier
+   * @throws if server cannot be spawned or configuration is invalid
    */
   spawn(config: ServerConfig): Promise<string>;
 
   /**
    * Check if a server is managed as temporary
-   * @param {string} serverName - Name of the server to check
-   * @returns {boolean} true if server exists and is temporary, false otherwise
+   * @param serverName - Name of the server to check
+   * @returns true if server exists and is temporary, false otherwise
    */
   isTemporary(serverName: string): boolean;
 
   /**
    * Retrieve configuration for a temporary server
-   * @param {string} serverName - Name of the temporary server
-   * @returns {ServerConfig | null} Server configuration if found, null if server doesn't exist or isn't temporary
+   * @param serverName - Name of the temporary server
+   * @returns Server configuration if found, null if server doesn't exist or isn't temporary
    */
   getTemporary(serverName: string): ServerConfig | null;
 
   /**
    * List all currently active temporary server names
-   * @returns {string[]} Array of temporary server names
+   * @returns Array of temporary server names
    */
   listTemporary(): string[];
 
   /**
    * Disconnect and remove a temporary server
-   * @param {string} serverName - Name of the server to disconnect
-   * @returns {Promise<void>} Promise resolving when server is fully disconnected and cleaned up
-   * @throws {Error} if server doesn't exist or disconnect fails
+   * @param serverName - Name of the server to disconnect
+   * @returns Promise resolving when server is fully disconnected and cleaned up
+   * @throws if server doesn't exist or disconnect fails
    */
   disconnect(serverName: string): Promise<void>;
 
@@ -82,9 +82,9 @@ export interface ITemporaryServerManager {
    *
    * This operation moves the server from temporary to persistent storage,
    * allowing it to be automatically reconnected in future sessions.
-   * @param {string} serverName - Name of the temporary server to persist
-   * @returns {Promise<ServerConfig | null>} Promise resolving to the persisted configuration, or null if server doesn't exist
-   * @throws {Error} if persistence fails or server is already persistent
+   * @param serverName - Name of the temporary server to persist
+   * @returns Promise resolving to the persisted configuration, or null if server doesn't exist
+   * @throws if persistence fails or server is already persistent
    */
   persist(serverName: string): Promise<ServerConfig | null>;
 }

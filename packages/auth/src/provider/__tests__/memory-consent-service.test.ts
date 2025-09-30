@@ -8,8 +8,9 @@ const USER_ID = 'user-123';
 const CLIENT_ID = 'client-abc';
 
 /**
- *
- * @param options
+ * Helper function to create a MemoryUserConsentService instance for testing
+ * @param options - Optional configuration for the consent service
+ * @returns Configured MemoryUserConsentService instance
  */
 function createService(options?: MemoryUserConsentServiceOptions) {
   return new MemoryUserConsentService(options);

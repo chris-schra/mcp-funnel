@@ -47,12 +47,7 @@ export interface BreakpointHandlerContext {
  * via the onProjectRootUpdated callback if an absolute file path is resolved for the
  * first time. Line numbers in CDP are zero-based but are converted to one-based for
  * the BreakpointRegistration that's emitted.
- * @param params - Breakpoint resolution event parameters from CDP
- * @param params.breakpointId - Unique CDP breakpoint identifier
- * @param params.location - Resolved breakpoint location in script coordinates
- * @param params.location.scriptId - Script identifier where breakpoint was resolved
- * @param params.location.lineNumber - Zero-based line number in the script
- * @param params.location.columnNumber - Optional zero-based column number
+ * @param params - Breakpoint resolution event parameters from CDP containing breakpointId and location (with scriptId, lineNumber, and optional columnNumber)
  * @param context - Shared state context containing script registry and breakpoint map (mutated in place)
  * @param eventEmitter - Emittery instance for publishing breakpointResolved events
  * @param breakpointResolvedHandlers - Array of legacy callback handlers to invoke synchronously

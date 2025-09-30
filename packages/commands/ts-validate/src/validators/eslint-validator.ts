@@ -3,11 +3,19 @@ import type { ValidationResult } from '../validator.js';
 import type { ValidatorContext } from '../util/validator-context.js';
 
 /**
- * Validates files with ESLint
- * @param files - Files to validate
- * @param ESLintCtor - ESLint constructor
+ * Validates files with ESLint.
+ *
+ * Runs ESLint on the provided files, optionally auto-fixing issues and
+ * writing fixed content back to disk. Handles ESLint's ignore patterns
+ * and enriches specific rule messages for AI guidance.
+ *
+ * @param files - Absolute file paths to validate
+ * @param ESLintCtor - ESLint constructor from loaded module
  * @param ctx - Validator context for storing results
  * @param autoFix - Whether to auto-fix linting issues
+ * @returns Promise that resolves when validation is complete
+ *
+ * @public
  */
 export async function validateESLint(
   files: string[],

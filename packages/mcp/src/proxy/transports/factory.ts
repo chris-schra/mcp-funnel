@@ -10,14 +10,14 @@ import { ReconnectablePrefixedStdioClientTransport } from './reconnectable-trans
  * SEAM: Can be extended to create different transport types (WebSocket, HTTP, etc.).
  * Currently only creates stdio transports but designed to support future protocols.
  * @public
- * @see file:./reconnectable-transport.ts - Transport implementation
+ * @see {@link ReconnectablePrefixedStdioClientTransport} - Transport implementation
  */
 export class DefaultTransportFactory implements ITransportFactory {
   /**
    * Creates a reconnectable stdio transport for the specified server.
-   * @param {string} serverName - Server identifier used for logging and prefixing
-   * @param {ReconnectableTransportOptions} options - Transport configuration including command, args, and reconnection settings
-   * @returns {IReconnectableTransport} Configured reconnectable transport instance
+   * @param serverName - Server identifier used for logging and prefixing
+   * @param options - Transport configuration including command, args, and reconnection settings
+   * @returns Configured reconnectable transport instance
    * @public
    */
   public create(
@@ -32,15 +32,15 @@ export class DefaultTransportFactory implements ITransportFactory {
  * Creates a transport factory based on the specified protocol type.
  * SEAM: Currently only 'stdio' is implemented, but extensible for future protocols.
  * Unknown types fall back to stdio for backward compatibility.
- * @param {'stdio' | string} type - Transport protocol type ('stdio' or future: 'websocket', 'http', 'grpc')
- * @returns {ITransportFactory} Factory instance for creating transports of the specified type
+ * @param type - Transport protocol type ('stdio' or future: 'websocket', 'http', 'grpc')
+ * @returns Factory instance for creating transports of the specified type
  * @example
  * ```typescript
  * const factory = createTransportFactory('stdio');
  * const transport = factory.create('my-server', options);
  * ```
  * @public
- * @see file:../types.ts - ITransportFactory interface
+ * @see {@link ITransportFactory} - Factory interface
  */
 export function createTransportFactory(
   type: 'stdio' | string = 'stdio',

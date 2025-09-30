@@ -31,21 +31,21 @@ export interface AuthProviderResult {
  * For OAuth2 flows (client credentials and authorization code), automatically creates
  * token storage using TokenStorageFactory with 'auto' mode (keychain on macOS, memory fallback).
  * Bearer tokens do not require token storage.
- * @param {AuthConfigZod | undefined} authConfig - Authentication configuration from server config
- * @param {string | undefined} serverName - Server identifier for token storage namespacing
- * @param {Record<string, string>} [resolvedEnv] - Environment variables available to the provider
- * @returns {AuthProviderResult | undefined} Auth provider and optional token storage, or undefined for 'none' auth type
- * @throws {Error} When authConfig contains an unsupported auth type
+ * @param authConfig - Authentication configuration from server config
+ * @param serverName - Server identifier for token storage namespacing
+ * @param resolvedEnv - Environment variables available to the provider
+ * @returns Auth provider and optional token storage, or undefined for 'none' auth type
+ * @throws Error when authConfig contains an unsupported auth type
  * @example
  * ```typescript
  * const result = createAuthProvider(
- *   { type: 'bearer', token: 'sk-...' },
+ *   \{ type: 'bearer', token: 'sk-...' \},
  *   'my-server',
  *   process.env
  * );
  * ```
  * @public
- * @see file:./connection-setup.ts:97 - Usage in server connection
+ * @see {@link connectToServer} - Usage in server connection
  */
 export function createAuthProvider(
   authConfig: AuthConfigZod | undefined,

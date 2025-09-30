@@ -148,8 +148,8 @@ export async function replaceSDKTransport(
  *
  * Ensures the URL is properly formatted and uses http: or https: protocol.
  * @param url - URL string to validate
- * @throws {Error} When URL is empty or invalid format
- * @throws {TransportError} When protocol is not http: or https:
+ * @throws When URL is empty or invalid format
+ * @throws When protocol is not http: or https:
  * @internal
  */
 export function validateStreamableHTTPUrl(url: string): void {

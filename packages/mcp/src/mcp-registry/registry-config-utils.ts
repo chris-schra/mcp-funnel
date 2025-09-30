@@ -4,7 +4,6 @@
  * This module contains functions for converting registry server data into
  * standardized ServerConfig and RegistryInstallInfo formats.
  * @public
- * @module
  */
 
 import type {
@@ -23,8 +22,8 @@ import { convertHeaders } from './registry-utils.js';
  *
  * Converts registry server metadata into a standardized ServerConfig that can
  * be used for server spawning or configuration persistence.
- * @param {RegistryServer} server - Registry server data to convert
- * @returns {Promise<ServerConfig>} Server configuration ready for use
+ * @param server - Registry server data to convert
+ * @returns Server configuration ready for use
  * @example
  * ```typescript
  * const registryServer = await client.getServer('github-mcp-server');
@@ -63,8 +62,8 @@ export async function generateServerConfigFromRegistry(
  *
  * Provides everything needed to install and configure a server, including
  * the configuration snippet and human-readable installation instructions.
- * @param {RegistryServer} server - Registry server to generate install info for
- * @returns {Promise<RegistryInstallInfo>} Complete installation information
+ * @param server - Registry server to generate install info for
+ * @returns Complete installation information
  * @example
  * ```typescript
  * const registryServer = await client.getServer('github-mcp-server');

@@ -67,14 +67,14 @@ export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
    * Processing flow:
    * 1. Checks for mock session and routes to mock handler if found
    * 2. Validates that real session exists and is accessible
-   * 3. Handles evaluation requests if `evaluate` is provided
+   * 3. Handles evaluation requests if evaluate is provided
    * 4. Handles stop action by terminating session
    * 5. Executes stepping actions (step_over, step_into, step_out)
    * 6. Executes continue action via enhanced session
    * 7. Updates session state and returns formatted response
-   * @param {ContinueHandlerArgs} args - Control operation parameters including session ID and action
-   * @param {ToolHandlerContext} context - Shared handler context providing session management and formatting
-   * @returns {Promise<CallToolResult>} Formatted result containing updated debug state or error information
+   * @param args - Control operation parameters including session ID and action
+   * @param context - Shared handler context providing session management and formatting
+   * @returns Formatted result containing updated debug state or error information
    * @see file:../types/handlers.ts:22 - ToolHandlerContext interface
    * @see file:../types/session.ts:68-71 - Stepping methods on IDebugSession
    * @see file:../enhanced-debug-session.ts - Enhanced session implementation

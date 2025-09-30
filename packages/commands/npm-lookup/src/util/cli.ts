@@ -13,8 +13,8 @@ import { MAX_SEARCH_RESULTS } from '../types.js';
  * Extracts the --limit flag and its value from the arguments array, validates it,
  * and ensures it falls within the valid range (1 to MAX_SEARCH_RESULTS).
  * Returns the parsed limit and remaining arguments with the flag removed.
- * @param {string[]} args - Raw CLI arguments array
- * @returns {{ limit: number | undefined; remainingArgs: string[] }} Object containing the validated limit and remaining arguments
+ * @param args - Raw CLI arguments array
+ * @returns Object containing the validated limit and remaining arguments
  * @internal
  */
 function parseLimitFlag(args: string[]): {
@@ -44,19 +44,19 @@ function parseLimitFlag(args: string[]): {
  * Parses CLI arguments for npm-lookup command into structured format.
  *
  * Handles two subcommands:
- * - 'lookup <package-name>': Returns subcommand and packageName
- * - 'search <query> [--limit N]': Returns subcommand, query, and optional limit
+ * - 'lookup \<package-name\>': Returns subcommand and packageName
+ * - 'search \<query\> [--limit N]': Returns subcommand, query, and optional limit
  *
  * The --limit flag is automatically extracted, validated, and clamped to valid range.
- * @param {string[]} args - CLI arguments array (e.g., ['search', 'react', '--limit', '10'])
- * @returns {{ subcommand: string | undefined; packageName?: string; query?: string; limit?: number }} Parsed arguments object with subcommand and relevant parameters
+ * @param args - CLI arguments array (e.g., ['search', 'react', '--limit', '10'])
+ * @returns Parsed arguments object with subcommand and relevant parameters
  * @example
  * ```typescript
  * const result = parseCLIArgs(['lookup', 'react']);
- * // { subcommand: 'lookup', packageName: 'react' }
+ * // \{ subcommand: 'lookup', packageName: 'react' \}
  *
  * const result2 = parseCLIArgs(['search', 'typescript', '--limit', '5']);
- * // { subcommand: 'search', query: 'typescript', limit: 5 }
+ * // \{ subcommand: 'search', query: 'typescript', limit: 5 \}
  * ```
  * @public
  * @see file:../../command.ts:152 - Usage in CLI execution

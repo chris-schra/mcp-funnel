@@ -28,7 +28,7 @@ export interface DebugHandlerArgs {
    * Runtime command for Node platform.
    * Specifies which Node-compatible runtime to use (e.g., "node", "tsx", "ts-node").
    * Only applicable when platform is 'node'.
-   * @default "node"
+   * @defaultValue "node"
    */
   command?: string;
 
@@ -64,7 +64,7 @@ export interface DebugHandlerArgs {
    * Timeout in milliseconds for session initialization.
    * How long to wait for the debugger to pause before returning a response.
    * If timeout is reached, returns a "running" session status rather than an error.
-   * @default 30000
+   * @defaultValue 30000
    */
   timeout?: number;
 
@@ -76,14 +76,14 @@ export interface DebugHandlerArgs {
 
   /**
    * Whether to capture console output from the debugged process.
-   * @default false
+   * @defaultValue false
    */
   captureConsole?: boolean;
 
   /**
    * Console output verbosity level.
    * Controls which console messages are captured and returned.
-   * @default "all"
+   * @defaultValue "all"
    */
   consoleVerbosity?: 'all' | 'warn-error' | 'error-only' | 'none';
 
@@ -91,7 +91,7 @@ export interface DebugHandlerArgs {
    * Whether to use mock implementation instead of real debugger.
    * When true, creates a simulated debug session for testing.
    * Also activated when JS_DEBUGGER_REAL environment variable is 'false'.
-   * @default false
+   * @defaultValue false
    */
   useMock?: boolean;
 }
@@ -158,9 +158,9 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
    * Processes the arguments to prepare a DebugRequest, resolves paths for Node
    * platform when needed, creates the session (mock or real), and waits for the
    * debugger to pause at its initial state.
-   * @param {DebugHandlerArgs} args - Configuration for the debug session to create
-   * @param {ToolHandlerContext} context - Handler context with session manager and response formatter
-   * @returns {Promise<CallToolResult>} Promise resolving to formatted debug state or error result
+   * @param args - Configuration for the debug session to create
+   * @param context - Handler context with session manager and response formatter
+   * @returns Promise resolving to formatted debug state or error result
    * @see file:../types/handlers.ts:22 - ToolHandlerContext interface
    * @see file:../session-manager.ts - SessionManager.createSession method
    */

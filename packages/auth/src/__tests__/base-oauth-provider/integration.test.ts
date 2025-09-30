@@ -5,6 +5,10 @@ import {
   createTestToken,
 } from './test-utils.js';
 
+/**
+ * Tests full integration scenarios for BaseOAuthProvider including token lifecycle and concurrent requests.
+ * @see {@link BaseOAuthProvider}
+ */
 describe('BaseOAuthProvider - Integration Scenarios', () => {
   let provider: TestOAuthProvider;
   let mockStorage: MockTokenStorage;
