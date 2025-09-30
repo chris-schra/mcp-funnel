@@ -56,6 +56,7 @@ export class ProcessEnvProvider extends BaseSecretProvider {
    * 3. Blocklist (if specified) - exclude variables in the list
    *
    * When a prefix is configured, it's stripped from the resulting secret keys.
+   * @returns Promise resolving to filtered environment variables
    * @internal
    */
   protected async doResolveSecrets(): Promise<Record<string, string>> {

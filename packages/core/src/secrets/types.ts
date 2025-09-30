@@ -33,7 +33,7 @@ export interface ISecretProvider {
    * Resolves all secrets managed by this provider.
    * @returns A promise that resolves to a key-value mapping of secret names to values.
    *          Empty string values indicate missing or unset secrets.
-   * @throws {Error} When the provider encounters an unrecoverable error accessing secrets.
+   * @throws \{Error\} When the provider encounters an unrecoverable error accessing secrets
    */
   resolveSecrets(): Promise<Record<string, string>>;
 
@@ -106,7 +106,7 @@ export interface ISecretProviderRegistry {
    * Registers a secret provider with the given name.
    * @param name - Unique identifier for the provider. Should match provider.getName()
    * @param provider - The secret provider implementation to register
-   * @throws {Error} If a provider with the same name is already registered
+   * @throws \{Error\} When a provider with the same name is already registered
    */
   register(name: string, provider: ISecretProvider): void;
 

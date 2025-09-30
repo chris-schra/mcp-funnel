@@ -7,12 +7,12 @@ import { SecretProviderRegistry } from '../secret-provider-registry.js';
 import { createInlineProvider } from './secret-manager-test-utils.js';
 
 describe('SecretManager - Edge Cases and Error Handling', () => {
-  let registry: SecretProviderRegistry;
+  let _registry: SecretProviderRegistry;
   let originalEnv: NodeJS.ProcessEnv;
   let workDir: string;
 
   beforeEach(() => {
-    registry = new SecretProviderRegistry();
+    _registry = new SecretProviderRegistry();
     originalEnv = { ...process.env };
     workDir = mkdtempSync(join(tmpdir(), 'secret-manager-test-'));
   });

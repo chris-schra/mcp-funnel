@@ -73,7 +73,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Validate and normalize URL for WebSocket
-   * @param config
+   * @param config - WebSocket transport configuration
    */
   protected validateAndNormalizeUrl(
     config: WebSocketClientTransportConfig,
@@ -143,7 +143,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Send WebSocket message
-   * @param message
+   * @param message - JSON-RPC message to send
    */
   protected async sendMessage(message: JSONRPCMessage): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -245,7 +245,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Handle WebSocket message event
-   * @param data
+   * @param data - Raw message data from WebSocket
    */
   private handleWebSocketMessage(data: WebSocket.Data): void {
     try {
@@ -259,8 +259,8 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Handle WebSocket close event
-   * @param code
-   * @param reason
+   * @param code - WebSocket close code
+   * @param reason - Close reason buffer
    */
   private handleWebSocketClose(code: number, reason: Buffer): void {
     const reasonText = reason.toString();
@@ -309,7 +309,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Handle WebSocket error event
-   * @param error
+   * @param error - Error from WebSocket
    */
   private handleWebSocketError(error: Error): void {
     const transportError = TransportError.connectionFailed(

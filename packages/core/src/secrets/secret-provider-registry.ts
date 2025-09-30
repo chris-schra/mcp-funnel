@@ -23,7 +23,7 @@ export class SecretProviderRegistry implements ISecretProviderRegistry {
    * Registers a secret provider with the given name.
    * @param name - Unique identifier for the provider
    * @param provider - The secret provider implementation to register
-   * @throws {Error} If a provider with the same name is already registered
+   * @throws \{Error\} When a provider with the same name is already registered
    */
   public register(name: string, provider: ISecretProvider): void {
     if (this.providers.has(name)) {

@@ -99,10 +99,10 @@ function needsContinuation(
  * Preprocesses .env file content into logical lines.
  *
  * Handles:
- * - Backslash continuations (\ at end of line)
+ * - Backslash continuations (backslash at end of line)
  * - Multiline quoted values (unclosed quotes)
  * - Heuristic-based continuation detection
- * - Fallback to single-line parsing for pathological cases (>10 lines)
+ * - Fallback to single-line parsing for pathological cases (more than 10 lines)
  * @param content - Raw .env file contents
  * @returns Array of logical lines ready for parsing
  * @internal

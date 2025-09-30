@@ -29,7 +29,7 @@ export function resolveDotEnvPath(
  * @param filePath - Absolute path to the .env file
  * @param encoding - Character encoding to use (typically 'utf-8')
  * @returns File contents as a string
- * @throws {Error} If file cannot be read (including ENOENT for missing files)
+ * @throws \{Error\} When file cannot be read (including ENOENT for missing files)
  * @internal
  */
 export function readDotEnvFile(
@@ -42,7 +42,7 @@ export function readDotEnvFile(
 /**
  * Checks if an error indicates a missing file (ENOENT).
  * @param error - Error object to check
- * @returns true if error has code 'ENOENT', false otherwise
+ * @returns True if error has code 'ENOENT', false otherwise
  * @internal
  */
 export function isMissingFileError(error: unknown): boolean {

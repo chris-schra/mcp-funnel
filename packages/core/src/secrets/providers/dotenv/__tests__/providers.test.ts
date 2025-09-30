@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
@@ -6,7 +7,8 @@ import { DotEnvProvider } from '../index.js';
 
 // Test setup helpers
 /**
- *
+ * Creates a temporary test directory for .env file testing.
+ * @returns Path to the created test directory
  */
 function createTestDirectory(): string {
   const testDir = join(
@@ -18,10 +20,11 @@ function createTestDirectory(): string {
 }
 
 /**
- *
- * @param dir
- * @param filename
- * @param content
+ * Creates a test .env file with specified content.
+ * @param dir - Directory where the file will be created
+ * @param filename - Name of the .env file
+ * @param content - Content to write to the file
+ * @returns Path to the created file
  */
 function createTestEnvFile(
   dir: string,
@@ -34,8 +37,8 @@ function createTestEnvFile(
 }
 
 /**
- *
- * @param dir
+ * Cleans up a test directory and its contents.
+ * @param dir - Directory path to clean up
  */
 function cleanupTestDirectory(dir: string): void {
   try {

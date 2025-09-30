@@ -9,9 +9,10 @@ import {
 import type { SecretProviderConfig } from './provider-configs.js';
 
 /**
- *
- * @param path
- * @param name
+ * Creates a DotEnv provider configuration for testing.
+ * @param path - Path to the .env file
+ * @param name - Optional name for the provider
+ * @returns DotEnv provider configuration object
  */
 function createDotEnvConfig(path: string, name?: string): SecretProviderConfig {
   return {

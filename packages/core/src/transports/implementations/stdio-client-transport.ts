@@ -80,7 +80,7 @@ export class StdioClientTransport implements Transport {
    * Starts the transport by spawning the child process and setting up communication.
    *
    * Should only be called after callbacks (onmessage, onerror, onclose) are installed.
-   * @throws {TransportError} When process spawn fails or times out
+   * @throws \{TransportError\} When process spawn fails or times out
    * @public
    */
   public async start(): Promise<void> {
@@ -120,7 +120,7 @@ export class StdioClientTransport implements Transport {
    * Messages are serialized as JSON and terminated with newline.
    * @param message - JSON-RPC message to send
    * @param options - Optional send options (e.g., relatedRequestId)
-   * @throws {TransportError} When transport not started or send fails
+   * @throws \{TransportError\} When transport not started or send fails
    * @public
    */
   public async send(
@@ -196,7 +196,7 @@ export class StdioClientTransport implements Transport {
   /**
    * Sets the protocol version used for the connection.
    * Called when the initialize response is received.
-   * @param version
+   * @param version - Protocol version string
    */
   public setProtocolVersion?(version: string): void {
     logEvent('debug', 'transport:stdio:protocol_version_set', {
@@ -269,7 +269,7 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Handles process-level errors.
-   * @param error
+   * @param error - Error from child process
    */
   private handleProcessError(error: Error): void {
     const transportError = handleSpawnError(
@@ -290,8 +290,8 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Handles process close events.
-   * @param code
-   * @param signal
+   * @param code - Exit code from child process
+   * @param signal - Signal that terminated the process
    */
   private handleProcessClose(
     code: number | null,
@@ -331,8 +331,8 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Handles process exit events.
-   * @param code
-   * @param signal
+   * @param code - Exit code from child process
+   * @param signal - Signal that terminated the process
    */
   private handleProcessExit(
     code: number | null,

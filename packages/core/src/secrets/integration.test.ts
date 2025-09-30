@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
@@ -10,7 +11,8 @@ import { InlineProvider } from './inline-provider.js';
 
 // Test setup helpers
 /**
- *
+ * Creates temporary test directory.
+ * @returns Absolute path to created directory
  */
 function createTestDirectory(): string {
   const testDir = join(
@@ -22,10 +24,11 @@ function createTestDirectory(): string {
 }
 
 /**
- *
- * @param dir
- * @param filename
- * @param content
+ * Creates test environment file with specified content.
+ * @param dir - Parent directory path
+ * @param filename - Name of file to create
+ * @param content - File content string
+ * @returns Absolute path to created file
  */
 function createTestEnvFile(
   dir: string,
@@ -38,8 +41,8 @@ function createTestEnvFile(
 }
 
 /**
- *
- * @param dir
+ * Removes test directory and all contents.
+ * @param dir - Directory path to remove
  */
 function cleanupTestDirectory(dir: string): void {
   try {

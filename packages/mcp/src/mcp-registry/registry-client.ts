@@ -120,8 +120,8 @@ export class MCPRegistryClient {
 
   /**
    * Creates a new MCPRegistryClient instance.
-   * @param {string} baseUrl - The base URL of the MCP registry API (e.g., 'https://registry.modelcontextprotocol.io')
-   * @param {IRegistryCache<unknown>} [cache] - Optional cache implementation. Defaults to NoOpCache if not provided
+   * @param baseUrl - The base URL of the MCP registry API (e.g., 'https://registry.modelcontextprotocol.io')
+   * @param cache - Optional cache implementation. Defaults to NoOpCache if not provided
    * @example
    * ```typescript
    * // With default no-op cache
@@ -156,9 +156,9 @@ export class MCPRegistryClient {
    * - HTTP errors: Logged and thrown
    * - JSON parsing errors: Logged and thrown
    * - Successfully returns empty array only when no servers match
-   * @param {string} keywords - Search terms to query for (spaces and special characters are URL-encoded)
-   * @returns {Promise<ServerDetail[]>} Promise resolving to array of matching servers (empty array if none found)
-   * @throws {Error} if network, parsing, or server errors occur
+   * @param keywords - Search terms to query for (spaces and special characters are URL-encoded)
+   * @returns Promise resolving to array of matching servers (empty array if none found)
+   * @throws if network, parsing, or server errors occur
    * @example
    * ```typescript
    * // Search for GitHub-related servers
@@ -207,7 +207,7 @@ export class MCPRegistryClient {
 
       const data = await response.json();
 
-      // Real API returns { servers: [], metadata: { count, next_cursor } }
+      // Real API returns \{ servers: [], metadata: \{ count, next_cursor \} \}
       const servers = data.servers || [];
 
       // Log pagination info for debugging
@@ -249,7 +249,7 @@ export class MCPRegistryClient {
    * Retrieves detailed information for a specific MCP server by its name or ID.
    *
    * Intelligently chooses the appropriate API endpoint based on the identifier:
-   * - For UUIDs: Uses direct GET /v0/servers/{id} endpoint for fast retrieval
+   * - For UUIDs: Uses direct GET /v0/servers/\{id\} endpoint for fast retrieval
    * - For names: Performs search and exact name matching
    *
    * **Cache behavior:**
@@ -263,9 +263,9 @@ export class MCPRegistryClient {
    * - Network errors: Logged and thrown
    * - HTTP errors: Logged and thrown (except 404 which returns null)
    * - JSON parsing errors: Logged and thrown
-   * @param {string} identifier - The name or UUID of the server to retrieve
-   * @returns {Promise<RegistryServer | null>} Promise resolving to server details or null if not found
-   * @throws {Error} if network, parsing, or server errors occur
+   * @param identifier - The name or UUID of the server to retrieve
+   * @returns Promise resolving to server details or null if not found
+   * @throws if network, parsing, or server errors occur
    * @example
    * ```typescript
    * // Get server details by name
@@ -324,8 +324,8 @@ export class MCPRegistryClient {
 
   /**
    * Internal method to fetch server details from the API.
-   * @param {string} identifier - Server name or UUID
-   * @returns {Promise<RegistryServer | null>} Promise resolving to server details or null
+   * @param identifier - Server name or UUID
+   * @returns Promise resolving to server details or null
    * @internal
    */
   private async fetchServerDetails(

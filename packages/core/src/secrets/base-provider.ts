@@ -46,6 +46,7 @@ export abstract class BaseSecretProvider implements ISecretProvider {
 
   /**
    * Returns the provider name identifier.
+   * @returns Provider type name
    * @public
    */
   public getName(): string {
@@ -58,6 +59,7 @@ export abstract class BaseSecretProvider implements ISecretProvider {
    * This method wraps the concrete provider's implementation to ensure consistent
    * behavior across all providers, including proper error handling and defensive
    * copying of the results.
+   * @returns Promise resolving to secret key-value pairs
    * @public
    */
   public async resolveSecrets(): Promise<Record<string, string>> {
@@ -72,7 +74,8 @@ export abstract class BaseSecretProvider implements ISecretProvider {
    *
    * This method contains the provider-specific logic for resolving secrets.
    * The base class handles defensive copying and common error handling patterns.
-   * @throws {Error} When the provider encounters an unrecoverable error
+   * @returns Promise resolving to secret key-value pairs
+   * @throws Error - When the provider encounters an unrecoverable error
    * @internal
    */
   protected abstract doResolveSecrets(): Promise<Record<string, string>>;

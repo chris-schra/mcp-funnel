@@ -19,18 +19,19 @@ import { InlineProvider } from './inline-provider.js';
  * The configFileDir parameter is used to resolve relative paths in dotenv configurations.
  * @param config - Provider configuration with type discriminator
  * @param configFileDir - Directory path of the config file (for resolving relative paths)
- * @throws {Error} When an unknown provider type is specified
+ * @returns Secret provider instance
+ * @throws Error - When an unknown provider type is specified
  * @example
  * ```typescript
- * const envProvider = createSecretProvider({
+ * const envProvider = createSecretProvider(\{
  *   type: 'process',
- *   config: { prefix: 'MCP_' }
- * });
+ *   config: \{ prefix: 'MCP_' \}
+ * \});
  *
- * const fileProvider = createSecretProvider({
+ * const fileProvider = createSecretProvider(\{
  *   type: 'dotenv',
- *   config: { path: '.env.local' }
- * }, '/path/to/config/dir');
+ *   config: \{ path: '.env.local' \}
+ * \}, '/path/to/config/dir');
  * ```
  * @public
  */
@@ -66,12 +67,13 @@ export function createSecretProvider(
  * in the SecretManager.
  * @param configs - Array of provider configurations
  * @param configFileDir - Directory path of the config file (for resolving relative paths)
+ * @returns Array of secret provider instances
  * @example
  * ```typescript
  * const providers = createSecretProviders([
- *   { type: 'process', config: { prefix: 'MCP_' } },
- *   { type: 'dotenv', config: { path: '.env' } },
- *   { type: 'inline', config: { values: { DEFAULT_API: 'localhost' } } }
+ *   \{ type: 'process', config: \{ prefix: 'MCP_' \} \},
+ *   \{ type: 'dotenv', config: \{ path: '.env' \} \},
+ *   \{ type: 'inline', config: \{ values: \{ DEFAULT_API: 'localhost' \} \} \}
  * ]);
  * ```
  * @public
@@ -89,7 +91,8 @@ export function createSecretProviders(
  * Performs runtime validation beyond TypeScript's compile-time checks.
  * Useful for validating dynamically loaded configurations.
  * @param config - Provider configuration to validate
- * @throws {Error} When the configuration is invalid
+ * @returns True if config is valid (type predicate)
+ * @throws Error - When the configuration is invalid
  * @public
  */
 export function validateSecretProviderConfig(

@@ -110,8 +110,8 @@ export class RegistryContext {
    *
    * Initializes all dependencies with MVP defaults and creates registry clients
    * for each configured registry URL.
-   * @param config
-   * @param options
+   * @param config - The proxy configuration containing registry URLs
+   * @param options - Optional configuration for dependencies
    * @internal
    */
   private constructor(
@@ -158,8 +158,9 @@ export class RegistryContext {
    *
    * **First Call:** Must provide config parameter to initialize the singleton.
    * **Subsequent Calls:** Config parameter is optional and will be ignored.
-   * @param config
-   * @param options
+   * @param config - The proxy configuration (required on first call)
+   * @param options - Optional configuration for dependencies
+   * @returns The singleton RegistryContext instance
    * @throws Error if config is not provided on first access
    * @public
    */
@@ -195,8 +196,9 @@ export class RegistryContext {
    * This method aggregates search results from all registry clients, handling
    * errors gracefully to ensure that failures in individual registries don't
    * prevent getting results from others.
-   * @param keywords
-   * @param registry
+   * @param keywords - Search terms to query for
+   * @param registry - Optional registry name to filter search
+   * @returns Search result containing found servers and status information
    * @public
    */
   public async searchServers(
@@ -259,7 +261,8 @@ export class RegistryContext {
    *
    * Tries each configured registry in sequence until the server is found.
    * Returns null if the server is not found in any registry.
-   * @param registryId
+   * @param registryId - The server identifier (name or UUID)
+   * @returns Promise resolving to server details or null if not found
    * @public
    */
   public async getServerDetails(
@@ -308,7 +311,8 @@ export class RegistryContext {
    *
    * This creates a temporary server configuration that can be used immediately
    * without persisting to the main configuration file.
-   * @param server
+   * @param server - The server configuration to enable
+   * @returns Promise resolving to the server identifier
    * @public
    */
   public async enableTemporary(server: ServerConfig): Promise<string> {
@@ -321,7 +325,7 @@ export class RegistryContext {
    *
    * This moves a temporary server from the temporary registry to the persistent
    * configuration, making it available across application restarts.
-   * @param serverName
+   * @param serverName - Name of the temporary server to persist
    * @throws Error if server is not found or persistence fails
    * @public
    */
@@ -346,6 +350,7 @@ export class RegistryContext {
 
   /**
    * Checks if any registries are configured and available.
+   * @returns true if at least one registry is configured, false otherwise
    * @public
    */
   public hasRegistries(): boolean {
@@ -357,7 +362,8 @@ export class RegistryContext {
    *
    * Converts registry server metadata into a standardized ServerConfig that can
    * be used for server spawning or configuration persistence.
-   * @param server
+   * @param server - Registry server to convert
+   * @returns Promise resolving to server configuration
    * @public
    */
   public async generateServerConfig(
@@ -371,7 +377,8 @@ export class RegistryContext {
    *
    * Provides everything needed to install and configure a server, including
    * the configuration snippet and human-readable installation instructions.
-   * @param server
+   * @param server - Registry server to generate install info for
+   * @returns Promise resolving to installation information
    * @public
    */
   public async generateInstallInfo(

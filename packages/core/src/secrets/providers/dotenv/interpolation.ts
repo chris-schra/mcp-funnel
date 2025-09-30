@@ -3,7 +3,7 @@ import type { DotEnvParserOptions, DotEnvVariables } from './types.js';
 /**
  * Interpolates variable references in .env values.
  *
- * Resolves ${VAR} and $VAR references within values, supporting:
+ * Resolves variable references within values, supporting:
  * - References to other variables defined in the same file
  * - Fallback to environment variables if not found in file
  * - Circular reference detection (returns empty string)

@@ -59,8 +59,6 @@ export class ReadOnlyConfigManager implements IConfigManager {
    * This is the only method that performs actual file operations in the MVP.
    * @returns Promise resolving to the current ProxyConfig
    * @throws if configuration file cannot be read or contains invalid JSON
-   *
-   * {@inheritDoc IConfigManager.readConfig}
    */
   public async readConfig(): Promise<ProxyConfig> {
     try {
@@ -81,14 +79,12 @@ export class ReadOnlyConfigManager implements IConfigManager {
   }
 
   /**
-   * [MVP SIMULATION] Logs the server configuration that would be added.
+   * Logs the server configuration that would be added (MVP simulation).
    *
    * In the full implementation, this would add the server to the configuration
    * file and validate that the name doesn't conflict with existing servers.
    * @param server - The server configuration to add
    * @throws if server name conflicts with existing server (simulated validation)
-   *
-   * {@inheritDoc IConfigManager.addServer}
    */
   public async addServer(server: ServerConfig): Promise<void> {
     // Simulate basic validation by checking existing config
@@ -117,14 +113,12 @@ export class ReadOnlyConfigManager implements IConfigManager {
   }
 
   /**
-   * [MVP SIMULATION] Logs the server name that would be removed.
+   * Logs the server name that would be removed (MVP simulation).
    *
    * In the full implementation, this would remove the server from the
    * configuration file and validate that the server exists.
    * @param serverName - Name of the server to remove
    * @throws if server does not exist (simulated validation)
-   *
-   * {@inheritDoc IConfigManager.removeServer}
    */
   public async removeServer(serverName: string): Promise<void> {
     // Simulate validation by checking if server exists
@@ -150,7 +144,7 @@ export class ReadOnlyConfigManager implements IConfigManager {
   }
 
   /**
-   * [MVP SIMULATION] Logs the updates that would be applied to a server.
+   * Logs the updates that would be applied to a server (MVP simulation).
    *
    * In the full implementation, this would update the server configuration
    * in the file and validate that the server exists and updates are valid.
@@ -158,8 +152,6 @@ export class ReadOnlyConfigManager implements IConfigManager {
    * @param updates - Partial server configuration with fields to update
    * @throws if server does not exist (simulated validation)
    * @throws if updates would create invalid configuration (simulated validation)
-   *
-   * {@inheritDoc IConfigManager.updateServer}
    */
   public async updateServer(
     serverName: string,

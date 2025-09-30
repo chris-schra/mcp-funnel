@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -39,8 +40,9 @@ class DelayedProvider extends BaseSecretProvider {
 }
 
 /**
- *
- * @param values
+ * Creates an inline secret provider for testing.
+ * @param values - Key-value pairs for the provider
+ * @returns Configured InlineProvider instance
  */
 function createInlineProvider(values: Record<string, string>): InlineProvider {
   return new InlineProvider({
@@ -50,10 +52,11 @@ function createInlineProvider(values: Record<string, string>): InlineProvider {
 }
 
 /**
- *
- * @param baseDir
- * @param filename
- * @param content
+ * Writes an .env file for testing purposes.
+ * @param baseDir - Base directory for the file
+ * @param filename - Name of the .env file
+ * @param content - Array of content lines to write
+ * @returns Path to the created file
  */
 function writeEnvFile(
   baseDir: string,

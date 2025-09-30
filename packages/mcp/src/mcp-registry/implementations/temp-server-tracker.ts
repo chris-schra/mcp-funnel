@@ -26,11 +26,11 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
   private temporaryServers = new Map<string, ServerConfig>();
 
   /**
-   * [MVP SIMULATION] Stores server configuration in memory and logs the action.
+   * Stores server configuration in memory and logs the action (MVP simulation).
    *
    * In Phase 2, this will actually spawn the server process.
-   *
-   * {@inheritDoc ITemporaryServerManager.spawn}
+   * @param config - Server configuration to spawn
+   * @returns Promise resolving to the server identifier (name)
    */
   public async spawn(config: ServerConfig): Promise<string> {
     this.temporaryServers.set(config.name, config);
@@ -39,32 +39,36 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
   }
 
   /**
-   * {@inheritDoc ITemporaryServerManager.isTemporary}
+   * Checks if a server is managed as temporary.
+   * @param serverName - Name of the server to check
+   * @returns true if server exists and is temporary, false otherwise
    */
   public isTemporary(serverName: string): boolean {
     return this.temporaryServers.has(serverName);
   }
 
   /**
-   * {@inheritDoc ITemporaryServerManager.getTemporary}
+   * Retrieves configuration for a temporary server.
+   * @param serverName - Name of the temporary server
+   * @returns Server configuration if found, null otherwise
    */
   public getTemporary(serverName: string): ServerConfig | null {
     return this.temporaryServers.get(serverName) ?? null;
   }
 
   /**
-   * {@inheritDoc ITemporaryServerManager.listTemporary}
+   * Lists all currently active temporary server names.
+   * @returns Array of temporary server names
    */
   public listTemporary(): string[] {
     return Array.from(this.temporaryServers.keys());
   }
 
   /**
-   * [MVP SIMULATION] Removes server from in-memory registry and logs the action.
+   * Removes server from in-memory registry and logs the action (MVP simulation).
    *
    * In Phase 2, this will actually terminate the server process.
-   *
-   * {@inheritDoc ITemporaryServerManager.disconnect}
+   * @param serverName - Name of the server to disconnect
    */
   public async disconnect(serverName: string): Promise<void> {
     if (!this.temporaryServers.has(serverName)) {
@@ -76,11 +80,11 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
   }
 
   /**
-   * [MVP SIMULATION] Returns configuration for manual addition to config file.
+   * Returns configuration for manual addition to config file (MVP simulation).
    *
    * In Phase 2, this will integrate with the persistent configuration system.
-   *
-   * {@inheritDoc ITemporaryServerManager.persist}
+   * @param serverName - Name of the temporary server to persist
+   * @returns Promise resolving to server configuration, or null if not found
    */
   public async persist(serverName: string): Promise<ServerConfig | null> {
     const config = this.temporaryServers.get(serverName);
