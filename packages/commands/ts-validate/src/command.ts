@@ -7,6 +7,7 @@ import {
 } from './validator.js';
 import path from 'path';
 import chalk from 'chalk';
+import { formatGitHubActionsAnnotations } from './util/github-actions-formatter.js';
 
 /*
 import { setupConsoleLogging, rootLogger } from '@mcp-funnel/core';
@@ -111,11 +112,12 @@ export class TsValidateCommand implements ICommand {
 ${chalk.bold('Usage:')} validate [options] [glob-pattern]
 
 ${chalk.bold('Options:')}
-  --fix          Automatically fix fixable issues
-  --json         Output results as JSON
-  --cache        Enable ESLint caching for faster subsequent runs (default: false)
-  --show-actions Show suggested actions for AI
-  --help         Show this help message
+  --fix              Automatically fix fixable issues
+  --json             Output results as JSON
+  --github-actions   Output errors in GitHub Actions annotation format
+  --cache            Enable ESLint caching for faster subsequent runs (default: false)
+  --show-actions     Show suggested actions for AI
+  --help             Show this help message
 
 ${chalk.bold('Examples:')}
   validate                              # Validate all files
@@ -134,6 +136,8 @@ ${chalk.bold('Examples:')}
     const globPattern =
       !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
 
+    const githubActions = flags.includes('--github-actions');
+
     const options: ValidateOptions = {
       files: files,
       glob: globPattern,
@@ -145,8 +149,18 @@ ${chalk.bold('Examples:')}
       const validator = new MonorepoValidator();
       const summary = await validator.validate(options);
 
-      // Output for AI consumption (JSON) or human (formatted)
-      if (flags.includes('--json')) {
+      // Output for AI consumption (JSON), GitHub Actions, or human (formatted)
+      if (githubActions) {
+        formatGitHubActionsAnnotations(summary);
+        // Exit with error code if issues found
+        const hasIssues = Object.values(summary.fileResults).some(
+          (r) => r.length > 0,
+        );
+        const anyFailed = summary.toolStatuses?.some(
+          (s) => s.status === 'failed',
+        );
+        process.exit(hasIssues || anyFailed ? 1 : 0);
+      } else if (flags.includes('--json')) {
         console.info(JSON.stringify(summary, null, 2));
       } else {
         // Human-readable output
