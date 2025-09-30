@@ -29,7 +29,8 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
    * [MVP SIMULATION] Stores server configuration in memory and logs the action.
    *
    * In Phase 2, this will actually spawn the server process.
-   * @inheritDoc
+   *
+   * {@inheritDoc ITemporaryServerManager.spawn}
    */
   public async spawn(config: ServerConfig): Promise<string> {
     this.temporaryServers.set(config.name, config);
@@ -38,21 +39,21 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
   }
 
   /**
-   * @inheritDoc
+   * {@inheritDoc ITemporaryServerManager.isTemporary}
    */
   public isTemporary(serverName: string): boolean {
     return this.temporaryServers.has(serverName);
   }
 
   /**
-   * @inheritDoc
+   * {@inheritDoc ITemporaryServerManager.getTemporary}
    */
   public getTemporary(serverName: string): ServerConfig | null {
     return this.temporaryServers.get(serverName) ?? null;
   }
 
   /**
-   * @inheritDoc
+   * {@inheritDoc ITemporaryServerManager.listTemporary}
    */
   public listTemporary(): string[] {
     return Array.from(this.temporaryServers.keys());
@@ -62,7 +63,8 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
    * [MVP SIMULATION] Removes server from in-memory registry and logs the action.
    *
    * In Phase 2, this will actually terminate the server process.
-   * @inheritDoc
+   *
+   * {@inheritDoc ITemporaryServerManager.disconnect}
    */
   public async disconnect(serverName: string): Promise<void> {
     if (!this.temporaryServers.has(serverName)) {
@@ -77,7 +79,8 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
    * [MVP SIMULATION] Returns configuration for manual addition to config file.
    *
    * In Phase 2, this will integrate with the persistent configuration system.
-   * @inheritDoc
+   *
+   * {@inheritDoc ITemporaryServerManager.persist}
    */
   public async persist(serverName: string): Promise<ServerConfig | null> {
     const config = this.temporaryServers.get(serverName);

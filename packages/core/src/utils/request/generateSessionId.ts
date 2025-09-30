@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
  * potential future customization of session ID format.
  * @returns UUID v4 string for session identification
  * @public
+ * @see {@link generateRequestId} - Related function for generating request IDs
  */
 export function generateSessionId(): string {
   return uuidv4();

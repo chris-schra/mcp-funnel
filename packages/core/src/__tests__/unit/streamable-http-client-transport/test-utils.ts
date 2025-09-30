@@ -20,7 +20,9 @@ export interface MockAuthProvider {
 
 // Create a factory for the mock SDK transport to ensure each test gets a fresh instance
 /**
+ * Creates a fresh mock SDK transport instance for testing.
  *
+ * @returns Mock SDK transport object with all required methods and properties
  */
 function createMockSDKTransport() {
   return {
@@ -66,8 +68,11 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
 });
 
 /**
- * Setup function to be called in beforeEach
- * Returns the mock auth provider
+ * Setup function to be called in beforeEach.
+ *
+ * Clears all mocks and creates fresh instances of mock SDK transport and auth provider.
+ *
+ * @returns Mock auth provider instance for use in tests
  */
 export function setupTestEnvironment(): MockAuthProvider {
   vi.clearAllMocks();

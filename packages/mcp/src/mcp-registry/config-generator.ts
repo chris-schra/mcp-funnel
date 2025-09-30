@@ -14,8 +14,8 @@ import { RegistryConfigEntry } from './types/config.types.js';
  *
  * **Type Safety**: Uses structured clone (JSON parse/stringify) for metadata
  * to ensure deep copying and avoid shallow copy mutation issues.
- * @param {RegistryServer} server - Registry server data containing package or remote configuration
- * @returns {RegistryConfigEntry} Configuration entry suitable for MCP client consumption
+ * @param server - Registry server data containing package or remote configuration
+ * @returns Configuration entry suitable for MCP client consumption
  * @example
  * ```typescript
  * // Generate config for an npm package-based server
@@ -151,10 +151,10 @@ export function generateConfigSnippet(
  *
  * Internal helper that eliminates redundancy across npm, pypi, and oci package types
  * by centralizing the logic for generating command and args configuration lines.
- * @param {Package} pkg - Package metadata from registry
- * @param {string} defaultCommand - Default command to use if no runtime_hint is specified
- * @param {string[]} defaultArgs - Default arguments array to use if no runtime_hint is specified
- * @returns {{ lines: string[]; hasEnvVars: boolean }} Object containing generated lines and flag indicating if env vars follow
+ * @param pkg - Package metadata from registry
+ * @param defaultCommand - Default command to use if no runtime_hint is specified
+ * @param defaultArgs - Default arguments array to use if no runtime_hint is specified
+ * @returns Object containing generated lines and flag indicating if env vars follow
  * @internal
  */
 function generateCommandArgsLines(
@@ -196,8 +196,8 @@ function generateCommandArgsLines(
  * Creates comprehensive markdown-formatted instructions including prerequisites,
  * configuration snippets, and authentication notes. Handles both package-based
  * and remote server types.
- * @param {RegistryServer} server - Registry server data to generate instructions for
- * @returns {string} Markdown-formatted installation instructions
+ * @param server - Registry server data to generate instructions for
+ * @returns Markdown-formatted installation instructions
  * @example
  * ```typescript
  * const instructions = generateInstallInstructions(server);

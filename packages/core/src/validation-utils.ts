@@ -13,7 +13,7 @@ const SAFE_SERVER_ID_REGEX = /^[a-zA-Z0-9._-]+$/;
  * Validates a URL string.
  * @param url - URL string to validate
  * @param context - Optional context string for error messages
- * @throws {Error} When URL is empty or invalid format
+ * @throws \{Error\} When URL is empty or invalid format
  * @internal
  */
 function validateUrl(url: string, context?: string): void {
@@ -33,7 +33,7 @@ function validateUrl(url: string, context?: string): void {
 /**
  * Validates multiple URLs from a record.
  * @param urls - Record of URL strings, undefined values are skipped
- * @throws {Error} When any URL is invalid, with key in error message
+ * @throws \{Error\} When any URL is invalid, with key in error message
  * @internal
  */
 function validateUrls(urls: Record<string, string | undefined>): void {
@@ -46,6 +46,21 @@ function validateUrls(urls: Record<string, string | undefined>): void {
 
 /**
  * Collection of validation utility functions.
+ *
+ * Provides centralized validation methods for URLs, server IDs, configuration
+ * objects, and OAuth-specific URL sets. All validation failures throw descriptive
+ * errors with context information.
+ * @example
+ * ```typescript
+ * // Validate a single URL
+ * ValidationUtils.validateUrl('https://api.example.com', 'API endpoint');
+ *
+ * // Sanitize a server ID
+ * const safeId = ValidationUtils.sanitizeServerId('my-server_1.0');
+ *
+ * // Validate required config fields
+ * ValidationUtils.validateRequired(config, ['name', 'command'], 'ServerConfig');
+ * ```
  * @public
  */
 export const ValidationUtils = {
@@ -58,7 +73,7 @@ export const ValidationUtils = {
    * alphanumeric characters, dots, underscores, and hyphens.
    * @param serverId - Server ID to validate
    * @returns The same serverId if valid
-   * @throws {Error} When serverId contains unsafe characters
+   * @throws \{Error\} When serverId contains unsafe characters
    */
   sanitizeServerId: (serverId: string): string => {
     if (!SAFE_SERVER_ID_REGEX.test(serverId)) {
@@ -73,7 +88,7 @@ export const ValidationUtils = {
    * @param config - Configuration object to validate
    * @param requiredFields - Array of field names that must be present
    * @param context - Optional context string for error messages
-   * @throws {Error} When any required field is missing
+   * @throws \{Error\} When any required field is missing
    */
   validateRequired: <T>(
     config: T,
@@ -93,10 +108,7 @@ export const ValidationUtils = {
    *
    * Convenience method for validating the common set of URLs used in OAuth flows.
    * @param config - OAuth configuration with optional URL fields
-   * @param config.authorizationEndpoint
-   * @param config.tokenEndpoint
-   * @param config.redirectUri
-   * @throws {Error} When any present URL is invalid
+   * @throws \{Error\} When any present URL is invalid
    */
   validateOAuthUrls: (config: {
     authorizationEndpoint?: string;
