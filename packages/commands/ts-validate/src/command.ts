@@ -7,7 +7,7 @@ import {
 } from './validator.js';
 import path from 'path';
 import chalk from 'chalk';
-
+import githubCore from "@actions/core";
 /*
 import { setupConsoleLogging, rootLogger } from '@mcp-funnel/core';
 
@@ -111,11 +111,12 @@ export class TsValidateCommand implements ICommand {
 ${chalk.bold('Usage:')} validate [options] [glob-pattern]
 
 ${chalk.bold('Options:')}
-  --fix          Automatically fix fixable issues
-  --json         Output results as JSON
-  --cache        Enable ESLint caching for faster subsequent runs (default: false)
-  --show-actions Show suggested actions for AI
-  --help         Show this help message
+  --fix              Automatically fix fixable issues
+  --json             Output results as JSON
+  --github-actions   Output errors in GitHub Actions annotation format
+  --cache            Enable ESLint caching for faster subsequent runs (default: false)
+  --show-actions     Show suggested actions for AI
+  --help             Show this help message
 
 ${chalk.bold('Examples:')}
   validate                              # Validate all files
@@ -134,10 +135,12 @@ ${chalk.bold('Examples:')}
     const globPattern =
       !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
 
+    const githubActions = flags.includes('--github-actions') || process.env.GH_CI === 'true';
+
     const options: ValidateOptions = {
       files: files,
       glob: globPattern,
-      fix: flags.includes('--fix'),
+      fix: flags.includes('--fix') && process.env.GH_CI !== 'true',
       cache: flags.includes('--cache'), // Default to false, enable with --cache
     };
 
@@ -145,8 +148,27 @@ ${chalk.bold('Examples:')}
       const validator = new MonorepoValidator();
       const summary = await validator.validate(options);
 
-      // Output for AI consumption (JSON) or human (formatted)
-      if (flags.includes('--json')) {
+      // Output for AI consumption (JSON), GitHub Actions, or human (formatted)
+      if (githubActions) {
+        const issues = Object.entries(summary.fileResults)
+          .flatMap(([filename, r]) => {
+            return r.map((issue) => ({
+              ...issue,
+              file: filename,
+            }));
+          })
+          .filter((it) => it.severity !== "info");
+
+        issues.forEach((issue) => {
+          githubCore.error(issue.message, {file: issue.file, startLine: issue.line, endLine: issue.endLine})
+        });
+
+        if(summary.filesWithErrors) {
+          githubCore.setFailed(`Validation failed: ${summary.filesWithErrors} files with issues`);
+          process.exit(1);
+        }
+
+      } else if (flags.includes('--json')) {
         console.info(JSON.stringify(summary, null, 2));
       } else {
         // Human-readable output

@@ -7,6 +7,10 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { waitForServerReady } from './test-utils.js';
+import path from 'node:path';
+
+const tsxPath = path.resolve('node_modules/.bin/tsx');
+const cwd = path.resolve('packages/server');
 
 describe('Default Authentication with Environment Variables', () => {
   let serverProcess: ChildProcess | null = null;
@@ -161,8 +165,8 @@ describe('Default Authentication with Environment Variables', () => {
     const testToken = randomBytes(32).toString('hex');
 
     // Start server with explicit auth token
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
-      cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
+    serverProcess = spawn('node', [tsxPath, 'src/dev.ts'], {
+      cwd,
       env: {
         ...process.env,
         MCP_FUNNEL_AUTH_TOKEN: testToken,
@@ -195,8 +199,8 @@ describe('Default Authentication with Environment Variables', () => {
     let capturedOutput = '';
 
     // Start server without auth token
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
-      cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
+    serverProcess = spawn('node', [tsxPath, 'src/dev.ts'], {
+      cwd,
       env: {
         ...process.env,
         PORT: '0', // Use dynamic port
@@ -245,8 +249,8 @@ describe('Default Authentication with Environment Variables', () => {
     let capturedOutput = '';
 
     // Start server with auth disabled
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
-      cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
+    serverProcess = spawn('node', [tsxPath, 'src/dev.ts'], {
+      cwd,
       env: {
         ...process.env,
         DISABLE_INBOUND_AUTH: 'true',
@@ -282,8 +286,8 @@ describe('Default Authentication with Environment Variables', () => {
     const shortToken = 'short'; // Less than 16 characters
 
     // Start server with short token - should fail
-    serverProcess = spawn('tsx', ['src/dev.ts'], {
-      cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
+    serverProcess = spawn('node', [tsxPath, 'src/dev.ts'], {
+      cwd,
       env: {
         ...process.env,
         MCP_FUNNEL_AUTH_TOKEN: shortToken,
