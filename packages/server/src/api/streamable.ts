@@ -38,9 +38,9 @@ let initializationPromise: Promise<StreamableHTTPBridge> | null = null;
  *
  * Returns existing bridge if already connected. Uses promise-based locking
  * to prevent race conditions during concurrent initialization attempts.
- * @param {MCPProxy} mcpProxy - MCPProxy instance to connect transport to
- * @returns {Promise<StreamableHTTPBridge>} Promise resolving to connected bridge instance
- * @throws {Error} When transport connection fails (e.g., another transport already connected)
+ * @param mcpProxy - MCPProxy instance to connect transport to
+ * @returns Promise resolving to connected bridge instance
+ * @throws When transport connection fails (e.g., another transport already connected)
  * @internal
  */
 async function initializeStreamableBridge(

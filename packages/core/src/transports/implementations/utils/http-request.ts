@@ -25,7 +25,7 @@ import { logEvent } from '../../../logger.js';
  * @param timeout - Request timeout in milliseconds
  * @param logPrefix - Prefix for logging events
  * @param authProvider - Optional authentication provider for token management
- * @throws {TransportError} With appropriate type:
+ * @throws \{TransportError\} With appropriate type:
  *   - 401 status after failed token refresh
  *   - HTTP errors mapped via TransportError.fromHttpStatus
  *   - Timeout when AbortError occurs

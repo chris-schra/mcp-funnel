@@ -18,15 +18,15 @@ import { NoAuthValidator } from './implementations/no-auth-validator.js';
 
 /**
  * Creates an authentication validator instance from configuration.
- * @param {InboundAuthConfig} config - Authentication configuration
- * @returns {IInboundAuthValidator} Configured validator implementing IInboundAuthValidator
- * @throws {Error} When configuration type is unsupported
+ * @param config - Authentication configuration
+ * @returns Configured validator implementing IInboundAuthValidator
+ * @throws When configuration type is unsupported
  * @example
  * ```typescript
- * const validator = createAuthValidator({
+ * const validator = createAuthValidator(\{
  *   type: 'bearer',
  *   tokens: ['secret-token']
- * });
+ * \});
  * ```
  * @public
  */
@@ -56,8 +56,8 @@ export function createAuthValidator(
  * Performs deep validation including type-specific requirements:
  * - Bearer: validates tokens array is non-empty and contains only strings
  * - None: no additional validation beyond type presence
- * @param {InboundAuthConfig} config - Configuration to validate
- * @throws {Error} When configuration is missing required fields or has invalid values
+ * @param config - Configuration to validate
+ * @throws When configuration is missing required fields or has invalid values
  * @public
  */
 export function validateAuthConfig(config: InboundAuthConfig): void {

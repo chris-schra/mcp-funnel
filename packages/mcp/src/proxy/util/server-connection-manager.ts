@@ -67,7 +67,12 @@ export class ServerConnectionManager {
     });
   }
 
-  /** @internal */
+  /**
+   * @param targetServer - Server that disconnected
+   * @param reason - Reason for disconnection
+   * @param errorMessage - Optional error message describing the disconnection
+   * @internal
+   */
   private onServerDisconnect = (
     targetServer: TargetServer | TargetServerZod,
     reason: string,
@@ -105,7 +110,10 @@ export class ServerConnectionManager {
     }
   };
 
-  /** @internal */
+  /**
+   * @param targetServer - Server to set up automatic reconnection for
+   * @internal
+   */
   private setupAutoReconnection(
     targetServer: TargetServer | TargetServerZod,
   ): void {
@@ -133,7 +141,10 @@ export class ServerConnectionManager {
     }
   }
 
-  /** @internal */
+  /**
+   * @param targetServer - Server to attempt reconnection to
+   * @internal
+   */
   private async attemptAutoReconnection(
     targetServer: TargetServer | TargetServerZod,
   ): Promise<void> {

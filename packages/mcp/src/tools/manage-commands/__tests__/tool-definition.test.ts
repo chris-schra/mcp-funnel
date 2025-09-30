@@ -1,8 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { useTestContext, type SchemaProperty } from './test-utils.js';
 
 // Mock readManifest
-import { vi } from 'vitest';
 vi.mock('@mcp-funnel/commands-core', async () => {
   const actual = await vi.importActual('@mcp-funnel/commands-core');
   return {

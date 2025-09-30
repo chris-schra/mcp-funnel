@@ -58,20 +58,20 @@ class WebSocketAuthContext implements MinimalContext {
  *
  * Adapts Node.js IncomingMessage to Hono Context interface, allowing reuse of
  * HTTP authentication validators for WebSocket connections without duplication.
- * @param {IncomingMessage} request - Node.js HTTP upgrade request
- * @param {IInboundAuthValidator} validator - Authentication validator instance
- * @returns {Promise<{ isAuthenticated: boolean; error?: string }>} Promise with authentication result and optional error message
+ * @param request - Node.js HTTP upgrade request
+ * @param validator - Authentication validator instance
+ * @returns Promise with authentication result and optional error message
  * @example
  * ```typescript
- * server.on('upgrade', async (request, socket, head) => {
+ * server.on('upgrade', async (request, socket, head) => \{
  *   const result = await validateWebSocketAuth(request, validator);
- *   if (!result.isAuthenticated) {
+ *   if (!result.isAuthenticated) \{
  *     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
  *     socket.destroy();
  *     return;
- *   }
+ *   \}
  *   // proceed with upgrade
- * });
+ * \});
  * ```
  * @public
  */

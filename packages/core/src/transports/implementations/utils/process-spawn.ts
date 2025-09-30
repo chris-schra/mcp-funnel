@@ -22,7 +22,7 @@ export interface ProcessSpawnOptions {
  * All spawn errors are mapped to appropriate TransportError types.
  * @param options - Process spawn configuration including command, args, and timeout
  * @returns Promise resolving to spawned ChildProcess once successfully started
- * @throws {TransportError} Mapped from spawn errors:
+ * @throws \{TransportError\} Mapped from spawn errors:
  *   - ENOENT: Command not found
  *   - EACCES: Permission denied
  *   - ETIMEDOUT: Spawn timeout exceeded

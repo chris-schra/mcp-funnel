@@ -24,7 +24,7 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
  *
  * Reads configuration from MCP_FUNNEL_CONFIG_PATH environment variable
  * or defaults to .mcp-funnel.json in current working directory.
- * @returns {ProxyConfig} Parsed proxy configuration, or empty config on load failure
+ * @returns Parsed proxy configuration, or empty config on load failure
  * @internal
  */
 function loadConfig(): ProxyConfig {
@@ -52,7 +52,7 @@ function loadConfig(): ProxyConfig {
  * 1. DISABLE_INBOUND_AUTH=true: Disables auth (logs security warnings)
  * 2. MCP_FUNNEL_AUTH_TOKEN: Uses provided token (minimum 16 chars, exits on violation)
  * 3. Default: Generates secure 32-byte random token, logs to console
- * @returns {InboundAuthConfig} Authentication configuration for server startup
+ * @returns Authentication configuration for server startup
  * @internal
  */
 function createDefaultAuthConfig(): InboundAuthConfig {

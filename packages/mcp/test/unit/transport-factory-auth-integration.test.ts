@@ -1,30 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { IAuthProvider, ITokenStorage } from '@mcp-funnel/core';
 
-import type {
-  SSETransportConfig,
-  StdioTransportConfig,
-  TransportConfig,
-} from '@mcp-funnel/models';
-import { clearTransportCache } from '../../src/utils/transport/transport-cache';
+import type { TransportConfig } from '@mcp-funnel/models';
 import { createTransport } from '../../src/utils/transport/index.js';
-
-// Type definitions for testing
-
-type InvalidConfig = {
-  type?: string;
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  timeout?: number;
-  reconnect?: {
-    maxAttempts?: number;
-    initialDelayMs?: number;
-    maxDelayMs?: number;
-    backoffMultiplier?: number;
-  };
-} & Record<string, unknown>;
 
 // Mock implementations for testing
 const mockAuthProvider: IAuthProvider = {

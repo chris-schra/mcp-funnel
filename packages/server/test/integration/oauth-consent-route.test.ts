@@ -9,9 +9,10 @@ const registerResponseSchema = z.object({
 });
 
 /**
- *
- * @param response
- * @param schema
+ * Reads and parses JSON from a Response object with Zod schema validation.
+ * @param response - The HTTP response to read from
+ * @param schema - Zod schema for validation
+ * @returns Parsed and validated JSON data
  */
 async function readJson<T>(response: Response, schema: z.ZodType<T>) {
   const payload = await response.json();
@@ -19,8 +20,9 @@ async function readJson<T>(response: Response, schema: z.ZodType<T>) {
 }
 
 /**
- *
- * @param clientName
+ * Registers a test OAuth client with the given name.
+ * @param clientName - Name of the client to register
+ * @returns Object containing client ID and redirect URI
  */
 async function registerClient(clientName: string) {
   const response = await oauthRoute.request('/register', {

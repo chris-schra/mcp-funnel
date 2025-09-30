@@ -15,12 +15,10 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-import type { JSONRPCResponse } from '@modelcontextprotocol/sdk/types.js';
 import {
   createMockSSEServer,
   type MockSSEServer,
 } from '../mocks/mock-sse-server.js';
-import { SSEClientTransport } from '@mcp-funnel/core';
 import {
   createMockEventSourceConstructor,
   MockEventSource,
