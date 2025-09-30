@@ -14,7 +14,34 @@ interface ServersResponse {
 }
 
 /**
+ * Server status list component with connection management controls.
  *
+ * Displays all configured MCP servers with real-time status indicators
+ * (connected, disconnected, error). Provides reconnect/disconnect buttons
+ * based on server state. Auto-refreshes every 5 seconds and responds to
+ * WebSocket events for immediate updates.
+ *
+ * Status indicators:
+ * - Green: Server is connected and operational
+ * - Red: Server encountered an error
+ * - Yellow: Server is disconnected
+ *
+ * @returns React component rendering the server list interface
+ *
+ * @example
+ * ```tsx
+ * import { ServerList } from '~/components/ServerList.js';
+ *
+ * function Dashboard() {
+ *   return (
+ *     <div>
+ *       <ServerList />
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @public
  */
 export function ServerList() {
   const queryClient = useQueryClient();
