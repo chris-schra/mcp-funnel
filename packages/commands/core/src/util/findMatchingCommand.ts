@@ -36,9 +36,9 @@ export function findMatchingCommand(
  * Implements flexible matching logic to handle various package specification formats:
  * - Direct string equality
  * - Normalized package names (strips version info)
- * - Scoped package variations (with/without @ prefix)
+ * - Scoped package variations (with/without \@ prefix)
  * - Git URL extraction (e.g., git+https://host/scope/package.git)
- * @param installedPackage - The package name as stored in the manifest (e.g., '@myorg/tool')
+ * @param installedPackage - The package name as stored in the manifest (e.g., '\@myorg/tool')
  * @param packageSpec - The package specification provided by the user (can include version, git URL, etc.)
  * @returns True if the package matches the spec, false otherwise
  * @internal

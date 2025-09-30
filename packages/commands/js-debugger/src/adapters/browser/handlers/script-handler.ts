@@ -30,9 +30,6 @@ export interface ScriptHandlerContext {
  * loading if a source map URL is provided. Source map loading is asynchronous
  * and best-effort - failures are logged but do not prevent script registration.
  * @param params - CDP script parsed event parameters containing script metadata
- * @param params.scriptId - Unique identifier for the parsed script
- * @param params.url - Script URL or file path
- * @param params.sourceMapURL - Optional URL or data URI for the script's source map
  * @param context - Script handling context providing access to the script registry
  * @internal
  * @see file:../event-handlers.ts:247 - Usage in browser event handler

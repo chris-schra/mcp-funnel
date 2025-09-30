@@ -31,16 +31,16 @@ const execAsync = promisify(exec);
  * 6. Rolls back on validation failure
  *
  * The function handles complex package resolution scenarios including:
- * - Version-suffixed specs (e.g., 'package@1.0.0')
- * - Scoped packages (e.g., '@org/package')
+ * - Version-suffixed specs (e.g., 'package\@1.0.0')
+ * - Scoped packages (e.g., '\@org/package')
  * - Git URLs (e.g., 'git+https://github.com/org/repo.git')
  * @param context - Installer context containing directory paths and manifest location
- * @param packageSpec - npm package specifier (name, name@version, git URL, or tarball URL)
+ * @param packageSpec - npm package specifier (name, name\@version, git URL, or tarball URL)
  * @param options - Installation options for force reinstall and version pinning
  * @returns Metadata about the installed command including name, version, and installation timestamp
- * @throws {Error} When package is already installed and force option is not set
- * @throws {Error} When npm install fails (network error, package not found, invalid version)
- * @throws {Error} When installed package does not export a valid ICommand interface
+ * @throws When package is already installed and force option is not set
+ * @throws When npm install fails (network error, package not found, invalid version)
+ * @throws When installed package does not export a valid ICommand interface
  * @example
  * ```typescript
  * // Install latest version of a scoped package

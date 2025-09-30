@@ -100,12 +100,12 @@ export class ProcessSpawner extends EventEmitter {
    * Listens to stderr for the inspector URL pattern "Debugger listening on ws://..."
    * and resolves once found. If the process exits or the timeout is reached before
    * the URL is extracted, the promise rejects and the process is cleaned up.
-   * @param {string} target - Script file path to execute (absolute or relative)
-   * @param {SpawnOptions} options - Spawn configuration options (port, args, env, timeout)
-   * @returns {Promise<SpawnResult>} Promise resolving to spawn result with process handle, WebSocket URL, and port
-   * @throws {Error} When inspector URL extraction times out after timeoutMs milliseconds
-   * @throws {Error} When process spawning fails (invalid script path, permission denied, etc.)
-   * @throws {Error} When process exits before inspector URL is found
+   * @param target - Script file path to execute (absolute or relative)
+   * @param options - Spawn configuration options (port, args, env, timeout)
+   * @returns Promise resolving to spawn result with process handle, WebSocket URL, and port
+   * @throws When inspector URL extraction times out after timeoutMs milliseconds
+   * @throws When process spawning fails (invalid script path, permission denied, etc.)
+   * @throws When process exits before inspector URL is found
    * @public
    */
   public async spawn(
@@ -171,9 +171,9 @@ export class ProcessSpawner extends EventEmitter {
    * Sends SIGTERM for graceful shutdown and waits for process exit. If the process
    * does not exit within timeoutMs, sends SIGKILL to force termination. Safe to call
    * on already-terminated processes (no-op if process.killed is true or exitCode is set).
-   * @param {ChildProcess} process - Child process to terminate
-   * @param {number} timeoutMs - Timeout in milliseconds before forcing SIGKILL (default: 2000ms)
-   * @returns {Promise<void>} Promise resolving when the process has exited or been killed
+   * @param process - Child process to terminate
+   * @param timeoutMs - Timeout in milliseconds before forcing SIGKILL (default: 2000ms)
+   * @returns Promise resolving when the process has exited or been killed
    * @public
    */
   public async kill(process: ChildProcess, timeoutMs = 2000): Promise<void> {
@@ -212,10 +212,10 @@ export class ProcessSpawner extends EventEmitter {
    * and ignores the command parameter, always returning 'node' as runtime. This method
    * exists as a protected seam for testing scenarios where inspector behavior needs
    * to be overridden.
-   * @param {string} command - Requested command (currently ignored, always uses 'node')
-   * @param {number} port - Inspector port number (0 for random port)
-   * @param {string[]} userArgs - Additional Node.js runtime arguments to include
-   * @returns {{ runtime: string; runtimeArgs: string[] }} Object containing runtime command ('node') and complete argument array
+   * @param command - Requested command (currently ignored, always uses 'node')
+   * @param port - Inspector port number (0 for random port)
+   * @param userArgs - Additional Node.js runtime arguments to include
+   * @returns Object containing runtime command ('node') and complete argument array
    * @internal
    */
   protected buildRuntimeArgs(
@@ -250,12 +250,12 @@ export class ProcessSpawner extends EventEmitter {
    * "Debugger listening on ws://..." which Node.js emits to stderr when
    * the inspector is ready. Emits 'output' events for all stdout/stderr
    * data and 'exit' event if the process terminates.
-   * @param {ChildProcess} process - Spawned ChildProcess with inspector enabled
-   * @param {number} timeoutMs - Maximum time to wait for inspector URL in milliseconds
-   * @returns {Promise<{ wsUrl: string; extractedPort: number }>} Promise resolving to object with WebSocket URL and extracted port number
-   * @throws {Error} When timeout is reached before URL is found
-   * @throws {Error} When process encounters spawn error
-   * @throws {Error} When process exits before URL is extracted
+   * @param process - Spawned ChildProcess with inspector enabled
+   * @param timeoutMs - Maximum time to wait for inspector URL in milliseconds
+   * @returns Promise resolving to object with WebSocket URL and extracted port number
+   * @throws When timeout is reached before URL is found
+   * @throws When process encounters spawn error
+   * @throws When process exits before URL is extracted
    * @internal
    */
   private async extractInspectorUrl(

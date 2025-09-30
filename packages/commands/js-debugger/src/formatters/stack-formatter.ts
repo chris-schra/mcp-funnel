@@ -13,7 +13,7 @@ import type {
  * Transforms debug session state into structured responses with contextual messaging,
  * location derivation, and breakpoint tracking. All methods are static and side-effect-free.
  * @public
- * @see file:./debug-response-formatter.ts:29
+ * @see file:./debug-response-formatter.ts:29 - Main coordinator usage
  */
 export class StackFormatter {
   /**
@@ -21,8 +21,9 @@ export class StackFormatter {
    * stack/scopes (paused only), excludes global scope, includes last 10 console messages.
    * @param sessionId - Unique session identifier
    * @param session - Debug session with state, adapter, and console output
+   * @returns Promise resolving to formatted debug state object
    * @public
-   * @see file:./debug-response-formatter.ts:29
+   * @see file:./debug-response-formatter.ts:29 - Main coordinator usage
    */
   public static async formatDebugState(
     sessionId: string,
@@ -46,14 +47,12 @@ export class StackFormatter {
             (scope) => scope.type !== 'global',
           )
         : [];
-
       const variables: Record<string, unknown> = {};
       for (const scope of scopes) {
         variables[scope.type] = Object.fromEntries(
           scope.variables.map((v) => [v.name, v.value]),
         );
       }
-
       const formattedStackTrace = stackTrace.map((frame) => ({
         frameId: frame.id,
         functionName: frame.functionName,
@@ -63,7 +62,6 @@ export class StackFormatter {
         line: frame.line,
         column: frame.column,
       }));
-
       const currentLocation = StackFormatter.deriveCurrentLocation(
         session,
         formattedStackTrace,
@@ -73,7 +71,6 @@ export class StackFormatter {
         state,
         currentLocation,
       );
-
       const response: Record<string, unknown> = {
         sessionId,
         status: 'paused',
@@ -82,15 +79,7 @@ export class StackFormatter {
         exception: state.exception,
         location: currentLocation,
         hint: messaging.hint,
-        stackTrace: formattedStackTrace.map((frame) => ({
-          frameId: frame.frameId,
-          functionName: frame.functionName,
-          file: frame.file,
-          relativePath: frame.relativePath,
-          origin: frame.origin,
-          line: frame.line,
-          column: frame.column,
-        })),
+        stackTrace: formattedStackTrace,
         variables,
         consoleOutput: session.consoleOutput.slice(-10).map((msg) => ({
           level: msg.level,
@@ -100,11 +89,9 @@ export class StackFormatter {
         })),
         message: messaging.message,
       };
-
       if (breakpointSummary) {
         response.breakpoints = breakpointSummary;
       }
-
       return response;
     }
 
@@ -121,8 +108,9 @@ export class StackFormatter {
    * @param sessionId - Unique session identifier
    * @param session - Debug session with state and breakpoint info
    * @param stackTrace - Pre-fetched stack frames with origin tracking
+   * @returns Formatted stack trace object with location and messaging
    * @public
-   * @see file:./debug-response-formatter.ts:96
+   * @see file:./debug-response-formatter.ts:96 - Wrapper usage
    */
   public static formatStackTrace(
     sessionId: string,
@@ -167,8 +155,9 @@ export class StackFormatter {
    * Derives execution location from session state or top frame. Enriches with relativePath, adds origin descriptions.
    * @param session - Debug session with potential pre-set location
    * @param frames - Stack frames ordered from most recent to oldest
+   * @returns Debug location object or undefined if no frames available
    * @public
-   * @see file:../types/debug-state.ts:3
+   * @see file:../types/debug-state.ts:3 - DebugLocation type
    */
   public static deriveCurrentLocation(
     session: DebugSession,
@@ -214,32 +203,27 @@ export class StackFormatter {
    * library code, breakpoints, running/terminated states.
    * @param state - Debug state with status and pause reason
    * @param location - Derived location with origin type
+   * @returns Object containing message string and optional hint string
    * @public
-   * @see file:../types/debug-state.ts:12
+   * @see file:../types/debug-state.ts:12 - DebugState type
    */
   public static buildPauseMessaging(
     state: DebugState,
     location?: DebugLocation,
   ): { message: string; hint?: string } {
     if (state.status === 'running') {
-      return {
-        message: 'Running… Will pause at next breakpoint or completion.',
-      };
+      return { message: 'Running… Will pause at next breakpoint or completion.' };
     }
-
     if (state.status === 'terminated') {
       return { message: 'Debug session completed' };
     }
-
     if (state.status !== 'paused') {
       return { message: `Debug session ${state.status}.` };
     }
 
     const locationLabel = location?.relativePath || location?.file;
     const lineSuffix = location?.line ? `:${location.line}` : '';
-    const pauseReason = state.pauseReason;
-
-    if (pauseReason === 'debugger') {
+    if (state.pauseReason === 'debugger') {
       const locationSuffix = locationLabel
         ? ` in ${locationLabel}${lineSuffix}`
         : '';
@@ -249,14 +233,12 @@ export class StackFormatter {
       };
     }
 
-    if (location?.type === 'internal' && pauseReason === 'entry') {
+    if (location?.type === 'internal' && state.pauseReason === 'entry') {
       return {
-        message:
-          'Debugger attached and paused at entry. Continue to run to your breakpoints.',
+        message: 'Debugger attached and paused at entry. Continue to run to your breakpoints.',
         hint: 'Currently paused in runtime internals. Use js-debugger_continue to reach your code.',
       };
     }
-
     if (location?.type === 'internal') {
       const description = location.description || 'runtime internals';
       return {
@@ -271,29 +253,21 @@ export class StackFormatter {
         hint: 'Paused inside dependency code. Step or continue to return to your application.',
       };
     }
-
-    if (pauseReason === 'breakpoint' && locationLabel) {
-      return {
-        message: `Paused at breakpoint in ${locationLabel}${lineSuffix}`,
-      };
+    if (state.pauseReason === 'breakpoint' && locationLabel) {
+      return { message: `Paused at breakpoint in ${locationLabel}${lineSuffix}` };
     }
-
     if (locationLabel) {
-      return {
-        message: `Paused in ${locationLabel}${lineSuffix}`,
-      };
+      return { message: `Paused in ${locationLabel}${lineSuffix}` };
     }
-
-    return {
-      message: 'Paused.',
-    };
+    return { message: 'Paused.' };
   }
 
   /**
    * Builds breakpoint status summary. Identifies verified, pending, not-yet-registered. Returns undefined if none exist.
    * @param session - Debug session with requested and registered breakpoints
+   * @returns Breakpoint status summary or undefined if no breakpoints
    * @public
-   * @see file:../types/breakpoint.ts:32
+   * @see file:../types/breakpoint.ts:32 - BreakpointStatusSummary type
    */
   public static buildBreakpointSummary(
     session: DebugSession,
@@ -357,10 +331,12 @@ export class StackFormatter {
   }
 
   /**
-   * Generates unique breakpoint key: `{normalizedPath}:{line}:{condition|''}`. @internal
-   * @param file
-   * @param line
-   * @param condition
+   * Generates unique breakpoint key: normalizedPath:line:condition.
+   * @param file - File path to normalize
+   * @param line - Line number
+   * @param condition - Optional condition string
+   * @returns Unique breakpoint identifier string
+   * @internal
    */
   private static breakpointKey(
     file: string,
@@ -371,8 +347,10 @@ export class StackFormatter {
   }
 
   /**
-   * Normalizes path: preserves special paths, resolves to absolute, converts backslashes. @internal
-   * @param file
+   * Normalizes path: preserves special paths, resolves to absolute, converts backslashes.
+   * @param file - File path to normalize
+   * @returns Normalized file path
+   * @internal
    */
   private static normalizePathForKey(file: string): string {
     if (!file || file.startsWith('[')) {
@@ -391,8 +369,11 @@ export class StackFormatter {
   }
 
   /**
-   * Coerces origin to valid CodeOrigin. @internal @see file:../types/debug-state.ts:1
-   * @param origin
+   * Coerces origin to valid CodeOrigin.
+   * @param origin - Origin string from debugger
+   * @returns Valid debug location type
+   * @internal
+   * @see file:../types/debug-state.ts:1 - CodeOrigin type
    */
   private static ensureOrigin(origin?: string): DebugLocation['type'] {
     switch (origin) {

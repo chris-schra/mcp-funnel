@@ -14,31 +14,31 @@ import { MessageHandler } from './message-handler.js';
 export interface CDPClientOptions {
   /**
    * Connection timeout in milliseconds
-   * @default 30000
+   * @defaultValue 30000
    */
   connectionTimeout?: number;
 
   /**
    * Request timeout in milliseconds
-   * @default 10000
+   * @defaultValue 10000
    */
   requestTimeout?: number;
 
   /**
    * Maximum reconnection attempts
-   * @default 3
+   * @defaultValue 3
    */
   maxReconnectAttempts?: number;
 
   /**
    * Reconnection delay in milliseconds
-   * @default 1000
+   * @defaultValue 1000
    */
   reconnectDelay?: number;
 
   /**
    * Enable automatic reconnection
-   * @default true
+   * @defaultValue true
    */
   autoReconnect?: boolean;
 }
@@ -152,9 +152,9 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * before sending any CDP commands.
    * @param url - WebSocket URL to connect to (e.g., 'ws://localhost:9229/abc123')
    * @returns Promise that resolves when connection is established
-   * @throws {Error} When already connected or connecting
-   * @throws {Error} When URL format is invalid (not ws:// or wss://)
-   * @throws {Error} When connection times out or fails
+   * @throws When already connected or connecting
+   * @throws When URL format is invalid (not ws:// or wss://)
+   * @throws When connection times out or fails
    * @see file:./websocket-client.ts:83 - WebSocketClient.connect implementation
    */
   public async connect(url: string): Promise<void> {
@@ -197,9 +197,9 @@ export class CDPClient extends EventEmitter implements ICDPClient {
    * @param method - CDP method name (e.g., 'Runtime.evaluate', 'Debugger.setBreakpoint')
    * @param params - Optional method parameters as key-value pairs
    * @returns Promise resolving to the typed method result
-   * @throws {Error} When client is not connected
-   * @throws {Error} When request times out (after configured requestTimeout)
-   * @throws {Error} When CDP returns an error response
+   * @throws When client is not connected
+   * @throws When request times out (after configured requestTimeout)
+   * @throws When CDP returns an error response
    * @example Enabling domains
    * ```typescript
    * await client.send('Runtime.enable');

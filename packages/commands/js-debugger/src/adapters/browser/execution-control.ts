@@ -13,7 +13,7 @@ export class ExecutionControl {
   private cdpClient: CDPClient;
   private eventHandlers: BrowserEventHandlers;
 
-  constructor(cdpClient: CDPClient, eventHandlers: BrowserEventHandlers) {
+  public constructor(cdpClient: CDPClient, eventHandlers: BrowserEventHandlers) {
     this.cdpClient = cdpClient;
     this.eventHandlers = eventHandlers;
   }
@@ -21,9 +21,9 @@ export class ExecutionControl {
   /**
    * Resume execution until next breakpoint or completion.
    * @returns Promise resolving to running state
-   * @throws {Error} When CDP resume command fails
+   * @throws \{Error\} When CDP resume command fails
    */
-  async continue(): Promise<DebugState> {
+  public async continue(): Promise<DebugState> {
     try {
       await this.cdpClient.send('Debugger.resume');
       return { status: 'running' };
@@ -38,9 +38,9 @@ export class ExecutionControl {
    * Step over the current line, executing function calls without entering them.
    * @param debugState - Current debug state to preserve and return
    * @returns Promise resolving to the provided debug state (updated by event handlers)
-   * @throws {Error} When CDP stepOver command fails
+   * @throws \{Error\} When CDP stepOver command fails
    */
-  async stepOver(debugState: DebugState): Promise<DebugState> {
+  public async stepOver(debugState: DebugState): Promise<DebugState> {
     try {
       await this.cdpClient.send('Debugger.stepOver');
       return debugState;
@@ -55,9 +55,9 @@ export class ExecutionControl {
    * Step into the next function call, entering function bodies.
    * @param debugState - Current debug state to preserve and return
    * @returns Promise resolving to the provided debug state (updated by event handlers)
-   * @throws {Error} When CDP stepInto command fails
+   * @throws \{Error\} When CDP stepInto command fails
    */
-  async stepInto(debugState: DebugState): Promise<DebugState> {
+  public async stepInto(debugState: DebugState): Promise<DebugState> {
     try {
       await this.cdpClient.send('Debugger.stepInto');
       return debugState;
@@ -72,9 +72,9 @@ export class ExecutionControl {
    * Step out of the current function, continuing until the caller is reached.
    * @param debugState - Current debug state to preserve and return
    * @returns Promise resolving to the provided debug state (updated by event handlers)
-   * @throws {Error} When CDP stepOut command fails
+   * @throws \{Error\} When CDP stepOut command fails
    */
-  async stepOut(debugState: DebugState): Promise<DebugState> {
+  public async stepOut(debugState: DebugState): Promise<DebugState> {
     try {
       await this.cdpClient.send('Debugger.stepOut');
       return debugState;
@@ -95,7 +95,7 @@ export class ExecutionControl {
    * @param currentCallFrames - Stack frames from paused debugger (uses first frame)
    * @returns Promise resolving to evaluation result with value, type, and optional error
    */
-  async evaluate(
+  public async evaluate(
     expression: string,
     currentCallFrames: CDPCallFrame[],
   ): Promise<EvaluationResult> {

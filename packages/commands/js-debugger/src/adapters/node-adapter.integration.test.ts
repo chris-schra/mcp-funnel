@@ -22,8 +22,9 @@ interface InspectorHandle {
 }
 
 /**
- *
- * @param output
+ * Parses the Inspector WebSocket URL from Node.js debug output
+ * @param output - Debug output text from Node.js process
+ * @returns WebSocket URL string or null if not found
  */
 function parseInspectorUrl(output: string): string | null {
   const match = output.match(/Debugger listening on (ws:\/\/[^\s]+)/);
@@ -31,8 +32,8 @@ function parseInspectorUrl(output: string): string | null {
 }
 
 /**
- *
- * @param child
+ * Terminates a running child process gracefully with timeout fallback
+ * @param child - Child process to terminate
  */
 async function terminateProcess(child: ChildProcess): Promise<void> {
   if (child.killed || child.exitCode !== null) {
@@ -52,9 +53,10 @@ async function terminateProcess(child: ChildProcess): Promise<void> {
 }
 
 /**
- *
- * @param scriptPath
- * @param options
+ * Launches a Node.js process with inspector enabled and waits for connection
+ * @param scriptPath - Path to the script to execute with inspector
+ * @param options - Inspector launch configuration options
+ * @returns Inspector handle with process reference and cleanup function
  */
 async function launchInspector(
   scriptPath: string,
@@ -117,8 +119,9 @@ async function launchInspector(
 }
 
 /**
- *
- * @param ws
+ * Creates a CDP command sender function for a WebSocket connection
+ * @param ws - WebSocket connection to CDP endpoint
+ * @returns Function that sends CDP commands and awaits responses
  */
 function createCdpCommandSender(ws: WebSocket) {
   let nextId = 0;
@@ -179,10 +182,11 @@ function createCdpCommandSender(ws: WebSocket) {
 }
 
 /**
- *
- * @param ws
- * @param expectedCount
- * @param timeoutMs
+ * Collects console events from CDP WebSocket connection
+ * @param ws - WebSocket connection to CDP endpoint
+ * @param expectedCount - Number of console events to wait for
+ * @param timeoutMs - Maximum time to wait for events in milliseconds
+ * @returns Array of collected console event objects
  */
 async function collectConsoleEvents(
   ws: WebSocket,
@@ -222,8 +226,9 @@ async function collectConsoleEvents(
 }
 
 /**
- *
- * @param url
+ * Opens a WebSocket connection to the specified URL
+ * @param url - WebSocket URL to connect to
+ * @returns Promise resolving to connected WebSocket instance
  */
 async function openWebSocket(url: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {

@@ -36,8 +36,8 @@ export class ScopeUtils {
    *
    * This is the inverse of {@link parseScopes} and is used when constructing OAuth2
    * token responses where the `scope` field must be a space-separated string per RFC 6749.
-   * @param {string[]} scopes - Array of scope strings to format
-   * @returns {string} Space-separated string of scopes
+   * @param scopes - Array of scope strings to format
+   * @returns Space-separated string of scopes
    * @example
    * ```typescript
    * const formatted = ScopeUtils.formatScopes(['read', 'write', 'admin']);

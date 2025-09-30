@@ -164,7 +164,7 @@ export class NodeDebugAdapter implements IDebugAdapter {
    * The connection process is managed by ConnectionManager and EventHandlersManager
    * to ensure proper initialization order and error handling.
    * @param target - Path to the script to debug (e.g., '/path/to/script.js')
-   * @throws {Error} When connection fails or process cannot be spawned
+   * @throws When connection fails or process cannot be spawned
    * @example
    * ```typescript
    * await adapter.connect('./dist/index.js');
@@ -212,14 +212,14 @@ export class NodeDebugAdapter implements IDebugAdapter {
    * 6. Emits 'terminated' event for listeners
    *
    * Safe to call multiple times - subsequent calls are no-ops.
-   * @throws {Error} Errors during cleanup are logged but not thrown to ensure cleanup completes
+   * @throws Errors during cleanup are logged but not thrown to ensure cleanup completes
    * @example
    * ```typescript
-   * try {
+   * try \{
    *   await adapter.disconnect();
-   * } finally {
+   * \} finally \{
    *   // Session is fully cleaned up
-   * }
+   * \}
    * ```
    * @public
    * @see file:./node/pause-handler.ts:80 - Pause promise rejection
@@ -571,12 +571,12 @@ export class NodeDebugAdapter implements IDebugAdapter {
    * Useful for synchronizing execution flow after stepping or continuing.
    * @param timeoutMs - Maximum time to wait in milliseconds (default: 30000)
    * @returns Promise resolving to debug state when paused
-   * @throws {Error} When timeout expires before pause occurs
+   * @throws When timeout expires before pause occurs
    * @example
    * ```typescript
    * await adapter.continue();
    * const state = await adapter.waitForPause(5000);
-   * console.log(`Paused at ${state.location?.line}`);
+   * console.log(`Paused at $\{state.location?.line\}`);
    * ```
    * @public
    * @see file:./node/pause-handler.ts:120 - Pause promise management

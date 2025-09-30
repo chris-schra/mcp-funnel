@@ -32,8 +32,9 @@ describe('ProcessSpawner', () => {
 
   /**
    * Create a test script that simulates Node.js behavior for testing
-   * @param filename
-   * @param scriptContent
+   * @param filename - Name of the test script file
+   * @param scriptContent - JavaScript code to write to the file
+   * @returns Absolute path to the created test script
    */
   function createTestScript(filename: string, scriptContent: string): string {
     const scriptPath = join(tempDir, filename);
@@ -43,7 +44,8 @@ describe('ProcessSpawner', () => {
 
   /**
    * Track spawned processes for cleanup
-   * @param process
+   * @param process - Child process to add to tracking array
+   * @returns The same process for chaining
    */
   function trackProcess(process: ChildProcess): ChildProcess {
     spawnedProcesses.push(process);

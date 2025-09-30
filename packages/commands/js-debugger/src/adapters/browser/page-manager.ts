@@ -17,8 +17,8 @@ export class PageManager {
 
   /**
    * Creates a new PageManager instance.
-   * @param {string} host - Chrome DevTools Protocol host address (e.g., 'localhost')
-   * @param {number} port - Chrome DevTools Protocol port number (e.g., 9222)
+   * @param host - Chrome DevTools Protocol host address (e.g., 'localhost')
+   * @param port - Chrome DevTools Protocol port number (e.g., 9222)
    */
   public constructor(host: string, port: number) {
     this.targetDiscovery = new TargetDiscovery(host, port);
@@ -31,10 +31,10 @@ export class PageManager {
    * - 'auto': Finds first page target, creates blank page if none exists
    * - URL (starts with 'http'): Finds matching target by URL or creates new page with that URL
    * - Other string: Searches for matching target ID or title substring
-   * @param {string} target - URL pattern, target ID, title substring, or 'auto' for first page
-   * @returns {Promise<BrowserTarget>} Promise resolving to the discovered or created browser target
-   * @throws {Error} When Chrome DevTools endpoint is unavailable
-   * @throws {Error} When target cannot be found or created
+   * @param target - URL pattern, target ID, title substring, or 'auto' for first page
+   * @returns Promise resolving to the discovered or created browser target
+   * @throws When Chrome DevTools endpoint is unavailable
+   * @throws When target cannot be found or created
    */
   public async findTarget(target: string): Promise<BrowserTarget> {
     // Check if endpoint is available
@@ -79,9 +79,9 @@ export class PageManager {
 
   /**
    * Navigate the connected target to a URL.
-   * @param {CDPClient} cdpClient - CDP client connected to the target
-   * @param {string} url - Absolute URL to navigate to
-   * @returns {Promise<void>}
+   * @param cdpClient - CDP client connected to the target
+   * @param url - Absolute URL to navigate to
+   * @returns Promise that resolves when navigation is complete
    */
   public async navigate(cdpClient: CDPClient, url: string): Promise<void> {
     await cdpClient.send('Page.navigate', { url });
@@ -89,7 +89,7 @@ export class PageManager {
 
   /**
    * Get current target.
-   * @returns {BrowserTarget | null} The currently connected browser target, or null if none is connected
+   * @returns The currently connected browser target, or null if none is connected
    */
   public getCurrentTarget(): BrowserTarget | null {
     return this.currentTarget;

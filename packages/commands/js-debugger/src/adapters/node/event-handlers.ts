@@ -106,10 +106,10 @@ export class EventHandlersManager {
    * All handlers emit typed events through the event emitter and invoke optional
    * legacy callbacks for backward compatibility. Handlers remain active until the
    * debug session is terminated.
-   * @param consoleHandler Legacy callback for console messages
-   * @param resumeHandler Legacy callback for resume events
-   * @param breakpointResolvedHandler Legacy callback for breakpoint resolution
-   * @param pauseHandler Legacy callback for pause events
+   * @param consoleHandler - Legacy callback for console messages
+   * @param resumeHandler - Legacy callback for resume events
+   * @param breakpointResolvedHandler - Legacy callback for breakpoint resolution
+   * @param pauseHandler - Legacy callback for pause events
    * @see file:../node-adapter.ts:183-188 - Called during connection setup
    * @see file:../../types/events.ts:6-13 - DebugSessionEvents interface
    * @internal
@@ -139,7 +139,7 @@ export class EventHandlersManager {
    * updates debug state, and emits both typed events and legacy callbacks.
    *
    * Uses fire-and-forget error handling to prevent blocking CDP message processing.
-   * @param pauseHandler Optional legacy callback for pause events
+   * @param pauseHandler - Optional legacy callback for pause events
    * @internal
    */
   private setupPausedHandler(pauseHandler?: PauseHandler): void {
@@ -165,7 +165,7 @@ export class EventHandlersManager {
    * Handles debugger resume events that occur after continue, step, or other
    * execution control operations. Updates debug state to 'running' and clears
    * call frame context since the debugger is no longer paused.
-   * @param resumeHandler Optional legacy callback for resume events
+   * @param resumeHandler - Optional legacy callback for resume events
    * @internal
    */
   private setupResumedHandler(resumeHandler?: ResumeHandler): void {
@@ -217,7 +217,7 @@ export class EventHandlersManager {
    * a breakpoint location in loaded code. The handler constructs a BreakpointRegistration
    * object with the resolved location, converting CDP's 0-based line numbers to 1-based.
    * Only processes events for known breakpoints; unknown IDs are silently ignored.
-   * @param breakpointResolvedHandler Optional legacy callback for breakpoint resolution
+   * @param breakpointResolvedHandler - Optional legacy callback for breakpoint resolution
    * @internal
    */
   private setupBreakpointResolvedHandler(
@@ -267,7 +267,7 @@ export class EventHandlersManager {
    *
    * Console arguments are stringified using description or value properties, and
    * line numbers in stack traces are converted from 0-based to 1-based.
-   * @param consoleHandler Optional legacy callback for console messages
+   * @param consoleHandler - Optional legacy callback for console messages
    * @internal
    */
   private setupConsoleHandler(consoleHandler?: ConsoleHandler): void {
@@ -315,8 +315,8 @@ export class EventHandlersManager {
    *
    * This method is called asynchronously from setupPausedHandler and any errors
    * are caught and emitted as error events to prevent blocking CDP processing.
-   * @param params CDP Debugger.paused event parameters
-   * @param pauseHandler Optional legacy callback for pause events
+   * @param params - CDP Debugger.paused event parameters
+   * @param pauseHandler - Optional legacy callback for pause events
    * @see file:./pause-handler.ts:139 - State construction logic
    * @internal
    */
@@ -352,7 +352,7 @@ export class EventHandlersManager {
    * - 'assert' → 'error'
    * - Others map directly: 'error', 'info', 'debug', 'trace'
    * - Defaults to 'log' for unknown types
-   * @param type CDP console API call type
+   * @param type - CDP console API call type
    * @returns Normalized console message level
    * @internal
    */
@@ -381,7 +381,7 @@ export class EventHandlersManager {
    * CDP script parsed events and forwards to the source map handler for
    * processing. This enables source map resolution for TypeScript, bundled
    * code, and other transpiled sources.
-   * @param params CDP Debugger.scriptParsed event parameters
+   * @param params - CDP Debugger.scriptParsed event parameters
    * @internal
    */
   private async handleScriptParsed(

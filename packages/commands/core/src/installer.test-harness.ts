@@ -36,7 +36,7 @@ export class TestableCommandInstaller extends CommandInstaller {
    * Tests the REAL production implementation to verify package spec matching behavior,
    * including exact matches, version specifiers, scoped packages, and git URLs.
    * @param manifest - The command manifest containing installed commands to search
-   * @param packageSpec - The package specification to match (e.g., 'pkg', '@scope/pkg', 'pkg@1.0.0', 'git+https://...')
+   * @param packageSpec - The package specification to match (e.g., 'pkg', '\@scope/pkg', 'pkg\@1.0.0', 'git+https://...')
    * @returns The matching installed command, or undefined if no match found
    * @example
    * ```typescript

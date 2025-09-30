@@ -14,8 +14,8 @@ import type {
 /**
  * Creates a stub IDebugAdapter for testing formatter behavior.
  * Returns mock implementation with configurable stack frames.
- * @param {StackFrame[]} stackFrames - Stack frames to return from getStackTrace
- * @returns {IDebugAdapter} Stub adapter with no-op methods and provided stack frames
+ * @param stackFrames - Stack frames to return from getStackTrace
+ * @returns Stub adapter with no-op methods and provided stack frames
  * @internal
  */
 function createAdapterStub(stackFrames: StackFrame[]): IDebugAdapter {

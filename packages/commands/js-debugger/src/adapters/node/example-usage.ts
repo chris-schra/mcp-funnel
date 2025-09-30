@@ -11,7 +11,7 @@ import { ProcessSpawner } from './process-spawner.js';
 import { resolve } from 'path';
 
 /**
- *
+ * Demonstrates ProcessSpawner usage with various configuration options
  */
 async function demonstrateProcessSpawner() {
   const spawner = new ProcessSpawner();

@@ -52,7 +52,7 @@ export class BrowserConsoleHandler {
    * Creates a new BrowserConsoleHandler instance.
    * @param eventEmitter - Typed event emitter for debug session events
    */
-  constructor(eventEmitter: Emittery<DebugSessionEvents>) {
+  public constructor(eventEmitter: Emittery<DebugSessionEvents>) {
     this.eventEmitter = eventEmitter;
   }
 
@@ -72,7 +72,7 @@ export class BrowserConsoleHandler {
    * });
    * ```
    */
-  onConsoleOutput(handler: ConsoleHandler): void {
+  public onConsoleOutput(handler: ConsoleHandler): void {
     this.consoleHandlers.push(handler);
   }
 
@@ -87,7 +87,7 @@ export class BrowserConsoleHandler {
    * @see {@link CDPConsoleAPICalledParams}
    * @see {@link BrowserEventHandlers|Usage in event handlers}
    */
-  handleConsoleMessage(params: CDPConsoleAPICalledParams): void {
+  public handleConsoleMessage(params: CDPConsoleAPICalledParams): void {
     const message: ConsoleMessage = {
       level: this.mapConsoleLevel(params.type),
       timestamp: new Date(params.timestamp).toISOString(),
@@ -114,7 +114,7 @@ export class BrowserConsoleHandler {
    * @see file:../../cdp/types.ts:120-129 - CDPExceptionThrownParams definition
    * @see file:./event-handlers.ts:130-132 - Usage in event handlers
    */
-  handleException(params: CDPExceptionThrownParams): void {
+  public handleException(params: CDPExceptionThrownParams): void {
     const message: ConsoleMessage = {
       level: 'error',
       timestamp: new Date().toISOString(),

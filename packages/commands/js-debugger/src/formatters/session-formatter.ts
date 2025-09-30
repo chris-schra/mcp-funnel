@@ -70,13 +70,9 @@ export class SessionFormatter {
    * Returns the console output data structure unchanged (pass-through formatter).
    * The data includes console messages, applied filters, counts, and session status.
    * This method exists as a SEAM for potential future transformations or enrichment.
-   * @param data - Console output data structure
-   * @param data.sessionId - Debug session identifier
-   * @param data.consoleOutput - Array of formatted console messages (last 10 by default)
-   * @param data.filters - Applied filter criteria (levels, search terms)
-   * @param data.totalCount - Total console messages in session before filtering
-   * @param data.filteredCount - Number of messages after filtering
-   * @param data.status - Current session debug state ('running', 'paused', 'terminated')
+   * @param data - Console output data structure with sessionId, consoleOutput array (last 10 by default),
+   * filters (levels, search terms), totalCount (total messages before filtering),
+   * filteredCount (messages after filtering), and status ('running', 'paused', or 'terminated')
    * @returns Unmodified data object for MCP tool response
    * @example
    * ```typescript

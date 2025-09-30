@@ -28,7 +28,8 @@ interface StaticServerHandle {
 }
 
 /**
- *
+ * Launches headless Chromium with remote debugging enabled.
+ * @returns Promise resolving to Chrome handle with cleanup method
  */
 async function launchHeadlessChromium(): Promise<ChromeHandle> {
   const port = await getPort();
@@ -100,8 +101,9 @@ async function launchHeadlessChromium(): Promise<ChromeHandle> {
 }
 
 /**
- *
- * @param rootDir
+ * Starts a static HTTP server for serving test fixtures.
+ * @param rootDir - Root directory to serve files from
+ * @returns Promise resolving to server handle with close method
  */
 async function startStaticServer(rootDir: string): Promise<StaticServerHandle> {
   const server = http.createServer(async (req, res) => {

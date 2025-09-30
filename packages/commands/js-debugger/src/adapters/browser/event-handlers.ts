@@ -82,7 +82,7 @@ export class BrowserEventHandlers {
    * @param projectRoot - Optional project root directory for resolving relative paths
    * @param updateMainAdapterState - Optional callback to notify main adapter of state changes
    */
-  constructor(
+  public constructor(
     cdpClient: CDPClient,
     eventEmitter: Emittery<DebugSessionEvents>,
     consoleHandler: BrowserConsoleHandler,
@@ -118,7 +118,7 @@ export class BrowserEventHandlers {
    * and console events (consoleAPICalled, exceptionThrown). Must be called once during
    * initialization before starting the debug session.
    */
-  setupEventHandlers(): void {
+  public setupEventHandlers(): void {
     // Debugger events
     this.cdpClient.on('Debugger.paused', (params: unknown) => {
       this.onDebuggerPaused(params as CDPDebuggerPausedParams);
@@ -161,7 +161,7 @@ export class BrowserEventHandlers {
    * Registers a callback to be invoked when the debugger pauses.
    * @param handler - Callback function that receives the new debug state when paused
    */
-  onPaused(handler: PauseHandler): void {
+  public onPaused(handler: PauseHandler): void {
     this.pauseHandlers.push(handler);
   }
 
@@ -169,7 +169,7 @@ export class BrowserEventHandlers {
    * Registers a callback to be invoked when the debugger resumes execution.
    * @param handler - Callback function invoked when execution resumes
    */
-  onResumed(handler: ResumeHandler): void {
+  public onResumed(handler: ResumeHandler): void {
     this.resumeHandlers.push(handler);
   }
 
@@ -180,7 +180,7 @@ export class BrowserEventHandlers {
    * confirms the actual location where the breakpoint was placed.
    * @param handler - Callback function that receives breakpoint registration details
    */
-  onBreakpointResolved(
+  public onBreakpointResolved(
     handler: (registration: BreakpointRegistration) => void,
   ): void {
     this.breakpointResolvedHandlers.push(handler);
@@ -191,7 +191,7 @@ export class BrowserEventHandlers {
    * @param debugState - Updated debug state from the main adapter
    * @param projectRoot - Updated project root directory, if changed
    */
-  updateState(debugState: DebugState, projectRoot?: string): void {
+  public updateState(debugState: DebugState, projectRoot?: string): void {
     this.debugState = debugState;
     this.projectRoot = projectRoot;
   }
@@ -247,13 +247,9 @@ export class BrowserEventHandlers {
    * Handles CDP Debugger.breakpointResolved event to track verified breakpoint locations.
    *
    * Updates the breakpoint registry with the resolved location and notifies handlers.
-   * Delegates processing to breakpoint-handler.
-   * @param params - Breakpoint resolution event parameters
-   * @param params.breakpointId - CDP breakpoint identifier
-   * @param params.location - Resolved breakpoint location in the script
-   * @param params.location.scriptId - Script identifier where breakpoint was resolved
-   * @param params.location.lineNumber - Zero-based line number in the script
-   * @param params.location.columnNumber - Optional zero-based column number
+   * Delegates processing to breakpoint-handler. The params object contains the breakpointId
+   * and location details (scriptId, lineNumber, and optional columnNumber).
+   * @param params - Breakpoint resolution event parameters with breakpointId and location
    */
   private handleBreakpointResolvedEvent(params: {
     breakpointId: string;

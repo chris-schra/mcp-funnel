@@ -105,7 +105,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * Does not establish a connection - call connect() to attach to a target.
    * @param options - Configuration for host, port, and debug request
    */
-  constructor(options?: BrowserAdapterOptions) {
+  public constructor(options?: BrowserAdapterOptions) {
     const host = options?.host ?? 'localhost';
     const port = options?.port ?? 9222;
 
@@ -150,10 +150,10 @@ export class BrowserAdapter implements IDebugAdapter {
    * establishes connection, and enables required CDP domains (Runtime, Debugger,
    * Console, Page). Sets pause-on-uncaught-exceptions by default.
    * @param target - URL of the page to debug (e.g., 'http://localhost:3000') or page title pattern
-   * @throws {Error} When already connected to a target
-   * @throws {Error} When target cannot be found or connection fails
+   * @throws \{Error\} When already connected to a target
+   * @throws \{Error\} When target cannot be found or connection fails
    */
-  async connect(target: string): Promise<void> {
+  public async connect(target: string): Promise<void> {
     if (this.isConnected) {
       throw new Error('Already connected to a debugging target');
     }
@@ -172,7 +172,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * Rejects pending pause promises, disables CDP domains, closes WebSocket
    * connection, and emits 'terminated' event. Safe to call multiple times.
    */
-  async disconnect(): Promise<void> {
+  public async disconnect(): Promise<void> {
     if (!this.isConnected) return;
 
     this.rejectPendingPausePromises();
@@ -185,9 +185,9 @@ export class BrowserAdapter implements IDebugAdapter {
   /**
    * Navigates the connected page to a new URL.
    * @param url - Absolute URL to navigate to
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async navigate(url: string): Promise<void> {
+  public async navigate(url: string): Promise<void> {
     this.ensureConnected();
     await this.pageManager.navigate(this.cdpClient, url);
   }
@@ -202,9 +202,9 @@ export class BrowserAdapter implements IDebugAdapter {
    * @param line - Line number (1-based)
    * @param condition - Optional conditional expression (breakpoint triggers only when true)
    * @returns Registration info including verification status and resolved locations
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async setBreakpoint(
+  public async setBreakpoint(
     file: string,
     line: number,
     condition?: string,
@@ -227,9 +227,9 @@ export class BrowserAdapter implements IDebugAdapter {
   /**
    * Removes a previously set breakpoint.
    * @param id - Breakpoint identifier from BreakpointRegistration
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async removeBreakpoint(id: string): Promise<void> {
+  public async removeBreakpoint(id: string): Promise<void> {
     this.ensureConnected();
     await this.breakpointManager.removeBreakpoint(id);
   }
@@ -240,9 +240,9 @@ export class BrowserAdapter implements IDebugAdapter {
    * Execution continues until next breakpoint, exception, or program termination.
    * Updates internal state and emits 'resumed' event.
    * @returns Updated debug state (typically status: 'running')
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async continue(): Promise<DebugState> {
+  public async continue(): Promise<DebugState> {
     this.ensureConnected();
     this.debugState = await this.executionControl.continue();
     this.eventHandlers.updateState(this.debugState, this.projectRoot);
@@ -255,9 +255,9 @@ export class BrowserAdapter implements IDebugAdapter {
    * Advances to the next statement in the current function. Function calls
    * are executed in their entirety without pausing.
    * @returns Updated debug state after stepping
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async stepOver(): Promise<DebugState> {
+  public async stepOver(): Promise<DebugState> {
     this.ensureConnected();
     this.debugState = await this.executionControl.stepOver(this.debugState);
     this.eventHandlers.updateState(this.debugState, this.projectRoot);
@@ -270,9 +270,9 @@ export class BrowserAdapter implements IDebugAdapter {
    * If the current statement contains a function call, execution pauses
    * at the first statement inside that function.
    * @returns Updated debug state after stepping
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async stepInto(): Promise<DebugState> {
+  public async stepInto(): Promise<DebugState> {
     this.ensureConnected();
     this.debugState = await this.executionControl.stepInto(this.debugState);
     this.eventHandlers.updateState(this.debugState, this.projectRoot);
@@ -285,9 +285,9 @@ export class BrowserAdapter implements IDebugAdapter {
    * Execution continues until the current function returns, then pauses
    * at the statement following the function call.
    * @returns Updated debug state after stepping
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async stepOut(): Promise<DebugState> {
+  public async stepOut(): Promise<DebugState> {
     this.ensureConnected();
     this.debugState = await this.executionControl.stepOut(this.debugState);
     this.eventHandlers.updateState(this.debugState, this.projectRoot);
@@ -301,9 +301,9 @@ export class BrowserAdapter implements IDebugAdapter {
    * current execution point. Only works when debugger is paused.
    * @param expression - JavaScript expression to evaluate
    * @returns Evaluation result with value, type, and optional error
-   * @throws {Error} When not connected to a debugging target
+   * @throws \{Error\} When not connected to a debugging target
    */
-  async evaluate(expression: string): Promise<EvaluationResult> {
+  public async evaluate(expression: string): Promise<EvaluationResult> {
     this.ensureConnected();
     return await this.executionControl.evaluate(
       expression,
@@ -318,7 +318,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * Returns empty array when not paused or not connected.
    * @returns Array of stack frames from innermost (current) to outermost (program entry)
    */
-  async getStackTrace(): Promise<StackFrame[]> {
+  public async getStackTrace(): Promise<StackFrame[]> {
     if (!this.isConnected || this.debugState.status !== 'paused') {
       return [];
     }
@@ -334,7 +334,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * @param frameId - Zero-based frame index from getStackTrace()
    * @returns Array of scopes (local, closure, global) with their variables
    */
-  async getScopes(frameId: number): Promise<Scope[]> {
+  public async getScopes(frameId: number): Promise<Scope[]> {
     if (!this.isConnected || frameId >= this.currentCallFrames.length) {
       return [];
     }
@@ -348,7 +348,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * @param handler - Callback receiving console messages
    * @deprecated Use on('console', handler) instead for event-driven approach
    */
-  onConsoleOutput(handler: ConsoleHandler): void {
+  public onConsoleOutput(handler: ConsoleHandler): void {
     this.consoleHandler.onConsoleOutput(handler);
   }
 
@@ -357,7 +357,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * @param handler - Callback receiving debug state when execution pauses
    * @deprecated Use on('paused', handler) instead for event-driven approach
    */
-  onPaused(handler: PauseHandler): void {
+  public onPaused(handler: PauseHandler): void {
     this.eventHandlers.onPaused(handler);
   }
 
@@ -366,7 +366,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * @param handler - Callback invoked when execution resumes
    * @deprecated Use on('resumed', handler) instead for event-driven approach
    */
-  onResumed(handler: ResumeHandler): void {
+  public onResumed(handler: ResumeHandler): void {
     this.eventHandlers.onResumed(handler);
   }
 
@@ -375,7 +375,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * @param handler - Callback receiving registration info when breakpoints are verified
    * @deprecated Use on('breakpointResolved', handler) instead for event-driven approach
    */
-  onBreakpointResolved(
+  public onBreakpointResolved(
     handler: (registration: BreakpointRegistration) => void,
   ): void {
     this.eventHandlers.onBreakpointResolved(handler);
@@ -402,7 +402,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * // Later: unsubscribe();
    * ```
    */
-  on<K extends keyof DebugSessionEvents>(
+  public on<K extends keyof DebugSessionEvents>(
     event: K,
     handler: (data: DebugSessionEvents[K]) => void,
   ): () => void {
@@ -414,7 +414,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * @param event - Event name from DebugSessionEvents
    * @param handler - Handler function to remove (must be same reference as registered)
    */
-  off<K extends keyof DebugSessionEvents>(
+  public off<K extends keyof DebugSessionEvents>(
     event: K,
     handler: (data: DebugSessionEvents[K]) => void,
   ): void {
@@ -428,9 +428,9 @@ export class BrowserAdapter implements IDebugAdapter {
    * from breakpoint, step operation, exception, or debugger statement.
    * @param timeoutMs - Maximum time to wait in milliseconds (default: 30000)
    * @returns Debug state when paused
-   * @throws {Error} When timeout expires before pause occurs
+   * @throws \{Error\} When timeout expires before pause occurs
    */
-  async waitForPause(timeoutMs = 30000): Promise<DebugState> {
+  public async waitForPause(timeoutMs = 30000): Promise<DebugState> {
     if (this.debugState.status === 'paused') {
       return this.debugState;
     }
@@ -453,7 +453,7 @@ export class BrowserAdapter implements IDebugAdapter {
    * current location, and exception info if applicable.
    * @returns Copy of current debug state (safe to modify)
    */
-  getCurrentState(): DebugState {
+  public getCurrentState(): DebugState {
     return { ...this.debugState };
   }
 

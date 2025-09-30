@@ -67,7 +67,7 @@ export class MockSessionManager implements IMockSessionManager {
    * });
    * ```
    */
-  createMockSession(request: DebugRequest): string {
+  public createMockSession(request: DebugRequest): string {
     const sessionId = crypto.randomUUID();
     const startTime = new Date().toISOString();
 
@@ -94,7 +94,7 @@ export class MockSessionManager implements IMockSessionManager {
    * @param sessionId - UUID of the mock session to retrieve
    * @returns Mock session object if found, undefined otherwise
    */
-  getMockSession(sessionId: string): MockDebugSession | undefined {
+  public getMockSession(sessionId: string): MockDebugSession | undefined {
     return this.mockSessions.get(sessionId);
   }
 
@@ -103,7 +103,7 @@ export class MockSessionManager implements IMockSessionManager {
    * @param sessionId - UUID of the mock session to delete
    * @returns True if session existed and was deleted, false otherwise
    */
-  deleteMockSession(sessionId: string): boolean {
+  public deleteMockSession(sessionId: string): boolean {
     return this.mockSessions.delete(sessionId);
   }
 
@@ -114,7 +114,7 @@ export class MockSessionManager implements IMockSessionManager {
    * asynchronously and only advance when explicitly continued.
    * @returns Array of session summaries including id, platform, target, and state
    */
-  listMockSessions(): Array<{
+  public listMockSessions(): Array<{
     id: string;
     platform: string;
     target: string;
@@ -144,12 +144,10 @@ export class MockSessionManager implements IMockSessionManager {
    * (unless evaluating) and automatically terminates when all breakpoints
    * have been visited.
    * @param sessionId - UUID of the mock session to control
-   * @param args - Control parameters
-   * @param args.action - Control action: 'continue', 'step_over', 'step_into', 'step_out', or 'stop'
-   * @param args.evaluate - Expression to evaluate without advancing the session
+   * @param args - Control parameters containing action and evaluate options
    * @returns MCP tool result with updated session state or error
    */
-  continueMockSession(
+  public continueMockSession(
     sessionId: string,
     args: {
       action?: string;
@@ -190,7 +188,7 @@ export class MockSessionManager implements IMockSessionManager {
    * @param _request - Debug request (unused, kept for interface compatibility)
    * @returns MCP tool result with initial session state or error if session not found
    */
-  createInitialMockResponse(
+  public createInitialMockResponse(
     sessionId: string,
     _request: DebugRequest,
   ): CallToolResult {
@@ -215,7 +213,7 @@ export class MockSessionManager implements IMockSessionManager {
    * @param sessionId - UUID of the mock session to stop
    * @returns MCP tool result with terminated status or error if session not found
    */
-  stopMockSession(sessionId: string): CallToolResult {
+  public stopMockSession(sessionId: string): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
       return createMockErrorResponse(sessionId, 'Mock session not found');
@@ -229,11 +227,11 @@ export class MockSessionManager implements IMockSessionManager {
    * Retrieves a mock stack trace for a paused session.
    *
    * Generates a synthetic call stack with three frames based on the first
-   * breakpoint location. The stack always shows: processUserData -> handleRequest -> main.
+   * breakpoint location. The stack always shows: processUserData -\> handleRequest -\> main.
    * @param sessionId - UUID of the mock session to inspect
    * @returns MCP tool result with mock stack frames or error if session not found
    */
-  getStackTraceMock(sessionId: string): CallToolResult {
+  public getStackTraceMock(sessionId: string): CallToolResult {
     const session = this.mockSessions.get(sessionId);
     if (!session) {
       return createMockErrorResponse(sessionId, 'Mock session not found');
@@ -250,13 +248,10 @@ export class MockSessionManager implements IMockSessionManager {
    * metadata. Note that level and search filtering are not currently applied
    * in the mock implementation.
    * @param sessionId - UUID of the mock session to query
-   * @param args - Filter parameters
-   * @param args.levels - Log level filters (e.g., {error: true, warn: true}) - not yet implemented
-   * @param args.search - Search string to filter messages - not yet implemented
-   * @param args.since - Starting message index (0-based), returns all messages if undefined
+   * @param args - Filter parameters containing levels, search, and since options
    * @returns MCP tool result with formatted console messages and counts, or error if session not found
    */
-  getConsoleOutputMock(
+  public getConsoleOutputMock(
     sessionId: string,
     args: {
       levels?: Record<string, boolean>;
@@ -279,14 +274,10 @@ export class MockSessionManager implements IMockSessionManager {
    * requested path through them. Supports nested property access (e.g.,
    * "userData.profile.settings.theme"). Path validation ensures the path
    * parameter is a non-empty string.
-   * @param args - Variable inspection parameters
-   * @param args.sessionId - UUID of the mock session to inspect
-   * @param args.path - Dot-notation path to variable (e.g., "userData.profile")
-   * @param args.frameId - Stack frame identifier (defaults to 0, currently unused in mock)
-   * @param args.maxDepth - Maximum object traversal depth (currently unused in mock implementation)
+   * @param args - Variable inspection parameters containing sessionId, path, frameId, and maxDepth
    * @returns MCP tool result with variable value and type, or error if session/path not found
    */
-  getVariablesMock(args: {
+  public getVariablesMock(args: {
     sessionId: string;
     path: string;
     frameId?: number;

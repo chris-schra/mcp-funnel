@@ -60,10 +60,10 @@ export class PauseHandlerManager {
    * CDP Debugger.paused event. Multiple concurrent calls are supported - all
    * waiting promises will be resolved when the pause occurs. If a timeout
    * occurs before pause, the promise is rejected and removed from tracking.
-   * @param timeoutMs Maximum milliseconds to wait before rejecting (default: 30000)
-   * @param currentState Current debug state to check if already paused
+   * @param timeoutMs - Maximum milliseconds to wait before rejecting (default: 30000)
+   * @param currentState - Current debug state to check if already paused
    * @returns Promise resolving to the paused DebugState
-   * @throws {Error} When timeout expires before pause occurs
+   * @throws When timeout expires before pause occurs
    * @example
    * ```typescript
    * try {
@@ -112,8 +112,8 @@ export class PauseHandlerManager {
    *
    * This method resolves ALL waiting promises registered via waitForPause(),
    * clears their timeouts, and invokes the optional legacy pauseHandler callback.
-   * @param params CDP Debugger.paused event parameters containing call frames and reason
-   * @param pauseHandler Optional legacy callback invoked after state construction
+   * @param params - CDP Debugger.paused event parameters containing call frames and reason
+   * @param pauseHandler - Optional legacy callback invoked after state construction
    * @returns The constructed DebugState with status 'paused'
    * @example
    * ```typescript
@@ -189,7 +189,7 @@ export class PauseHandlerManager {
    * Called during session termination or fatal errors to ensure no promises
    * remain hanging. Clears all timeouts and empties the promise tracking set.
    * This prevents memory leaks and provides proper error propagation to callers.
-   * @param error Error to reject all pending promises with
+   * @param error - Error to reject all pending promises with
    * @example
    * ```typescript
    * // During adapter disconnect
@@ -216,7 +216,7 @@ export class PauseHandlerManager {
    * These are used to set the evaluation context in the adapter, allowing
    * variable inspection and expression evaluation within the paused scope.
    * Returns undefined values if no call frames are present in the pause event.
-   * @param params CDP Debugger.paused event parameters
+   * @param params - CDP Debugger.paused event parameters
    * @returns Object containing currentCallFrameId and currentCallFrames, or undefined values
    * @see file:./event-handlers.ts:298 - Used to set evaluation context
    * @public

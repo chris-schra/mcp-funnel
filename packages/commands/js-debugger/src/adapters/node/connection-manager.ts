@@ -32,9 +32,9 @@ import type { ProcessSpawner } from './process-spawner.js';
  */
 export class ConnectionManager {
   /**
-   * @param {ITypedCDPClient} cdpClient - CDP client for protocol communication
-   * @param {ProcessSpawner} spawner - Process spawner for launching Node.js with inspector
-   * @param {DebugRequest} [request] - Optional debug request with configuration (command, args, stopOnEntry)
+   * @param cdpClient - CDP client for protocol communication
+   * @param spawner - Process spawner for launching Node.js with inspector
+   * @param request - Optional debug request with configuration (command, args, stopOnEntry)
    */
   public constructor(
     private cdpClient: ITypedCDPClient,
@@ -51,11 +51,11 @@ export class ConnectionManager {
    *
    * After connecting, enables Runtime and Debugger CDP domains required for
    * debugging operations. Event handlers must be registered before calling finalizeConnection().
-   * @param {string} target - WebSocket URL (ws://...) or script file path to debug
-   * @returns {Promise<ChildProcess | undefined>} Promise resolving to spawned ChildProcess (if spawned) or undefined (if direct WebSocket)
-   * @throws {Error} When CDP connection fails
-   * @throws {Error} When process spawning fails (for script file targets)
-   * @throws {Error} When CDP domain enablement fails
+   * @param target - WebSocket URL (ws://...) or script file path to debug
+   * @returns Promise resolving to spawned ChildProcess (if spawned) or undefined (if direct WebSocket)
+   * @throws When CDP connection fails
+   * @throws When process spawning fails (for script file targets)
+   * @throws When CDP domain enablement fails
    * @see file:./process-spawner.ts:56-59 - ProcessSpawner.spawn method
    * @see file:../node-adapter.ts:103 - Call site in NodeDebugAdapter
    */
@@ -88,8 +88,8 @@ export class ConnectionManager {
    * This method completes the two-phase connection lifecycle. The debugger process
    * remains paused after connect() until this method releases it, ensuring
    * event handlers are ready to receive debugger events.
-   * @returns {Promise<void>} Resolves when debugger has been resumed
-   * @throws {Error} When CDP command fails
+   * @returns Resolves when debugger has been resumed
+   * @throws When CDP command fails
    * @see file:../node-adapter.ts:114 - Call site after event handler setup
    */
   public async finalizeConnection(): Promise<void> {
@@ -105,10 +105,10 @@ export class ConnectionManager {
    * Handles special command transformations (e.g., tsx → node with --import tsx)
    * and merges request args with runtime args before spawning. Always uses 'node'
    * as the runtime command regardless of request.command configuration.
-   * @param {string} target - Script file path to execute
-   * @returns {Promise<ChildProcess>} Promise resolving to spawned ChildProcess
-   * @throws {Error} When process spawning fails
-   * @throws {Error} When CDP connection to spawned process fails
+   * @param target - Script file path to execute
+   * @returns Promise resolving to spawned ChildProcess
+   * @throws When process spawning fails
+   * @throws When CDP connection to spawned process fails
    * @see file:./process-spawner.ts:56-59 - ProcessSpawner.spawn method
    * @see file:../../types/request.ts:1-17 - DebugRequest interface
    */

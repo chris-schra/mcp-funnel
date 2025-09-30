@@ -13,7 +13,7 @@ import type { TokenData } from '@mcp-funnel/core';
  * @returns TokenData object with accessToken, expiresAt, tokenType, and optional scope
  * @public
  * @see file:../oauth-types.ts - OAuth2TokenResponse interface definition
- * @see file:@mcp-funnel/core/src/auth/index.d.ts - TokenData interface definition
+ * @see file:\@mcp-funnel/core/src/auth/index.d.ts - TokenData interface definition
  */
 export function parseTokenResponse(
   tokenResponse: OAuth2TokenResponse,

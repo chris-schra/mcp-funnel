@@ -35,8 +35,8 @@ export type CodeOrigin = 'user' | 'internal' | 'library' | 'unknown';
  * 3. Contains `node_modules` → `library` (npm dependencies)
  * 4. `file://` prefix, absolute path, or no scheme → `user` (application code)
  * 5. Otherwise → `unknown`
- * @param {string | undefined} url - Script URL from Chrome DevTools Protocol (may be undefined)
- * @returns {CodeOrigin} Classification of the script's origin
+ * @param url - Script URL from Chrome DevTools Protocol (may be undefined)
+ * @returns Classification of the script's origin
  * @example
  * ```typescript
  * determineCodeOrigin('node:fs')                    // 'internal'

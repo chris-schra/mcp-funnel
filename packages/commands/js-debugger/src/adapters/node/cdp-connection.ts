@@ -115,8 +115,8 @@ export class CDPConnection implements ITypedCDPClient {
    * and sets up message handling. Rejects if already connected or if the connection
    * fails to establish.
    * @param wsUrl - WebSocket URL in format ws://host:port/devtools/page/target-id
-   * @throws {Error} When already connected to CDP
-   * @throws {Error} When WebSocket connection fails with the underlying error message
+   * @throws When already connected to CDP
+   * @throws When WebSocket connection fails with the underlying error message
    * @example
    * ```typescript
    * const cdp = new CDPConnection();
@@ -208,21 +208,21 @@ export class CDPConnection implements ITypedCDPClient {
    * @param method - CDP method name (e.g., 'Debugger.enable', 'Runtime.evaluate')
    * @param params - Optional parameters for the command
    * @returns Promise resolving to the command result with type T
-   * @throws {Error} When not connected to CDP
-   * @throws {Error} When command times out after 10 seconds
-   * @throws {Error} When CDP returns an error response
+   * @throws When not connected to CDP
+   * @throws When command times out after 10 seconds
+   * @throws When CDP returns an error response
    * @example Enable debugger
    * ```typescript
    * await cdp.send('Debugger.enable');
    * ```
    * @example Evaluate expression
    * ```typescript
-   * interface EvalResult {
-   *   result: { type: string; value: unknown };
-   * }
-   * const result = await cdp.send<EvalResult>('Runtime.evaluate', {
+   * interface EvalResult \{
+   *   result: \{ type: string; value: unknown \};
+   * \}
+   * const result = await cdp.send<EvalResult>('Runtime.evaluate', \{
    *   expression: '2 + 2'
-   * });
+   * \});
    * console.log(result.result.value); // 4
    * ```
    * @public
@@ -370,9 +370,9 @@ export class CDPConnection implements ITypedCDPClient {
    * @returns true if WebSocket connection is active, false otherwise
    * @example
    * ```typescript
-   * if (cdp.isConnected()) {
+   * if (cdp.isConnected()) \{
    *   await cdp.send('Debugger.pause');
-   * }
+   * \}
    * ```
    * @public
    */

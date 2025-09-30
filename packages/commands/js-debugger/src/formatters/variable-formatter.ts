@@ -15,12 +15,10 @@ export class VariableFormatter {
    * Wraps variable inspection data with session context and a descriptive message
    * for display to the user. The result object includes the session ID, frame ID,
    * the variable path that was queried, and the inspection result.
-   * @param {string} sessionId - Debug session identifier
-   * @param {number} frameId - Stack frame identifier (0 = top frame)
-   * @param {{ path: string; result: unknown }} data - Variable inspection data
-   * @param {string} data.path - Dot-notation path to the variable (e.g., "user.profile.name")
-   * @param {unknown} data.result - Variable inspection result from the debugger
-   * @returns {Record<string, unknown>} Structured response object with session context and variable data
+   * @param sessionId - Debug session identifier
+   * @param frameId - Stack frame identifier (0 = top frame)
+   * @param data - Variable inspection data with path (dot-notation like "user.profile.name") and result (inspection value from debugger)
+   * @returns Structured response object with session context and variable data
    * @see file:../handlers/get-variables-handler.ts:66 - Caller that uses this formatter
    * @public
    */
@@ -43,13 +41,10 @@ export class VariableFormatter {
    * Wraps the evaluation result with session context and status information.
    * The session remains paused after evaluation completes, allowing further
    * inspection or stepping operations.
-   * @param {string} sessionId - Debug session identifier
-   * @param {{ expression?: string; result: unknown; type: string; error?: string }} evaluation - Evaluation result data
-   * @param {string | undefined} evaluation.expression - Expression that was evaluated (if available)
-   * @param {unknown} evaluation.result - Evaluation result value
-   * @param {string} evaluation.type - Type of the result (e.g., "string", "object")
-   * @param {string | undefined} evaluation.error - Error message if evaluation failed
-   * @returns {Record<string, unknown>} Structured response indicating evaluation completed while session remains paused
+   * @param sessionId - Debug session identifier
+   * @param evaluation - Evaluation result data with optional expression (if available), result value,
+   * type (e.g., "string", "object"), and optional error message if evaluation failed
+   * @returns Structured response indicating evaluation completed while session remains paused
    * @see file:./debug-response-formatter.ts:122 - Usage in response formatter
    * @public
    */
@@ -78,11 +73,9 @@ export class VariableFormatter {
    *
    * NOTE: This method is currently unused in the codebase but provides utility formatting
    * that may be needed for future variable display features.
-   * @param {Record<string, unknown>} variables - Variable data to format
-   * @param {{ maxDepth?: number; includeTypes?: boolean }} options - Formatting options
-   * @param {number | undefined} options.maxDepth - Maximum recursion depth (default: 3)
-   * @param {boolean | undefined} options.includeTypes - Whether to add __type annotations to objects (default: false)
-   * @returns {Record<string, unknown>} Formatted variable data with depth limits applied
+   * @param variables - Variable data to format
+   * @param options - Formatting options with optional maxDepth (default: 3) and includeTypes (default: false)
+   * @returns Formatted variable data with depth limits applied
    * @internal
    */
   public static formatVariableData(
@@ -142,10 +135,9 @@ export class VariableFormatter {
    * NOTE: This method is currently unused in the codebase but provides formatting
    * functionality that may be needed for comprehensive scope visualization features.
    * Global scope is filtered out to avoid overwhelming output with built-in globals.
-   * @param {Array<{ type: string; variables: Array<{ name: string; value: unknown; type?: string }> }>} scopes - Array of scope objects from debugger
-   * @param {string} scopes[].type - Scope type (e.g., "local", "closure", "block")
-   * @param {Array<{ name: string; value: unknown; type?: string }>} scopes[].variables - Variables within this scope
-   * @returns {Record<string, unknown>} Formatted object with scope types as keys and variable maps as values
+   * @param scopes - Array of scope objects from debugger, each with type (e.g., "local", "closure", "block")
+   * and variables array containing name, value, and optional type
+   * @returns Formatted object with scope types as keys and variable maps as values
    * @internal
    */
   public static formatScopeVariables(
@@ -184,10 +176,10 @@ export class VariableFormatter {
    * NOTE: This method is currently unused in the codebase but provides error formatting
    * that would be needed if evaluation error handling is implemented separately
    * from the main evaluation formatter.
-   * @param {string} sessionId - Debug session identifier
-   * @param {string} expression - Expression that failed to evaluate
-   * @param {string | Error} error - Error message or Error object from the failed evaluation
-   * @returns {Record<string, unknown>} Structured error response with session context and error details
+   * @param sessionId - Debug session identifier
+   * @param expression - Expression that failed to evaluate
+   * @param error - Error message or Error object from the failed evaluation
+   * @returns Structured error response with session context and error details
    * @internal
    */
   public static formatEvaluationError(

@@ -168,9 +168,9 @@ export class ScopeInspector {
    *
    * Variable retrieval failures are logged but don't halt processing - the scope will
    * simply have an empty variables array rather than throwing an error.
-   * @param {CDPScope[]} scopeChain - Array of CDP scope objects from callFrame.scopeChain
-   * @param {ICDPClient} cdpClient - CDP client for making Runtime.getProperties calls
-   * @returns {Promise<Scope[]>} Promise resolving to array of Scope objects with populated variables
+   * @param scopeChain - Array of CDP scope objects from callFrame.scopeChain
+   * @param cdpClient - CDP client for making Runtime.getProperties calls
+   * @returns Promise resolving to array of Scope objects with populated variables
    * @example
    * ```typescript
    * // Called from NodeDebugAdapter.getScopes()
@@ -228,11 +228,11 @@ export class ScopeInspector {
    * Makes a Runtime.getProperties call to fetch all own properties of the object
    * identified by objectId. Filters out internal properties (those starting with '__'),
    * getters/setters without values, and properties that threw during access.
-   * @param {string} objectId - CDP object identifier from scope.object.objectId
-   * @param {ICDPClient} cdpClient - CDP client for making the Runtime.getProperties request
-   * @returns {Promise<Variable[]>} Promise resolving to array of Variable objects
-   * @throws {Error} When the CDP Runtime.getProperties request fails - wraps the
-   *                 underlying CDP error with context about which objectId failed
+   * @param objectId - CDP object identifier from scope.object.objectId
+   * @param cdpClient - CDP client for making the Runtime.getProperties request
+   * @returns Promise resolving to array of Variable objects
+   * @throws When the CDP Runtime.getProperties request fails - wraps the
+   *         underlying CDP error with context about which objectId failed
    * @public
    * @see file:../../types/evaluation.ts:19 - Variable interface
    */
@@ -288,10 +288,10 @@ export class ScopeInspector {
    * If the expression throws an exception or encounters evaluation errors, returns
    * an EvaluationResult with type='error' rather than throwing - this allows
    * callers to handle evaluation failures gracefully.
-   * @param {string} expression - JavaScript expression to evaluate (e.g., 'users.length', 'x + y')
-   * @param {string} callFrameId - CDP call frame identifier from the current pause event
-   * @param {ICDPClient} cdpClient - CDP client for making the Debugger.evaluateOnCallFrame request
-   * @returns {Promise<EvaluationResult>} Promise resolving to evaluation result - never rejects, errors returned as type='error'
+   * @param expression - JavaScript expression to evaluate (e.g., 'users.length', 'x + y')
+   * @param callFrameId - CDP call frame identifier from the current pause event
+   * @param cdpClient - CDP client for making the Debugger.evaluateOnCallFrame request
+   * @returns Promise resolving to evaluation result - never rejects, errors returned as type='error'
    * @example
    * ```typescript
    * // Evaluate complex expression in current scope
@@ -361,8 +361,8 @@ export class ScopeInspector {
    * CDP supports more granular scope types (module, script, eval, block) than
    * our public Scope interface. These are mapped to their closest equivalent,
    * with less common types defaulting to 'local'.
-   * @param {CDPScope['type']} cdpType - CDP scope type from callFrame.scopeChain[].type
-   * @returns {Scope['type']} Mapped scope type matching Scope['type'] union
+   * @param cdpType - CDP scope type from callFrame.scopeChain[].type
+   * @returns Mapped scope type matching Scope['type'] union
    * @internal
    */
   private mapScopeType(cdpType: CDPScope['type']): Scope['type'] {
@@ -395,8 +395,8 @@ export class ScopeInspector {
    * - Getters/setters without resolved values
    * - Properties that threw exceptions during access
    * - Properties without value descriptors
-   * @param {CDPPropertyDescriptor} prop - CDP property descriptor from Runtime.getProperties result
-   * @returns {Variable | null} Variable object or null if property should be filtered out
+   * @param prop - CDP property descriptor from Runtime.getProperties result
+   * @returns Variable object or null if property should be filtered out
    * @internal
    */
   private createVariableFromProperty(
@@ -434,13 +434,8 @@ export class ScopeInspector {
    * - null: Special case with type='object' and value=null
    * - Complex objects with objectId: Returns description string (full object inspection requires separate call)
    * - Simple objects without objectId: Returns value or description
-   * @param {{type: string, value?: unknown, description?: string, objectId?: string, className?: string}} cdpValue - CDP value object from property descriptors or evaluation results
-   * @param {string} cdpValue.type - Value type
-   * @param {unknown} [cdpValue.value] - Actual value for primitives
-   * @param {string} [cdpValue.description] - Description string for complex types
-   * @param {string} [cdpValue.objectId] - Object ID for further inspection
-   * @param {string} [cdpValue.className] - Class name for objects
-   * @returns {unknown} Extracted JavaScript value - primitives as-is, complex objects as description strings
+   * @param cdpValue - CDP value object from property descriptors or evaluation results
+   * @returns Extracted JavaScript value - primitives as-is, complex objects as description strings
    * @internal
    */
   private extractValue(cdpValue: {

@@ -55,17 +55,17 @@ export abstract class BaseCommand implements ICommand {
    * Extracts standard options (verbose, dryRun, format) from either
    * MCP protocol arguments (object) or CLI arguments (string array).
    * Supports both `--verbose`/`-v` flags and `--format <type>` options.
-   * @param {Record<string, unknown> | string[]} args - MCP arguments as object or CLI arguments as string array
-   * @returns {ICommandOptions} Parsed options with verbose, dryRun, and format properties
+   * @param args - MCP arguments as object or CLI arguments as string array
+   * @returns Parsed options with verbose, dryRun, and format properties
    * @example MCP usage
    * ```typescript
    * const options = this.parseCommonOptions({ verbose: true, format: 'json' });
-   * // Returns: { verbose: true, format: 'json' }
+   * // Returns: \{ verbose: true, format: 'json' \}
    * ```
    * @example CLI usage
    * ```typescript
    * const options = this.parseCommonOptions(['--verbose', '--format', 'json']);
-   * // Returns: { verbose: true, format: 'json' }
+   * // Returns: \{ verbose: true, format: 'json' \}
    * ```
    */
   protected parseCommonOptions(
@@ -105,8 +105,8 @@ export abstract class BaseCommand implements ICommand {
    *
    * Outputs informational messages to console unless format is 'json',
    * in which case logging is suppressed to avoid corrupting JSON output.
-   * @param {string} message - The message to log
-   * @param {ICommandOptions} [options] - Command options containing format preference
+   * @param message - The message to log
+   * @param options - Command options containing format preference
    * @example
    * ```typescript
    * this.log('Processing complete', { format: 'text' }); // Logs to console
@@ -126,8 +126,8 @@ export abstract class BaseCommand implements ICommand {
    *
    * Outputs error messages to stderr unless format is 'json',
    * in which case logging is suppressed to avoid corrupting JSON output.
-   * @param {string} message - The error message to log
-   * @param {ICommandOptions} [options] - Command options containing format preference
+   * @param message - The error message to log
+   * @param options - Command options containing format preference
    * @example
    * ```typescript
    * this.logError('Failed to process', { format: 'text' }); // Logs to stderr

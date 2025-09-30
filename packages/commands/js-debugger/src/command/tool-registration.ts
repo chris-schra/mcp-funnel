@@ -61,7 +61,7 @@ export class ToolRegistration {
    *
    * Returns the internal handler registry containing all tools available
    * for execution. Handlers are keyed by their tool name strings.
-   * @returns {Map<string, IToolHandler<Record<string, unknown>>>} Map of tool names to their handler instances
+   * @returns Map of tool names to their handler instances
    * @public
    */
   public getHandlers(): Map<string, IToolHandler<Record<string, unknown>>> {
@@ -73,8 +73,8 @@ export class ToolRegistration {
    *
    * Looks up a handler in the registry by its tool name. Returns undefined
    * if no handler is registered for the given name.
-   * @param {string} toolName - The name of the tool handler to retrieve
-   * @returns {IToolHandler<Record<string, unknown>> | undefined} The handler instance if found, undefined otherwise
+   * @param toolName - The name of the tool handler to retrieve
+   * @returns The handler instance if found, undefined otherwise
    * @example
    * ```typescript
    * const debugHandler = registration.getHandler('debug');
@@ -96,7 +96,7 @@ export class ToolRegistration {
    *
    * Extracts the keys from the handler registry, providing a complete list
    * of tool names that can be executed via the debugger command.
-   * @returns {string[]} Array of registered tool names
+   * @returns Array of registered tool names
    * @example
    * ```typescript
    * const tools = registration.getAvailableTools();
@@ -176,7 +176,7 @@ export class ToolRegistration {
    *
    * These definitions are consolidated here to keep MCP protocol details
    * separate from handler implementation logic.
-   * @returns {Tool[]} Array of Tool definitions for MCP protocol registration
+   * @returns Array of Tool definitions for MCP protocol registration
    * @example
    * ```typescript
    * const registration = new ToolRegistration();
@@ -186,7 +186,7 @@ export class ToolRegistration {
    * ```
    * @public
    * @see file:../command.ts:63-65 - Called by JsDebuggerCommand.getMCPDefinitions()
-   * @see file:@mcp-funnel/commands-core - Tool type definition
+   * @see {@link Tool} - Tool type definition from commands-core package
    */
   public getMCPDefinitions(): Tool[] {
     return [
