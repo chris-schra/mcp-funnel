@@ -2,6 +2,10 @@ import { vi } from 'vitest';
 import { CoreToolContext } from '../../core-tool.interface.js';
 import { ToolRegistry, ToolState } from '../../../tool-registry/index.js';
 
+/**
+ *
+ * @param enabledTools
+ */
 export function createMockContext(enabledTools: string[]): CoreToolContext {
   const toolDescriptionCache = new Map([
     [

@@ -6,6 +6,10 @@ export const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Create mock package response
+/**
+ *
+ * @param overrides
+ */
 export function createMockPackageResponse(
   overrides?: Partial<NPMPackageResponse>,
 ): NPMPackageResponse {
@@ -80,6 +84,10 @@ export function createMockPackageResponse(
 }
 
 // Create mock search response
+/**
+ *
+ * @param overrides
+ */
 export function createMockSearchResponse(
   overrides?: Partial<NPMSearchResponse>,
 ): NPMSearchResponse {

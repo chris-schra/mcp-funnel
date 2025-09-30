@@ -50,17 +50,15 @@ const {
  * const provider = new OAuthProvider(storage, consentService, config);
  * ```
  * @public
- * @see file:./token-utils/index.ts - Token handling utilities
- * @see file:../utils/index.ts - OAuth validation utilities
  */
 export class OAuthProvider {
   private tokenUtils: TokenUtils;
 
   /**
    * Creates an OAuth provider instance.
-   * @param {IOAuthProviderStorage} storage - Storage backend for clients, tokens, and authorization codes
-   * @param {IUserConsentService} consentService - Service for managing user consent decisions
-   * @param {OAuthProviderConfig} config - OAuth provider configuration including issuer, URLs, and policies
+   * @param storage - Storage backend for clients, tokens, and authorization codes
+   * @param consentService - Service for managing user consent decisions
+   * @param config - OAuth provider configuration including issuer, URLs, and policies
    */
   public constructor(
     private storage: IOAuthProviderStorage,
@@ -86,23 +84,15 @@ export class OAuthProvider {
    * Registers a new OAuth 2.0 client with the authorization server.
    *
    * Generates a unique client_id and client_secret, with the secret expiring
-   * after one year by default (configurable via config.defaultClientSecretExpiry).
-   * If grant_types or response_types are omitted, defaults to authorization_code flow.
-   * @param {object} metadata - Client registration metadata
-   * @param {string} [metadata.client_name] - Optional human-readable client name
-   * @param {string[]} metadata.redirect_uris - Array of allowed redirect URIs for authorization callbacks
-   * @param {string[]} [metadata.grant_types] - Optional grant types (defaults to ['authorization_code'])
-   * @param {string[]} [metadata.response_types] - Optional response types (defaults to ['code'])
-   * @param {string} [metadata.scope] - Optional space-separated scope string
-   * @returns {Promise<ClientRegistration>} Promise resolving to the registered client with generated credentials
-   * @example
-   * ```typescript
-   * const client = await provider.registerClient({
-   *   client_name: 'My App',
-   *   redirect_uris: ['http://localhost:8080/callback']
-   * });
-   * console.log(client.client_id, client.client_secret);
-   * ```
+   * after one year by default. If grant_types or response_types are omitted,
+   * defaults to authorization_code flow.
+   *
+   * The metadata object includes: client_name (optional human-readable name),
+   * redirect_uris (allowed redirect URIs for authorization callbacks),
+   * grant_types (optional, defaults to authorization_code), response_types
+   * (optional, defaults to code), and scope (optional space-separated scopes).
+   * @param metadata - Client registration metadata
+   * @returns Promise resolving to the registered client with generated credentials
    */
   public async registerClient(metadata: {
     client_name?: string;
@@ -136,20 +126,9 @@ export class OAuthProvider {
    * Validates the authorization request, checks user consent, and generates
    * an authorization code if all checks pass. Supports PKCE code challenge
    * validation. The user must be authenticated before calling this method.
-   * @param {Partial<AuthorizationRequest>} params - Authorization request parameters including client_id, redirect_uri, response_type, scope, and optional PKCE parameters
-   * @param {string} userId - Authenticated user identifier who is granting authorization
-   * @returns {Promise<{success: boolean, authorizationCode?: string, redirectUri?: string, state?: string, error?: OAuthError}>} Promise resolving to authorization result with code and redirect URI on success, or error details on failure
-   * @example
-   * ```typescript
-   * const result = await provider.handleAuthorizationRequest({
-   *   response_type: 'code',
-   *   client_id: 'client123',
-   *   redirect_uri: 'http://localhost:8080/callback',
-   *   scope: 'read write',
-   *   code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
-   *   code_challenge_method: 'S256'
-   * }, 'user123');
-   * ```
+   * @param params - Authorization request parameters
+   * @param userId - Authenticated user identifier
+   * @returns Promise resolving to authorization result
    */
   public async handleAuthorizationRequest(
     params: Partial<AuthorizationRequest>,
@@ -174,28 +153,8 @@ export class OAuthProvider {
    * Processes token requests for both authorization_code and refresh_token grant types.
    * Validates the request parameters, authenticates the client, verifies PKCE if required,
    * and issues access tokens (and optionally refresh tokens) on success.
-   * @param {Partial<TokenRequest>} params - Token request parameters including grant_type, code/refresh_token, client credentials, and redirect_uri
-   * @returns {Promise<{success: boolean, tokenResponse?: TokenResponse, error?: OAuthError}>} Promise resolving to token response with access_token on success, or error details on failure
-   * @example Authorization code grant
-   * ```typescript
-   * const result = await provider.handleTokenRequest({
-   *   grant_type: 'authorization_code',
-   *   code: 'auth_code_123',
-   *   redirect_uri: 'http://localhost:8080/callback',
-   *   client_id: 'client123',
-   *   client_secret: 'secret',
-   *   code_verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
-   * });
-   * ```
-   * @example Refresh token grant
-   * ```typescript
-   * const result = await provider.handleTokenRequest({
-   *   grant_type: 'refresh_token',
-   *   refresh_token: 'refresh_xyz',
-   *   client_id: 'client123',
-   *   client_secret: 'secret'
-   * });
-   * ```
+   * @param params - Token request parameters
+   * @returns Promise resolving to token response
    */
   public async handleTokenRequest(params: Partial<TokenRequest>): Promise<{
     success: boolean;
@@ -232,18 +191,8 @@ export class OAuthProvider {
    *
    * Checks if the token exists in storage and has not expired. Expired tokens
    * are automatically deleted from storage during verification.
-   * @param {string} token - The access token string to verify
-   * @returns {Promise<{valid: boolean, tokenData?: AccessToken, error?: string}>} Promise resolving to validation result with token data if valid, or error message if invalid/expired
-   * @example
-   * ```typescript
-   * const result = await provider.verifyAccessToken('access_token_abc');
-   * if (result.valid) {
-   *   console.log('Token belongs to user:', result.tokenData.user_id);
-   *   console.log('Granted scopes:', result.tokenData.scopes);
-   * } else {
-   *   console.log('Verification failed:', result.error);
-   * }
-   * ```
+   * @param token - The access token string to verify
+   * @returns Promise resolving to validation result
    */
   public async verifyAccessToken(token: string): Promise<{
     valid: boolean;
@@ -267,22 +216,11 @@ export class OAuthProvider {
    * Rotates a client's secret by generating a new one.
    *
    * Validates the current secret before issuing a new one. The new secret
-   * will have a fresh expiration timestamp based on config.defaultClientSecretExpiry.
-   * This operation requires the current secret for authentication.
-   * @param {string} clientId - The client identifier whose secret should be rotated
-   * @param {string} currentSecret - The current client secret for authentication
-   * @returns {Promise<{success: boolean, client?: ClientRegistration, error?: OAuthError}>} Promise resolving to success with updated client registration, or error details on failure
-   * @example
-   * ```typescript
-   * const result = await provider.rotateClientSecret(
-   *   'client123',
-   *   'old_secret'
-   * );
-   * if (result.success) {
-   *   console.log('New secret:', result.client.client_secret);
-   *   console.log('Expires at:', result.client.client_secret_expires_at);
-   * }
-   * ```
+   * will have a fresh expiration timestamp. This operation requires the
+   * current secret for authentication.
+   * @param clientId - The client identifier
+   * @param currentSecret - The current client secret
+   * @returns Promise resolving to updated client registration
    */
   public async rotateClientSecret(
     clientId: string,
@@ -344,18 +282,9 @@ export class OAuthProvider {
    * Removes the token from storage after verifying it belongs to the specified client.
    * According to RFC 7009, revoking a non-existent token returns success to prevent
    * token scanning attacks.
-   * @param {string} token - The access token or refresh token to revoke
-   * @param {string} clientId - The client identifier that owns the token
-   * @returns {Promise<{success: boolean, error?: string}>} Promise resolving to success status, or error if token doesn't belong to the client
-   * @example
-   * ```typescript
-   * const result = await provider.revokeToken('access_token_abc', 'client123');
-   * if (result.success) {
-   *   console.log('Token revoked successfully');
-   * } else {
-   *   console.log('Revocation failed:', result.error);
-   * }
-   * ```
+   * @param token - The access token or refresh token to revoke
+   * @param clientId - The client identifier that owns the token
+   * @returns Promise resolving to success status
    */
   public async revokeToken(
     token: string,
@@ -371,14 +300,8 @@ export class OAuthProvider {
    * Returns OAuth 2.0 authorization server metadata (RFC 8414).
    *
    * Provides discovery information about the server's capabilities, endpoints,
-   * and supported features. This is typically exposed at /.well-known/oauth-authorization-server.
-   * @returns {object} Server metadata object containing issuer, endpoints, and supported features
-   * @example
-   * ```typescript
-   * const metadata = provider.getMetadata();
-   * console.log('Token endpoint:', metadata.token_endpoint);
-   * console.log('Supported scopes:', metadata.scopes_supported);
-   * ```
+   * and supported features. Typically exposed at /.well-known/oauth-authorization-server.
+   * @returns Server metadata object containing issuer, endpoints, and supported features
    */
   public getMetadata() {
     return {
@@ -400,16 +323,8 @@ export class OAuthProvider {
   /**
    * Removes expired tokens and authorization codes from storage.
    *
-   * Should be called periodically (e.g., via cron job) to prevent storage bloat.
+   * Should be called periodically to prevent storage bloat.
    * Delegates to the storage layer's cleanupExpiredTokens implementation.
-   * @example
-   * ```typescript
-   * // Run cleanup every hour
-   * setInterval(async () => {
-   *   await provider.cleanup();
-   *   console.log('Expired tokens cleaned up');
-   * }, 3600000);
-   * ```
    */
   public async cleanup(): Promise<void> {
     await this.storage.cleanupExpiredTokens();

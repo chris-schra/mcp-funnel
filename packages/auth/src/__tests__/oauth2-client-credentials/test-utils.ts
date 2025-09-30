@@ -21,7 +21,11 @@ export interface OAuth2ErrorResponse {
   error_uri?: string;
 }
 
-// Create mock storage helper
+/**
+ * Creates a mock token storage implementation for testing.
+ *
+ * @returns Mock storage with vitest-mocked methods
+ */
 export function createMockStorage(): ITokenStorage {
   let storedToken: TokenData | null = null;
 
@@ -40,7 +44,12 @@ export function createMockStorage(): ITokenStorage {
   } as ITokenStorage;
 }
 
-// Create standard test configuration
+/**
+ * Creates a standard OAuth2 client credentials configuration for testing.
+ *
+ * @param overrides - Optional configuration values to override defaults
+ * @returns OAuth2 client credentials configuration
+ */
 export function createMockConfig(
   overrides?: Partial<OAuth2ClientCredentialsConfigZod>,
 ): OAuth2ClientCredentialsConfigZod {
@@ -55,7 +64,11 @@ export function createMockConfig(
   };
 }
 
-// Setup mock fetch for successful token response
+/**
+ * Configures the global fetch mock to return a successful OAuth2 token response.
+ *
+ * @param response - Optional response fields to override default values
+ */
 export function setupSuccessfulTokenResponse(
   response?: Partial<OAuth2TokenResponse>,
 ): void {
@@ -73,7 +86,12 @@ export function setupSuccessfulTokenResponse(
   });
 }
 
-// Setup mock fetch for error response
+/**
+ * Configures the global fetch mock to return an OAuth2 error response.
+ *
+ * @param status - HTTP status code for the error response
+ * @param error - OAuth2 error object with error code and description
+ */
 export function setupErrorTokenResponse(
   status: number,
   error: OAuth2ErrorResponse,

@@ -15,6 +15,9 @@ export type MockClient = {
   callTool: ReturnType<typeof vi.fn>;
 } & Client;
 
+/**
+ *
+ */
 export function createMockServer(): MockServer {
   return {
     setRequestHandler: vi.fn(),
@@ -24,6 +27,9 @@ export function createMockServer(): MockServer {
   } as MockServer;
 }
 
+/**
+ *
+ */
 export function createMockClient(): MockClient {
   return {
     connect: vi.fn(),
@@ -47,6 +53,10 @@ export function createMockClient(): MockClient {
   } as MockClient;
 }
 
+/**
+ *
+ * @param mockServer
+ */
 export function findListToolsHandler(mockServer: MockServer) {
   return mockServer.setRequestHandler.mock.calls.find((call) => {
     const schema = call[0] as { parse?: (data: unknown) => unknown };

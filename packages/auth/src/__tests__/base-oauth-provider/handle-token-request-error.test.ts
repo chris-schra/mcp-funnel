@@ -5,6 +5,10 @@ import {
   OAuth2ErrorCode,
 } from '../../errors/authentication-error.js';
 
+/**
+ * Tests error handling during token request failures in BaseOAuthProvider.
+ * @see {@link BaseOAuthProvider.handleTokenRequestError}
+ */
 describe('BaseOAuthProvider - handleTokenRequestError', () => {
   let provider: TestOAuthProvider;
   let mockStorage: MockTokenStorage;

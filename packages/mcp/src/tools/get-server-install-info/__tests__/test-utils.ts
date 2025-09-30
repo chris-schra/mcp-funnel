@@ -1,6 +1,9 @@
 import { vi } from 'vitest';
 import { CoreToolContext } from '../../core-tool.interface.js';
 
+/**
+ *
+ */
 export function createMockContext(): CoreToolContext {
   return {
     toolRegistry: {} as CoreToolContext['toolRegistry'],
@@ -14,6 +17,13 @@ export function createMockContext(): CoreToolContext {
   };
 }
 
+/**
+ *
+ * @param data
+ * @param ok
+ * @param status
+ * @param statusText
+ */
 export function createMockFetchResponse(
   data: unknown,
   ok = true,
@@ -28,6 +38,10 @@ export function createMockFetchResponse(
   };
 }
 
+/**
+ *
+ * @param servers
+ */
 export function createServerSearchResponse(servers: unknown[]) {
   return createMockFetchResponse({
     servers,

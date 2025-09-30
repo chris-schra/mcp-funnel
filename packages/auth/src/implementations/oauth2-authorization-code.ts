@@ -125,7 +125,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * on garbage collection.
    * @param config - OAuth2 Authorization Code configuration including endpoints and client credentials
    * @param storage - Token storage implementation for persisting access tokens
-   * @throws {AuthenticationError} When configuration validation fails (missing required fields or invalid URLs)
+   * @throws \{AuthenticationError\} When configuration validation fails (missing required fields or invalid URLs)
    * @example
    * ```typescript
    * import { OAuth2AuthCodeProvider, MemoryTokenStorage } from '@mcp-funnel/auth';
@@ -181,7 +181,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * Overridden from base provider to avoid proactive refresh scheduling since
    * Authorization Code flow requires user interaction for token refresh.
    * @returns Promise resolving to valid token data
-   * @throws {AuthenticationError} When token acquisition fails or storage retrieval fails
+   * @throws \{AuthenticationError\} When token acquisition fails or storage retrieval fails
    * @internal
    * @override
    * @see file:./base-oauth-provider.ts:109 - Base implementation with proactive refresh
@@ -216,7 +216,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * @param state - OAuth2 state parameter from callback URL (must match pending flow)
    * @param code - Authorization code from callback URL to exchange for access token
    * @returns Promise that resolves when token exchange completes and token is stored
-   * @throws {AuthenticationError} When state is invalid/expired or token exchange fails
+   * @throws \{AuthenticationError\} When state is invalid/expired or token exchange fails
    * @example
    * ```typescript
    * // In Hono callback route handler
@@ -287,7 +287,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * This method does NOT automatically open a browser - the user must manually
    * visit the displayed URL to authorize the application.
    * @returns Promise that resolves when authorization completes or rejects on timeout/error
-   * @throws {AuthenticationError} When authorization times out (5 minutes) or callback returns error
+   * @throws \{AuthenticationError\} When authorization times out (5 minutes) or callback returns error
    * @internal
    * @override
    * @see file:../utils/pkce.ts - PKCE code verifier and challenge generation
@@ -365,7 +365,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * @param code - Authorization code received from callback
    * @param codeVerifier - PKCE code verifier matching the challenge sent in authorization request
    * @returns Promise resolving to OAuth2 token response containing access token
-   * @throws {AuthenticationError} When token exchange fails or response is invalid
+   * @throws \{AuthenticationError\} When token exchange fails or response is invalid
    * @internal
    * @see file:../utils/token-exchange.ts - Token exchange request building
    */
@@ -472,7 +472,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    *
    * Checks for presence of clientId, authorizationEndpoint, tokenEndpoint, and
    * redirectUri. Also validates that URLs are properly formed.
-   * @throws {AuthenticationError} When required fields are missing or URLs are invalid
+   * @throws \{AuthenticationError\} When required fields are missing or URLs are invalid
    * @internal
    */
   private validateConfig(): void {

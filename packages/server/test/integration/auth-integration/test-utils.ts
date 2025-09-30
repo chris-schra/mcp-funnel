@@ -44,6 +44,10 @@ export const createMockMCPProxy = (): MCPProxy => {
 };
 
 // Helper to close server
+/**
+ *
+ * @param server
+ */
 export async function closeServer(server: ServerType | null): Promise<void> {
   if (server) {
     await new Promise<void>((resolve) => {

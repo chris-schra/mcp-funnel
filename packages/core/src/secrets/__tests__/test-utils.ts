@@ -2,6 +2,9 @@ import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+/**
+ *
+ */
 export function createTestDirectory(): string {
   const testDir = join(
     tmpdir(),
@@ -11,6 +14,12 @@ export function createTestDirectory(): string {
   return testDir;
 }
 
+/**
+ *
+ * @param dir
+ * @param filename
+ * @param content
+ */
 export function createTestEnvFile(
   dir: string,
   filename: string,
@@ -21,6 +30,10 @@ export function createTestEnvFile(
   return filePath;
 }
 
+/**
+ *
+ * @param dir
+ */
 export function cleanupTestDirectory(dir: string): void {
   try {
     rmSync(dir, { recursive: true, force: true });

@@ -1,6 +1,34 @@
 /**
- * Centralized OAuth utilities export
- * Organized by concern for better maintainability
+ * Centralized OAuth utilities export module.
+ *
+ * Provides comprehensive OAuth 2.0 utilities organized by functional concern:
+ * - Token generation, parsing, and validation
+ * - Error handling and response formatting
+ * - Request validation and PKCE support
+ * - Scope parsing and normalization
+ * - Helper functions for common operations
+ *
+ * @example Individual imports (preferred for tree-shaking)
+ * ```typescript
+ * import { TokenUtils } from './token/token.utils.js';
+ * import { OAuthErrorUtils } from './error/oauth-error.utils.js';
+ *
+ * const token = TokenUtils.generateAccessToken();
+ * const error = OAuthErrorUtils.createOAuth2Error('invalid_request');
+ * ```
+ *
+ * @example Unified utilities class (backward compatibility)
+ * ```typescript
+ * import { OAuthUtils } from './index.js';
+ *
+ * const token = OAuthUtils.generateAccessToken();
+ * const isValid = OAuthUtils.validateClientCredentials(clientId, clientSecret);
+ * ```
+ * @public
+ * @see {@link OAuthUtils} - Combined utilities class
+ * @see {@link TokenUtils} - Token operations
+ * @see {@link OAuthErrorUtils} - Error handling
+ * @see {@link OAuthValidationUtils} - Validation operations
  */
 
 // Token utilities

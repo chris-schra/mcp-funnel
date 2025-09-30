@@ -6,7 +6,7 @@ import { resolveEnvVar } from '@mcp-funnel/core';
  * Resolves environment variable references in OAuth2 Authorization Code configuration
  *
  * Processes all string fields in the config to resolve environment variable patterns
- * (e.g., `${ENV_VAR}` or `$ENV_VAR`) to their actual values. String fields that don't
+ * (e.g., `\${ENV_VAR\}` or `$ENV_VAR`) to their actual values. String fields that don't
  * contain environment variable patterns are returned unchanged. Optional fields that
  * are undefined are preserved as undefined.
  * @param config - OAuth2 Authorization Code configuration with potential env var references
@@ -28,8 +28,7 @@ import { resolveEnvVar } from '@mcp-funnel/core';
  * // resolved.tokenEndpoint now contains the actual value from OAUTH_TOKEN_URL env var
  * ```
  * @public
- * @see file:../implementations/oauth2-authorization-code.ts:157 - Usage in OAuth2AuthCodeProvider constructor
- * @see file:@mcp-funnel/core/src/env/environment-resolver.ts:193 - Environment variable resolution implementation
+ * @see {@link OAuth2AuthCodeProvider}
  */
 export function resolveOAuth2AuthCodeConfig(
   config: OAuth2AuthCodeConfig,
@@ -54,7 +53,7 @@ export function resolveOAuth2AuthCodeConfig(
  * Resolves environment variable references in OAuth2 Client Credentials configuration
  *
  * Processes all string fields in the config to resolve environment variable patterns
- * (e.g., `${ENV_VAR}` or `$ENV_VAR`) to their actual values. String fields that don't
+ * (e.g., `\${ENV_VAR\}` or `$ENV_VAR`) to their actual values. String fields that don't
  * contain environment variable patterns are returned unchanged. Optional fields that
  * are undefined are preserved as undefined.
  * @param config - OAuth2 Client Credentials configuration with potential env var references
@@ -75,8 +74,7 @@ export function resolveOAuth2AuthCodeConfig(
  * // resolved.clientSecret now contains the actual value from OAUTH_CLIENT_SECRET env var
  * ```
  * @public
- * @see file:../implementations/oauth2-client-credentials.ts:66 - Usage in OAuth2ClientCredentialsProvider constructor
- * @see file:@mcp-funnel/core/src/env/environment-resolver.ts:193 - Environment variable resolution implementation
+ * @see {@link OAuth2ClientCredentialsProvider}
  */
 export function resolveOAuth2ClientCredentialsConfig(
   config: OAuth2ClientCredentialsConfigZod,

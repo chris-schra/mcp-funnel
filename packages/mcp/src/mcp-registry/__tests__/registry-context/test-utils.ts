@@ -10,6 +10,13 @@ export const mockConfig: ProxyConfig = {
   ],
 };
 
+/**
+ *
+ * @param data
+ * @param ok
+ * @param status
+ * @param statusText
+ */
 export function createMockFetchResponse(
   data: unknown,
   ok = true,
@@ -24,6 +31,9 @@ export function createMockFetchResponse(
   };
 }
 
+/**
+ *
+ */
 export function createEmptyRegistryResponse() {
   return createMockFetchResponse({
     servers: [],
@@ -34,6 +44,10 @@ export function createEmptyRegistryResponse() {
   });
 }
 
+/**
+ *
+ * @param servers
+ */
 export function createServerListResponse(servers: unknown[]) {
   return createMockFetchResponse({
     servers,

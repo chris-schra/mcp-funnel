@@ -19,6 +19,9 @@ export interface MockAuthProvider {
 }
 
 // Create a factory for the mock SDK transport to ensure each test gets a fresh instance
+/**
+ *
+ */
 function createMockSDKTransport() {
   return {
     start: vi.fn(),

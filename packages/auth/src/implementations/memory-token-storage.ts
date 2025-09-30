@@ -129,7 +129,7 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Trigger error for testing (not part of interface)
-   * @throws {Error} Always throws a test error
+   * @throws \{Error\} Always throws a test error
    * @internal
    */
   public async _triggerError(): Promise<void> {
@@ -139,7 +139,7 @@ export class MemoryTokenStorage implements ITokenStorage {
   /**
    * Validates token data before storage
    * @param token - Token data to validate
-   * @throws {Error} When access token or token type is empty
+   * @throws \{Error\} When access token or token type is empty
    */
   private validateToken(token: TokenData): void {
     if (!token.accessToken?.trim()) {

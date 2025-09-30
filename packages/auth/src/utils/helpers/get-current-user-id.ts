@@ -3,9 +3,10 @@
  *
  * Retrieves the user identifier from the `X-User-ID` header. Falls back to
  * a test user ID if the header is not present.
- * @param c - Request context object
- * @param c.req - Request object containing header accessor
- * @param c.req.header - Function to retrieve header values by name
+ *
+ * The context parameter contains a nested structure with `req.header(name)` for
+ * retrieving HTTP headers.
+ * @param c - Request context object with req.header accessor function
  * @returns User ID string from header, or `'test-user-123'` as fallback.
  *   Despite the return type allowing `null`, the current implementation always
  *   returns a string due to the fallback value.
@@ -18,7 +19,7 @@
  * console.log(`Current user: ${userId}`);
  * ```
  * @public
- * @see file:./helper.utils.ts:13 - Exported via HelperUtils class
+ * @see {@link HelperUtils}
  */
 export function getCurrentUserId(c: {
   req: { header: (name: string) => string | undefined };

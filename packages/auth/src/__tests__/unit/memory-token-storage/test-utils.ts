@@ -12,7 +12,12 @@ export interface MockTimerInfo {
   delay: number;
 }
 
-// Helper to create test token data
+/**
+ * Helper to create test token data for unit tests.
+ *
+ * @param expiresInMs - Time in milliseconds until token expires (default: 1 hour)
+ * @returns Test token data with random access token
+ */
 export function createTestToken(expiresInMs: number = 3600000): TokenData {
   return {
     accessToken:
@@ -23,7 +28,11 @@ export function createTestToken(expiresInMs: number = 3600000): TokenData {
   };
 }
 
-// Setup mock timers for tests
+/**
+ * Setup mock timers for tests by replacing global timer functions.
+ *
+ * @returns Object containing original timer functions for restoration
+ */
 export function setupMockTimers(): {
   originalSetTimeout: typeof setTimeout;
   originalClearTimeout: typeof clearTimeout;
@@ -43,7 +52,12 @@ export function setupMockTimers(): {
   return { originalSetTimeout, originalClearTimeout };
 }
 
-// Restore original timers
+/**
+ * Restore original timers after tests complete.
+ *
+ * @param originalSetTimeout - Original setTimeout function to restore
+ * @param originalClearTimeout - Original clearTimeout function to restore
+ */
 export function restoreTimers(
   originalSetTimeout: typeof setTimeout,
   originalClearTimeout: typeof clearTimeout,

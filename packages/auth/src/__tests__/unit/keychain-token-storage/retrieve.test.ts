@@ -29,7 +29,10 @@ const mockedFs = vi.mocked(fs);
 import { KeychainTokenStorage } from '../../../implementations/keychain-token-storage.js';
 import type { TokenData } from '@mcp-funnel/core';
 
-// Helper function to create mock token
+/**
+ * Creates a mock token for testing keychain storage operations
+ * @returns Mock token data with standard test values
+ */
 function createMockToken(): TokenData {
   return {
     accessToken: 'test-access-token',

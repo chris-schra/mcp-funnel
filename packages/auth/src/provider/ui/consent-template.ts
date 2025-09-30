@@ -18,6 +18,7 @@ import { ConsentTemplateUtils } from './utils.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/* eslint-disable jsdoc/require-throws-type -- Type is present but escaped per TSDoc requirements */
 /**
  * Renders the OAuth consent page HTML with the provided data.
  *
@@ -26,7 +27,7 @@ const __dirname = dirname(__filename);
  * sanitized using context-appropriate escaping (HTML or attribute escaping).
  * @param data - Consent page data containing client, user, and OAuth flow information
  * @returns Rendered HTML string with all user inputs safely escaped and ready to serve
- * @throws {Error} When the consent.html template file cannot be loaded from disk
+ * @throws \{Error\} When the consent.html template file cannot be loaded from disk
  * @example
  * ```typescript
  * const html = renderConsentPage({
@@ -123,6 +124,7 @@ export function renderConsentPage(data: ConsentPageData): string {
     .replace(/\{\{actionUrl\}\}/g, escaped.actionUrl)
     .replace(/\{\{#each scopes\}\}[\s\S]*?\{\{\/each\}\}/g, scopesHtml);
 }
+/* eslint-enable jsdoc/require-throws-type */
 
 /**
  * Validates consent page data to ensure all required fields are present.
@@ -203,6 +205,7 @@ export function validateConsentPageData(data: Partial<ConsentPageData>): {
   };
 }
 
+/* eslint-disable jsdoc/require-param -- TSDoc does not support nested param syntax (params.property) */
 /**
  * Creates consent page data from OAuth authorization request parameters.
  *
@@ -210,16 +213,14 @@ export function validateConsentPageData(data: Partial<ConsentPageData>): {
  * authorization flow parameters. It automatically generates the clientInitial,
  * converts requestedScopes array to ScopeInfo objects with descriptions, creates
  * the scopeString, and constructs the actionUrl from the baseUrl.
+ *
+ * The params object shape is defined inline and includes clientId (OAuth client
+ * identifier), clientName (human-readable client application name), userEmail
+ * (email of user granting consent), requestedScopes (array of OAuth scope strings),
+ * redirectUri (redirect URI from authorization request), state (optional state for
+ * CSRF protection), codeChallenge (optional PKCE challenge), codeChallengeMethod
+ * (optional PKCE method S256 or plain), and baseUrl (authorization server base URL).
  * @param params - Parameters from OAuth authorization request
- * @param params.clientId - OAuth client identifier
- * @param params.clientName - Human-readable client application name
- * @param params.userEmail - Email address of the user granting consent
- * @param params.requestedScopes - Array of OAuth scope strings being requested
- * @param params.redirectUri - Redirect URI from the authorization request
- * @param params.state - Optional state parameter for CSRF protection
- * @param params.codeChallenge - Optional PKCE code challenge
- * @param params.codeChallengeMethod - Optional PKCE code challenge method (S256 or plain)
- * @param params.baseUrl - Base URL of the authorization server (e.g., 'https://auth.example.com')
  * @returns Complete consent page data ready for rendering
  * @example
  * ```typescript
@@ -273,3 +274,4 @@ export function createConsentPageData(params: {
     actionUrl: `${params.baseUrl}/api/oauth/consent`,
   };
 }
+/* eslint-enable jsdoc/require-param */

@@ -21,6 +21,8 @@ export function createMockAuthProvider(): IAuthProvider {
 
 /**
  * Ensures a server is connected for testing
+ * @param proxy
+ * @param serverName
  */
 export async function ensureServerConnected(
   proxy: MCPProxy,
@@ -34,6 +36,8 @@ export async function ensureServerConnected(
 
 /**
  * Ensures a server is disconnected for testing
+ * @param proxy
+ * @param serverName
  */
 export async function ensureServerDisconnected(
   proxy: MCPProxy,
