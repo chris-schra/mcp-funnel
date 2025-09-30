@@ -88,3 +88,42 @@ export function setCORSHeaders(res: Response): void {
     'Origin, X-Requested-With, Content-Type, Accept, Authorization, Last-Event-ID, Cache-Control',
   );
 }
+
+/**
+ * Validates authentication token from request
+ * @param authHeader - Authorization header value
+ * @param expectedToken - Expected token value
+ * @param shouldSimulateAuthFailure - Whether to simulate auth failure
+ * @returns True if auth is valid, false otherwise
+ * @internal
+ */
+export function validateAuthToken(
+  authHeader: string | undefined,
+  expectedToken: string,
+  shouldSimulateAuthFailure: boolean,
+): boolean {
+  const providedToken = authHeader
+    ? authHeader.replace(/^Bearer\s+/i, '')
+    : null;
+  if (shouldSimulateAuthFailure || providedToken !== expectedToken) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Finds messages to resend after reconnection
+ * @param messageQueue - All queued messages
+ * @param lastEventId - Last event ID received by client
+ * @returns Array of messages to resend
+ * @internal
+ */
+export function getMessagesToResend(
+  messageQueue: QueuedMessage[],
+  lastEventId: string | undefined,
+): QueuedMessage[] {
+  if (!lastEventId) return messageQueue;
+
+  const lastIndex = messageQueue.findIndex((msg) => msg.id === lastEventId);
+  return messageQueue.slice(Math.max(0, lastIndex + 1));
+}

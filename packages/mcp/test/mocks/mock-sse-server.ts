@@ -14,12 +14,13 @@
 import express, { type Express, type Request, type Response } from 'express';
 import { createServer, type Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
-import { extractBearerToken } from '@mcp-funnel/auth';
 import {
   sendSSEMessage,
   sendMessageToSingleConnection,
   broadcastToConnections,
   setCORSHeaders,
+  validateAuthToken,
+  getMessagesToResend,
 } from './sse-server-helpers.js';
 
 export interface MockSSEServerConfig {
@@ -299,11 +300,12 @@ export class MockSSEServer {
       return;
     }
     if (this.config.requireAuth) {
-      const authHeader = req.headers.authorization;
-      const providedToken = authHeader ? extractBearerToken(authHeader) : null;
       if (
-        this.shouldSimulateAuthFailure ||
-        providedToken !== this.config.authToken
+        !validateAuthToken(
+          req.headers.authorization,
+          this.config.authToken,
+          this.shouldSimulateAuthFailure,
+        )
       ) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
@@ -337,14 +339,7 @@ export class MockSSEServer {
 
     sendSSEMessage(res, 'connected', 'connection', connectionId);
 
-    const messagesToSend = lastEventId
-      ? this.messageQueue.slice(
-          Math.max(
-            0,
-            this.messageQueue.findIndex((msg) => msg.id === lastEventId) + 1,
-          ),
-        )
-      : this.messageQueue;
+    const messagesToSend = getMessagesToResend(this.messageQueue, lastEventId);
 
     messagesToSend.forEach((msg) =>
       sendMessageToSingleConnection(connection, msg, (id) =>
@@ -362,11 +357,12 @@ export class MockSSEServer {
 
   private async handleMessagePost(req: Request, res: Response): Promise<void> {
     if (this.config.requireAuth) {
-      const authHeader = req.headers.authorization;
-      const providedToken = authHeader ? extractBearerToken(authHeader) : null;
       if (
-        this.shouldSimulateAuthFailure ||
-        providedToken !== this.config.authToken
+        !validateAuthToken(
+          req.headers.authorization,
+          this.config.authToken,
+          this.shouldSimulateAuthFailure,
+        )
       ) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
@@ -399,10 +395,5 @@ export async function createMockSSEServer(
 ): Promise<{ server: MockSSEServer; url: string; port: number }> {
   const server = new MockSSEServer(config);
   const serverInfo = await server.start();
-
-  return {
-    server,
-    url: serverInfo.url,
-    port: serverInfo.port,
-  };
+  return { server, url: serverInfo.url, port: serverInfo.port };
 }
