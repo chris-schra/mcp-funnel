@@ -1,10 +1,12 @@
 import { randomUUID } from 'crypto';
 import { EnhancedDebugSession } from './enhanced-debug-session.js';
 import { SessionCompatibilityWrapper } from './session-compatibility-wrapper.js';
-import { NodeDebugAdapter } from './adapters/node-adapter.js';
-import { BrowserAdapter } from './adapters/browser-adapter.js';
+import {
+  AdapterFactory,
+  setInitialBreakpoints,
+} from './sessions/session-factory.js';
+import { createSessionInfo } from './sessions/session-utils.js';
 import type {
-  IDebugAdapter,
   DebugRequest,
   DebugState,
   SessionLifecycleState,
@@ -56,6 +58,7 @@ export class LightweightSessionManager {
   private static instance: LightweightSessionManager | undefined;
   private sessions = new Map<string, EnhancedDebugSession>();
   private wrappedSessions = new Map<string, SessionCompatibilityWrapper>();
+  private adapterFactory = new AdapterFactory();
 
   private constructor() {}
 
@@ -142,7 +145,10 @@ export class LightweightSessionManager {
       throw new Error(`Session ID collision detected: ${sessionId}`);
     }
 
-    const adapter = this.createAdapterForPlatform(request.platform, request);
+    const adapter = this.adapterFactory.createAdapter(
+      request.platform,
+      request,
+    );
     const session = new EnhancedDebugSession(sessionId, adapter, request);
 
     // Store session before initialization
@@ -159,7 +165,7 @@ export class LightweightSessionManager {
 
       // Set initial breakpoints if specified
       if (request.breakpoints) {
-        await this.setInitialBreakpoints(session, request.breakpoints);
+        await setInitialBreakpoints(session, request.breakpoints);
       }
 
       // Create compatibility wrapper
@@ -287,18 +293,7 @@ export class LightweightSessionManager {
       resourceCount?: number;
     };
   }> {
-    return Array.from(this.sessions.values()).map((session) => ({
-      id: session.id,
-      platform: session.request.platform,
-      target: session.request.target,
-      state: session.state,
-      startTime: session.startTime,
-      metadata: {
-        lifecycleState: session.lifecycleState,
-        lastActivity: session.metadata.lastActivityAt,
-        resourceCount: 0, // Not tracking resources in lightweight version
-      },
-    }));
+    return Array.from(this.sessions.values()).map(createSessionInfo);
   }
 
   /**
@@ -339,58 +334,6 @@ export class LightweightSessionManager {
 
     await Promise.allSettled(cleanupPromises);
     console.info('LightweightSessionManager shutdown complete');
-  }
-
-  /**
-   * Factory method to create platform-specific debug adapter.
-   * @param platform - Target platform (node or browser)
-   * @param request - Optional debug request for adapter configuration
-   * @returns Platform-specific debug adapter instance
-   * @throws When platform is not supported
-   * @internal
-   */
-  private createAdapterForPlatform(
-    platform: 'node' | 'browser',
-    request?: DebugRequest,
-  ): IDebugAdapter {
-    switch (platform) {
-      case 'node':
-        return new NodeDebugAdapter({
-          request,
-        });
-      case 'browser':
-        return new BrowserAdapter({ request });
-      default:
-        throw new Error(`Unsupported platform: ${platform}`);
-    }
-  }
-
-  /**
-   * Configures initial breakpoints for a newly created session.
-   *
-   * Attempts to set each breakpoint sequentially. If individual breakpoints fail,
-   * the error is logged and processing continues with remaining breakpoints to
-   * maximize successful breakpoint configuration.
-   * @param session - The enhanced debug session to configure
-   * @param breakpoints - Array of breakpoint specifications to set
-   * @returns Promise that resolves when all breakpoints have been processed
-   * @internal
-   */
-  private async setInitialBreakpoints(
-    session: EnhancedDebugSession,
-    breakpoints: Array<{ file: string; line: number; condition?: string }>,
-  ): Promise<void> {
-    for (const bp of breakpoints) {
-      try {
-        await session.setBreakpoint(bp.file, bp.line, bp.condition);
-      } catch (error) {
-        // Continue with other breakpoints even if one fails
-        console.warn(
-          `Failed to set breakpoint at ${bp.file}:${bp.line}:`,
-          error,
-        );
-      }
-    }
   }
 
   /**

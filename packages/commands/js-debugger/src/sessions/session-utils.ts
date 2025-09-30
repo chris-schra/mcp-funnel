@@ -2,8 +2,10 @@ import type {
   ConsoleMessage,
   DebugRequest,
   DebugSession,
+  DebugState,
   SessionLifecycleState,
 } from '../types/index.js';
+import type { EnhancedDebugSession } from '../enhanced-debug-session.js';
 
 /**
  * Console message verbosity levels for filtering.
@@ -204,4 +206,48 @@ export function updateSessionActivity(
     session.metadata.lastActivityAt = now;
     session.metadata.activityCount = activityCount;
   }
+}
+
+/**
+ * Creates a session information object for listing and monitoring.
+ *
+ * Extracts key information from an enhanced debug session into a plain object
+ * suitable for serialization, display, or API responses. This is used by session
+ * managers to provide snapshots of active sessions without exposing internal state.
+ * @param session - Enhanced debug session to extract information from
+ * @returns Plain object containing session metadata and current state
+ * @example Listing sessions
+ * ```typescript
+ * const sessions = Array.from(sessionMap.values());
+ * const sessionInfos = sessions.map(createSessionInfo);
+ * console.log(JSON.stringify(sessionInfos, null, 2));
+ * ```
+ * @public
+ * @see file:../lightweight-session-manager.ts:278 - Used in listSessions method
+ * @see file:../enhanced-debug-session.ts - EnhancedDebugSession interface
+ */
+export function createSessionInfo(session: EnhancedDebugSession): {
+  id: string;
+  platform: string;
+  target: string;
+  state: DebugState;
+  startTime: string;
+  metadata?: {
+    lifecycleState?: SessionLifecycleState;
+    lastActivity?: string;
+    resourceCount?: number;
+  };
+} {
+  return {
+    id: session.id,
+    platform: session.request.platform,
+    target: session.request.target,
+    state: session.state,
+    startTime: session.startTime,
+    metadata: {
+      lifecycleState: session.lifecycleState,
+      lastActivity: session.metadata.lastActivityAt,
+      resourceCount: 0, // Not tracking resources in lightweight version
+    },
+  };
 }
