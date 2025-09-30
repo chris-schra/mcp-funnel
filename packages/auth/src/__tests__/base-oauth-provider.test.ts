@@ -5,6 +5,7 @@ import {
   OAuth2ErrorCode,
 } from '../errors/authentication-error.js';
 import type { ITokenStorage } from '@mcp-funnel/core';
+import type { OAuth2TokenResponse } from '../utils/index.js';
 import {
   TestOAuthProvider,
   MockTokenStorage,
