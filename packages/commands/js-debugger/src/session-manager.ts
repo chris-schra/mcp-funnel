@@ -224,9 +224,9 @@ export class SessionManager implements ISessionManager {
    * 6. Register cleanup handlers for auto-termination
    * @param request - Debug session configuration including platform, target, breakpoints, and timeout
    * @returns Promise resolving to the initialized debug session
-   * @throws {Error} When session ID collision occurs (extremely rare with UUID)
-   * @throws {Error} When adapter initialization fails (process spawn error, connection refused, etc.)
-   * @throws {Error} When breakpoint registration fails during initialization
+   * @throws When session ID collision occurs (extremely rare with UUID)
+   * @throws When adapter initialization fails (process spawn error, connection refused, etc.)
+   * @throws When breakpoint registration fails during initialization
    * @example Node.js debugging
    * ```typescript
    * const session = await manager.createSession({
@@ -595,9 +595,7 @@ export class SessionManager implements ISessionManager {
    *
    * The cleanup operation respects the force and dryRun options. In dryRun mode,
    * no sessions are actually terminated - only a count of eligible sessions is returned.
-   * @param options - Cleanup options controlling force termination and dry run behavior
-   * @param options.force - If true, ignores thresholds and cleans up all inactive sessions
-   * @param options.dryRun - If true, returns count of sessions that would be cleaned without actually cleaning
+   * @param options - Cleanup options controlling force termination and dry run behavior. Supports force flag to ignore thresholds and dryRun flag to preview cleanup count without terminating sessions
    * @returns Promise resolving to the number of sessions cleaned (or would be cleaned in dryRun)
    * @example Preview cleanup
    * ```typescript

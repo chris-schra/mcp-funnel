@@ -19,9 +19,24 @@ export interface LoadedTools {
 }
 
 /**
- * Loads Prettier module with local-first strategy
- * @param baseDirs - Directories to search for local module
- * @returns Prettier module and local info
+ * Loads Prettier module with local-first strategy.
+ *
+ * Attempts to load Prettier from the project's local node_modules first,
+ * falling back to the bundled version if local resolution fails or version
+ * is incompatible.
+ *
+ * @param baseDirs - Directories to search for local module (in order)
+ * @returns Promise resolving to Prettier module instance and local info
+ *
+ * @example
+ * ```typescript
+ * const { mod, local } = await loadPrettier([process.cwd()]);
+ * if (local) {
+ *   console.log(`Using local Prettier ${local.version}`);
+ * }
+ * ```
+ *
+ * @public
  */
 export async function loadPrettier(baseDirs: string[]): Promise<{
   mod?: typeof import('prettier');
@@ -77,9 +92,24 @@ export async function loadPrettier(baseDirs: string[]): Promise<{
 }
 
 /**
- * Loads ESLint module with local-first strategy
- * @param baseDirs - Directories to search for local module
- * @returns ESLint constructor and local info
+ * Loads ESLint module with local-first strategy.
+ *
+ * Attempts to load ESLint from the project's local node_modules first,
+ * falling back to the bundled version if local resolution fails or version
+ * is incompatible.
+ *
+ * @param baseDirs - Directories to search for local module (in order)
+ * @returns Promise resolving to ESLint constructor and local info
+ *
+ * @example
+ * ```typescript
+ * const { ctor, local } = await loadESLint([process.cwd()]);
+ * if (ctor) {
+ *   const eslint = new ctor({ cache: true });
+ * }
+ * ```
+ *
+ * @public
  */
 export async function loadESLint(baseDirs: string[]): Promise<{
   ctor?: typeof import('eslint').ESLint;
@@ -116,10 +146,17 @@ export async function loadESLint(baseDirs: string[]): Promise<{
 }
 
 /**
- * Loads TypeScript module with local-first strategy
+ * Loads TypeScript module with local-first strategy.
+ *
+ * Attempts to load TypeScript from the project's local node_modules (using
+ * tsconfig directory as resolution base), falling back to the bundled version.
+ * Reuses existing namespace if provided.
+ *
  * @param tsConfigPath - Path to tsconfig.json for local resolution
- * @param existingTsNs - Existing TypeScript namespace to reuse
- * @returns TypeScript namespace
+ * @param existingTsNs - Existing TypeScript namespace to reuse (optional)
+ * @returns Promise resolving to TypeScript namespace
+ *
+ * @public
  */
 export async function loadTypeScript(
   tsConfigPath: string,

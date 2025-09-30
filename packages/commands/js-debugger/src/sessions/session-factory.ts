@@ -66,7 +66,7 @@ export class AdapterFactory implements IAdapterFactory {
    * @param platform - Target platform for debugging
    * @param request - Debug configuration including target, breakpoints, and options
    * @returns Configured adapter instance ready for initialization
-   * @throws {Error} When platform is not 'node' or 'browser'
+   * @throws When platform is not 'node' or 'browser'
    */
   public createAdapter(
     platform: 'node' | 'browser',

@@ -1,7 +1,22 @@
 /**
- * Gets a suggested fix message for common TypeScript diagnostic errors
+ * Gets a suggested fix message for common TypeScript diagnostic errors.
+ *
+ * Maps TypeScript error codes to human-readable fix suggestions for common
+ * issues like missing imports, type mismatches, and property errors.
+ *
  * @param diagnostic - TypeScript diagnostic to analyze
  * @returns Suggested fix message, or undefined if no common fix is available
+ *
+ * @example
+ * ```typescript
+ * const diagnostic = program.getSemanticDiagnostics()[0];
+ * const fix = getTypeScriptFix(diagnostic);
+ * if (fix) {
+ *   console.log(`Suggested fix: ${fix}`);
+ * }
+ * ```
+ *
+ * @public
  */
 export function getTypeScriptFix(
   diagnostic: import('typescript').Diagnostic,

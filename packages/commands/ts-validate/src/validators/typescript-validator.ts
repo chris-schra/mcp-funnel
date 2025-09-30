@@ -7,9 +7,15 @@ import { getTypeScriptFix } from '../util/typescript-helpers.js';
 import { loadTypeScript } from '../util/tool-loader.js';
 
 /**
- * Finds the nearest tsconfig.json file by walking up the directory tree
+ * Finds the nearest tsconfig.json file by walking up the directory tree.
+ *
+ * Walks up from the file's directory to the filesystem root, returning the
+ * first tsconfig.json found.
+ *
  * @param filePath - File path to start searching from
  * @returns Path to tsconfig.json or null if not found
+ *
+ * @public
  */
 export function findNearestTsConfig(filePath: string): string | null {
   let currentDir = path.dirname(filePath);
@@ -29,9 +35,15 @@ export function findNearestTsConfig(filePath: string): string | null {
 }
 
 /**
- * Filters TypeScript files based on root tsconfig exclude patterns
- * @param tsFiles - TypeScript files to filter
- * @returns Filtered list of TypeScript files
+ * Filters TypeScript files based on root tsconfig exclude patterns.
+ *
+ * Reads the root tsconfig.json and filters out files matching its exclude
+ * patterns using minimatch for glob pattern matching.
+ *
+ * @param tsFiles - TypeScript files to filter (absolute paths)
+ * @returns Filtered list of TypeScript files not excluded by root config
+ *
+ * @public
  */
 export function filterTsFilesByRootConfig(tsFiles: string[]): string[] {
   const rootTsConfigPath = path.resolve(process.cwd(), 'tsconfig.json');
@@ -70,11 +82,19 @@ export function filterTsFilesByRootConfig(tsFiles: string[]): string[] {
 }
 
 /**
- * Validates TypeScript files using a specific tsconfig
- * @param files - All files being validated
- * @param tsConfigFile - Explicit tsconfig path to use
+ * Validates TypeScript files using a specific tsconfig.
+ *
+ * Creates a TypeScript program with the specified config and collects
+ * diagnostics for the requested files. Filters diagnostics to only include
+ * files in the validation set.
+ *
+ * @param files - All files being validated (absolute paths)
+ * @param tsConfigFile - Explicit tsconfig path to use (absolute path)
  * @param ctx - Validator context for storing results
  * @param tsNs - Existing TypeScript namespace (will be loaded if not provided)
+ * @returns Promise that resolves when validation is complete
+ *
+ * @public
  */
 export async function validateTypeScriptWithConfig(
   files: string[],
@@ -140,10 +160,18 @@ export async function validateTypeScriptWithConfig(
 }
 
 /**
- * Validates TypeScript files by discovering tsconfig.json for each file
- * @param files - All files being validated
+ * Validates TypeScript files by discovering tsconfig.json for each file.
+ *
+ * Groups files by their nearest tsconfig.json (walking up directory tree),
+ * then validates each group using its corresponding TypeScript configuration.
+ * This handles monorepos with multiple tsconfig files correctly.
+ *
+ * @param files - All files being validated (absolute paths)
  * @param ctx - Validator context for storing results
  * @param tsNs - Existing TypeScript namespace (will be loaded if not provided)
+ * @returns Promise that resolves when validation is complete
+ *
+ * @public
  */
 export async function validateTypeScriptByDiscovery(
   files: string[],

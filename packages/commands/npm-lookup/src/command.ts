@@ -44,7 +44,7 @@ export class NPMCommand implements ICommand {
 
   /**
    * Creates NPM command instance.
-   * @param {NPMClient} [client] - Optional NPMClient instance for dependency injection (primarily for testing)
+   * @param client - Optional NPMClient instance for dependency injection (primarily for testing)
    */
   public constructor(client?: NPMClient) {
     this.client = client || new NPMClient();
@@ -55,7 +55,7 @@ export class NPMCommand implements ICommand {
    *
    * Provides tool schemas that describe parameters, types, and requirements
    * for the MCP protocol integration.
-   * @returns {Tool[]} Array of tool definitions with input schemas
+   * @returns Array of tool definitions with input schemas
    */
   public getMCPDefinitions(): Tool[] {
     return [
@@ -104,10 +104,10 @@ export class NPMCommand implements ICommand {
    * Validates parameters, calls the NPM Registry API, and formats responses
    * according to MCP protocol requirements. Handles all error cases including
    * validation failures, network errors, and package not found scenarios.
-   * @param {string} toolName - Name of the tool to execute ('lookup' or 'search')
-   * @param {Record<string, unknown>} args - Tool arguments (packageName for lookup, query/limit for search)
-   * @returns {Promise<CallToolResult>} CallToolResult with formatted package data or error message
-   * @throws {never} Never throws - all errors are returned as CallToolResult with isError flag
+   * @param toolName - Name of the tool to execute ('lookup' or 'search')
+   * @param args - Tool arguments (packageName for lookup, query/limit for search)
+   * @returns CallToolResult with formatted package data or error message
+   * @throws Never throws - all errors are returned as CallToolResult with isError flag
    */
   public async executeToolViaMCP(
     toolName: string,
@@ -176,10 +176,10 @@ export class NPMCommand implements ICommand {
    * results to stdout. Exits process with code 1 on errors.
    *
    * Supported commands:
-   * - npm lookup <package-name>
-   * - npm search <query> [--limit N]
-   * @param {string[]} args - CLI arguments array (excluding 'npm' prefix)
-   * @throws {never} Never throws - errors are logged to stderr and process.exit(1) is called
+   * - npm lookup \<package-name\>
+   * - npm search \<query\> [--limit N]
+   * @param args - CLI arguments array (excluding 'npm' prefix)
+   * @throws Never throws - errors are logged to stderr and process.exit(1) is called
    */
   public async executeViaCLI(args: string[]): Promise<void> {
     try {

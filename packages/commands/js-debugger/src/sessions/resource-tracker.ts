@@ -9,7 +9,7 @@ export class SessionResourceTracker implements ResourceTracker {
     Map<string, { type: string; createdAt: string }>
   >();
 
-  trackResource(
+  public trackResource(
     sessionId: string,
     resourceId: string,
     type: 'process' | 'connection' | 'timer',
@@ -24,7 +24,7 @@ export class SessionResourceTracker implements ResourceTracker {
     });
   }
 
-  releaseResource(sessionId: string, resourceId: string): void {
+  public releaseResource(sessionId: string, resourceId: string): void {
     const sessionResources = this.resources.get(sessionId);
     if (sessionResources) {
       sessionResources.delete(resourceId);
@@ -34,11 +34,11 @@ export class SessionResourceTracker implements ResourceTracker {
     }
   }
 
-  getResourceCount(sessionId: string): number {
+  public getResourceCount(sessionId: string): number {
     return this.resources.get(sessionId)?.size || 0;
   }
 
-  getAllResources(sessionId: string): Array<{ id: string; type: string }> {
+  public getAllResources(sessionId: string): Array<{ id: string; type: string }> {
     const sessionResources = this.resources.get(sessionId);
     if (!sessionResources) return [];
 
@@ -48,7 +48,7 @@ export class SessionResourceTracker implements ResourceTracker {
     }));
   }
 
-  cleanup(): void {
+  public cleanup(): void {
     this.resources.clear();
   }
 }

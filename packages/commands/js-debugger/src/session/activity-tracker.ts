@@ -54,8 +54,8 @@ export class ActivityTracker {
    * Updates activity metadata with current timestamp and incremented counter.
    * Returns a partial metadata object containing only the updated fields.
    * Does not mutate the input metadata parameter.
-   * @param {SessionMetadata} metadata - Current session metadata to derive updates from
-   * @returns {Pick<SessionMetadata, 'lastActivityAt' | 'activityCount'>} Partial metadata with updated lastActivityAt and incremented activityCount
+   * @param metadata - Current session metadata to derive updates from
+   * @returns Partial metadata object with updated lastActivityAt timestamp and incremented activityCount
    * @example
    * ```typescript
    * const updates = ActivityTracker.updateActivity(session.metadata);
@@ -78,9 +78,9 @@ export class ActivityTracker {
    * Updates both debug state and activity metadata atomically.
    * Convenience method that combines state transition with activity tracking.
    * Returns both the new state and metadata updates in a single operation.
-   * @param {SessionMetadata} metadata - Current session metadata
-   * @param {DebugState} state - New debug state to transition to
-   * @returns {{ metadata: Pick<SessionMetadata, 'lastActivityAt' | 'activityCount'>; state: DebugState }} Object containing metadata updates and the new state
+   * @param metadata - Current session metadata
+   * @param state - New debug state to transition to
+   * @returns Object containing metadata updates (lastActivityAt and activityCount) and the new state
    * @example
    * ```typescript
    * const updates = ActivityTracker.updateStateAndActivity(
@@ -108,7 +108,7 @@ export class ActivityTracker {
 
   /**
    * Returns current timestamp in ISO 8601 format.
-   * @returns {string} ISO 8601 formatted timestamp string (e.g., "2025-09-30T12:00:00.000Z")
+   * @returns ISO 8601 formatted timestamp string (e.g., "2025-09-30T12:00:00.000Z")
    * @public
    */
   public static getCurrentTimestamp(): string {

@@ -20,21 +20,26 @@ import type { EnhancedDebugSession } from './enhanced-debug-session.js';
 
 /**
  * Adapter wrapper that proxies calls to EnhancedDebugSession methods
- * to maintain backward compatibility with the old DebugSession interface
+ * to maintain backward compatibility with the old DebugSession interface.
+ *
+ * This wrapper allows legacy code expecting the IDebugAdapter interface to work
+ * with the new EnhancedDebugSession API seamlessly.
+ * @internal
+ * @see file:./session-compatibility-wrapper.ts:119 - SessionCompatibilityWrapper usage
  */
 class AdapterWrapper implements Omit<IDebugAdapter, 'continue'> {
-  constructor(private session: EnhancedDebugSession) {}
+  public constructor(private session: EnhancedDebugSession) {}
 
-  async connect(_target: string): Promise<void> {
+  public async connect(_target: string): Promise<void> {
     // This is handled by the session during initialization
     throw new Error('connect() should not be called on wrapped adapter');
   }
 
-  async disconnect(): Promise<void> {
+  public async disconnect(): Promise<void> {
     return this.session.terminate();
   }
 
-  async setBreakpoint(
+  public async setBreakpoint(
     file: string,
     line: number,
     condition?: string,
@@ -42,61 +47,61 @@ class AdapterWrapper implements Omit<IDebugAdapter, 'continue'> {
     return this.session.setBreakpoint(file, line, condition);
   }
 
-  async removeBreakpoint(id: string): Promise<void> {
+  public async removeBreakpoint(id: string): Promise<void> {
     return this.session.removeBreakpoint(id);
   }
 
-  async stepOver(): Promise<DebugState> {
+  public async stepOver(): Promise<DebugState> {
     return this.session.stepOver();
   }
 
-  async stepInto(): Promise<DebugState> {
+  public async stepInto(): Promise<DebugState> {
     return this.session.stepInto();
   }
 
-  async stepOut(): Promise<DebugState> {
+  public async stepOut(): Promise<DebugState> {
     return this.session.stepOut();
   }
 
-  async evaluate(expression: string): Promise<EvaluationResult> {
+  public async evaluate(expression: string): Promise<EvaluationResult> {
     return this.session.evaluate(expression);
   }
 
-  async getStackTrace(): Promise<StackFrame[]> {
+  public async getStackTrace(): Promise<StackFrame[]> {
     return this.session.getStackTrace();
   }
 
-  async getScopes(frameId: number): Promise<Scope[]> {
+  public async getScopes(frameId: number): Promise<Scope[]> {
     return this.session.getScopes(frameId);
   }
 
-  onConsoleOutput(handler: ConsoleHandler): void {
+  public onConsoleOutput(handler: ConsoleHandler): void {
     this.session.on('console', handler);
   }
 
-  onPaused(handler: PauseHandler): void {
+  public onPaused(handler: PauseHandler): void {
     this.session.on('paused', handler);
   }
 
-  onResumed(handler: ResumeHandler): void {
+  public onResumed(handler: ResumeHandler): void {
     this.session.on('resumed', handler);
   }
 
-  onBreakpointResolved?(
+  public onBreakpointResolved?(
     handler: (registration: BreakpointRegistration) => void,
   ): void {
     this.session.on('breakpointResolved', handler);
   }
 
   // Event handling methods
-  on<K extends keyof DebugSessionEvents>(
+  public on<K extends keyof DebugSessionEvents>(
     event: K,
     handler: (data: DebugSessionEvents[K]) => void,
   ): () => void {
     return this.session.on(event, handler);
   }
 
-  off<K extends keyof DebugSessionEvents>(
+  public off<K extends keyof DebugSessionEvents>(
     event: K,
     handler: (data: DebugSessionEvents[K]) => void,
   ): void {
@@ -104,17 +109,42 @@ class AdapterWrapper implements Omit<IDebugAdapter, 'continue'> {
   }
 
   // Pause state management
-  async waitForPause(timeoutMs?: number): Promise<DebugState> {
+  public async waitForPause(timeoutMs?: number): Promise<DebugState> {
     return this.session.waitForPause(timeoutMs);
   }
 
-  getCurrentState(): DebugState {
+  public getCurrentState(): DebugState {
     return this.session.state;
   }
 }
 
 /**
- * Compatibility wrapper that makes EnhancedDebugSession look like the old DebugSession interface
+ * Compatibility wrapper that makes EnhancedDebugSession look like the old DebugSession interface.
+ *
+ * Provides backward compatibility for code written against the legacy DebugSession interface
+ * while internally delegating to the new EnhancedDebugSession implementation. This wrapper
+ * enables incremental migration from the old API to the new event-driven API without breaking
+ * existing code.
+ *
+ * Key features:
+ * - Wraps EnhancedDebugSession in legacy DebugSession interface
+ * - Proxies adapter methods through AdapterWrapper
+ * - Provides getEnhancedSession() for direct access to new API
+ * - Maintains compatibility with getters and event handlers
+ * @example
+ * ```typescript
+ * // Legacy code continues to work
+ * const wrapper = new SessionCompatibilityWrapper(enhancedSession);
+ * await wrapper.adapter.stepOver();
+ * console.log(wrapper.state.status);
+ *
+ * // New code can access enhanced features
+ * const enhanced = wrapper.getEnhancedSession();
+ * enhanced.on('paused', (state) => console.log('Paused!'));
+ * ```
+ * @public
+ * @see file:./enhanced-debug-session.ts - EnhancedDebugSession implementation
+ * @see file:./types/session.ts - DebugSession interface
  */
 export class SessionCompatibilityWrapper implements DebugSession {
   public readonly id: string;
@@ -124,7 +154,7 @@ export class SessionCompatibilityWrapper implements DebugSession {
 
   private _adapterWrapper: AdapterWrapper;
 
-  constructor(private enhancedSession: EnhancedDebugSession) {
+  public constructor(private enhancedSession: EnhancedDebugSession) {
     this.id = enhancedSession.id;
     this.request = enhancedSession.request;
     this.startTime = enhancedSession.startTime;
@@ -132,28 +162,28 @@ export class SessionCompatibilityWrapper implements DebugSession {
     this.adapter = this._adapterWrapper;
   }
 
-  get breakpoints(): Map<string, BreakpointInfo> {
+  public get breakpoints(): Map<string, BreakpointInfo> {
     // Convert readonly map to regular map for compatibility
     return new Map(this.enhancedSession.breakpoints);
   }
 
-  get state(): DebugState {
+  public get state(): DebugState {
     return this.enhancedSession.state;
   }
 
-  get consoleOutput(): ConsoleMessage[] {
+  public get consoleOutput(): ConsoleMessage[] {
     return [...this.enhancedSession.consoleOutput];
   }
 
-  get metadata(): SessionMetadata | undefined {
+  public get metadata(): SessionMetadata | undefined {
     return this.enhancedSession.metadata;
   }
 
-  get lifecycleState(): SessionLifecycleState | undefined {
+  public get lifecycleState(): SessionLifecycleState | undefined {
     return this.enhancedSession.lifecycleState;
   }
 
-  get cleanup():
+  public get cleanup():
     | {
         timeoutHandle?: NodeJS.Timeout;
         heartbeatHandle?: NodeJS.Timeout;
@@ -167,14 +197,14 @@ export class SessionCompatibilityWrapper implements DebugSession {
   }
 
   // Event handling methods
-  on<K extends keyof DebugSessionEvents>(
+  public on<K extends keyof DebugSessionEvents>(
     event: K,
     handler: (data: DebugSessionEvents[K]) => void,
   ): () => void {
     return this.enhancedSession.on(event, handler);
   }
 
-  off<K extends keyof DebugSessionEvents>(
+  public off<K extends keyof DebugSessionEvents>(
     event: K,
     handler: (data: DebugSessionEvents[K]) => void,
   ): void {
@@ -182,18 +212,24 @@ export class SessionCompatibilityWrapper implements DebugSession {
   }
 
   // Pause state management
-  async waitForPause(timeoutMs?: number): Promise<DebugState> {
+  public async waitForPause(timeoutMs?: number): Promise<DebugState> {
     return this.enhancedSession.waitForPause(timeoutMs);
   }
 
-  getCurrentState(): DebugState {
+  public getCurrentState(): DebugState {
     return this.enhancedSession.state;
   }
 
   /**
-   * Get the underlying EnhancedDebugSession for direct access to new API
+   * Retrieves the underlying EnhancedDebugSession for direct access to the modern API.
+   *
+   * Allows code to access new features like event-driven patterns, lifecycle state,
+   * and improved type safety while maintaining backward compatibility with legacy code.
+   * @returns The wrapped EnhancedDebugSession instance
+   * @public
+   * @see file:./enhanced-debug-session.ts - EnhancedDebugSession API
    */
-  getEnhancedSession(): EnhancedDebugSession {
+  public getEnhancedSession(): EnhancedDebugSession {
     return this.enhancedSession;
   }
 }

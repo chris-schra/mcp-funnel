@@ -31,9 +31,9 @@ export interface OriginClassifierOptions {
  * 4. Paths within projectRoot return 'user'
  * 5. Absolute paths return 'user' if treatAbsoluteAsUser is true
  * 6. All other paths return 'unknown'
- * @param {string | undefined} filePath - The file path to classify (may be undefined for runtime code)
- * @param {OriginClassifierOptions} options - Classification configuration including matchers and project root
- * @returns {CodeOrigin} Code origin classification: 'user' | 'internal' | 'library' | 'unknown'
+ * @param filePath - The file path to classify (may be undefined for runtime code)
+ * @param options - Classification configuration including matchers and project root
+ * @returns Code origin classification: 'user' \| 'internal' \| 'library' \| 'unknown'
  * @example
  * ```typescript
  * // Classify a node_modules file
@@ -100,9 +100,9 @@ export function classifyOrigin(
  * Normalizes Windows backslashes to forward slashes and strips the project root
  * prefix when the file path is within the project directory. Returns undefined
  * if the path is outside the project or if required inputs are missing.
- * @param {string | undefined} filePath - Absolute file path to convert
- * @param {string | undefined} projectRoot - Root directory of the project
- * @returns {string | undefined} Relative path from project root, or undefined if not within project
+ * @param filePath - Absolute file path to convert
+ * @param projectRoot - Root directory of the project
+ * @returns Relative path from project root, or undefined if not within project
  * @example
  * ```typescript
  * toRelativePath('/project/src/app.ts', '/project')
@@ -144,8 +144,8 @@ export function toRelativePath(
  * Search order:
  * 1. Debug target path (if it's a file path, not a URL)
  * 2. Breakpoint file paths (first valid one found)
- * @param {DebugRequest | undefined} request - Debug request containing target and breakpoint information
- * @returns {string | undefined} Inferred project root directory path, or undefined if unable to determine
+ * @param request - Debug request containing target and breakpoint information
+ * @returns Inferred project root directory path, or undefined if unable to determine
  * @example
  * ```typescript
  * const request: DebugRequest = {
@@ -195,8 +195,8 @@ export function deriveProjectRootFromRequest(
  * Filters out non-file URLs (ws://, http://, etc.) and converts file:// URLs
  * to file system paths. Only returns paths that are absolute after normalization.
  * Used internally to sanitize debug target and breakpoint paths.
- * @param {string | undefined} candidate - Path string that may be a URL, file:// URI, or file path
- * @returns {string | undefined} Normalized absolute file path, or undefined if not a valid file path
+ * @param candidate - Path string that may be a URL, file:// URI, or file path
+ * @returns Normalized absolute file path, or undefined if not a valid file path
  * @internal
  * @see file:./locations.ts:163 - Used by deriveProjectRootFromRequest
  */

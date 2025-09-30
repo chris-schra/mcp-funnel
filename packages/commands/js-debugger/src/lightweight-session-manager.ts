@@ -106,9 +106,9 @@ export class LightweightSessionManager {
    * 7. Registers cleanup handlers for automatic session removal on termination
    * @param request - Configuration for the debug session including platform, target, and options
    * @returns Promise resolving to the unique session ID
-   * @throws {Error} When session ID collision occurs (UUID collision, extremely rare)
-   * @throws {Error} When adapter creation fails for unsupported platform
-   * @throws {Error} When session initialization fails (connection, breakpoint setup, etc.)
+   * @throws When session ID collision occurs (UUID collision, extremely rare)
+   * @throws When adapter creation fails for unsupported platform
+   * @throws When session initialization fails (connection, breakpoint setup, etc.)
    * @example Node.js debugging with breakpoints
    * ```typescript
    * const sessionId = await manager.createSession({
@@ -343,10 +343,10 @@ export class LightweightSessionManager {
 
   /**
    * Factory method to create platform-specific debug adapter.
-   * @param platform - Target platform ('node' | 'browser')
+   * @param platform - Target platform (node or browser)
    * @param request - Optional debug request for adapter configuration
    * @returns Platform-specific debug adapter instance
-   * @throws {Error} When platform is not supported
+   * @throws When platform is not supported
    * @internal
    */
   private createAdapterForPlatform(

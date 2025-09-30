@@ -55,9 +55,9 @@ export class ListSessionsHandler
    *
    * This method never fails - if session listing encounters errors, they are
    * caught and returned as formatted error responses rather than throwing.
-   * @param {ListSessionsHandlerArgs} _args - Empty arguments object (no parameters required)
-   * @param {ToolHandlerContext} context - Handler context providing session managers and formatters
-   * @returns {Promise<CallToolResult>} Formatted response containing session list or error details
+   * @param _args - Empty arguments object (no parameters required)
+   * @param context - Handler context providing session managers and formatters
+   * @returns Formatted response containing session list or error details
    * @example
    * ```typescript
    * const context: ToolHandlerContext = {

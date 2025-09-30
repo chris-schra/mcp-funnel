@@ -46,9 +46,9 @@ export interface BreakpointLocationOptions {
  * - CDP 0-based line numbers → 1-based line numbers (editor convention)
  * - CDP script IDs → file:// URLs → absolute file paths
  * - Filters out locations that cannot be resolved to valid file paths
- * @param {CDPLocation[] | undefined} locations - CDP locations from Debugger.setBreakpoint response or pause events
- * @param {BreakpointLocationOptions} options - Configuration for script resolution and path conversion
- * @returns {BreakpointLocation[]} Array of resolved breakpoint locations (empty if input is undefined/empty)
+ * @param locations - CDP locations from Debugger.setBreakpoint response or pause events
+ * @param options - Configuration for script resolution and path conversion
+ * @returns Array of resolved breakpoint locations (empty if input is undefined/empty)
  * @example Browser breakpoint resolution
  * ```typescript
  * const resolvedLocations = mapBreakpointLocations(result.locations, {

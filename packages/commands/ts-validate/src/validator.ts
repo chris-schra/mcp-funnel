@@ -21,68 +21,128 @@ const COMPAT = {
   typescript: '>=5.0.0 <6.0.0',
 } as const;
 
-// Base validation result for each tool's finding
+/**
+ * Base validation result for each tool's finding.
+ * @public
+ */
 export interface ValidationResult {
+  /** Tool that generated this result */
   tool: 'prettier' | 'eslint' | 'typescript';
+  /** Validation message */
   message: string;
+  /** Severity level */
   severity: 'error' | 'warning' | 'info';
+  /** Line number (1-based) */
   line?: number;
+  /** Column number (1-based) */
   column?: number;
+  /** End line number (1-based) */
   endLine?: number;
+  /** End column number (1-based) */
   endColumn?: number;
-
-  // Key addition: fixability information
+  /** Whether this issue can be auto-fixed */
   fixable?: boolean;
+  /** Whether this issue was automatically fixed */
   fixedAutomatically?: boolean;
-  suggestedFix?: string; // For TypeScript: might include suggested code
-  ruleId?: string; // ESLint rule or TS error code
+  /** Suggested fix for TypeScript errors */
+  suggestedFix?: string;
+  /** ESLint rule ID or TypeScript error code */
+  ruleId?: string;
 }
 
-// File-centric results
+/**
+ * File-centric validation results keyed by file path.
+ * @public
+ */
 export type FileValidationResults = Record<string, ValidationResult[]>;
 
+/**
+ * Options for validation.
+ * @public
+ */
 export interface ValidateOptions {
-  files?: string[]; // Specific files
-  glob?: string; // Glob pattern
-  fix?: boolean; // Auto-fix where possible
-  cache?: boolean; // Use caching for speed
-  tsConfigFile?: string; // Optional explicit tsconfig path
+  /** Specific files or directories to validate */
+  files?: string[];
+  /** Glob pattern to match files */
+  glob?: string;
+  /** Auto-fix issues where possible */
+  fix?: boolean;
+  /** Use caching for improved speed */
+  cache?: boolean;
+  /** Optional explicit tsconfig.json path */
+  tsConfigFile?: string;
 }
 
+/**
+ * Validation summary with results and statistics.
+ * @public
+ */
 export interface ValidationSummary {
-  // File-centric view for AI processing
+  /** File-centric view for AI processing */
   fileResults: FileValidationResults;
-  // All files processed (used for optional expansion when compact=false)
+  /** All files processed (optional expansion when compact=false) */
   processedFiles?: string[];
-
-  // Summary stats
+  /** Total number of files validated */
   totalFiles: number;
+  /** Number of files with errors */
   filesWithErrors: number;
-  fixableFiles: string[]; // Files that can be auto-fixed
-  unfixableFiles: string[]; // Files needing manual intervention
-
-  // Suggested actions for AI
+  /** Files that can be auto-fixed */
+  fixableFiles: string[];
+  /** Files needing manual intervention */
+  unfixableFiles: string[];
+  /** Suggested actions for AI agent */
   suggestedActions: Array<{
     file: string;
     action: 'prettier-fix' | 'eslint-fix' | 'manual-fix';
     description: string;
   }>;
-
-  // Per-tool execution status to preserve summary on partial failures
+  /** Per-tool execution status to preserve summary on partial failures */
   toolStatuses: ToolRunStatus[];
 }
 
+/**
+ * Tool execution status.
+ * @public
+ */
 export type ToolStatus = 'ok' | 'skipped' | 'failed';
 
+/**
+ * Status information for a validation tool.
+ * @public
+ */
 export interface ToolRunStatus {
+  /** Tool name */
   tool: 'prettier' | 'eslint' | 'typescript';
+  /** Execution status */
   status: ToolStatus;
-  reason?: string; // e.g., 'no-eslint-config', 'no-tsconfig', 'no-ts-files'
-  error?: string; // error message if failed
+  /** Reason for skip/failure (e.g., 'no-eslint-config') */
+  reason?: string;
+  /** Error message if failed */
+  error?: string;
+  /** Whether using local or bundled tool */
   origin?: 'local' | 'bundled';
+  /** Tool version if local */
   version?: string;
 }
 
+/**
+ * Monorepo validator for TypeScript, ESLint, and Prettier.
+ *
+ * Validates multiple files across a monorepo using local-first tool resolution,
+ * with support for auto-fixing and detailed error reporting.
+ *
+ * @example
+ * ```typescript
+ * const validator = new MonorepoValidator();
+ * const summary = await validator.validate({
+ *   files: ['src/index.ts'],
+ *   fix: true
+ * });
+ * console.log(`Validated ${summary.totalFiles} files`);
+ * ```
+ *
+ * @public
+ */
 export class MonorepoValidator {
   private fileResults: FileValidationResults = {};
   private prettierMod?: typeof import('prettier');
@@ -90,6 +150,15 @@ export class MonorepoValidator {
   private tsNs?: typeof import('typescript');
   private ctx!: ValidatorContext;
 
+  /**
+   * Validates files using Prettier, ESLint, and TypeScript.
+   *
+   * Resolves files from options, loads appropriate tooling (local-first),
+   * and runs all validators concurrently with isolated failure handling.
+   *
+   * @param options - Validation options
+   * @returns Promise resolving to validation summary with results and stats
+   */
   public async validate(
     options: ValidateOptions = {},
   ): Promise<ValidationSummary> {
@@ -272,7 +341,14 @@ export class MonorepoValidator {
     return summary;
   }
 
-  // Helper method for AI to get actionable items
+  /**
+   * Gets actionable items for AI agent from validation results.
+   *
+   * Extracts unfixed errors and formats them as actionable items with
+   * file locations and suggested fixes.
+   *
+   * @returns Array of actionable items with file, line, and fix suggestion
+   */
   public getActionableItems(): Array<{
     file: string;
     line?: number;

@@ -5,11 +5,18 @@ import type {
 } from '../validator.js';
 
 /**
- * Creates a validation summary from file results
- * @param fileResults - File validation results
- * @param toolStatuses - Tool execution statuses
+ * Creates a validation summary from file results.
+ *
+ * Aggregates file-level validation results and tool statuses into a comprehensive
+ * summary object, categorizing files by their fixability and generating suggested
+ * actions for the AI agent.
+ *
+ * @param fileResults - File validation results keyed by file path
+ * @param toolStatuses - Tool execution statuses (ok/skipped/failed)
  * @param totalFilesCount - Total number of files validated
- * @returns Validation summary
+ * @returns Validation summary with stats and suggested actions
+ *
+ * @public
  */
 export function createSummary(
   fileResults: FileValidationResults,
@@ -44,9 +51,15 @@ export function createSummary(
 }
 
 /**
- * Generates suggested actions for AI based on validation results
- * @param fileResults - File validation results
- * @returns Suggested actions
+ * Generates suggested actions for AI based on validation results.
+ *
+ * Analyzes validation results to determine which files need prettier/eslint
+ * auto-fixing or manual TypeScript fixes, generating actionable recommendations.
+ *
+ * @param fileResults - File validation results keyed by file path
+ * @returns Array of suggested actions with file paths and descriptions
+ *
+ * @public
  */
 export function generateSuggestedActions(
   fileResults: FileValidationResults,
@@ -93,9 +106,15 @@ export function generateSuggestedActions(
 }
 
 /**
- * Gets actionable items for AI from validation results
- * @param fileResults - File validation results
- * @returns Actionable items
+ * Gets actionable items for AI from validation results.
+ *
+ * Extracts unfixed errors from validation results and formats them as actionable
+ * items with file locations and suggested fixes for the AI agent to process.
+ *
+ * @param fileResults - File validation results keyed by file path
+ * @returns Array of actionable items with file, line, and fix suggestion
+ *
+ * @public
  */
 export function getActionableItems(
   fileResults: FileValidationResults,

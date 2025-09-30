@@ -4,9 +4,21 @@ import * as path from 'path';
 import type { ValidateOptions } from '../validator.js';
 
 /**
- * Resolves files to validate based on options
- * @param options - Validation options
- * @returns List of absolute file paths
+ * Resolves files to validate based on options.
+ *
+ * Expands directories and glob patterns into a flat list of absolute file paths,
+ * automatically ignoring node_modules for performance.
+ *
+ * @param options - Validation options containing file patterns or glob
+ * @returns Promise resolving to list of absolute file paths to validate
+ *
+ * @example
+ * ```typescript
+ * const files = await resolveFiles({ files: ['src/index.ts', 'src/'] });
+ * // Returns: ['/abs/path/src/index.ts', '/abs/path/src/file1.ts', ...]
+ * ```
+ *
+ * @public
  */
 export async function resolveFiles(
   options: ValidateOptions,

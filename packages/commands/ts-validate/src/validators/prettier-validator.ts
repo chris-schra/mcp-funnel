@@ -3,12 +3,18 @@ import type { ValidationResult } from '../validator.js';
 import type { ValidatorContext } from '../util/validator-context.js';
 
 /**
- * Validates files with Prettier
- * @param files - Files to validate
- * @param prettier - Prettier module instance
+ * Validates files with Prettier.
+ *
+ * Checks files for formatting issues using Prettier, optionally auto-fixing
+ * them. Respects .prettierignore and resolves project-specific config.
+ *
+ * @param files - Absolute file paths to validate
+ * @param prettier - Prettier module instance from loaded module
  * @param ctx - Validator context for storing results
  * @param autoFix - Whether to auto-fix formatting issues
- * @returns Object with configFound flag
+ * @returns Promise resolving to object with configFound flag
+ *
+ * @public
  */
 export async function validatePrettier(
   files: string[],

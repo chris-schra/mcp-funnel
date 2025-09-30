@@ -31,10 +31,10 @@ export interface WaitForPauseContext {
  *
  * Returns `undefined` only if the session doesn't exist at all.
  * Always prefers returning a compatibility wrapper when available.
- * @param {string} sessionId - Unique identifier of the session to wait for
- * @param {WaitForPauseContext} context - Context containing session stores and managers
- * @param {number} timeoutMs - Maximum time to wait in milliseconds (default: 10000)
- * @returns {Promise<DebugSession | undefined>} Promise resolving to the session (or undefined if session not found)
+ * @param sessionId - Unique identifier of the session to wait for
+ * @param context - Context containing session stores and managers
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 10000)
+ * @returns Promise resolving to the session (or undefined if session not found)
  * @example
  * ```typescript
  * const session = await waitForPause('session-123', {

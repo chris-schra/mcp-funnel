@@ -63,11 +63,11 @@ export class StopHandler implements IToolHandler<StopHandlerArgs> {
    *
    * The operation is idempotent - calling stop on an already-terminated session
    * returns an error response rather than throwing an exception.
-   * @param {StopHandlerArgs} args - Stop operation parameters containing the session ID
-   * @param {ToolHandlerContext} context - Shared handler context providing session management and formatting
-   * @returns {Promise<CallToolResult>} Promise resolving to a CallToolResult with termination status and cleanup details,
+   * @param args - Stop operation parameters containing the session ID
+   * @param context - Shared handler context providing session management and formatting
+   * @returns Promise resolving to a CallToolResult with termination status and cleanup details,
    * or an error response if the session doesn't exist
-   * @throws {never} Never throws - all errors are caught and returned as CallToolResult with isError flag
+   * @throws Never throws - all errors are caught and returned as CallToolResult with isError flag
    * @see file:../types/handlers.ts:22 - ToolHandlerContext interface
    * @see file:../sessions/session-validator.ts:24 - Session validation logic
    */

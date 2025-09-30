@@ -28,10 +28,10 @@ export interface InspectorTarget {
  *
  * Queries the inspector's /json endpoint to retrieve all debuggable Node.js processes.
  * Filters results to include only targets of type 'node'.
- * @param {number} port - Inspector port to query
- * @param {string} host - Inspector host address
- * @returns {Promise<InspectorTarget[]>} Promise resolving to array of Node.js inspector targets
- * @throws {Error} When the HTTP request fails, times out (>2s), or response parsing fails
+ * @param port - Inspector port to query
+ * @param host - Inspector host address
+ * @returns Promise resolving to array of Node.js inspector targets
+ * @throws When the HTTP request fails, times out (\>2s), or response parsing fails
  * @example
  * ```typescript
  * // Discover targets on default port
@@ -85,10 +85,10 @@ export async function discoverInspectorTargets(
  *
  * Sequentially tests ports by attempting to bind a temporary HTTP server.
  * Returns the first port that successfully binds and closes cleanly.
- * @param {number} startPort - First port in range to test
- * @param {number} endPort - Last port in range to test (inclusive)
- * @returns {Promise<number>} Promise resolving to first available port number
- * @throws {Error} When no ports are available in the specified range
+ * @param startPort - First port in range to test
+ * @param endPort - Last port in range to test (inclusive)
+ * @returns Promise resolving to first available port number
+ * @throws When no ports are available in the specified range
  * @example
  * ```typescript
  * // Find port in default range (9229-9239)
@@ -111,8 +111,8 @@ export async function findAvailablePort(
 
 /**
  * Checks if a port is available by attempting to bind an HTTP server.
- * @param {number} port - Port number to test
- * @returns {Promise<boolean>} Promise resolving to true if port is available, false if in use
+ * @param port - Port number to test
+ * @returns Promise resolving to true if port is available, false if in use
  * @internal
  */
 function isPortAvailable(port: number): Promise<boolean> {
@@ -142,8 +142,8 @@ function isPortAvailable(port: number): Promise<boolean> {
  * If the path contains spaces and doesn't exist, the validator attempts to extract
  * a base path and provides a helpful error message directing users to use the
  * separate `args` parameter for script arguments.
- * @param {string} scriptPath - File path to validate
- * @throws {Error} When path doesn't exist, isn't a file, has wrong extension, or contains embedded arguments
+ * @param scriptPath - File path to validate
+ * @throws When path doesn't exist, isn't a file, has wrong extension, or contains embedded arguments
  * @example
  * ```typescript
  * // Valid paths
@@ -197,8 +197,8 @@ export async function validateScriptPath(scriptPath: string): Promise<void> {
  * Searches for the "Debugger listening on ws://..." message that Node.js
  * emits when inspector is enabled. This message appears in stderr when
  * Node is started with --inspect or --inspect-brk flags.
- * @param {string} output - Process output text (typically stderr)
- * @returns {string | null} WebSocket URL if found, null otherwise
+ * @param output - Process output text (typically stderr)
+ * @returns WebSocket URL if found, null otherwise
  * @example
  * ```typescript
  * const stderr = 'Debugger listening on ws://127.0.0.1:9229/abc-123';
@@ -223,12 +223,12 @@ export function parseInspectorUrl(output: string): string | null {
  *
  * This utility swallows errors from the condition function to allow transient
  * failures during polling. Only timeout errors are propagated to the caller.
- * @template T - The type of value returned when condition is satisfied
- * @param {() => Promise<T | null> | T | null} condition - Function that returns the awaited value or null if not ready
- * @param {number} timeoutMs - Maximum time to wait in milliseconds
- * @param {number} intervalMs - Time between condition checks in milliseconds
- * @returns {Promise<T>} Promise resolving to the non-null value returned by condition
- * @throws {Error} When timeout is reached before condition returns non-null value
+ * @typeParam T - The type of value returned when condition is satisfied
+ * @param condition - Function that returns the awaited value or null if not ready
+ * @param timeoutMs - Maximum time to wait in milliseconds
+ * @param intervalMs - Time between condition checks in milliseconds
+ * @returns Promise resolving to the non-null value returned by condition
+ * @throws When timeout is reached before condition returns non-null value
  * @example
  * ```typescript
  * // Wait for inspector URL to appear in logs

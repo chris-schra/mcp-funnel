@@ -47,8 +47,8 @@ import type {
 export class SessionValidator implements ISessionValidator {
   /**
    * Creates a new session validator.
-   * @param {ISessionManager} sessionManager - Manager for real debug sessions
-   * @param {IMockSessionManager} [mockSessionManager] - Optional manager for mock sessions (used in testing)
+   * @param sessionManager - Manager for real debug sessions
+   * @param mockSessionManager - Optional manager for mock sessions (used in testing)
    */
   public constructor(
     private sessionManager: ISessionManager,
@@ -66,8 +66,8 @@ export class SessionValidator implements ISessionValidator {
    *
    * Return value uses discriminated union pattern - check for 'error' property to
    * determine if validation succeeded.
-   * @param {string} sessionId - Unique identifier of the debug session to validate
-   * @returns {{ session: DebugSession } | { error: CallToolResult }} Either `{ session: DebugSession }` if valid, or `{ error: CallToolResult }` if not found or is mock
+   * @param sessionId - Unique identifier of the debug session to validate
+   * @returns Either `\{ session: DebugSession \}` if valid, or `\{ error: CallToolResult \}` if not found or is mock
    * @example
    * ```typescript
    * const validation = validator.validateSession('session-123');
@@ -141,8 +141,8 @@ export class SessionValidator implements ISessionValidator {
    *
    * Return value uses discriminated union pattern - check for 'error' property to
    * determine if validation succeeded.
-   * @param {string} sessionId - Unique identifier of the debug session to validate
-   * @returns {{ session: DebugSession } | { error: CallToolResult }} Either `{ session: DebugSession }` if paused, or `{ error: CallToolResult }` if not found/not paused
+   * @param sessionId - Unique identifier of the debug session to validate
+   * @returns Either `\{ session: DebugSession \}` if paused, or `\{ error: CallToolResult \}` if not found/not paused
    * @example
    * ```typescript
    * const validation = validator.validatePausedSession('session-123');
@@ -199,8 +199,8 @@ export class SessionValidator implements ISessionValidator {
    * Includes the requested session ID and a list of all active real session IDs
    * to help with debugging. The error is formatted as a CallToolResult ready to
    * be returned from tool handlers.
-   * @param {string} sessionId - Session ID that was not found
-   * @returns {CallToolResult} CallToolResult with error details and list of active sessions
+   * @param sessionId - Session ID that was not found
+   * @returns CallToolResult with error details and list of active sessions
    * @public
    * @see file:../types/handlers.ts:182-186 - CallToolResult interface
    */
@@ -230,10 +230,10 @@ export class SessionValidator implements ISessionValidator {
    *
    * This method is used in try-catch blocks across all handlers to ensure consistent
    * error reporting to MCP clients.
-   * @param {string} sessionId - Session ID where the error occurred
-   * @param {unknown} error - The caught exception (typically an Error object)
-   * @param {string} [operation] - Optional operation name for context (e.g., 'get_stack_trace', 'continue_debug_session')
-   * @returns {CallToolResult} CallToolResult with error message, session ID, optional operation, and stack trace
+   * @param sessionId - Session ID where the error occurred
+   * @param error - The caught exception (typically an Error object)
+   * @param operation - Optional operation name for context (e.g., 'get_stack_trace', 'continue_debug_session')
+   * @returns CallToolResult with error message, session ID, optional operation, and stack trace
    * @example
    * ```typescript
    * try {

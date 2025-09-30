@@ -89,7 +89,7 @@ export class EventManager {
    *
    * All events are propagated through the provided context callbacks, allowing the session
    * to update state and emit its own events in response to adapter events.
-   * @param {EventContext} context - Event context containing adapter and callbacks
+   * @param context - Event context containing adapter and callbacks
    * @example
    * ```typescript
    * // Called during session initialization
@@ -125,7 +125,7 @@ export class EventManager {
    * Registers event listeners via `adapter.on()` for console output, pause/resume
    * events, and breakpoint resolution. Each adapter event is forwarded to the
    * appropriate handler method which updates state and invokes context callbacks.
-   * @param {EventContext} context - Event context containing adapter and callbacks
+   * @param context - Event context containing adapter and callbacks
    * @internal
    * @see file:../types/adapter.ts:29-36 - IDebugAdapter.on() method signature
    * @see file:./event-manager.ts:116 - handlePaused implementation
@@ -170,7 +170,7 @@ export class EventManager {
    * callbacks.
    *
    * Uses optional chaining since these methods may not exist on all adapter implementations.
-   * @param {EventContext} context - Event context containing adapter and callbacks
+   * @param context - Event context containing adapter and callbacks
    * @internal
    * @see file:./event-manager.ts:116 - handlePaused implementation
    * @see file:./event-manager.ts:138 - handleResumed implementation
@@ -211,8 +211,8 @@ export class EventManager {
    *
    * Invokes callbacks to update state, set lifecycle to 'active', and notify listeners
    * that execution has paused.
-   * @param {DebugState} state - Current debug state including pause reason and location
-   * @param {EventContext} context - Event context containing state and callbacks
+   * @param state - Current debug state including pause reason and location
+   * @param context - Event context containing state and callbacks
    * @internal
    * @see file:../types/index.js - DebugState type definition
    */
@@ -240,7 +240,7 @@ export class EventManager {
    * When execution resumes (after continue, step, etc.), creates a running state
    * and invokes callbacks to update state, set lifecycle to 'active', and notify
    * listeners that execution has resumed.
-   * @param {EventContext} context - Event context containing state and callbacks
+   * @param context - Event context containing state and callbacks
    * @internal
    * @see file:../types/index.js - DebugState type definition
    */
@@ -260,8 +260,8 @@ export class EventManager {
    * from the requested location due to source maps, code optimization, etc.
    *
    * Invokes the callback to notify listeners about the breakpoint resolution.
-   * @param {BreakpointRegistration} registration - Breakpoint registration with verification status
-   * @param {EventContext} context - Event context containing breakpoint map and callbacks
+   * @param registration - Breakpoint registration with verification status
+   * @param context - Event context containing breakpoint map and callbacks
    * @internal
    * @see file:../types/index.js - BreakpointRegistration type definition
    */
