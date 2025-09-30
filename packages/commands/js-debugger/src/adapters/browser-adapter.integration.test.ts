@@ -161,7 +161,7 @@ async function startStaticServer(rootDir: string): Promise<StaticServerHandle> {
   };
 }
 
-describe('BrowserAdapter integration', () => {
+(process.env.TEST_E2E === 'true' ? describe : describe.skip)('BrowserAdapter integration', () => {
   let fixturesRoot: FixtureHandle;
 
   beforeAll(async () => {

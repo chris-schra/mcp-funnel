@@ -33,7 +33,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Run validation
-        run: yarn validate --github-actions
+        run: GH_CI=true yarn validate --github-actions
         continue-on-error: true
         id: validate
 

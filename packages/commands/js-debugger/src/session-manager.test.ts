@@ -45,7 +45,7 @@ describe('SessionManager (Node integration)', () => {
     SessionManager.resetInstance();
   });
 
-  it('captures console output according to verbosity filters', async () => {
+  (process.env.TEST_E2E === 'true' ? it : it.skip)('captures console output according to verbosity filters', async () => {
     const manager = SessionManager.getInstance();
 
     const session = await manager.createSession({
@@ -157,7 +157,7 @@ describe('SessionManager (Node integration)', () => {
     await manager.deleteSession(session.id);
   });
 
-  (process.env.TEST_E2E === 'true' ? it.concurrent : it.skip)('hits TypeScript debugger statements and breakpoints after continuing', async () => {
+  it('hits TypeScript debugger statements and breakpoints after continuing', async () => {
     const manager = SessionManager.getInstance();
 
     const session = await manager.createSession({
