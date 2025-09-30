@@ -3,10 +3,14 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
+import {jsdoc} from 'eslint-plugin-jsdoc';
 
 export default tseslint.config(
   eslint.configs.recommended,
   tseslint.configs.recommended,
+  jsdoc({
+    config: 'flat/recommended',
+  }),
   {
     ignores: [
       '**/generated/*',
