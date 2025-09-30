@@ -161,7 +161,7 @@ describe('Security Verification', () => {
     const testToken = randomBytes(32).toString('hex');
 
     // Start server with auth
-    serverProcess = spawn('npx', ['tsx', 'src/dev.ts'], {
+    serverProcess = spawn('node', ['node_modules/.bin/tsx', 'src/dev.ts'], {
       cwd: '/Users/d635861/WorkBench/mcp-funnel/mcp-funnel-oauth/packages/server',
       env: {
         ...process.env,
