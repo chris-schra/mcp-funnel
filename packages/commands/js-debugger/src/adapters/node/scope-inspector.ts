@@ -4,124 +4,16 @@ import type {
   Variable,
   EvaluationResult,
 } from '../../types/index.js';
-
-/**
- * CDP Scope interface matching the structure from pause events.
- *
- * Represents the raw scope chain structure returned by Chrome DevTools Protocol
- * when the debugger pauses execution. Each scope contains an object reference
- * and metadata about the scope's location in the source code.
- * @internal
- * @see file:../../types/evaluation.ts:13 - Public Scope interface
- */
-interface CDPScope {
-  type:
-    | 'global'
-    | 'local'
-    | 'closure'
-    | 'module'
-    | 'with'
-    | 'catch'
-    | 'block'
-    | 'script'
-    | 'eval';
-  object: {
-    objectId?: string;
-    type: string;
-    className?: string;
-    description?: string;
-    value?: unknown;
-  };
-  name?: string;
-  startLocation?: {
-    scriptId: string;
-    lineNumber: number;
-    columnNumber: number;
-  };
-  endLocation?: {
-    scriptId: string;
-    lineNumber: number;
-    columnNumber: number;
-  };
-}
-
-/**
- * CDP Property descriptor from Runtime.getProperties.
- *
- * Represents a single property descriptor returned by the CDP Runtime.getProperties
- * command, including metadata about configurability, enumerability, and accessor functions.
- * @internal
- */
-interface CDPPropertyDescriptor {
-  name: string;
-  value?: {
-    type: string;
-    value?: unknown;
-    description?: string;
-    objectId?: string;
-    className?: string;
-  };
-  writable?: boolean;
-  get?: {
-    type: string;
-    objectId?: string;
-  };
-  set?: {
-    type: string;
-    objectId?: string;
-  };
-  configurable?: boolean;
-  enumerable?: boolean;
-  wasThrown?: boolean;
-  isOwn?: boolean;
-  symbol?: {
-    type: string;
-    description?: string;
-    objectId?: string;
-  };
-}
-
-/**
- * Response from Runtime.getProperties.
- *
- * Contains all properties (regular, internal, and private) of an object
- * along with any exception details if the operation failed.
- * @internal
- */
-interface CDPGetPropertiesResponse {
-  result: CDPPropertyDescriptor[];
-  internalProperties?: CDPPropertyDescriptor[];
-  privateProperties?: CDPPropertyDescriptor[];
-  exceptionDetails?: unknown;
-}
-
-/**
- * Response from Debugger.evaluateOnCallFrame.
- *
- * Contains the evaluation result along with any exception details or error indicators.
- * Note: Despite the interface name, this is used for evaluateOnCallFrame, not Runtime.evaluate.
- * @internal
- */
-interface CDPEvaluateResponse {
-  result: {
-    type: string;
-    value?: unknown;
-    description?: string;
-    objectId?: string;
-    className?: string;
-  };
-  exceptionDetails?: {
-    exceptionId: number;
-    text: string;
-    lineNumber: number;
-    columnNumber: number;
-    scriptId?: string;
-    url?: string;
-    stackTrace?: unknown;
-    exception?: unknown;
-  };
-  wasThrown?: boolean;
-}
+import type {
+  CDPScope,
+  CDPGetPropertiesResponse,
+  CDPEvaluateResponse,
+} from './scope-inspector-types.js';
+import {
+  mapScopeType,
+  extractValue,
+  createVariableFromProperty,
+} from './scope-inspector-utils.js';
 
 /**
  * ScopeInspector handles scope chain inspection and variable retrieval
@@ -192,7 +84,7 @@ export class ScopeInspector {
 
     for (const cdpScope of scopeChain) {
       // Map CDP scope types to our type system
-      const scopeType = this.mapScopeType(cdpScope.type);
+      const scopeType = mapScopeType(cdpScope.type);
 
       const scope: Scope = {
         type: scopeType,
@@ -261,7 +153,7 @@ export class ScopeInspector {
             continue;
           }
 
-          const variable = this.createVariableFromProperty(prop);
+          const variable = createVariableFromProperty(prop);
           if (variable) {
             variables.push(variable);
           }
@@ -340,7 +232,7 @@ export class ScopeInspector {
 
       const result = response.result;
       return {
-        value: this.extractValue(result),
+        value: extractValue(result),
         type: result.type,
         description: result.description,
       };
@@ -353,125 +245,5 @@ export class ScopeInspector {
         }`,
       };
     }
-  }
-
-  /**
-   * Maps CDP scope types to our Scope interface types.
-   *
-   * CDP supports more granular scope types (module, script, eval, block) than
-   * our public Scope interface. These are mapped to their closest equivalent,
-   * with less common types defaulting to 'local'.
-   * @param cdpType - CDP scope type from callFrame.scopeChain[].type
-   * @returns Mapped scope type matching Scope['type'] union
-   * @internal
-   */
-  private mapScopeType(cdpType: CDPScope['type']): Scope['type'] {
-    switch (cdpType) {
-      case 'global':
-        return 'global';
-      case 'local':
-        return 'local';
-      case 'closure':
-        return 'closure';
-      case 'with':
-        return 'with';
-      case 'catch':
-        return 'catch';
-      // Map less common CDP types to closest equivalent
-      case 'module':
-      case 'script':
-      case 'eval':
-      case 'block':
-        return 'local'; // Treat as local scope
-      default:
-        return 'local'; // Default fallback
-    }
-  }
-
-  /**
-   * Creates a Variable object from a CDP property descriptor.
-   *
-   * Filters out properties that shouldn't be shown as variables:
-   * - Getters/setters without resolved values
-   * - Properties that threw exceptions during access
-   * - Properties without value descriptors
-   * @param prop - CDP property descriptor from Runtime.getProperties result
-   * @returns Variable object or null if property should be filtered out
-   * @internal
-   */
-  private createVariableFromProperty(
-    prop: CDPPropertyDescriptor,
-  ): Variable | null {
-    // Skip getters/setters without values
-    if (!prop.value && (prop.get || prop.set)) {
-      return null;
-    }
-
-    // Skip properties that threw during access
-    if (prop.wasThrown) {
-      return null;
-    }
-
-    const value = prop.value;
-    if (!value) {
-      return null;
-    }
-
-    return {
-      name: prop.name,
-      value: this.extractValue(value),
-      type: value.type,
-      configurable: prop.configurable,
-      enumerable: prop.enumerable,
-    };
-  }
-
-  /**
-   * Extracts the actual value from a CDP value object.
-   *
-   * CDP represents values differently depending on their type:
-   * - Primitives (string, number, boolean, undefined): value field contains the actual value
-   * - null: Special case with type='object' and value=null
-   * - Complex objects with objectId: Returns description string (full object inspection requires separate call)
-   * - Simple objects without objectId: Returns value or description
-   * @param cdpValue - CDP value object from property descriptors or evaluation results
-   * @returns Extracted JavaScript value - primitives as-is, complex objects as description strings
-   * @internal
-   */
-  private extractValue(cdpValue: {
-    type: string;
-    value?: unknown;
-    description?: string;
-    objectId?: string;
-    className?: string;
-  }): unknown {
-    // For primitive types, use the value directly
-    if (
-      cdpValue.type === 'string' ||
-      cdpValue.type === 'number' ||
-      cdpValue.type === 'boolean' ||
-      cdpValue.type === 'undefined'
-    ) {
-      return cdpValue.value;
-    }
-
-    // For null, return null regardless of the value field
-    if (cdpValue.type === 'object' && cdpValue.value === null) {
-      return null;
-    }
-
-    // For objects without objectId, use description or value
-    if (cdpValue.type === 'object' && !cdpValue.objectId) {
-      return cdpValue.value ?? cdpValue.description ?? '[Object]';
-    }
-
-    // For complex objects, arrays, functions, etc., use description
-    // The objectId would be used for further inspection if needed
-    if (cdpValue.objectId) {
-      return cdpValue.description || `[${cdpValue.className || cdpValue.type}]`;
-    }
-
-    // Fallback to value or description
-    return cdpValue.value ?? cdpValue.description ?? `[${cdpValue.type}]`;
   }
 }
