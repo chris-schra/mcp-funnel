@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type {
-  IAuthProvider,
+import {
   BaseClientTransport,
+  type IAuthProvider,
   type BaseClientTransportConfig,
   type PendingRequest,
 } from '@mcp-funnel/core';
