@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CoreToolContext } from '../core-tool.interface.js';
-import {
+import type { CoreToolContext } from '../../core-tool.interface.js';
+import type {
   RegistryServer,
   RegistryInstallInfo,
-} from '../../mcp-registry/types/registry.types.js';
-import { GetServerInstallInfo } from './index.js';
+} from '../../../mcp-registry/types/registry.types.js';
+import { GetServerInstallInfo } from '../index.js';
+import { createMockContext, createServerSearchResponse } from './test-utils.js';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -16,17 +17,7 @@ describe('GetServerInstallInfo', () => {
 
   beforeEach(() => {
     tool = new GetServerInstallInfo();
-
-    mockContext = {
-      toolRegistry: {} as CoreToolContext['toolRegistry'],
-      toolDescriptionCache: new Map(),
-      dynamicallyEnabledTools: new Set(),
-      config: {
-        servers: [],
-      },
-      configPath: './.mcp-funnel.json',
-      enableTools: vi.fn(),
-    };
+    mockContext = createMockContext();
 
     // Reset mocks
     vi.clearAllMocks();
@@ -63,144 +54,7 @@ describe('GetServerInstallInfo', () => {
     });
   });
 
-  describe('Tool Definition', () => {
-    it('should have correct name and schema', () => {
-      expect(tool.name).toBe('get_server_install_info');
-
-      const toolDef = tool.tool;
-      expect(toolDef.name).toBe('get_server_install_info');
-      expect(toolDef.description).toContain('Get installation instructions');
-      expect(toolDef.inputSchema.type).toBe('object');
-      expect(toolDef.inputSchema.required).toEqual(['registryId']);
-
-      const properties = toolDef.inputSchema.properties as Record<
-        string,
-        { type: string; description: string }
-      >;
-      expect(properties.registryId).toBeDefined();
-      expect(properties.registryId.type).toBe('string');
-      expect(properties.registryId.description).toContain(
-        'registry identifier',
-      );
-    });
-  });
-
-  describe('isEnabled', () => {
-    it('should be enabled when exposeCoreTools is not specified', () => {
-      expect(tool.isEnabled({ servers: [] })).toBe(true);
-    });
-
-    it('should be disabled when exposeCoreTools is empty array', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: [] })).toBe(false);
-    });
-
-    it('should be enabled when exposeCoreTools includes tool name', () => {
-      expect(
-        tool.isEnabled({
-          servers: [],
-          exposeCoreTools: ['get_server_install_info'],
-        }),
-      ).toBe(true);
-    });
-
-    it('should be enabled when exposeCoreTools has matching pattern', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['get_*'] })).toBe(
-        true,
-      );
-    });
-
-    it('should be enabled when exposeCoreTools is ["*"]', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
-        true,
-      );
-    });
-
-    it('should be disabled when exposeCoreTools excludes the tool', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
-      ).toBe(false);
-    });
-  });
-
-  describe('execute', () => {
-    it('should fetch server details and return install info', async () => {
-      const mockServer: RegistryServer = {
-        id: 'test-server-id',
-        name: 'test-server-id', // Name matches ID for exact match
-        description: 'A test MCP server for unit testing',
-        packages: [
-          {
-            identifier: '@test/mcp-server',
-            registry_type: 'npm',
-            runtime_hint: 'node',
-            package_arguments: ['--port', '3000'],
-            environment_variables: [
-              { name: 'API_KEY', is_required: true },
-              { name: 'DEBUG', value: 'false', is_required: false },
-            ],
-          },
-        ],
-        tools: ['test_tool_1', 'test_tool_2'],
-      };
-
-      // Mock search to find server by name
-      mockFetch.mockImplementationOnce(async (url: string) => {
-        if (url.includes('/v0/servers?search=test-server-id')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: {
-                count: 1,
-                next_cursor: null,
-              },
-            }),
-          };
-        }
-        throw new Error(`Unexpected URL: ${url}`);
-      });
-
-      const result = await tool.handle(
-        { registryId: 'test-server-id' },
-        mockContext,
-      );
-
-      expect(result.content).toHaveLength(1);
-      const content = result.content[0] as { type: string; text: string };
-      expect(content.type).toBe('text');
-
-      const installInfo: RegistryInstallInfo = JSON.parse(content.text);
-      expect(installInfo.name).toBe('test-server-id');
-      expect(installInfo.description).toBe(
-        'A test MCP server for unit testing',
-      );
-      expect(installInfo.configSnippet).toBeDefined();
-      expect(installInfo.installInstructions).toBeDefined();
-      expect(installInfo.tools).toEqual(['test_tool_1', 'test_tool_2']);
-    });
-
-    it('should handle server not found', async () => {
-      // Mock fetch to return 404
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-        json: async () => ({}),
-      });
-
-      const result = await tool.handle(
-        { registryId: 'nonexistent-server' },
-        mockContext,
-      );
-
-      expect(result.content).toHaveLength(1);
-      const content = result.content[0] as { type: string; text: string };
-      expect(content.text).toContain('Server not found');
-      expect(content.text).toContain('nonexistent-server');
-    });
-
+  describe('execute - package types', () => {
     it('should generate correct config for npm packages', async () => {
       const mockServer: RegistryServer = {
         id: 'npm-server',
@@ -216,21 +70,9 @@ describe('GetServerInstallInfo', () => {
         ],
       };
 
-      // Mock search to find server by name
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=npm-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: {
-                count: 1,
-                next_cursor: null,
-              },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
@@ -272,15 +114,7 @@ describe('GetServerInstallInfo', () => {
 
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=pypi-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: { count: 1, next_cursor: null },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
@@ -320,15 +154,7 @@ describe('GetServerInstallInfo', () => {
 
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=oci-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: { count: 1, next_cursor: null },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
@@ -374,15 +200,7 @@ describe('GetServerInstallInfo', () => {
 
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=remote-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: { count: 1, next_cursor: null },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
@@ -429,15 +247,7 @@ describe('GetServerInstallInfo', () => {
 
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=env-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: { count: 1, next_cursor: null },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
@@ -476,15 +286,7 @@ describe('GetServerInstallInfo', () => {
 
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=unknown-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: { count: 1, next_cursor: null },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
@@ -508,38 +310,6 @@ describe('GetServerInstallInfo', () => {
       );
     });
 
-    it('should handle missing registryId parameter', async () => {
-      const result = await tool.handle({}, mockContext);
-
-      expect(result.content).toHaveLength(1);
-      const content = result.content[0] as { type: string; text: string };
-      expect(content.text).toContain('Missing or invalid');
-      expect(content.text).toContain('registryId');
-    });
-
-    it('should handle invalid registryId parameter', async () => {
-      const result = await tool.handle({ registryId: 123 }, mockContext);
-
-      expect(result.content).toHaveLength(1);
-      const content = result.content[0] as { type: string; text: string };
-      expect(content.text).toContain('Missing or invalid');
-      expect(content.text).toContain('registryId');
-    });
-
-    it('should handle registry context errors gracefully', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Registry connection failed'));
-
-      const result = await tool.handle(
-        { registryId: 'test-server' },
-        mockContext,
-      );
-
-      expect(result.content).toHaveLength(1);
-      const content = result.content[0] as { type: string; text: string };
-      // The RegistryContext handles errors gracefully and returns null for server not found
-      expect(content.text).toContain('Server not found: test-server');
-    });
-
     it('should prefer packages over remotes when both exist', async () => {
       const mockServer: RegistryServer = {
         id: 'hybrid-server',
@@ -561,15 +331,7 @@ describe('GetServerInstallInfo', () => {
 
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=hybrid-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: { count: 1, next_cursor: null },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
@@ -606,15 +368,7 @@ describe('GetServerInstallInfo', () => {
 
       mockFetch.mockImplementationOnce(async (url: string) => {
         if (url.includes('/v0/servers?search=multi-package-server')) {
-          return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: async () => ({
-              servers: [mockServer],
-              metadata: { count: 1, next_cursor: null },
-            }),
-          };
+          return createServerSearchResponse([mockServer]);
         }
         throw new Error(`Unexpected URL: ${url}`);
       });
