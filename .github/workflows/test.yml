@@ -55,11 +55,11 @@ jobs:
 
       - name: Run tests
         if: github.event_name != 'pull_request'
-        run: yarn test
+        run: GH_CI=true yarn test
 
       - name: Run tests with coverage
         if: github.event_name == 'pull_request'
-        run: yarn test:coverage
+        run: GH_CI=true yarn test:coverage
 
       - name: Report coverage
         if: github.event_name == 'pull_request'

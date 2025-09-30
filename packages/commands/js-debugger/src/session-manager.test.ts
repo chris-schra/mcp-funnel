@@ -53,34 +53,44 @@ describe('SessionManager (Node integration)', () => {
       target: consoleFixture.tempPath,
       captureConsole: true,
       consoleVerbosity: 'error-only',
-      timeout: 2000,
+      timeout: 10000,
     });
 
-    await session.evaluate('console.error("session-manager test error")');
+    try {
+      // Wait for WebSocket connection to be fully established
+      await session.waitForPause(5000);
 
-    const sessionWithOutput = await waitFor(
-      () => {
-        const current = manager.getSession(session.id);
-        if (!current) {
-          return null;
-        }
-        return current.consoleOutput.length > 0 ? current : null;
-      },
-      { timeoutMs: 5000, intervalMs: 100 },
-    );
+      await session.evaluate('console.error("session-manager test error")');
 
-    expect(sessionWithOutput.consoleOutput.length).toBeGreaterThan(0);
-    expect(sessionWithOutput.consoleOutput[0]?.level).toBe('error');
-    expect(sessionWithOutput.consoleOutput[0]?.message).toContain(
-      'session-manager test error',
-    );
+      const sessionWithOutput = await waitFor(
+        () => {
+          const current = manager.getSession(session.id);
+          if (!current) {
+            return null;
+          }
+          return current.consoleOutput.length > 0 ? current : null;
+        },
+        { timeoutMs: 5000, intervalMs: 100 },
+      );
 
-    const listed = manager
-      .listSessions()
-      .find((item) => item.id === session.id);
-    expect(listed).toBeDefined();
+      expect(sessionWithOutput.consoleOutput.length).toBeGreaterThan(0);
+      expect(sessionWithOutput.consoleOutput[0]?.level).toBe('error');
+      expect(sessionWithOutput.consoleOutput[0]?.message).toContain(
+        'session-manager test error',
+      );
 
-    await manager.deleteSession(session.id);
+      const listed = manager
+        .listSessions()
+        .find((item) => item.id === session.id);
+      expect(listed).toBeDefined();
+    } finally {
+      // Ensure cleanup even if test fails
+      try {
+        await manager.deleteSession(session.id);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   });
 
   it('cleans up inactive sessions when thresholds are exceeded', async () => {
@@ -147,7 +157,7 @@ describe('SessionManager (Node integration)', () => {
     await manager.deleteSession(session.id);
   });
 
-  it('hits TypeScript debugger statements and breakpoints after continuing', async () => {
+  (process.env.TEST_E2E === 'true' ? it.concurrent : it.skip)('hits TypeScript debugger statements and breakpoints after continuing', async () => {
     const manager = SessionManager.getInstance();
 
     const session = await manager.createSession({

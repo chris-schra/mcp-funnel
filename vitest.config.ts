@@ -20,9 +20,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    reporters: (process.env.GH_CI) ? ['github-actions'] : ['default'],
     coverage: {
       provider: 'v8',
-      reporter: (process.env.CI) ? ['github-actions']:  ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html'],
       exclude: ['node_modules/', 'test/', '*.config.ts', 'src/cli.ts'],
     },
     testTimeout: 10000,
