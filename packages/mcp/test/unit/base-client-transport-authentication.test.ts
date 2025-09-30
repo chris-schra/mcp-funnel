@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { BaseClientTransport } from '../../../core/src/transports/implementations/base-client-transport.js';
 import {
-  BaseClientTransport,
   TransportError,
   type IAuthProvider,
   type BaseClientTransportConfig,
