@@ -7,8 +7,10 @@ global.fetch = mockFetch;
 
 // Create mock package response
 /**
+ * Creates a mock NPM package response for testing.
  *
- * @param overrides
+ * @param overrides - Optional properties to override default mock values
+ * @returns Mock NPM package response with React package data
  */
 export function createMockPackageResponse(
   overrides?: Partial<NPMPackageResponse>,
@@ -85,8 +87,10 @@ export function createMockPackageResponse(
 
 // Create mock search response
 /**
+ * Creates a mock NPM search response for testing.
  *
- * @param overrides
+ * @param overrides - Optional properties to override default search result values
+ * @returns Mock NPM search response with React package search result
  */
 export function createMockSearchResponse(
   overrides?: Partial<NPMSearchResponse>,

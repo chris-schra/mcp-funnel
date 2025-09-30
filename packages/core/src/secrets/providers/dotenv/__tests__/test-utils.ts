@@ -3,7 +3,9 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 /**
+ * Creates a temporary test directory with a unique name.
  *
+ * @returns Absolute path to the created temporary directory
  */
 export function createTestDirectory(): string {
   const testDir = join(
@@ -15,10 +17,12 @@ export function createTestDirectory(): string {
 }
 
 /**
+ * Creates a test environment file in the specified directory.
  *
- * @param dir
- * @param filename
- * @param content
+ * @param dir - Directory path to write the file to
+ * @param filename - Name of the .env file to create
+ * @param content - Content to write to the file
+ * @returns Absolute path to the created file
  */
 export function createTestEnvFile(
   dir: string,
@@ -31,8 +35,9 @@ export function createTestEnvFile(
 }
 
 /**
+ * Removes a test directory and all its contents.
  *
- * @param dir
+ * @param dir - Directory path to remove recursively
  */
 export function cleanupTestDirectory(dir: string): void {
   try {

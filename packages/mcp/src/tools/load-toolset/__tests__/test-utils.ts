@@ -3,8 +3,10 @@ import { CoreToolContext } from '../../core-tool.interface.js';
 import { ToolRegistry, ToolState } from '../../../tool-registry/index.js';
 
 /**
+ * Creates a mock CoreToolContext with tool registry and predefined toolsets.
  *
- * @param enabledTools
+ * @param enabledTools - Array to track which tools are enabled during test execution
+ * @returns Mock context with tool registry, toolsets, and enable functionality
  */
 export function createMockContext(enabledTools: string[]): CoreToolContext {
   const toolDescriptionCache = new Map([

@@ -18,7 +18,7 @@ import { ConsentTemplateUtils } from './utils.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/* eslint-disable jsdoc/require-throws-type -- Type is present but escaped per TSDoc requirements */
+
 /**
  * Renders the OAuth consent page HTML with the provided data.
  *
@@ -124,7 +124,6 @@ export function renderConsentPage(data: ConsentPageData): string {
     .replace(/\{\{actionUrl\}\}/g, escaped.actionUrl)
     .replace(/\{\{#each scopes\}\}[\s\S]*?\{\{\/each\}\}/g, scopesHtml);
 }
-/* eslint-enable jsdoc/require-throws-type */
 
 /**
  * Validates consent page data to ensure all required fields are present.
@@ -205,7 +204,6 @@ export function validateConsentPageData(data: Partial<ConsentPageData>): {
   };
 }
 
-/* eslint-disable jsdoc/require-param -- TSDoc does not support nested param syntax (params.property) */
 /**
  * Creates consent page data from OAuth authorization request parameters.
  *
@@ -274,4 +272,3 @@ export function createConsentPageData(params: {
     actionUrl: `${params.baseUrl}/api/oauth/consent`,
   };
 }
-/* eslint-enable jsdoc/require-param */
