@@ -54,7 +54,6 @@ export default tseslint.config(
       '**/__tests__/**/*.ts',
     ],
     rules: {
-      'max-lines': ['warn', { max: 1000, skipBlankLines: true, skipComments: true }],
       '@typescript-eslint/explicit-member-accessibility': 'off',
     },
   },
