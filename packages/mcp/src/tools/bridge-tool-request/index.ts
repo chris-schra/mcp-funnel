@@ -3,11 +3,46 @@ import { CoreToolContext } from '../core-tool.interface.js';
 import { BaseCoreTool } from '../base-core-tool.js';
 import { resolveToolName } from '../../utils/tool-resolver.js';
 
+/**
+ * Parameters for bridge tool request execution.
+ *
+ * @public
+ */
 export interface BridgeToolRequestParams {
+  /** Full tool name from tool registry (e.g., "github__create_issue") */
   tool: string;
+  /** Arguments matching the tool's input schema */
   arguments?: Record<string, unknown>;
 }
 
+/**
+ * Core tool for dynamically executing discovered tools from connected servers.
+ *
+ * This tool acts as a bridge between the MCP client and discovered tools,
+ * allowing dynamic tool execution with automatic enablement and short name resolution.
+ *
+ * Key features:
+ * - Auto-enables tools that are discovered but not yet exposed
+ * - Supports short tool name resolution when configured
+ * - Routes execution to appropriate server or command
+ * - Provides clear error messages with resolution guidance
+ *
+ * @example
+ * ```typescript
+ * // Execute a tool with full name
+ * const result = await bridgeTool.handle(
+ *   {
+ *     tool: 'github__create_issue',
+ *     arguments: { title: 'Bug report', body: 'Details...' },
+ *   },
+ *   context
+ * );
+ * ```
+ *
+ * @public
+ * @see {@link BaseCoreTool} - Base class implementation
+ * @see {@link BridgeToolRequestParams} - Parameter interface
+ */
 export class BridgeToolRequest extends BaseCoreTool {
   public readonly name = 'bridge_tool_request';
 

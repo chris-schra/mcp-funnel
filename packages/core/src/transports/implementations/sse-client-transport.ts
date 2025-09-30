@@ -269,8 +269,4 @@ export class SSEClientTransport extends BaseClientTransport {
 
     this.handleConnectionError(error);
   }
-
-  // Removed - this functionality is now handled by the base class ReconnectionManager
-
-  // Removed - these utilities are now in the base class
 }

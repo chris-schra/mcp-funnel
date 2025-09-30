@@ -123,12 +123,13 @@ function matchesPatterns(name: string, patterns?: string[]): boolean {
  * 4. exposeTools allowlist - if configured, only matched tools exposed
  * 5. hideTools denylist - explicitly hidden tools
  * 6. Default visible - all other tools visible by default
+ *
  * @param config - Proxy configuration with visibility rules
  * @param name - Tool name to check
  * @param tool - Tool state with metadata
  * @returns Object with exposed boolean and optional reason
+ *
  * @internal
- * @see file:../proxy/mcp-proxy.ts - Visibility configuration
  */
 function computeVisibility(
   config: ProxyConfig,
@@ -173,8 +174,9 @@ function computeVisibility(
  *
  * Provides functions for tool search, grouping, statistics, and visibility computation.
  * All functions are internal utilities used by ToolRegistry.
+ *
  * @internal
- * @see file:./index.ts - ToolRegistry class that uses these utilities
+ * @see {@link ToolRegistry} - Main registry class using these utilities
  */
 export const ToolRegistryUtils = {
   groupByServer,

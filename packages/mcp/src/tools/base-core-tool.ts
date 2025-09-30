@@ -8,8 +8,9 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
  *
  * Core tools are built-in tools for MCP Funnel management (discovery, loading, etc.).
  * This base class implements the standard enablement logic based on exposeCoreTools config.
+ *
  * @public
- * @see file:./core-tool.interface.ts - ICoreTool interface definition
+ * @see {@link ICoreTool} - Core tool interface definition
  */
 export abstract class BaseCoreTool implements ICoreTool {
   public abstract readonly name: string;
