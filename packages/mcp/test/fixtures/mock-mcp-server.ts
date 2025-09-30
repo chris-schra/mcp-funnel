@@ -109,7 +109,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error(`Unknown tool: ${name}`);
 });
 
-// Start server with stdio transport
+/** Starts mock MCP server with stdio transport */
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

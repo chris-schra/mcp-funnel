@@ -4,6 +4,30 @@ import {
   type ReconnectionConfig,
 } from '@mcp-funnel/models';
 
+/**
+ * Manages automatic reconnection attempts with exponential backoff.
+ *
+ * Tracks connection state transitions and schedules reconnection attempts
+ * with configurable exponential backoff, jitter, and retry limits. Used by
+ * transports to handle connection failures gracefully.
+ * @example
+ * ```typescript
+ * const manager = new ReconnectionManager({
+ *   initialDelayMs: 1000,
+ *   maxDelayMs: 30000,
+ *   maxAttempts: 10
+ * });
+ *
+ * manager.onStateChange((event) => {
+ *   console.log(`Connection: ${event.from} -> ${event.to}`);
+ * });
+ *
+ * manager.onConnecting();
+ * await connectToServer();
+ * manager.onConnected();
+ * ```
+ * @public
+ */
 export class ReconnectionManager {
   private retryCount = 0;
   private currentState = ConnectionState.Disconnected;
@@ -72,7 +96,11 @@ export class ReconnectionManager {
   }
 
   /**
-   * Called when a connection attempt is starting
+   * Signals that a connection attempt is starting.
+   *
+   * Updates state to Connecting (first attempt) or Reconnecting (retry).
+   * Cancels any pending retry timeout.
+   * @public
    */
   public onConnecting(): void {
     if (this.retryTimeout) {
@@ -89,7 +117,10 @@ export class ReconnectionManager {
   }
 
   /**
-   * Called when connection is successful
+   * Signals that connection was successful.
+   *
+   * Resets retry count and updates state to Connected.
+   * @public
    */
   public onConnected(): void {
     this.retryCount = 0;
@@ -97,7 +128,12 @@ export class ReconnectionManager {
   }
 
   /**
-   * Called when connection fails or is lost
+   * Signals that connection failed or was lost.
+   *
+   * Updates state to Disconnected unless already in Failed state.
+   * Does not automatically schedule a retry - use scheduleReconnect for that.
+   * @param error - Optional error describing the disconnection
+   * @public
    */
   public onDisconnected(error?: Error): void {
     if (this.currentState === ConnectionState.Failed) {
@@ -108,9 +144,13 @@ export class ReconnectionManager {
   }
 
   /**
-   * Schedule a reconnection attempt with exponential backoff
-   * @param connectFn Function to call for reconnection
-   * @returns Promise that resolves when reconnection is scheduled, or rejects if max retries exceeded
+   * Schedules a reconnection attempt with exponential backoff.
+   *
+   * Calculates backoff delay, increments retry count, and schedules the reconnection
+   * callback. Updates state to Reconnecting and transitions to Failed if max retries exceeded.
+   * @param connectFn - Async function to call for reconnection attempt
+   * @throws {Error} When max reconnection attempts exceeded
+   * @public
    */
   public scheduleReconnect(connectFn: () => Promise<void>): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -143,7 +183,8 @@ export class ReconnectionManager {
   }
 
   /**
-   * Cancel any pending reconnection attempts
+   * Cancels any pending reconnection attempts.
+   * @public
    */
   public cancelReconnect(): void {
     if (this.retryTimeout) {
@@ -153,7 +194,10 @@ export class ReconnectionManager {
   }
 
   /**
-   * Reset the retry count (useful when manually reconnecting)
+   * Resets the retry count and cancels pending reconnections.
+   *
+   * Useful when manually reconnecting or after a successful manual connection.
+   * @public
    */
   public reset(): void {
     this.retryCount = 0;
@@ -162,14 +206,20 @@ export class ReconnectionManager {
   }
 
   /**
-   * Get current attempt count
+   * Gets the current retry attempt count.
+   * @public
    */
   public getAttemptCount(): number {
     return this.retryCount;
   }
 
   /**
-   * Schedule reconnection (simple wrapper for scheduleReconnect)
+   * Schedules reconnection (simple wrapper for scheduleReconnect).
+   *
+   * Fire-and-forget version that swallows errors since state transitions
+   * to Failed are observable via state change handlers.
+   * @param reconnectFn - Function to call for reconnection
+   * @public
    */
   public scheduleReconnection(reconnectFn: () => void | Promise<void>): void {
     this.scheduleReconnect(async () => {
@@ -180,21 +230,26 @@ export class ReconnectionManager {
   }
 
   /**
-   * Cancel (alias for cancelReconnect for compatibility)
+   * Cancels reconnection (alias for cancelReconnect for compatibility).
+   * @public
    */
   public cancel(): void {
     this.cancelReconnect();
   }
 
   /**
-   * Add a state change handler
+   * Registers a state change handler.
+   * @param handler - Callback invoked on each state transition
+   * @public
    */
   public onStateChange(handler: (event: ConnectionStateChange) => void): void {
     this.stateChangeHandlers.push(handler);
   }
 
   /**
-   * Remove a state change handler
+   * Removes a state change handler.
+   * @param handler - Handler to remove
+   * @public
    */
   public removeStateChangeHandler(
     handler: (event: ConnectionStateChange) => void,
@@ -206,7 +261,10 @@ export class ReconnectionManager {
   }
 
   /**
-   * Clean up resources
+   * Cleans up resources and cancels pending reconnections.
+   *
+   * Call this when the connection is being permanently closed.
+   * @public
    */
   public destroy(): void {
     this.cancelReconnect();

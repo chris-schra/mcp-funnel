@@ -4,8 +4,8 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
 /**
  * Interface for managing MCP proxy configuration.
  *
- * This interface provides an abstraction layer for configuration management,
- * enabling different implementation strategies across development phases:
+ * Provides an abstraction layer for configuration management, enabling different
+ * implementation strategies across development phases.
  *
  * **MVP Implementation (Phase 1):**
  * - Read-only operations work normally
@@ -22,13 +22,13 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
  * This design pattern allows us to build the complete registry search and
  * server management flow in Phase 1, then seamlessly upgrade to full
  * persistence in Phase 2 without changing the consumer code.
+ * @public
  */
 export interface IConfigManager {
   /**
    * Reads the current proxy configuration.
-   *
-   * @returns Promise resolving to the current ProxyConfig
-   * @throws Error if configuration cannot be read or is invalid
+   * @returns {Promise<ProxyConfig>} Promise resolving to the current ProxyConfig
+   * @throws {Error} if configuration cannot be read or is invalid
    */
   readConfig(): Promise<ProxyConfig>;
 
@@ -37,10 +37,9 @@ export interface IConfigManager {
    *
    * **MVP Behavior:** Logs the server that would be added
    * **Phase 2 Behavior:** Actually adds server to config file
-   *
-   * @param server - The server configuration to add
-   * @throws Error if server name conflicts with existing server
-   * @throws Error if server configuration is invalid
+   * @param {ServerConfig} server - The server configuration to add
+   * @throws {Error} if server name conflicts with existing server
+   * @throws {Error} if server configuration is invalid
    */
   addServer(server: ServerConfig): Promise<void>;
 
@@ -49,9 +48,8 @@ export interface IConfigManager {
    *
    * **MVP Behavior:** Logs the server that would be removed
    * **Phase 2 Behavior:** Actually removes server from config file
-   *
-   * @param serverName - Name of the server to remove
-   * @throws Error if server does not exist
+   * @param {string} serverName - Name of the server to remove
+   * @throws {Error} if server does not exist
    */
   removeServer(serverName: string): Promise<void>;
 
@@ -60,11 +58,10 @@ export interface IConfigManager {
    *
    * **MVP Behavior:** Logs the updates that would be applied
    * **Phase 2 Behavior:** Actually updates server in config file
-   *
-   * @param serverName - Name of the server to update
-   * @param updates - Partial server configuration with fields to update
-   * @throws Error if server does not exist
-   * @throws Error if updates would create invalid configuration
+   * @param {string} serverName - Name of the server to update
+   * @param {Partial<ServerConfig>} updates - Partial server configuration with fields to update
+   * @throws {Error} if server does not exist
+   * @throws {Error} if updates would create invalid configuration
    */
   updateServer(
     serverName: string,

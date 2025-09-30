@@ -2,13 +2,23 @@
  * Message Parser Utilities for Transport Implementations
  *
  * Provides JSON-RPC message parsing with validation and error handling.
+ * @internal
  */
 
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { logEvent } from '../../../logger.js';
 
 /**
- * Parse message with error handling
+ * Parses JSON string into JSON-RPC message with format validation.
+ *
+ * Validates that the parsed object contains the required jsonrpc: "2.0" field.
+ * Logs parse errors and invokes optional error handler before throwing.
+ * @param data - Raw JSON string to parse
+ * @param logPrefix - Prefix for logging parse errors
+ * @param onerror - Optional callback invoked when parsing fails
+ * @returns Parsed and validated JSON-RPC message
+ * @throws {Error} When JSON parsing fails or jsonrpc field is invalid
+ * @internal
  */
 export function parseMessage(
   data: string,

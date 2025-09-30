@@ -2,6 +2,7 @@
  * HTTP Request Utilities for Transport Implementations
  *
  * Provides HTTP request functionality with auth headers, 401 handling, and retry logic.
+ * @internal
  */
 
 import type {
@@ -13,7 +14,23 @@ import type { IAuthProvider } from '../../../auth/index.js';
 import { logEvent } from '../../../logger.js';
 
 /**
- * Execute HTTP request with auth headers, 401 handling, and retry logic
+ * Executes HTTP POST request with authentication, retry logic, and error handling.
+ *
+ * Sends a JSON-RPC message via HTTP POST. If the request fails with 401 Unauthorized
+ * and an auth provider is available, automatically refreshes credentials and retries once.
+ * Handles various network errors and converts them to appropriate TransportError types.
+ * @param url - Target URL for the HTTP request
+ * @param message - JSON-RPC message to send
+ * @param signal - AbortSignal for request cancellation
+ * @param timeout - Request timeout in milliseconds
+ * @param logPrefix - Prefix for logging events
+ * @param authProvider - Optional authentication provider for token management
+ * @throws {TransportError} With appropriate type:
+ *   - 401 status after failed token refresh
+ *   - HTTP errors mapped via TransportError.fromHttpStatus
+ *   - Timeout when AbortError occurs
+ *   - Connection failed for network errors
+ * @internal
  */
 export async function executeHttpRequest(
   url: string,

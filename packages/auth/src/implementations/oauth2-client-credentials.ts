@@ -22,10 +22,39 @@ import { resolveOAuth2ClientCredentialsConfig } from '../utils/oauth-utils.js';
  * - Environment variable resolution
  * - Request correlation and retry logic
  * - Secure error handling with token sanitization
+ * @example
+ * ```typescript
+ * import { OAuth2ClientCredentialsProvider } from './oauth2-client-credentials.js';
+ * import { MemoryTokenStorage } from './memory-token-storage.js';
+ *
+ * const config = {
+ *   type: 'oauth2-client',
+ *   clientId: 'your-client-id',
+ *   clientSecret: 'your-client-secret',
+ *   tokenEndpoint: 'https://auth.example.com/oauth/token',
+ *   scope: 'api:read api:write',
+ *   audience: 'https://api.example.com'
+ * };
+ *
+ * const storage = new MemoryTokenStorage();
+ * const provider = new OAuth2ClientCredentialsProvider(config, storage);
+ *
+ * // Use the provider to get authentication headers
+ * const headers = await provider.getHeaders();
+ * ```
+ * @public
+ * @see file:./base-oauth-provider.ts - Base OAuth provider implementation
+ * @see file:../schemas.ts:4-11 - OAuth2ClientCredentialsConfigZod type definition
  */
 export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
   private readonly config: OAuth2ClientCredentialsConfigZod;
 
+  /**
+   * Creates an OAuth2 Client Credentials provider
+   * @param config - OAuth2 client credentials configuration with clientId, clientSecret, and tokenEndpoint
+   * @param storage - Token storage implementation for persisting tokens
+   * @throws {AuthenticationError} When required configuration fields are missing or invalid
+   */
   public constructor(
     config: OAuth2ClientCredentialsConfigZod,
     storage: ITokenStorage,
@@ -39,6 +68,11 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
 
   /**
    * Acquires a new OAuth2 token using client credentials flow
+   *
+   * Makes a POST request to the token endpoint with client credentials in Basic Auth header.
+   * Automatically retries on network errors and validates the response before storing.
+   * @throws {AuthenticationError} When token request fails, credentials are invalid, or audience validation fails
+   * @protected
    */
   protected async acquireToken(): Promise<void> {
     const requestId = this.generateRequestId();
@@ -66,6 +100,13 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
 
   /**
    * Makes the actual OAuth2 token request
+   *
+   * Constructs form-encoded request body with grant_type, scope, and audience.
+   * Uses HTTP Basic Authentication with base64-encoded client credentials.
+   * @param requestId - Unique identifier for request correlation and logging
+   * @returns Promise resolving to OAuth2 token response containing access_token and metadata
+   * @throws {AuthenticationError} When request fails, response is invalid, or server returns error
+   * @internal
    */
   private async makeTokenRequest(
     requestId: string,
@@ -115,6 +156,11 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
 
   /**
    * Validates the configuration has required fields
+   *
+   * Ensures clientId, clientSecret, and tokenEndpoint are present and that
+   * tokenEndpoint is a valid URL format.
+   * @throws {AuthenticationError} When required fields are missing or tokenEndpoint is not a valid URL
+   * @internal
    */
   private validateConfig(): void {
     try {

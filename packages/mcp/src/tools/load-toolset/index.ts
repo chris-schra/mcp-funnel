@@ -15,16 +15,35 @@ export type LoadToolsetParams =
   | LoadToolsetByNameParams
   | LoadToolsetByPatternsParams;
 
+/**
+ * Type guard checking if params contain a toolset name.
+ * @param params - Parameters to check
+ * @returns True if params has 'name' property
+ * @internal
+ */
 function isLoadByName(params: unknown): params is LoadToolsetByNameParams {
   return typeof params === 'object' && params !== null && 'name' in params;
 }
 
+/**
+ * Type guard checking if params contain tool patterns array.
+ * @param params - Parameters to check
+ * @returns True if params has 'tools' property
+ * @internal
+ */
 function isLoadByPatterns(
   params: unknown,
 ): params is LoadToolsetByPatternsParams {
   return typeof params === 'object' && params !== null && 'tools' in params;
 }
 
+/**
+ * Finds all discovered tools matching the given glob patterns.
+ * @param patterns - Array of glob patterns to match against tool names
+ * @param toolRegistry - Tool registry to search
+ * @returns Array of matching tool full names
+ * @internal
+ */
 function findMatchingTools(
   patterns: string[],
   toolRegistry: import('../../tool-registry/index.js').ToolRegistry,
@@ -45,6 +64,17 @@ function findMatchingTools(
   return matchedTools;
 }
 
+/**
+ * Core tool for loading predefined toolsets or explicit tool patterns.
+ *
+ * Enables bulk tool activation either by:
+ * - Named toolset (defined in config.toolsets)
+ * - Explicit array of glob patterns
+ *
+ * Useful for organizing tools into logical groups and enabling them together.
+ * @public
+ * @see file:../core-tool.interface.ts - Core tool interface
+ */
 export class LoadToolset extends BaseCoreTool {
   public readonly name = 'load_toolset';
 

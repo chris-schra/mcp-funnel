@@ -12,6 +12,9 @@ const sharedOptions: BuildOptions = {
   target: 'node18',
 };
 
+/**
+ *
+ */
 async function buildAll() {
   console.log('🔨 Building @mcp-funnel/core...\n');
 

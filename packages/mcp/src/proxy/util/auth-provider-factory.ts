@@ -1,6 +1,9 @@
 /**
- * Auth provider factory for creating authentication providers
- * Extracted from MCPProxy to reduce file size
+ * Factory for creating authentication providers from configuration.
+ * Supports bearer token, OAuth2 client credentials, and OAuth2 authorization code flows.
+ * Extracted from MCPProxy to reduce file size and improve testability.
+ * @public
+ * @see file:../../mcp-proxy.ts - Main proxy implementation
  */
 
 import type { AuthConfigZod } from '@mcp-funnel/schemas';
@@ -13,15 +16,36 @@ import {
 } from '@mcp-funnel/auth';
 
 /**
- * Result of creating an auth provider
+ * Result of creating an authentication provider.
+ * @public
  */
 export interface AuthProviderResult {
+  /** Authentication provider instance */
   provider: IAuthProvider;
+  /** Token storage instance for OAuth2 flows (undefined for bearer tokens) */
   tokenStorage?: ITokenStorage;
 }
 
 /**
- * Creates an appropriate auth provider based on the authentication configuration
+ * Creates an authentication provider based on the provided configuration.
+ * For OAuth2 flows (client credentials and authorization code), automatically creates
+ * token storage using TokenStorageFactory with 'auto' mode (keychain on macOS, memory fallback).
+ * Bearer tokens do not require token storage.
+ * @param {AuthConfigZod | undefined} authConfig - Authentication configuration from server config
+ * @param {string | undefined} serverName - Server identifier for token storage namespacing
+ * @param {Record<string, string>} [resolvedEnv] - Environment variables available to the provider
+ * @returns {AuthProviderResult | undefined} Auth provider and optional token storage, or undefined for 'none' auth type
+ * @throws {Error} When authConfig contains an unsupported auth type
+ * @example
+ * ```typescript
+ * const result = createAuthProvider(
+ *   { type: 'bearer', token: 'sk-...' },
+ *   'my-server',
+ *   process.env
+ * );
+ * ```
+ * @public
+ * @see file:./connection-setup.ts:97 - Usage in server connection
  */
 export function createAuthProvider(
   authConfig: AuthConfigZod | undefined,

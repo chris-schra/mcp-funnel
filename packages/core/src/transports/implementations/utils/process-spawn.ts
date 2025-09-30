@@ -4,6 +4,7 @@ import { handleSpawnError } from './spawn-error-handler.js';
 
 /**
  * Options for spawning a process with timeout support.
+ * @internal
  */
 export interface ProcessSpawnOptions {
   command: string;
@@ -14,11 +15,19 @@ export interface ProcessSpawnOptions {
 }
 
 /**
- * Spawns a child process with optional timeout support.
+ * Spawns a child process with optional timeout and error handling.
  *
- * @param options - Process spawn configuration
- * @returns Promise resolving to spawned ChildProcess
- * @throws TransportError on spawn failure or timeout
+ * Creates a child process with full stdio pipe control. If a spawn timeout
+ * is specified, rejects if the process doesn't spawn within that period.
+ * All spawn errors are mapped to appropriate TransportError types.
+ * @param options - Process spawn configuration including command, args, and timeout
+ * @returns Promise resolving to spawned ChildProcess once successfully started
+ * @throws {TransportError} Mapped from spawn errors:
+ *   - ENOENT: Command not found
+ *   - EACCES: Permission denied
+ *   - ETIMEDOUT: Spawn timeout exceeded
+ *   - Other errors: Connection failed
+ * @internal
  */
 export async function spawnProcessWithTimeout(
   options: ProcessSpawnOptions,
@@ -67,9 +76,12 @@ export async function spawnProcessWithTimeout(
 /**
  * Cleans up a child process gracefully with fallback to force kill.
  *
- * @param process - Process to cleanup
- * @param serverName - Server name for logging
- * @param sessionId - Session ID for logging
+ * Attempts graceful termination via SIGTERM, then forces SIGKILL after 1 second
+ * if the process hasn't exited. Handles cases where the process is already dead.
+ * @param process - Process to cleanup, or undefined if no process exists
+ * @param serverName - Server name for debug logging
+ * @param sessionId - Optional session ID for debug logging
+ * @internal
  */
 export function cleanupProcess(
   process: ChildProcess | undefined,

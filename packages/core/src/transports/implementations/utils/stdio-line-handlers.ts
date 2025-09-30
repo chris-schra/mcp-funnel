@@ -2,14 +2,23 @@
  * Stdio Line Handler Utilities
  *
  * Provides line handling logic for stdout and stderr streams in stdio transport.
+ * @internal
  */
 
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { logEvent } from '../../../logger.js';
 
 /**
- * Handle a line of output from the process stdout.
- * Expected to contain JSON-RPC messages.
+ * Handles stdout line output by parsing JSON-RPC messages or logging non-JSON output.
+ *
+ * Attempts to parse each line as a JSON-RPC message. Valid messages are passed to
+ * the onmessage callback. Non-JSON lines are logged to stderr with server prefix,
+ * as they represent unexpected non-protocol output.
+ * @param line - Raw line from stdout
+ * @param serverName - Server name for logging and error prefixing
+ * @param sessionId - Optional session ID for logging
+ * @param onmessage - Callback invoked with successfully parsed JSON-RPC messages
+ * @internal
  */
 export function handleStdoutLine(
   line: string,
@@ -48,8 +57,14 @@ export function handleStdoutLine(
 }
 
 /**
- * Handle a line of output from the process stderr.
- * Used for debugging and error information.
+ * Handles stderr line output by logging with server prefix.
+ *
+ * All stderr output is logged to console.error with the server name prefix
+ * for debugging and error visibility. Also creates debug log events.
+ * @param line - Raw line from stderr
+ * @param serverName - Server name for error prefixing and logging
+ * @param sessionId - Optional session ID for logging
+ * @internal
  */
 export function handleStderrLine(
   line: string,

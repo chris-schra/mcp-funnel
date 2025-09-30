@@ -5,6 +5,7 @@ import type { TokenData } from '@mcp-funnel/core';
  * Generate secure filename from key using SHA-256 hash
  * @param key - The key to hash
  * @returns Hashed filename
+ * @internal
  */
 export function getFilename(key: string): string {
   // Simple hash to avoid filesystem issues with special characters
@@ -16,6 +17,8 @@ export function getFilename(key: string): string {
  * Parse stored token JSON back to TokenData
  * @param jsonString - JSON string representation of token
  * @returns Parsed TokenData object
+ * @throws {SyntaxError} When JSON parsing fails due to invalid format
+ * @internal
  */
 export function parseStoredToken(jsonString: string): TokenData {
   const parsed = JSON.parse(jsonString);
@@ -32,6 +35,7 @@ export function parseStoredToken(jsonString: string): TokenData {
  * Serialize token data to JSON string for storage
  * @param token - TokenData to serialize
  * @returns JSON string representation
+ * @internal
  */
 export function serializeToken(token: TokenData): string {
   return JSON.stringify({

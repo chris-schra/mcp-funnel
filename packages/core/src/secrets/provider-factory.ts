@@ -3,6 +3,7 @@
  *
  * This module provides utilities to instantiate secret providers based on
  * configuration objects, following the factory pattern for type-safe creation.
+ * @public
  */
 
 import type { SecretProviderConfig } from './provider-configs.js';
@@ -16,12 +17,9 @@ import { InlineProvider } from './inline-provider.js';
  *
  * Uses TypeScript's discriminated union to ensure type-safe provider instantiation.
  * The configFileDir parameter is used to resolve relative paths in dotenv configurations.
- *
  * @param config - Provider configuration with type discriminator
  * @param configFileDir - Directory path of the config file (for resolving relative paths)
- * @returns A configured secret provider instance
  * @throws {Error} When an unknown provider type is specified
- *
  * @example
  * ```typescript
  * const envProvider = createSecretProvider({
@@ -34,6 +32,7 @@ import { InlineProvider } from './inline-provider.js';
  *   config: { path: '.env.local' }
  * }, '/path/to/config/dir');
  * ```
+ * @public
  */
 export function createSecretProvider(
   config: SecretProviderConfig,
@@ -65,11 +64,8 @@ export function createSecretProvider(
  * Convenience function for batch creation of providers. Providers are created
  * in the order they appear in the array, which determines their precedence
  * in the SecretManager.
- *
  * @param configs - Array of provider configurations
  * @param configFileDir - Directory path of the config file (for resolving relative paths)
- * @returns Array of configured secret provider instances
- *
  * @example
  * ```typescript
  * const providers = createSecretProviders([
@@ -78,6 +74,7 @@ export function createSecretProvider(
  *   { type: 'inline', config: { values: { DEFAULT_API: 'localhost' } } }
  * ]);
  * ```
+ * @public
  */
 export function createSecretProviders(
   configs: SecretProviderConfig[],
@@ -91,10 +88,9 @@ export function createSecretProviders(
  *
  * Performs runtime validation beyond TypeScript's compile-time checks.
  * Useful for validating dynamically loaded configurations.
- *
  * @param config - Provider configuration to validate
- * @returns true if the configuration is valid
  * @throws {Error} When the configuration is invalid
+ * @public
  */
 export function validateSecretProviderConfig(
   config: unknown,

@@ -124,6 +124,10 @@ class MockTokenStorage implements ITokenStorage {
 }
 
 // Helper to create test token data
+/**
+ *
+ * @param expiresInMs
+ */
 function createTestToken(expiresInMs: number = 3600000): TokenData {
   return {
     accessToken:
@@ -135,6 +139,10 @@ function createTestToken(expiresInMs: number = 3600000): TokenData {
 }
 
 // Helper to create test OAuth2 token response
+/**
+ *
+ * @param overrides
+ */
 function createTestTokenResponse(
   overrides: Partial<OAuth2TokenResponse> = {},
 ): OAuth2TokenResponse {

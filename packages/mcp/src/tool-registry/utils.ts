@@ -2,6 +2,12 @@ import type { ToolState } from './types.js';
 import { matchesPattern } from '../utils/pattern-matcher.js';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 
+/**
+ * Groups tools by server name and counts tools per server.
+ * @param tools - Array of tool states to group
+ * @returns Object mapping server names to tool counts
+ * @internal
+ */
 function groupByServer(tools: ToolState[]): Record<string, number> {
   const groups: Record<string, number> = {};
   for (const tool of tools) {
@@ -10,6 +16,12 @@ function groupByServer(tools: ToolState[]): Record<string, number> {
   return groups;
 }
 
+/**
+ * Groups exposed tools by their exposure reason and counts each category.
+ * @param tools - Array of tool states to analyze
+ * @returns Object mapping exposure reasons to counts
+ * @internal
+ */
 function groupByReason(tools: ToolState[]): Record<string, number> {
   const groups: Record<string, number> = {};
   for (const tool of tools.filter((t) => t.exposed)) {
@@ -19,6 +31,12 @@ function groupByReason(tools: ToolState[]): Record<string, number> {
   return groups;
 }
 
+/**
+ * Generates comprehensive statistics about tool states.
+ * @param tools - Array of tool states to analyze
+ * @returns Statistics object with counts by status, server, and exposure reason
+ * @internal
+ */
 function getStats(tools: ToolState[]) {
   return {
     discovered: tools.filter((t) => t.discovered).length,
@@ -29,6 +47,18 @@ function getStats(tools: ToolState[]) {
   };
 }
 
+/**
+ * Checks if a tool matches search keywords using AND or OR logic.
+ *
+ * Searches across tool fullName, description, and serverName (case-insensitive).
+ * - AND mode: Tool must contain ALL keywords
+ * - OR mode: Tool must contain at least ONE keyword
+ * @param tool - Tool state to check
+ * @param keywords - Array of search keywords (already lowercased)
+ * @param mode - Search logic mode (default 'and')
+ * @returns True if tool matches keyword criteria
+ * @internal
+ */
 function matchesKeywords(
   tool: ToolState,
   keywords: string[],
@@ -46,6 +76,16 @@ function matchesKeywords(
   }
 }
 
+/**
+ * Searches discovered tools by keywords and returns matches sorted by exposure status.
+ *
+ * Only searches tools that have been discovered. Results prioritize exposed tools.
+ * @param tools - Array of tool states to search
+ * @param keywords - Array of search keywords
+ * @param mode - Search logic mode (default 'and')
+ * @returns Array of matching tools sorted by exposure status
+ * @internal
+ */
 function searchTools(
   tools: ToolState[],
   keywords: string[],
@@ -61,11 +101,35 @@ function searchTools(
     });
 }
 
+/**
+ * Checks if a tool name matches any of the given glob patterns.
+ * @param name - Tool name to check
+ * @param patterns - Optional array of glob patterns
+ * @returns True if name matches any pattern, false if no patterns provided
+ * @internal
+ */
 function matchesPatterns(name: string, patterns?: string[]): boolean {
   if (!patterns) return false;
   return patterns.some((p) => matchesPattern(name, p));
 }
 
+/**
+ * Computes tool visibility based on configuration rules and tool state.
+ *
+ * Visibility is determined by priority order:
+ * 1. Core tools - always exposed regardless of config
+ * 2. alwaysVisibleTools - highest priority for regular tools
+ * 3. Dynamically enabled tools - enabled via discovery
+ * 4. exposeTools allowlist - if configured, only matched tools exposed
+ * 5. hideTools denylist - explicitly hidden tools
+ * 6. Default visible - all other tools visible by default
+ * @param config - Proxy configuration with visibility rules
+ * @param name - Tool name to check
+ * @param tool - Tool state with metadata
+ * @returns Object with exposed boolean and optional reason
+ * @internal
+ * @see file:../proxy/mcp-proxy.ts - Visibility configuration
+ */
 function computeVisibility(
   config: ProxyConfig,
   name: string,
@@ -103,6 +167,15 @@ function computeVisibility(
   // 6. Default visible
   return { exposed: true, reason: 'default' };
 }
+
+/**
+ * Utility functions for tool registry operations.
+ *
+ * Provides functions for tool search, grouping, statistics, and visibility computation.
+ * All functions are internal utilities used by ToolRegistry.
+ * @internal
+ * @see file:./index.ts - ToolRegistry class that uses these utilities
+ */
 export const ToolRegistryUtils = {
   groupByServer,
   groupByReason,

@@ -139,6 +139,9 @@ export class MockSSEServer {
 
   /**
    * Send a message to all connected clients
+   * @param data
+   * @param event
+   * @param retry
    */
   broadcastMessage(data: string, event = 'message', retry?: number): void {
     const message: QueuedMessage = {
@@ -155,6 +158,9 @@ export class MockSSEServer {
 
   /**
    * Send a message to a specific connection
+   * @param connectionId
+   * @param data
+   * @param event
    */
   sendMessageToConnection(
     connectionId: string,
@@ -179,6 +185,7 @@ export class MockSSEServer {
 
   /**
    * Simulate server errors
+   * @param shouldError
    */
   simulateConnectionError(shouldError = true): void {
     this.shouldSimulateConnectionError = shouldError;
@@ -483,6 +490,7 @@ export class MockSSEServer {
 
 /**
  * Helper function to create and start a mock SSE server for tests
+ * @param config
  */
 export async function createMockSSEServer(
   config?: MockSSEServerConfig,

@@ -6,22 +6,30 @@ import type {
 /**
  * MVP implementation that tracks temporary servers without actually spawning them.
  *
- * This class provides a tracking-only implementation for Phase 1 of the temporary
- * server management feature. It maintains an in-memory registry of temporary server
+ * Provides a tracking-only implementation for Phase 1 of the temporary server
+ * management feature. Maintains an in-memory registry of temporary server
  * configurations and logs what actions would be performed, but does not actually
  * spawn or manage server processes.
  *
- * In Phase 2, this will be replaced with real process management capabilities
+ * **Phase 2**: This will be replaced with real process management capabilities
  * including actual server spawning, health monitoring, and lifecycle management.
+ * @example
+ * ```typescript
+ * const tracker = new TemporaryServerTracker();
+ * const serverId = await tracker.spawn({ name: 'test-server', command: 'node' });
+ * console.log(tracker.isTemporary('test-server')); // true
+ * await tracker.disconnect('test-server'); // Removes from tracking
+ * ```
+ * @public
  */
 export class TemporaryServerTracker implements ITemporaryServerManager {
   private temporaryServers = new Map<string, ServerConfig>();
 
   /**
-   * Spawn a new temporary MCP server (tracking only)
+   * [MVP SIMULATION] Stores server configuration in memory and logs the action.
    *
-   * Stores the server configuration in memory and logs the action.
    * In Phase 2, this will actually spawn the server process.
+   * @inheritDoc
    */
   public async spawn(config: ServerConfig): Promise<string> {
     this.temporaryServers.set(config.name, config);
@@ -30,31 +38,31 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
   }
 
   /**
-   * Check if a server is managed as temporary
+   * @inheritDoc
    */
   public isTemporary(serverName: string): boolean {
     return this.temporaryServers.has(serverName);
   }
 
   /**
-   * Retrieve configuration for a temporary server
+   * @inheritDoc
    */
   public getTemporary(serverName: string): ServerConfig | null {
     return this.temporaryServers.get(serverName) ?? null;
   }
 
   /**
-   * List all currently tracked temporary server names
+   * @inheritDoc
    */
   public listTemporary(): string[] {
     return Array.from(this.temporaryServers.keys());
   }
 
   /**
-   * Disconnect and remove a temporary server (tracking only)
+   * [MVP SIMULATION] Removes server from in-memory registry and logs the action.
    *
-   * Removes the server from the in-memory registry and logs the action.
    * In Phase 2, this will actually terminate the server process.
+   * @inheritDoc
    */
   public async disconnect(serverName: string): Promise<void> {
     if (!this.temporaryServers.has(serverName)) {
@@ -66,10 +74,10 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
   }
 
   /**
-   * Convert a temporary server to a persistent configuration
+   * [MVP SIMULATION] Returns configuration for manual addition to config file.
    *
-   * Returns the server configuration for manual addition to the config file.
    * In Phase 2, this will integrate with the persistent configuration system.
+   * @inheritDoc
    */
   public async persist(serverName: string): Promise<ServerConfig | null> {
     const config = this.temporaryServers.get(serverName);

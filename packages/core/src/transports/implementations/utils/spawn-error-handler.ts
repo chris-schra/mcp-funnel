@@ -2,12 +2,26 @@
  * Spawn Error Handler Utilities for Stdio Transport
  *
  * Converts spawn/process errors to appropriate TransportErrors.
+ * @internal
  */
 
 import { TransportError } from '../../errors/transport-error.js';
 
 /**
- * Converts spawn/process errors to appropriate TransportErrors
+ * Converts spawn/process errors to appropriate TransportErrors based on error code.
+ *
+ * Maps common Node.js spawn error codes to semantic TransportError types:
+ * - ENOENT: Command not found
+ * - EACCES: Permission denied
+ * - ENOTDIR: Invalid path
+ * - EMFILE/ENFILE: Too many open files (service unavailable)
+ * - ETIMEDOUT: Connection timeout
+ * - Other errors: Generic connection failure
+ * @param error - Error from child_process spawn
+ * @param command - Command that was attempted to spawn
+ * @param spawnTimeout - Optional timeout value for timeout errors
+ * @returns Appropriate TransportError with user-friendly message
+ * @internal
  */
 export function handleSpawnError(
   error: unknown,

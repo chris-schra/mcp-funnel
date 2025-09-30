@@ -4,18 +4,74 @@ import type {
   CallToolResult,
 } from '../types/index.js';
 
+/**
+ * Arguments for stopping a debug session.
+ *
+ * Minimal interface containing only the session identifier needed to terminate
+ * and clean up an active debugging session.
+ * @public
+ * @see file:./stop-handler.ts:39 - StopHandler implementation
+ */
 export interface StopHandlerArgs {
+  /** Session ID of the debug session to terminate */
   sessionId: string;
 }
 
 /**
- * Handler for stopping debug sessions
- * Implements the IToolHandler SEAM for modular tool handling
+ * Tool handler for stopping and cleaning up debug sessions.
+ *
+ * Terminates both mock and real debug sessions, ensuring proper cleanup of
+ * all associated resources including timeouts, memory, and process connections.
+ *
+ * Processing flow:
+ * - Checks if session is a mock session and routes to mock handler
+ * - Validates that real session exists before attempting termination
+ * - Delegates cleanup to SessionManager.deleteSession which handles:
+ *   - CDP connection termination
+ *   - Process cleanup
+ *   - Resource deallocation
+ *   - Timeout/heartbeat cancellation
+ * - Returns success response with cleanup confirmation
+ *
+ * The handler is safe to call multiple times on the same session ID - subsequent
+ * calls will return a "session not found" error rather than throwing.
+ * @example Stopping a debug session
+ * ```typescript
+ * const handler = new StopHandler();
+ * const result = await handler.handle(
+ *   { sessionId: 'session-abc123' },
+ *   context
+ * );
+ * // Result includes cleanup confirmation:
+ * // { resourcesReleased: true, memoryFreed: true, timeoutsCleared: true }
+ * ```
+ * @public
+ * @see file:../types/handlers.ts:14 - IToolHandler interface
+ * @see file:../session-manager.ts:219 - SessionManager.deleteSession implementation
+ * @see file:../adapters/mock-session-manager.ts:230 - Mock session termination
  */
 export class StopHandler implements IToolHandler<StopHandlerArgs> {
-  readonly name = 'stop';
+  public readonly name = 'stop';
 
-  async handle(
+  /**
+   * Stops a debug session and releases all associated resources.
+   *
+   * Handles termination for both mock and real debug sessions. For real sessions,
+   * delegates to SessionManager which performs comprehensive cleanup including:
+   * CDP connection shutdown, process termination, memory deallocation, and
+   * cancellation of active timers.
+   *
+   * The operation is idempotent - calling stop on an already-terminated session
+   * returns an error response rather than throwing an exception.
+   * @param {StopHandlerArgs} args - Stop operation parameters containing the session ID
+   * @param {ToolHandlerContext} context - Shared handler context providing session management and formatting
+   * @returns {Promise<CallToolResult>} Promise resolving to a CallToolResult with termination status and cleanup details,
+   * or an error response if the session doesn't exist
+   * @throws {never} Never throws - all errors are caught and returned as CallToolResult with isError flag
+   * @see file:../types/handlers.ts:22 - ToolHandlerContext interface
+   * @see file:../sessions/session-validator.ts:24 - Session validation logic
+   */
+  public async handle(
     args: StopHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

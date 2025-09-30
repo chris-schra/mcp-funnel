@@ -14,6 +14,9 @@ interface ToolsResponse {
   tools: Tool[];
 }
 
+/**
+ *
+ */
 export function ToolExplorer() {
   const [search, setSearch] = useState('');
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);

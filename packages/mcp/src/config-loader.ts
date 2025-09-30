@@ -4,30 +4,73 @@ import { readFileSync, existsSync } from 'fs';
 import { deepmergeCustom } from 'deepmerge-ts';
 import { type ProxyConfig, ProxyConfigSchema } from '@mcp-funnel/schemas';
 
+/**
+ * Reads and parses a JSON file if it exists.
+ * @param {string} path - Absolute path to JSON file
+ * @returns {unknown | undefined} Parsed JSON content or undefined if file doesn't exist
+ * @throws {SyntaxError} When file contains invalid JSON
+ * @internal
+ */
 function readJsonIfExists(path: string): unknown | undefined {
   if (!existsSync(path)) return undefined;
   const txt = readFileSync(path, 'utf-8');
   return JSON.parse(txt) as unknown;
 }
 
+/**
+ * Returns the user-level configuration directory.
+ *
+ * Resolves to MCP_FUNNEL_HOME environment variable if set,
+ * otherwise defaults to ~/.mcp-funnel
+ * @returns {string} Absolute path to user configuration directory
+ * @public
+ */
 export function getUserDir(): string {
   const override = process.env.MCP_FUNNEL_HOME;
   if (override && override.trim()) return override;
   return join(homedir(), '.mcp-funnel');
 }
 
+/**
+ * Returns the user-level configuration file path.
+ * @returns {string} Absolute path to ~/.mcp-funnel/.mcp-funnel.json (or MCP_FUNNEL_HOME override)
+ * @public
+ */
 export function getUserBasePath(): string {
   return join(getUserDir(), '.mcp-funnel.json');
 }
 
+/**
+ * Returns the default project-level configuration file path.
+ * @param {string} [cwd] - Working directory to resolve from (defaults to process.cwd())
+ * @returns {string} Absolute path to .mcp-funnel.json in the specified directory
+ * @public
+ */
 export function getDefaultProjectConfigPath(cwd = process.cwd()): string {
   return resolve(cwd, '.mcp-funnel.json');
 }
 
 /**
- * Load and merge configuration from user base and project config paths.
- * Precedence: defaults < user base < project.
- * Arrays are replaced (not concatenated).
+ * Loads and merges configuration from user base and project config paths.
+ *
+ * Merge precedence (last wins):
+ * 1. Defaults: `{ servers: [] }`
+ * 2. User base config: ~/.mcp-funnel/.mcp-funnel.json
+ * 3. Project config: .mcp-funnel.json (or explicit path)
+ *
+ * Merge strategy:
+ * - Arrays: Replaced entirely (not concatenated)
+ * - Objects: Shallow merge with last-wins per key
+ * @param {string} [projectConfigPath] - Optional explicit path to project config (defaults to .mcp-funnel.json in cwd)
+ * @returns {{ config: ProxyConfig; sources: string[]; paths: { userBasePath: string; projectConfigPath: string } }} Merged and validated configuration with source tracking
+ * @throws {ZodError} When merged configuration fails schema validation
+ * @example
+ * ```typescript
+ * const { config, sources } = resolveMergedProxyConfig();
+ * console.log(`Loaded from: ${sources.join(', ')}`);
+ * ```
+ * @public
+ * @see file:../../schemas/src/proxy-config.ts - ProxyConfigSchema definition
  */
 export function resolveMergedProxyConfig(projectConfigPath?: string): {
   config: ProxyConfig;

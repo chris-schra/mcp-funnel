@@ -35,15 +35,15 @@ Optional Elements (Use When Helpful)
 - `@since` for tracking API introduction (simple semver)
 - Additional `@example` blocks for edge cases
 
-Machine-Readable References
+Cross-References
 
-Use the file protocol for cross-references that tools can navigate:
-- `@see file:./path/to/file.ts:42` - specific line
-- `@see file:./path/to/file.ts:42-58` - line range
-- `@see file:../contracts/user.contract.ts` - whole file
-- `@see https://github.com/org/repo/issues/123` - external links
+Use `{@link}` for type and symbol references:
+- `{@link TypeName}` - link to type/interface/class in same file
+- `{@link Module.TypeName}` - link to exported symbol from another module
+- `{@link ClassName|custom text}` - link with custom display text
+- `@see https://github.com/org/repo/issues/123` - external links only
 
-Keep references focused on actual code locations, not process artifacts.
+Prefer symbol links over file paths - they survive refactoring.
 
 Templates
 
@@ -71,7 +71,7 @@ Templates
  * ```
  *
  * @public
- * @see file:./interfaces/cache.interface.ts - Cache interface definition
+ * @see {@link ICacheProvider} - Cache interface definition
  */
 export class MCPRegistryClient { /* ... */ }
 ```
@@ -96,7 +96,7 @@ export class MCPRegistryClient { /* ... */ }
  * console.log(`Found ${servers.length} servers`);
  * ```
  *
- * @see file:./types/registry.types.ts:34 - ServerDetail type
+ * @see {@link ServerDetail}
  */
 async searchServers(keywords: string): Promise<ServerDetail[]> { /* ... */ }
 ```
@@ -107,7 +107,7 @@ async searchServers(keywords: string): Promise<ServerDetail[]> { /* ... */ }
 /**
  * Configuration options for server initialization.
  *
- * @see file:./implementations/server.ts:45-92 - Usage in server implementation
+ * @see {@link MCPServer|Usage in server implementation}
  * @public
  */
 export interface ServerOptions {
@@ -127,7 +127,7 @@ export interface ServerOptions {
 ```typescript
 /**
  * Tests parallel server connection behavior
- * @see file:../../src/registry/registry-client.ts:210 - searchServers implementation
+ * @see {@link MCPRegistryClient.searchServers}
  */
 describe('Parallel Server Connection', () => {
   it('should connect to multiple servers in parallel', async () => {
@@ -199,8 +199,8 @@ In practice:
  * });
  * ```
  *
- * @see file:./base-processor.ts:45 - Base implementation
- * @see file:./interfaces/config.ts:12-34 - Config interface definition
+ * @see {@link BaseProcessor}
+ * @see {@link ProcessorConfig}
  * @see https://github.com/org/repo/wiki/processors - External documentation
  *
  * @alpha - This API is still in early development and will change
@@ -303,7 +303,7 @@ export function add(a: number, b: number): number {
  * );
  * ```
  *
- * @see file:./strategies/merge-strategy.ts:23 - Strategy implementations
+ * @see {@link MergeStrategy}
  */
 export function mergeConfig<T extends object>(
   base: T,
@@ -317,8 +317,8 @@ export function mergeConfig<T extends object>(
 ### Key Takeaways from This Reference:
 
 1. **Tag Syntax Examples:**
-   - Inline references: `{@link ClassName}` for same-file, `{@link Package.Class}` for external
-   - Block references: `@see file:./path:line` for code navigation
+   - Inline references: `{@link ClassName}` for same-file, `{@link Module.ClassName}` for imports
+   - Block references: `@see {@link TypeName}` or `@see {@link Class|custom text}`
    - Lifecycle progression: `@alpha` → `@beta` → `@public` → `@deprecated`
 
 2. **When to Use Each Tag:**
@@ -333,10 +333,123 @@ export function mergeConfig<T extends object>(
    - Complex `mergeConfig()`: Full documentation with examples and edge cases
    - The right amount of documentation depends on complexity and non-obviousness
 
+## Common Pitfalls
+
+### Escaping Special Characters
+
+TSDoc treats `{` and `}` as tag delimiters. Escape them in prose:
+
+```typescript
+/**
+ * Resolves variable references like \${VAR\} in configuration strings.
+ *
+ * ❌ ${VAR} - Parser error: expects {@link tag syntax
+ * ✅ \${VAR\} - Renders correctly as ${VAR}
+ */
+```
+
+Don't escape regular characters like `\n` or `\t` in prose - write them literally:
+
+```typescript
+/**
+ * Handles escape sequences like \n, \t, \r in quoted strings.
+ *
+ * ❌ Handles \\n, \\t, \\r - unnecessary backslashes
+ * ✅ Handles \n, \t, \r - correct
+ */
+```
+
+### Documenting Parameters
+
+For destructured or nested parameters, document only the parent:
+
+```typescript
+/**
+ * @param params - Breakpoint event with location details
+ * @param context - Shared state (mutated in place)
+ *
+ * ❌ @param params.breakpointId - TSDoc syntax error
+ * ❌ @param params.location.scriptId - TSDoc syntax error
+ */
+async function handleBreakpoint(
+  params: { breakpointId: string; location: Location },
+  context: Context
+) { }
+```
+
+If nested properties need documentation, describe them in the main description or use inline comments in the type definition.
+
+### @param and @returns Descriptions
+
+Always include descriptions, even if brief:
+
+```typescript
+/**
+ * Fetches data from remote endpoint.
+ *
+ * @param url - Target endpoint
+ * @param options - Request configuration
+ * @returns Response data
+ */
+async function fetchData(url: string, options: RequestOptions): Promise<Data> {
+  // implementation
+}
+
+// ❌ Missing descriptions
+/**
+ * @param url
+ * @param options
+ * @returns
+ */
+```
+
+For obvious cases, minimal descriptions are fine - the goal is clarity, not verbosity.
+
+### Accessibility Modifiers
+
+Classes and their members require explicit accessibility modifiers:
+
+```typescript
+export class ConsoleHandler {
+  /**
+   * Creates a new console handler.
+   * @param storage - Console message storage
+   */
+  public constructor(private readonly storage: MessageStorage) {}
+
+  /**
+   * Handles console output events.
+   * @param message - Console message to store
+   */
+  public onConsoleOutput(message: ConsoleMessage): void {
+    this.storage.add(message);
+  }
+
+  /**
+   * Formats message for display.
+   * @param message - Raw console message
+   * @returns Formatted string
+   */
+  private formatMessage(message: ConsoleMessage): string {
+    return message.text;
+  }
+}
+
+// ❌ Missing accessibility modifiers
+export class ConsoleHandler {
+  constructor(private readonly storage: MessageStorage) {} // missing public
+  onConsoleOutput(message: ConsoleMessage): void {} // missing public
+}
+```
+
 ## Validation
 
 Linting should enforce:
 - Public exports have visibility markers (@public/@internal/@experimental)
 - @example blocks compile without errors
-- File references in @see tags point to valid locations
+- {@link} references resolve to valid symbols and optionally has a helpful description (e.g. {@link BrowserEventHandlers|Usage in event handlers})
+- Special characters `{` and `}` are escaped in prose as `\{` and `\}`
+- @param tags only document direct parameters, not nested properties
+- All @param and @returns tags include descriptions
+- Class members have explicit accessibility modifiers (public/private/protected)
 - No excessive documentation (>100 lines is a code smell)

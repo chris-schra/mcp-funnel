@@ -14,48 +14,112 @@ import {
 } from '../handlers/index.js';
 
 /**
- * Tool registration manager for the js-debugger command
+ * Tool registration manager for the js-debugger command.
+ *
+ * Centralizes MCP tool handler registration and tool definition management,
+ * eliminating the 800+ line switch statement previously in the main command class.
  *
  * Provides SEAM for extensibility:
  * - New tools can be added by implementing IToolHandler interface
  * - MCP definitions are co-located with handler registration
  * - Type-safe handler mapping with runtime polymorphism
- *
- * This eliminates the large tool definition arrays from the main command class
+ * @example Basic usage
+ * ```typescript
+ * const registration = new ToolRegistration();
+ * const handler = registration.getHandler('debug');
+ * if (handler) {
+ *   const result = await handler.handle(args, context);
+ * }
+ * ```
+ * @example Getting tool definitions for MCP
+ * ```typescript
+ * const registration = new ToolRegistration();
+ * const tools = registration.getMCPDefinitions();
+ * // Returns array of Tool objects for MCP protocol
+ * ```
+ * @public
+ * @see file:../handlers/index.ts - Handler implementations
+ * @see file:../types/handlers.ts:14-17 - IToolHandler interface
+ * @see file:../command.ts:57 - Usage in main command class
  */
 export class ToolRegistration {
   private handlers = new Map<string, IToolHandler<Record<string, unknown>>>();
 
-  constructor() {
+  /**
+   * Creates a new ToolRegistration instance and registers all available handlers.
+   *
+   * Initializes the internal handler map with all debug tool handlers.
+   * Registration happens automatically during construction.
+   * @public
+   */
+  public constructor() {
     this.registerAllHandlers();
   }
 
   /**
-   * Get all registered tool handlers
+   * Gets the complete map of registered tool handlers.
+   *
+   * Returns the internal handler registry containing all tools available
+   * for execution. Handlers are keyed by their tool name strings.
+   * @returns {Map<string, IToolHandler<Record<string, unknown>>>} Map of tool names to their handler instances
+   * @public
    */
-  getHandlers(): Map<string, IToolHandler<Record<string, unknown>>> {
+  public getHandlers(): Map<string, IToolHandler<Record<string, unknown>>> {
     return this.handlers;
   }
 
   /**
-   * Get a specific handler by tool name
+   * Retrieves a specific handler by tool name.
+   *
+   * Looks up a handler in the registry by its tool name. Returns undefined
+   * if no handler is registered for the given name.
+   * @param {string} toolName - The name of the tool handler to retrieve
+   * @returns {IToolHandler<Record<string, unknown>> | undefined} The handler instance if found, undefined otherwise
+   * @example
+   * ```typescript
+   * const debugHandler = registration.getHandler('debug');
+   * if (debugHandler) {
+   *   await debugHandler.handle({ platform: 'node', target: './script.js' }, context);
+   * }
+   * ```
+   * @public
+   * @see file:../command.ts:77 - Call site in command executor
    */
-  getHandler(
+  public getHandler(
     toolName: string,
   ): IToolHandler<Record<string, unknown>> | undefined {
     return this.handlers.get(toolName);
   }
 
   /**
-   * Get list of available tool names
+   * Returns a list of all available tool names.
+   *
+   * Extracts the keys from the handler registry, providing a complete list
+   * of tool names that can be executed via the debugger command.
+   * @returns {string[]} Array of registered tool names
+   * @example
+   * ```typescript
+   * const tools = registration.getAvailableTools();
+   * // ['debug', 'continue', 'list_sessions', 'stop', 'get_stacktrace', ...]
+   * ```
+   * @public
+   * @see file:../command.ts:81 - Used in error reporting
    */
-  getAvailableTools(): string[] {
+  public getAvailableTools(): string[] {
     return Array.from(this.handlers.keys());
   }
 
   /**
-   * Register all tool handlers - SEAM for extensibility
-   * New tools can be added here without modifying existing code
+   * Registers all tool handlers into the internal handler map.
+   *
+   * This method is the SEAM for extensibility - new tools can be added
+   * here without modifying existing handler code. Each handler is registered
+   * with type erasure to enable runtime polymorphism while maintaining
+   * compile-time type safety in handler implementations.
+   *
+   * Called automatically during construction.
+   * @internal
+   * @see file:../handlers/index.ts - Handler implementations
    */
   private registerAllHandlers(): void {
     // Store handlers with type erasure for runtime polymorphism
@@ -104,9 +168,27 @@ export class ToolRegistration {
   }
 
   /**
-   * Get MCP tool definitions - consolidated from handler definitions
+   * Returns MCP tool definitions for all registered handlers.
+   *
+   * Provides the complete array of Tool definitions required by the MCP protocol.
+   * Each definition includes the tool name, description, and JSON Schema input schema
+   * that specifies required and optional parameters.
+   *
+   * These definitions are consolidated here to keep MCP protocol details
+   * separate from handler implementation logic.
+   * @returns {Tool[]} Array of Tool definitions for MCP protocol registration
+   * @example
+   * ```typescript
+   * const registration = new ToolRegistration();
+   * const definitions = registration.getMCPDefinitions();
+   * // Pass to MCP server for tool registration
+   * mcpServer.registerTools(definitions);
+   * ```
+   * @public
+   * @see file:../command.ts:63-65 - Called by JsDebuggerCommand.getMCPDefinitions()
+   * @see file:@mcp-funnel/commands-core - Tool type definition
    */
-  getMCPDefinitions(): Tool[] {
+  public getMCPDefinitions(): Tool[] {
     return [
       {
         name: 'debug',

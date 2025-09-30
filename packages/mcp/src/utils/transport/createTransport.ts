@@ -13,12 +13,26 @@ import { ConfigUtils } from '../ConfigUtils.js';
 import { LegacyConfig } from './LegacyConfig.js';
 
 /**
- * Creates a transport instance based on configuration.
- * Supports environment variable resolution, legacy detection, and dependency injection.
+ * Creates a transport instance based on configuration with caching and validation.
  *
- * @param config - Transport configuration or legacy config
- * @param dependencies - Optional auth provider and token storage
- * @returns Promise resolving to transport instance
+ * Factory function that creates and caches transport instances for MCP communication.
+ * Supports environment variable resolution, legacy config detection, and dependency
+ * injection for authentication.
+ *
+ * Features:
+ * - Singleton caching per unique config/dependency combination
+ * - Environment variable resolution in config values
+ * - Legacy config format detection and normalization
+ * - Auth provider and token storage dependency injection
+ * - Comprehensive validation before creation
+ * @param config - Transport configuration (stdio, sse, websocket, or streamable-http)
+ * @param dependencies - Optional auth provider and token storage for authenticated transports
+ * @returns Promise resolving to transport instance (cached if previously created)
+ * @throws {TransportError} When config is invalid, auth fails, or transport creation fails
+ * @public
+ * @see file:./createTransportImplementation.ts - Transport creation logic
+ * @see file:./transport-cache.ts - Caching implementation
+ * @see file:../validation/validateTransportConfig.ts - Validation logic
  */
 export async function createTransport(
   config: TransportConfig | LegacyConfig,

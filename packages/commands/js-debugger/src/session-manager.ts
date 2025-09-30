@@ -32,7 +32,70 @@ import {
 import { waitForPause as waitForPauseUtil } from './sessions/wait-for-pause.js';
 
 /**
- * Session manager implementation that handles debug session lifecycle with comprehensive cleanup
+ * Singleton session manager for debug session lifecycle management.
+ *
+ * Manages the lifecycle of debug sessions across Node.js and browser platforms,
+ * providing comprehensive cleanup, resource tracking, and activity monitoring.
+ * Uses a singleton pattern to maintain a centralized registry of all active debug sessions.
+ *
+ * Key responsibilities:
+ * - Session creation and initialization with adapter configuration
+ * - Resource tracking and automatic cleanup of inactive sessions
+ * - Activity monitoring with timeout and heartbeat mechanisms
+ * - Process signal handling for graceful shutdown
+ * - Backward compatibility through wrapper layer
+ *
+ * Architecture:
+ * - EnhancedDebugSession: Modern session-centered API with event emitters
+ * - SessionCompatibilityWrapper: Legacy DebugSession interface support
+ * - CleanupManager: Background cleanup of inactive sessions
+ * - ResourceTracker: Memory and connection resource monitoring
+ * - ActivityTracker: User interaction and heartbeat tracking
+ * @example Creating and managing debug sessions
+ * ```typescript
+ * const manager = SessionManager.getInstance();
+ *
+ * // Create a Node.js debug session
+ * const session = await manager.createSession({
+ *   platform: 'node',
+ *   target: './script.js',
+ *   breakpoints: [{ file: './script.js', line: 10 }],
+ *   timeout: 30000
+ * });
+ *
+ * // Wait for execution to pause at breakpoint
+ * const pausedSession = await manager.waitForPause(session.id, 5000);
+ *
+ * // List all active sessions
+ * const sessions = manager.listSessions();
+ * console.log(`Active sessions: ${sessions.length}`);
+ *
+ * // Clean up session when done
+ * await manager.deleteSession(session.id);
+ * ```
+ * @example Cleanup configuration
+ * ```typescript
+ * const manager = SessionManager.getInstance();
+ *
+ * // Configure cleanup thresholds
+ * manager.setCleanupConfig({
+ *   sessionTimeoutMs: 30 * 60 * 1000,  // 30 minutes
+ *   inactivityThresholdMs: 5 * 60 * 1000,  // 5 minutes
+ *   resourceThreshold: 100 * 1024 * 1024  // 100MB
+ * });
+ *
+ * // Manual cleanup with preview
+ * const count = await manager.cleanupInactiveSessions({ dryRun: true });
+ * console.log(`Would clean up ${count} sessions`);
+ *
+ * // Force cleanup all inactive
+ * await manager.cleanupInactiveSessions({ force: true });
+ * ```
+ * @public
+ * @see file:./enhanced-debug-session.ts - Modern session implementation
+ * @see file:./session-compatibility-wrapper.ts - Legacy interface adapter
+ * @see file:./sessions/cleanup-manager.ts - Background cleanup logic
+ * @see file:./types/session.ts:94-119 - ISessionManager interface
  */
 export class SessionManager implements ISessionManager {
   private static instance: SessionManager | undefined;
@@ -84,9 +147,30 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Get the singleton instance of SessionManager
+   * Retrieves the singleton SessionManager instance, creating it if necessary.
+   *
+   * Uses lazy initialization to create the singleton on first access. Subsequent
+   * calls return the same instance regardless of parameters. To apply new configuration
+   * or factory, use {@link resetInstance} first.
+   * @param adapterFactory - Custom adapter factory for creating platform-specific debug adapters (Node.js/browser)
+   * @param cleanupConfig - Initial cleanup configuration for session timeout and resource thresholds
+   * @returns The singleton SessionManager instance
+   * @example Basic usage
+   * ```typescript
+   * const manager = SessionManager.getInstance();
+   * ```
+   * @example With custom configuration
+   * ```typescript
+   * const manager = SessionManager.getInstance(
+   *   new CustomAdapterFactory(),
+   *   { sessionTimeoutMs: 60000, inactivityThresholdMs: 10000 }
+   * );
+   * ```
+   * @public
+   * @see file:./sessions/session-factory.ts:15-30 - AdapterFactory implementation
+   * @see file:./types/cleanup.ts:1-20 - SessionCleanupConfig interface
    */
-  static getInstance(
+  public static getInstance(
     adapterFactory?: IAdapterFactory,
     cleanupConfig?: Partial<SessionCleanupConfig>,
   ): SessionManager {
@@ -100,9 +184,22 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Reset the singleton instance (useful for testing)
+   * Resets the singleton instance by shutting down and clearing it.
+   *
+   * Performs graceful shutdown of all active sessions, removes process signal handlers,
+   * and clears the singleton instance. Primarily used in testing to ensure clean state
+   * between test runs, but can also be used to reconfigure the manager with different
+   * adapter factories or cleanup configurations.
+   * @example Test cleanup
+   * ```typescript
+   * afterEach(async () => {
+   *   SessionManager.resetInstance();
+   * });
+   * ```
+   * @public
+   * @see file:./session-manager.test.ts:25-35 - Test usage examples
    */
-  static resetInstance(): void {
+  public static resetInstance(): void {
     if (SessionManager.instance) {
       SessionManager.instance.processHandlerManager.removeHandlers();
       // Clean up all sessions before reset
@@ -112,9 +209,50 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Create a new debug session with unique ID
+   * Creates a new debug session with automatic initialization and resource tracking.
+   *
+   * Generates a unique session ID, creates the appropriate platform adapter (Node.js or browser),
+   * initializes the debug connection, sets initial breakpoints, and establishes timeout/heartbeat
+   * mechanisms. The session is tracked for resource usage and activity monitoring.
+   *
+   * Process:
+   * 1. Generate UUID and validate uniqueness
+   * 2. Create platform-specific adapter via factory
+   * 3. Initialize adapter connection (spawns process or connects to browser)
+   * 4. Set initial breakpoints if specified
+   * 5. Wrap in compatibility layer for legacy API support
+   * 6. Register cleanup handlers for auto-termination
+   * @param request - Debug session configuration including platform, target, breakpoints, and timeout
+   * @returns Promise resolving to the initialized debug session
+   * @throws {Error} When session ID collision occurs (extremely rare with UUID)
+   * @throws {Error} When adapter initialization fails (process spawn error, connection refused, etc.)
+   * @throws {Error} When breakpoint registration fails during initialization
+   * @example Node.js debugging
+   * ```typescript
+   * const session = await manager.createSession({
+   *   platform: 'node',
+   *   target: './index.js',
+   *   args: ['--experimental-modules'],
+   *   breakpoints: [
+   *     { file: './index.js', line: 15, condition: 'user.id === 123' }
+   *   ],
+   *   timeout: 30000
+   * });
+   * ```
+   * @example Browser debugging
+   * ```typescript
+   * const session = await manager.createSession({
+   *   platform: 'browser',
+   *   target: 'http://localhost:3000',
+   *   breakpoints: [{ file: 'app.js', line: 42 }]
+   * });
+   * ```
+   * @public
+   * @see file:./types/request.ts - DebugRequest interface
+   * @see file:./sessions/session-factory.ts:40-65 - Adapter creation
+   * @see file:./handlers/debug-handler.ts:225 - Usage in debug tool handler
    */
-  async createSession(request: DebugRequest): Promise<IDebugSession> {
+  public async createSession(request: DebugRequest): Promise<IDebugSession> {
     const sessionId = randomUUID();
 
     // Check for duplicate session creation (edge case protection)
@@ -189,9 +327,25 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Get a session by ID (returns compatibility wrapper for backward compatibility)
+   * Retrieves a session by ID, returning the legacy DebugSession interface.
+   *
+   * Returns a compatibility wrapper for active sessions or a snapshot from terminated
+   * session history. This method maintains backward compatibility with legacy code
+   * expecting the old DebugSession interface. For new code, prefer {@link getEnhancedSession}.
+   * @param id - Session ID (UUID) returned from {@link createSession}
+   * @returns The session wrapped in compatibility interface, or undefined if not found
+   * @example Retrieving active session
+   * ```typescript
+   * const session = manager.getSession(sessionId);
+   * if (session) {
+   *   console.log(`Session state: ${session.state}`);
+   * }
+   * ```
+   * @public
+   * @see file:./session-compatibility-wrapper.ts - Legacy interface adapter
+   * @see file:./sessions/terminated-session-manager.ts - Terminated session storage
    */
-  getSession(id: string): DebugSession | undefined {
+  public getSession(id: string): DebugSession | undefined {
     const activeSession = this.compatibilitySessions.get(id);
     if (activeSession) {
       return activeSession;
@@ -201,16 +355,63 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Get an enhanced session by ID (returns the new session-centered object)
+   * Retrieves an enhanced session by ID, returning the modern IDebugSession interface.
+   *
+   * Returns the new session-centered object with event-driven API and improved type safety.
+   * Prefer this method over {@link getSession} for new code. Returns undefined for
+   * terminated sessions (use {@link getSession} to access terminated session snapshots).
+   * @param id - Session ID (UUID) returned from {@link createSession}
+   * @returns The enhanced session object, or undefined if not active
+   * @example Using enhanced session API
+   * ```typescript
+   * const session = manager.getEnhancedSession(sessionId);
+   * if (session) {
+   *   // Event-driven API
+   *   session.on('paused', (data) => console.log('Paused at', data.location));
+   *   await session.continue();
+   * }
+   * ```
+   * @public
+   * @see file:./enhanced-debug-session.ts - Enhanced session implementation
+   * @see file:./types/session.ts:56-92 - IDebugSession interface
    */
-  getEnhancedSession(id: string): IDebugSession | undefined {
+  public getEnhancedSession(id: string): IDebugSession | undefined {
     return this.sessions.get(id);
   }
 
   /**
-   * Delete a session and clean up resources
+   * Deletes a session and performs comprehensive resource cleanup.
+   *
+   * Terminates the debug adapter connection, clears timeouts and heartbeat intervals,
+   * releases tracked resources, removes from activity tracking, and stores a snapshot
+   * in terminated session history. Accepts session ID, legacy DebugSession, enhanced
+   * session, or compatibility wrapper.
+   *
+   * Cleanup operations:
+   * - Terminates adapter connection (closes CDP websocket, kills spawned process)
+   * - Clears session timeout and heartbeat timers
+   * - Releases tracked resources (memory, connections)
+   * - Removes from activity tracker
+   * - Stores snapshot in terminated session manager
+   * - Emits 'terminated' event for listeners
+   * @param idOrSession - Session ID string, DebugSession, or EnhancedDebugSession instance
+   * @example Delete by ID
+   * ```typescript
+   * await manager.deleteSession(sessionId);
+   * ```
+   * @example Delete by session object
+   * ```typescript
+   * const session = manager.getSession(sessionId);
+   * if (session) {
+   *   await manager.deleteSession(session);
+   * }
+   * ```
+   * @public
+   * @see file:./sessions/session-cleanup-utils.ts:15-45 - Cleanup implementation
+   * @see file:./handlers/stop-handler.ts:93 - Usage in stop tool handler
+   * @see file:./handlers/continue-handler.ts:118 - Usage in stop action
    */
-  async deleteSession(
+  public async deleteSession(
     idOrSession: string | DebugSession | EnhancedDebugSession,
   ): Promise<void> {
     let sessionId: string;
@@ -256,9 +457,26 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Get session with automatic activity tracking
+   * Retrieves a session and records user activity for cleanup tracking.
+   *
+   * Similar to {@link getSession} but automatically records user activity timestamp
+   * and increments activity counter. This prevents the session from being considered
+   * inactive during automatic cleanup cycles. Use this when user actions interact
+   * with a session to keep it alive.
+   * @param id - Session ID (UUID)
+   * @returns The session with updated activity metadata, or undefined if not found
+   * @example Activity-aware retrieval
+   * ```typescript
+   * // User continues execution - record activity
+   * const session = manager.getSessionWithActivity(sessionId);
+   * if (session) {
+   *   await session.adapter.continue();
+   * }
+   * ```
+   * @internal
+   * @see file:./sessions/session-utils.ts:42-55 - Activity update logic
    */
-  getSessionWithActivity(id: string): DebugSession | undefined {
+  private getSessionWithActivity(id: string): DebugSession | undefined {
     const session = this.sessions.get(id);
     if (session) {
       // Record user activity when accessing session
@@ -277,9 +495,27 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * List all active sessions
+   * Lists all currently active debug sessions with metadata.
+   *
+   * Returns an array of session summaries including platform, target, state,
+   * and optional lifecycle/activity metadata. Does not include terminated sessions.
+   * Used by list_sessions tool and cleanup operations to enumerate active sessions.
+   * @returns Array of session summary objects with id, platform, target, state, and optional metadata
+   * @example Listing sessions
+   * ```typescript
+   * const sessions = manager.listSessions();
+   * sessions.forEach(s => {
+   *   console.log(`${s.id}: ${s.platform} ${s.target} - ${s.state}`);
+   *   if (s.metadata) {
+   *     console.log(`  Last activity: ${s.metadata.lastActivity}`);
+   *   }
+   * });
+   * ```
+   * @public
+   * @see file:./handlers/list-sessions-handler.ts:80 - Usage in list_sessions tool
+   * @see file:./handlers/cleanup-sessions-handler.ts:117 - Usage in cleanup operations
    */
-  listSessions(): Array<{
+  public listSessions(): Array<{
     id: string;
     platform: string;
     target: string;
@@ -308,26 +544,114 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Enhanced cleanup configuration methods
+   * Retrieves the current cleanup configuration.
+   *
+   * Returns the active configuration controlling automatic cleanup behavior including
+   * session timeout thresholds, inactivity detection, resource limits, and cleanup
+   * interval timing.
+   * @returns Current cleanup configuration with all thresholds and intervals
+   * @example Inspecting cleanup config
+   * ```typescript
+   * const config = manager.getCleanupConfig();
+   * console.log(`Session timeout: ${config.sessionTimeoutMs}ms`);
+   * console.log(`Cleanup interval: ${config.cleanupIntervalMs}ms`);
+   * ```
+   * @public
+   * @see file:./types/cleanup.ts:1-20 - SessionCleanupConfig interface
+   * @see file:./sessions/cleanup-manager.ts:35-50 - Default configuration
    */
-  getCleanupConfig(): SessionCleanupConfig {
+  public getCleanupConfig(): SessionCleanupConfig {
     return this.cleanupManager.getConfig();
   }
 
-  setCleanupConfig(config: Partial<SessionCleanupConfig>): void {
+  /**
+   * Updates the cleanup configuration with partial overrides.
+   *
+   * Merges provided configuration properties with existing config. Changes take effect
+   * immediately for subsequent cleanup cycles. Does not retroactively affect scheduled
+   * cleanup operations already in progress.
+   * @param config - Partial cleanup configuration with properties to override
+   * @example Adjusting timeout thresholds
+   * ```typescript
+   * manager.setCleanupConfig({
+   *   sessionTimeoutMs: 60 * 60 * 1000,  // 1 hour
+   *   inactivityThresholdMs: 10 * 60 * 1000  // 10 minutes
+   * });
+   * ```
+   * @public
+   * @see file:./types/cleanup.ts:1-20 - SessionCleanupConfig interface
+   */
+  public setCleanupConfig(config: Partial<SessionCleanupConfig>): void {
     this.cleanupManager.setConfig(config);
   }
 
   /**
-   * Manual cleanup of inactive sessions
+   * Manually triggers cleanup of inactive sessions based on configured thresholds.
+   *
+   * Scans all active sessions and terminates those matching cleanup criteria:
+   * - Exceeded inactivity threshold (no user actions within timeframe)
+   * - Exceeded absolute session timeout (total lifetime)
+   * - Exceeded resource usage threshold (memory/console output size)
+   *
+   * The cleanup operation respects the force and dryRun options. In dryRun mode,
+   * no sessions are actually terminated - only a count of eligible sessions is returned.
+   * @param options - Cleanup options controlling force termination and dry run behavior
+   * @param options.force - If true, ignores thresholds and cleans up all inactive sessions
+   * @param options.dryRun - If true, returns count of sessions that would be cleaned without actually cleaning
+   * @returns Promise resolving to the number of sessions cleaned (or would be cleaned in dryRun)
+   * @example Preview cleanup
+   * ```typescript
+   * const count = await manager.cleanupInactiveSessions({ dryRun: true });
+   * console.log(`Would clean up ${count} sessions`);
+   * ```
+   * @example Force cleanup
+   * ```typescript
+   * const cleaned = await manager.cleanupInactiveSessions({ force: true });
+   * console.log(`Cleaned up ${cleaned} sessions`);
+   * ```
+   * @public
+   * @see file:./sessions/cleanup-manager.ts:75-120 - Cleanup implementation
+   * @see file:./handlers/cleanup-sessions-handler.ts:78 - Usage in cleanup_sessions tool
+   * @see file:./types/cleanup.ts:22-26 - SessionCleanupOptions interface
    */
-  async cleanupInactiveSessions(
+  public async cleanupInactiveSessions(
     options: SessionCleanupOptions = {},
   ): Promise<number> {
     return await this.cleanupManager.cleanupInactiveSessions(options);
   }
 
-  async waitForPause(
+  /**
+   * Waits for a debug session to reach paused state, polling until timeout.
+   *
+   * Polls the session state at regular intervals (100ms) until the session enters
+   * the 'paused' state or the timeout expires. Returns the paused session or undefined
+   * if timeout occurs. Used after creating sessions with breakpoints to wait for
+   * initial pause before interaction.
+   *
+   * The method polls both active sessions and terminated session history, allowing
+   * it to detect if a session terminated while waiting for pause.
+   * @param sessionId - Session ID (UUID) to wait for
+   * @param timeoutMs - Maximum time to wait in milliseconds (default: 10000ms / 10 seconds)
+   * @returns Promise resolving to the paused session, or undefined if timeout/not found
+   * @example Wait for breakpoint hit
+   * ```typescript
+   * const session = await manager.createSession({
+   *   platform: 'node',
+   *   target: './script.js',
+   *   breakpoints: [{ file: './script.js', line: 10 }]
+   * });
+   *
+   * // Wait up to 5 seconds for execution to pause at breakpoint
+   * const pausedSession = await manager.waitForPause(session.id, 5000);
+   * if (pausedSession && pausedSession.state === 'paused') {
+   *   console.log('Hit breakpoint!');
+   * }
+   * ```
+   * @public
+   * @see file:./sessions/wait-for-pause.ts - Polling implementation
+   * @see file:./handlers/debug-handler.ts:233 - Usage in debug tool handler
+   */
+  public async waitForPause(
     sessionId: string,
     timeoutMs = 10000,
   ): Promise<DebugSession | undefined> {
@@ -343,9 +667,40 @@ export class SessionManager implements ISessionManager {
   }
 
   /**
-   * Shutdown all sessions and cleanup global resources
+   * Performs graceful shutdown of all sessions and cleanup of global resources.
+   *
+   * Terminates all active debug sessions, stops the cleanup manager's background
+   * interval, removes process signal handlers (SIGINT, SIGTERM), and cleans up
+   * tracking data structures. This method is idempotent - multiple calls are safe.
+   *
+   * Shutdown sequence:
+   * 1. Set shutdown flag to prevent new operations
+   * 2. Remove process signal handlers
+   * 3. Stop cleanup manager background tasks
+   * 4. Terminate all active sessions in parallel
+   * 5. Clean up resource and activity trackers
+   *
+   * This method is automatically called on process signals (SIGINT, SIGTERM) and
+   * should also be called when tests complete or when the application is shutting down.
+   * @example Application shutdown
+   * ```typescript
+   * process.on('SIGTERM', async () => {
+   *   const manager = SessionManager.getInstance();
+   *   await manager.shutdown();
+   *   process.exit(0);
+   * });
+   * ```
+   * @example Test cleanup
+   * ```typescript
+   * afterAll(async () => {
+   *   await SessionManager.getInstance().shutdown();
+   * });
+   * ```
+   * @public
+   * @see file:./sessions/process-handlers.ts:25-45 - Process signal handling
+   * @see file:./sessions/cleanup-manager.ts:140-160 - Cleanup manager shutdown
    */
-  async shutdown(): Promise<void> {
+  public async shutdown(): Promise<void> {
     if (this.isShuttingDown) return;
     this.isShuttingDown = true;
 
@@ -380,6 +735,15 @@ export class SessionManager implements ISessionManager {
 }
 
 /**
- * Default export - singleton instance getter
+ * Default export providing singleton instance getter function.
+ *
+ * Allows importing the getInstance method directly as the default export.
+ * Equivalent to calling SessionManager.getInstance().
+ * @example Default import
+ * ```typescript
+ * import getSessionManager from './session-manager.js';
+ * const manager = getSessionManager();
+ * ```
+ * @public
  */
 export default SessionManager.getInstance;

@@ -5,6 +5,7 @@
  * secret providers. Following the SEAMS principle, this base class provides
  * extension points for different secret resolution strategies while ensuring
  * consistent behavior for common operations.
+ * @public
  */
 
 import type { ISecretProvider } from './types.js';
@@ -15,7 +16,6 @@ import type { ISecretProvider } from './types.js';
  * Implements common functionality shared across all providers including
  * name management and defensive copying patterns. Concrete providers only
  * need to implement the actual secret resolution logic.
- *
  * @example
  * ```typescript
  * export class MyProvider extends BaseSecretProvider {
@@ -30,14 +30,15 @@ import type { ISecretProvider } from './types.js';
  *   }
  * }
  * ```
+ * @public
  */
 export abstract class BaseSecretProvider implements ISecretProvider {
   private readonly providerName: string;
 
   /**
    * Creates a new base secret provider.
-   *
    * @param name - The unique identifier for this provider type
+   * @public
    */
   public constructor(name: string) {
     this.providerName = name;
@@ -45,8 +46,7 @@ export abstract class BaseSecretProvider implements ISecretProvider {
 
   /**
    * Returns the provider name identifier.
-   *
-   * @returns The provider's unique name
+   * @public
    */
   public getName(): string {
     return this.providerName;
@@ -58,8 +58,7 @@ export abstract class BaseSecretProvider implements ISecretProvider {
    * This method wraps the concrete provider's implementation to ensure consistent
    * behavior across all providers, including proper error handling and defensive
    * copying of the results.
-   *
-   * @returns A promise resolving to the secrets as key-value pairs
+   * @public
    */
   public async resolveSecrets(): Promise<Record<string, string>> {
     const secrets = await this.doResolveSecrets();
@@ -73,9 +72,8 @@ export abstract class BaseSecretProvider implements ISecretProvider {
    *
    * This method contains the provider-specific logic for resolving secrets.
    * The base class handles defensive copying and common error handling patterns.
-   *
-   * @returns A promise resolving to the secrets as key-value pairs
    * @throws {Error} When the provider encounters an unrecoverable error
+   * @internal
    */
   protected abstract doResolveSecrets(): Promise<Record<string, string>>;
 }

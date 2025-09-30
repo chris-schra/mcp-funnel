@@ -1,3 +1,11 @@
+/**
+ * Processes a dotenv value by detecting and parsing quotes or returning trimmed unquoted value.
+ *
+ * Routes to the appropriate parser based on the leading quote character (double, single, or none).
+ * @param rawValue - The raw value string from dotenv file
+ * @returns Processed value with quotes removed and escape sequences handled
+ * @public
+ */
 export function processValue(rawValue: string): string {
   const leadingTrimmed = rawValue.trimStart();
 
@@ -12,6 +20,15 @@ export function processValue(rawValue: string): string {
   return parseUnquotedValue(rawValue.trim());
 }
 
+/**
+ * Parses a double-quoted dotenv value with escape sequence processing.
+ *
+ * Handles standard escape sequences (\n, \t, \r, \\, \", \') and Unicode escapes (\uXXXX).
+ * If the closing quote is missing, truncates at first newline and returns with leading quote.
+ * @param value - Value string starting with double quote
+ * @returns Parsed value with escape sequences resolved and quotes removed
+ * @public
+ */
 export function parseDoubleQuotedValue(value: string): string {
   const trimmed = value.trimStart();
   let result = '';
@@ -81,6 +98,15 @@ export function parseDoubleQuotedValue(value: string): string {
   return result;
 }
 
+/**
+ * Parses a single-quoted dotenv value with minimal escape processing.
+ *
+ * Only handles escaped single quotes (\'), treating all other characters literally.
+ * If the closing quote is missing, truncates at first newline and returns with leading quote.
+ * @param value - Value string starting with single quote
+ * @returns Parsed value with escaped quotes resolved and quotes removed
+ * @public
+ */
 export function parseSingleQuotedValue(value: string): string {
   const trimmed = value.trimStart();
   let result = '';
@@ -115,6 +141,15 @@ export function parseSingleQuotedValue(value: string): string {
   return result;
 }
 
+/**
+ * Parses an unquoted dotenv value by trimming and handling inline comments.
+ *
+ * Truncates at the first unquoted # character to remove inline comments,
+ * while preserving # characters inside quoted sections.
+ * @param value - Unquoted value string
+ * @returns Trimmed value with inline comments removed
+ * @public
+ */
 export function parseUnquotedValue(value: string): string {
   let inQuotes = false;
   let quoteChar = '';

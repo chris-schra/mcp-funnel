@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { create } from 'zustand';
 
+/**
+ * State interface for the WebSocket store.
+ * @internal
+ */
 interface WebSocketState {
   isConnected: boolean;
   logs: LogMessage[];
@@ -8,6 +12,10 @@ interface WebSocketState {
   clearLogs: () => void;
 }
 
+/**
+ * Log message structure received via WebSocket.
+ * @internal
+ */
 interface LogMessage {
   id: string;
   level: 'info' | 'warn' | 'error' | 'debug';
@@ -16,6 +24,22 @@ interface LogMessage {
   timestamp: string;
 }
 
+/**
+ * Zustand store for WebSocket connection state and log messages.
+ *
+ * Maintains connection status and a rolling buffer of the last 100 log messages
+ * received from the server. The store is globally accessible across components.
+ * @example
+ * ```typescript
+ * import { useWebSocketStore } from '~/hooks/useWebSocket.js';
+ *
+ * function LogViewer() {
+ *   const { logs, clearLogs } = useWebSocketStore();
+ *   return <div>{logs.map(log => <div key={log.id}>{log.message}</div>)}</div>;
+ * }
+ * ```
+ * @public
+ */
 export const useWebSocketStore = create<WebSocketState>((set) => ({
   isConnected: false,
   logs: [],
@@ -26,6 +50,45 @@ export const useWebSocketStore = create<WebSocketState>((set) => ({
   clearLogs: () => set({ logs: [] }),
 }));
 
+/**
+ * React hook for managing WebSocket connection to MCP Funnel server.
+ *
+ * Establishes and maintains a WebSocket connection with automatic reconnection
+ * on failure. Handles incoming events including log messages, tool changes, and
+ * server status updates. Dispatches CustomEvents to the window for cross-component
+ * coordination with React Query.
+ *
+ * Connection lifecycle:
+ * - Automatically connects on mount using ws:// or wss:// based on page protocol
+ * - Subscribes to all events ('*') after connection
+ * - Auto-reconnects after 3 seconds on disconnect
+ * - Cleans up connection on unmount
+ *
+ * Event handling:
+ * - `log.message`: Adds to store with auto-generated UUID
+ * - `tools.changed`: Dispatches 'tools-changed' CustomEvent
+ * - `server.connected/disconnected`: Dispatches 'servers-changed' CustomEvent
+ * - `tool.executing/result`: Dispatches 'tool-event' CustomEvent with payload
+ * @returns {{isConnected: boolean, sendMessage: (message: unknown) => void}} Object containing connection status and message sending function
+ * @example
+ * ```typescript
+ * import { useWebSocket } from '~/hooks/useWebSocket.js';
+ *
+ * function Dashboard() {
+ *   const { isConnected, sendMessage } = useWebSocket();
+ *
+ *   return (
+ *     <div>
+ *       Status: {isConnected ? 'Connected' : 'Disconnected'}
+ *       <button onClick={() => sendMessage({ type: 'ping' })}>
+ *         Ping Server
+ *       </button>
+ *     </div>
+ *   );
+ * }
+ * ```
+ * @public
+ */
 export function useWebSocket() {
   const ws = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);

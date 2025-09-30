@@ -1,10 +1,18 @@
 /**
- * Response formatting functions for MCP tool calls
+ * Response formatting utilities for MCP tool calls.
+ *
+ * Provides consistent response formatting for both success and error cases
+ * in MCP tool execution, ensuring proper structure for the MCP protocol.
+ * @internal
  */
 import type { CallToolResult } from '@mcp-funnel/commands-core';
 
 /**
- * Create an error response for MCP tool calls
+ * Creates an error response for MCP tool calls.
+ * @param {string} message - Error message to return to the caller
+ * @returns {CallToolResult} CallToolResult with isError flag set
+ * @public
+ * @see file:../../command.ts:97 - Usage in tool execution
  */
 export function createErrorResponse(message: string): CallToolResult {
   return {
@@ -19,7 +27,15 @@ export function createErrorResponse(message: string): CallToolResult {
 }
 
 /**
- * Create a text response for MCP tool calls
+ * Creates a success response for MCP tool calls.
+ *
+ * Formats one or two text content blocks into a CallToolResult structure.
+ * The optional additional text is useful for providing usage hints or context.
+ * @param {string} text - Primary response text (typically JSON-stringified data)
+ * @param {string} [additionalText] - Optional secondary text for hints or instructions
+ * @returns {CallToolResult} CallToolResult with text content blocks
+ * @public
+ * @see file:../../command.ts:104 - Usage in tool execution
  */
 export function createTextResponse(
   text: string,

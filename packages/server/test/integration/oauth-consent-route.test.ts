@@ -8,11 +8,20 @@ const registerResponseSchema = z.object({
   redirect_uris: z.array(z.string()).min(1),
 });
 
+/**
+ *
+ * @param response
+ * @param schema
+ */
 async function readJson<T>(response: Response, schema: z.ZodType<T>) {
   const payload = await response.json();
   return schema.parse(payload);
 }
 
+/**
+ *
+ * @param clientName
+ */
 async function registerClient(clientName: string) {
   const response = await oauthRoute.request('/register', {
     method: 'POST',

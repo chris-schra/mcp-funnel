@@ -2,6 +2,10 @@
 
 window.__debugData = { counter: 0 };
 
+/**
+ *
+ * @example
+ */
 function triggerDebugger() {
   window.__debugData.counter += 1;
   debugger; // Pause execution so tests can inspect state

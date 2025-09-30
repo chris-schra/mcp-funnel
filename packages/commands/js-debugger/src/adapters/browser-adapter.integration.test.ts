@@ -27,6 +27,9 @@ interface StaticServerHandle {
   close(): Promise<void>;
 }
 
+/**
+ *
+ */
 async function launchHeadlessChromium(): Promise<ChromeHandle> {
   const port = await getPort();
   const executablePath = chromium.executablePath();
@@ -96,6 +99,10 @@ async function launchHeadlessChromium(): Promise<ChromeHandle> {
   };
 }
 
+/**
+ *
+ * @param rootDir
+ */
 async function startStaticServer(rootDir: string): Promise<StaticServerHandle> {
   const server = http.createServer(async (req, res) => {
     try {

@@ -7,6 +7,7 @@
  *
  * WARNING: This provider stores secrets in plain text within the configuration.
  * It should only be used in development environments or for non-sensitive values.
+ * @public
  */
 
 import { BaseSecretProvider } from './base-provider.js';
@@ -18,7 +19,6 @@ import type { InlineProviderConfig } from './provider-configs.js';
  * This provider simply passes through the configured key-value pairs as secrets.
  * It's useful for testing, development, or providing default values that aren't
  * actually sensitive.
- *
  * @example
  * ```typescript
  * const provider = new InlineProvider({
@@ -34,14 +34,15 @@ import type { InlineProviderConfig } from './provider-configs.js';
  * const secrets = await provider.resolveSecrets();
  * // Returns: { API_KEY: 'dev-key-123', DATABASE_URL: 'postgres://localhost:5432/dev' }
  * ```
+ * @public
  */
 export class InlineProvider extends BaseSecretProvider {
   private readonly config: InlineProviderConfig['config'];
 
   /**
    * Creates a new InlineProvider instance.
-   *
    * @param config - Configuration containing the key-value pairs to provide as secrets
+   * @public
    */
   public constructor(config: InlineProviderConfig) {
     super('inline');
@@ -54,8 +55,7 @@ export class InlineProvider extends BaseSecretProvider {
    * This method simply returns the configured values object.
    * No processing or transformation is performed on the values.
    * Defensive copying is handled by the base class.
-   *
-   * @returns A promise resolving to the configured key-value pairs
+   * @internal
    */
   protected async doResolveSecrets(): Promise<Record<string, string>> {
     return this.config.values;

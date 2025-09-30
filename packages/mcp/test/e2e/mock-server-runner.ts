@@ -236,7 +236,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Start the server with stdio transport
+/** Starts the mock MCP server with stdio transport */
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

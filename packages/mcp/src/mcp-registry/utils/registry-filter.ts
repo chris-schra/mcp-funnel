@@ -10,10 +10,9 @@ const REGISTRY_ID_MAPPING: Record<string, string> = {
 
 /**
  * Filters registries by name/ID, returning all if no filter specified.
- *
- * @param registries - Map of registry URL to client instances
- * @param registry - Optional registry name or ID to filter by
- * @returns Array of registry entries matching the filter
+ * @param registries
+ * @param registry
+ * @internal
  */
 export function filterRegistriesByName(
   registries: Map<string, MCPRegistryClient>,
@@ -43,8 +42,7 @@ export function filterRegistriesByName(
 
 /**
  * Gets the registry ID mapping for external use.
- *
- * @returns Record of registry IDs to URLs
+ * @internal
  */
 export function getRegistryIdMapping(): Record<string, string> {
   return { ...REGISTRY_ID_MAPPING };

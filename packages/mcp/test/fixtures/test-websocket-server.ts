@@ -65,7 +65,8 @@ export class TestWebSocketServer {
   }
 
   /**
-   * Start the WebSocket server
+   * Starts the WebSocket server and returns port and URL
+   * @returns Server port and URL
    */
   async start(): Promise<{ port: number; url: string }> {
     return new Promise((resolve, reject) => {
@@ -89,9 +90,7 @@ export class TestWebSocketServer {
     });
   }
 
-  /**
-   * Stop the WebSocket server
-   */
+  /** Stops the WebSocket server and closes all connections */
   async stop(): Promise<void> {
     // Close all client connections
     for (const client of this.clients.values()) {
@@ -117,7 +116,8 @@ export class TestWebSocketServer {
   }
 
   /**
-   * Broadcast message to all connected clients
+   * Broadcasts message to all connected clients
+   * @param message - JSON-RPC message to broadcast
    */
   broadcast(message: JSONRPCMessage): void {
     const messageId = randomUUID();
@@ -147,7 +147,10 @@ export class TestWebSocketServer {
   }
 
   /**
-   * Send message to specific client
+   * Sends message to specific client, returns true if successful
+   * @param clientId - Target client ID
+   * @param message - JSON-RPC message to send
+   * @returns True if send was successful
    */
   sendToClient(clientId: string, message: JSONRPCMessage): boolean {
     const client = this.clients.get(clientId);
@@ -175,9 +178,7 @@ export class TestWebSocketServer {
     }
   }
 
-  /**
-   * Get connected client count
-   */
+  /** Returns count of connected clients */
   getClientCount(): number {
     // Clean up disconnected clients first
     for (const [clientId, client] of this.clients.entries()) {
@@ -188,17 +189,13 @@ export class TestWebSocketServer {
     return this.clients.size;
   }
 
-  /**
-   * Get list of connected client IDs
-   */
+  /** Returns list of connected client IDs */
   getConnectedClients(): string[] {
     this.getClientCount(); // Clean up first
     return Array.from(this.clients.keys());
   }
 
-  /**
-   * Get message history
-   */
+  /** Returns all message history */
   getMessageHistory(): Array<{
     id: string;
     clientId: string;
@@ -209,22 +206,24 @@ export class TestWebSocketServer {
     return [...this.messageHistory];
   }
 
-  /**
-   * Clear message history
-   */
+  /** Clears all message history */
   clearMessageHistory(): void {
     this.messageHistory = [];
   }
 
   /**
-   * Set the valid token for authentication (for testing token changes)
+   * Sets valid token for authentication during token change testing
+   * @param token
    */
   setValidToken(token: string): void {
     this.validToken = token;
   }
 
   /**
-   * Disconnect a specific client
+   * Disconnects specific client with given code and reason
+   * @param clientId
+   * @param code
+   * @param reason
    */
   disconnectClient(
     clientId: string,
@@ -242,7 +241,11 @@ export class TestWebSocketServer {
   }
 
   /**
-   * Verify client connection (authentication check)
+   * Verifies client connection by checking authentication
+   * @param info
+   * @param info.origin
+   * @param info.secure
+   * @param info.req
    */
   private verifyClient(info: {
     origin: string;
@@ -263,9 +266,7 @@ export class TestWebSocketServer {
     return this.validToken ? token === this.validToken : true;
   }
 
-  /**
-   * Setup WebSocket connection handlers
-   */
+  /** Sets up WebSocket connection handlers */
   private setupWebSocketHandlers(): void {
     this.wsServer.on(
       'connection',
@@ -369,7 +370,9 @@ export class TestWebSocketServer {
   }
 
   /**
-   * Handle HTTP requests (for health checks, etc.)
+   * Handles HTTP requests for health checks
+   * @param req
+   * @param res
    */
   private async handleHttpRequest(
     req: IncomingMessage,
@@ -423,7 +426,10 @@ export class TestWebSocketServer {
   }
 
   /**
-   * Send JSON response
+   * Sends JSON response with given status code
+   * @param res
+   * @param statusCode
+   * @param data
    */
   private sendJsonResponse(
     res: ServerResponse,
@@ -441,7 +447,8 @@ export class TestWebSocketServer {
 import type { ServerResponse } from 'http';
 
 /**
- * Helper function to create and start a test WebSocket server
+ * Creates and starts a test WebSocket server with given config
+ * @param config
  */
 export async function createTestWebSocketServer(
   config?: TestWebSocketServerConfig,

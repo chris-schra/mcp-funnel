@@ -37,6 +37,10 @@ export class SourceMapHandler {
 
   /**
    * Process a script parsed event and extract source map information
+   * @param params
+   * @param params.scriptId
+   * @param params.url
+   * @param params.sourceMapURL
    */
   async handleScriptParsed(params: {
     scriptId: string;
@@ -68,6 +72,8 @@ export class SourceMapHandler {
 
   /**
    * Resolve a breakpoint target from original source to generated source
+   * @param file
+   * @param line
    */
   async resolveBreakpointTarget(
     file: string,
@@ -109,6 +115,15 @@ export class SourceMapHandler {
 
   /**
    * Map a call frame from generated source back to original source
+   * @param frame
+   * @param frame.callFrameId
+   * @param frame.functionName
+   * @param frame.location
+   * @param frame.location.scriptId
+   * @param frame.location.lineNumber
+   * @param frame.location.columnNumber
+   * @param frame.url
+   * @param frame.scopeChain
    */
   mapCallFrameToOriginal(frame: {
     callFrameId: string;
@@ -169,6 +184,7 @@ export class SourceMapHandler {
 
   /**
    * Normalize file paths for consistent handling
+   * @param filePath
    */
   normalizeFilePath(filePath: string): string {
     // Convert file URLs to regular paths
@@ -188,6 +204,7 @@ export class SourceMapHandler {
 
   /**
    * Fetch source map content from URL
+   * @param sourceMapUrl
    */
   private async fetchSourceMapContent(
     sourceMapUrl: string,

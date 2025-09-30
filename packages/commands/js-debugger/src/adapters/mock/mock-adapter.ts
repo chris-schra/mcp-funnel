@@ -20,12 +20,31 @@ import {
 } from './mock-helpers.js';
 
 /**
- * Mock debug adapter that handles the generation of mock responses
- * This separates the response generation logic from session management
+ * Mock debug adapter that handles the generation of mock responses.
+ *
+ * This adapter generates realistic mock debug responses for testing and development,
+ * separating response generation logic from session management. It creates mock
+ * breakpoint pauses, stack traces, variable scopes, and console output without
+ * requiring an actual debug connection.
+ * @example
+ * ```typescript
+ * const adapter = new MockDebugAdapter();
+ * const response = adapter.createInitialResponse(sessionId, mockSession);
+ * ```
+ * @internal
+ * @see file:./mock-session-manager.ts - Session management using this adapter
+ * @see file:./mock-data.ts - Mock data generation functions
  */
 export class MockDebugAdapter {
   /**
-   * Create initial debug response when session starts
+   * Creates the initial debug response when a mock session starts.
+   *
+   * Generates a paused state at the first breakpoint with mock stack trace,
+   * variables, and console output. If no breakpoints are configured, returns
+   * a completed session response.
+   * @param sessionId - Unique identifier for the debug session
+   * @param session - Mock session containing request details and state
+   * @returns MCP tool result with paused or completed state
    */
   createInitialResponse(
     sessionId: string,
@@ -77,7 +96,18 @@ export class MockDebugAdapter {
   }
 
   /**
-   * Create continue response for mock session
+   * Creates a continue response for an ongoing mock session.
+   *
+   * Handles three scenarios:
+   * 1. Expression evaluation (returns paused state with evaluation result)
+   * 2. Stop action (terminates session)
+   * 3. Continue/step actions (advances to next breakpoint or completes)
+   * @param sessionId - Unique identifier for the debug session
+   * @param session - Current mock session state
+   * @param args - Action parameters
+   * @param args.action - Debug action: 'continue', 'step_over', 'step_into', 'step_out', or 'stop'
+   * @param args.evaluate - JavaScript expression to evaluate in the mock context
+   * @returns MCP tool result with updated session state (paused, terminated, or completed)
    */
   createContinueResponse(
     sessionId: string,
@@ -156,7 +186,13 @@ export class MockDebugAdapter {
   }
 
   /**
-   * Create stack trace response
+   * Creates a stack trace response for a mock session.
+   *
+   * Generates a synthetic call stack with three frames (processUserData,
+   * handleRequest, main) based on the first breakpoint location in the session.
+   * @param sessionId - Unique identifier for the debug session
+   * @param session - Current mock session state
+   * @returns MCP tool result with mock stack trace and breakpoint info
    */
   createStackTraceResponse(
     sessionId: string,
@@ -197,7 +233,18 @@ export class MockDebugAdapter {
   }
 
   /**
-   * Create console output response
+   * Creates a console output response for a mock session.
+   *
+   * Returns console messages from the session, optionally filtered by index.
+   * The response includes formatted output (last 10 messages) along with
+   * count metadata.
+   * @param sessionId - Unique identifier for the debug session
+   * @param session - Current mock session state with console output
+   * @param args - Filter parameters
+   * @param args.levels - Log level filters (currently not applied in mock implementation)
+   * @param args.search - Search string filter (currently not applied in mock implementation)
+   * @param args.since - Starting index for messages (0-based, undefined returns all messages)
+   * @returns MCP tool result with formatted console output and message counts
    */
   createConsoleOutputResponse(
     sessionId: string,
@@ -218,7 +265,18 @@ export class MockDebugAdapter {
   }
 
   /**
-   * Create variables response
+   * Creates a variables inspection response for a mock session.
+   *
+   * Generates mock variable scopes and resolves the requested variable path
+   * through the local and closure scopes. Supports dot-notation path traversal
+   * for nested properties.
+   * @param sessionId - Unique identifier for the debug session
+   * @param session - Current mock session state
+   * @param args - Variable access parameters
+   * @param args.path - Dot-notation path to variable (e.g., "userData.profile.settings")
+   * @param args.frameId - Stack frame to inspect (defaults to 0, currently unused in mock)
+   * @param args.maxDepth - Maximum traversal depth (currently unused in mock implementation)
+   * @returns MCP tool result with variable value and type information
    */
   createVariablesResponse(
     sessionId: string,
@@ -232,7 +290,12 @@ export class MockDebugAdapter {
   }
 
   /**
-   * Create stop response
+   * Creates a termination response when stopping a mock session.
+   *
+   * Generates a terminated status response indicating the session has been
+   * successfully stopped and cleaned up.
+   * @param sessionId - Unique identifier for the debug session being stopped
+   * @returns MCP tool result with terminated status
    */
   createStopResponse(sessionId: string): CallToolResult {
     return createMockSuccessResponse(
@@ -245,7 +308,19 @@ export class MockDebugAdapter {
   }
 
   /**
-   * Create breakpoint information object
+   * Creates a breakpoint information object for response payloads.
+   *
+   * Constructs a detailed breakpoint descriptor including its position in the
+   * breakpoint sequence, verification status, and resolved location details.
+   * All mock breakpoints are marked as verified.
+   * @param bp - Original breakpoint request
+   * @param bp.file - Requested file path
+   * @param bp.line - Requested line number
+   * @param bp.condition - Optional conditional expression
+   * @param location - Resolved debug location with absolute and relative paths
+   * @param index - Zero-based position in the breakpoint sequence
+   * @param total - Total number of breakpoints in the session
+   * @returns Breakpoint info object for inclusion in debug responses
    */
   private createBreakpointInfo(
     bp: { file: string; line: number; condition?: string },

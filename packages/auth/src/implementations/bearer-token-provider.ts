@@ -12,7 +12,8 @@ import {
 import { type IAuthProvider, logEvent } from '@mcp-funnel/core';
 
 /**
- * Configuration interface for BearerTokenAuthProvider
+ * Configuration interface for BearerTokenAuthProvider.
+ * @public
  */
 export interface BearerTokenConfig {
   /**
@@ -47,10 +48,28 @@ export interface BearerTokenConfig {
  * - Tokens are never logged or exposed in error messages
  * - Environment variable resolution allows secure token storage
  * - Token validation prevents empty/malformed tokens
+ * @example
+ * ```typescript
+ * const provider = new BearerTokenAuthProvider({
+ *   token: 'my-api-key-123'
+ * });
+ * const headers = await provider.getHeaders();
+ * // headers = { Authorization: 'Bearer my-api-key-123' }
+ * ```
+ * @public
+ * @see file:../errors/authentication-error.ts - Error types thrown during validation
  */
 export class BearerTokenAuthProvider implements IAuthProvider {
   private readonly token: string;
 
+  /**
+   * Creates a new BearerTokenAuthProvider instance.
+   *
+   * Validates the token format and stores it for use in subsequent requests.
+   * Logs provider creation for audit purposes without exposing the actual token.
+   * @param config - Configuration containing the Bearer token
+   * @throws {AuthenticationError} When token is empty, malformed, or invalid
+   */
   public constructor(config: BearerTokenConfig) {
     // Resolve environment variables in token
     const resolvedToken: string = config.token;
@@ -71,8 +90,9 @@ export class BearerTokenAuthProvider implements IAuthProvider {
   }
 
   /**
-   * Returns headers with Bearer token authorization
+   * Returns headers with Bearer token authorization.
    * @returns Promise resolving to headers with Authorization field
+   * @public
    */
   public async getHeaders(): Promise<Record<string, string>> {
     return {
@@ -81,8 +101,9 @@ export class BearerTokenAuthProvider implements IAuthProvider {
   }
 
   /**
-   * Always returns true since static tokens are always valid once validated
+   * Always returns true since static tokens are always valid once validated.
    * @returns Promise resolving to true
+   * @public
    */
   public async isValid(): Promise<boolean> {
     // Static token is always valid (validation happens during construction)
@@ -90,8 +111,11 @@ export class BearerTokenAuthProvider implements IAuthProvider {
   }
 
   /**
-   * No-op refresh method since static tokens don't need refreshing
-   * This method is optional but provided for completeness
+   * No-op refresh method since static tokens don't need refreshing.
+   *
+   * This method is optional but provided for completeness. It logs the
+   * refresh attempt for debugging purposes but performs no actual work.
+   * @public
    */
   public async refresh?(): Promise<void> {
     // No-op: static tokens don't need refreshing
@@ -104,9 +128,10 @@ export class BearerTokenAuthProvider implements IAuthProvider {
   }
 
   /**
-   * Validates that the token is properly formatted and not empty
+   * Validates that the token is properly formatted and not empty.
    * @param token - The token to validate
-   * @throws AuthenticationError if token is invalid
+   * @throws {AuthenticationError} When token is invalid
+   * @internal
    */
   private validateToken(token: string): void {
     // Check if token is empty or only whitespace

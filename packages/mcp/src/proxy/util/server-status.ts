@@ -2,8 +2,16 @@ import type { TargetServer, TargetServerZod } from '@mcp-funnel/schemas';
 import type { ServerStatus } from '@mcp-funnel/models';
 
 /**
- * Get the status of a single server by name
- * Returns ServerStatus object with current connection state
+ * Gets the current status of a single server by name.
+ *
+ * Checks connected and disconnected server maps to determine current state.
+ * Returns 'connected', 'disconnected', or 'error' status with relevant metadata.
+ * @param name - Server name to query
+ * @param connectedServers - Map of currently connected servers
+ * @param disconnectedServers - Map of disconnected servers with optional error info
+ * @param connectionTimestamps - Map of connection timestamps for connected servers
+ * @returns ServerStatus object with current state and metadata
+ * @public
  */
 export function getServerStatus(
   name: string,
@@ -42,7 +50,11 @@ export function getServerStatus(
 }
 
 /**
- * Check if a server is currently connected
+ * Checks if a server is currently connected.
+ * @param name - Server name to check
+ * @param connectedServers - Map of currently connected servers
+ * @returns True if server is connected, false otherwise
+ * @public
  */
 export function isServerConnected(
   name: string,
@@ -52,7 +64,11 @@ export function isServerConnected(
 }
 
 /**
- * Get target servers categorized by connection state
+ * Gets all target servers categorized by connection state.
+ * @param connectedServers - Map of currently connected servers
+ * @param disconnectedServers - Map of disconnected servers with optional error info
+ * @returns Object with connected and disconnected server arrays
+ * @public
  */
 export function getTargetServers(
   connectedServers: Map<string, TargetServer | TargetServerZod>,

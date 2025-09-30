@@ -13,12 +13,14 @@ export interface ToolMatch {
 }
 
 /**
- * Core tool for discovering and dynamically enabling MCP tools based on keyword search
- * @since 1.0.0
- * @version 1.0.0
- * @category Tools
- * @internal
- * @see file://../core-tool.interface.ts#L33
+ * Core tool for discovering and dynamically enabling MCP tools via keyword search.
+ *
+ * Searches across tool names, descriptions, and server names using AND/OR logic.
+ * Optionally enables discovered tools in a single operation. Supports both string
+ * and structured search parameters for flexible querying.
+ * @public
+ * @see file:../core-tool.interface.ts - Core tool interface
+ * @see file:../../tool-registry/utils.ts:83 - Search implementation
  */
 export class DiscoverToolsByWords extends BaseCoreTool {
   public readonly name = 'discover_tools_by_words';
@@ -81,7 +83,15 @@ export class DiscoverToolsByWords extends BaseCoreTool {
   }
 
   /**
-   * Truncate description to first line break after 100 chars, or at 200 chars if no line break
+   * Truncates description for display in search results.
+   *
+   * Truncation strategy:
+   * - Under 100 chars: return as-is
+   * - Over 100 chars: truncate at first line break after 100 chars
+   * - No line break: truncate at 200 chars with ellipsis
+   * @param description - Tool description to truncate
+   * @returns Truncated description
+   * @internal
    */
   private truncateDescription(description: string | undefined): string {
     if (!description) return '';

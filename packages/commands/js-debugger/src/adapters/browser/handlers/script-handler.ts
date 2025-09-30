@@ -1,21 +1,41 @@
 import type { CDPScriptParsedParams } from '../../../cdp/index.js';
 import type { SourceMapConsumer } from 'source-map';
 
+/**
+ * Metadata for a parsed script tracked during browser debugging.
+ * @internal
+ */
 export interface ScriptInfo {
+  /** Script URL or file path as reported by the browser */
   url: string;
+  /** Optional script source code (loaded on demand) */
   source?: string;
+  /** Optional source map for mapping transpiled code to original sources */
   sourceMap?: SourceMapConsumer;
 }
 
 /**
- * Context for script handling operations
+ * Context for script handling operations providing access to the script registry.
+ * @internal
  */
 export interface ScriptHandlerContext {
+  /** Map of script IDs to their metadata and source maps */
   scripts: Map<string, ScriptInfo>;
 }
 
 /**
- * Handles script parsed event
+ * Handles CDP Debugger.scriptParsed event to track loaded scripts.
+ *
+ * Registers the script in the context's script registry and initiates source map
+ * loading if a source map URL is provided. Source map loading is asynchronous
+ * and best-effort - failures are logged but do not prevent script registration.
+ * @param params - CDP script parsed event parameters containing script metadata
+ * @param params.scriptId - Unique identifier for the parsed script
+ * @param params.url - Script URL or file path
+ * @param params.sourceMapURL - Optional URL or data URI for the script's source map
+ * @param context - Script handling context providing access to the script registry
+ * @internal
+ * @see file:../event-handlers.ts:247 - Usage in browser event handler
  */
 export function handleScriptParsed(
   params: CDPScriptParsedParams,
@@ -37,7 +57,24 @@ export function handleScriptParsed(
 }
 
 /**
- * Load source map for a script
+ * Loads and attaches a source map to a script for source-level debugging.
+ *
+ * Supports multiple source map formats:
+ * - Data URIs (base64-encoded source maps embedded in the script)
+ * - HTTP/HTTPS URLs (fetched using Node.js built-in fetch if available)
+ * - Relative URLs (currently skipped as they require browser-specific resolution)
+ *
+ * Source map loading is best-effort. Failures are logged as warnings but do not
+ * throw errors, allowing debugging to continue without source maps.
+ * @param scriptId - Unique identifier of the script to attach the source map to
+ * @param sourceMapURL - URL or data URI pointing to the source map
+ * @param context - Script handling context containing the script registry
+ * @throws Never throws - all errors are caught and logged
+ * @remarks
+ * HTTP source maps are only loaded if `globalThis.fetch` is available (Node.js 18+).
+ * Relative URLs are not supported in the browser debugging context and are silently skipped.
+ * @internal
+ * @see file:./script-handler.ts:38 - Called from handleScriptParsed
  */
 export async function loadSourceMap(
   scriptId: string,

@@ -38,6 +38,10 @@ class DelayedProvider extends BaseSecretProvider {
   }
 }
 
+/**
+ *
+ * @param values
+ */
 function createInlineProvider(values: Record<string, string>): InlineProvider {
   return new InlineProvider({
     type: 'inline',
@@ -45,6 +49,12 @@ function createInlineProvider(values: Record<string, string>): InlineProvider {
   });
 }
 
+/**
+ *
+ * @param baseDir
+ * @param filename
+ * @param content
+ */
 function writeEnvFile(
   baseDir: string,
   filename: string,

@@ -1,6 +1,12 @@
 /**
- * OAuth consent page template renderer
- * Provides secure HTML template rendering for OAuth consent flow
+ * OAuth consent page template renderer.
+ *
+ * Provides secure HTML template rendering for OAuth consent flow with automatic
+ * HTML escaping to prevent XSS attacks. This module exports three main functions
+ * for rendering, validating, and creating consent page data.
+ * @public
+ * @see file:./types.ts - ConsentPageData and ScopeInfo types
+ * @see file:./utils.ts - Template utility functions
  */
 
 import { readFileSync } from 'node:fs';
@@ -13,10 +19,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Renders the consent page HTML with the provided data
+ * Renders the OAuth consent page HTML with the provided data.
  *
- * @param data - Consent page data
- * @returns Rendered HTML string with all user inputs safely escaped
+ * Loads the consent.html template file and performs variable substitution with
+ * HTML-escaped user data to prevent XSS attacks. All user-provided fields are
+ * sanitized using context-appropriate escaping (HTML or attribute escaping).
+ * @param data - Consent page data containing client, user, and OAuth flow information
+ * @returns Rendered HTML string with all user inputs safely escaped and ready to serve
+ * @throws {Error} When the consent.html template file cannot be loaded from disk
+ * @example
+ * ```typescript
+ * const html = renderConsentPage({
+ *   clientId: 'app123',
+ *   clientName: 'My App',
+ *   clientInitial: 'M',
+ *   userEmail: 'user@example.com',
+ *   scopes: [{ scope: 'read', name: 'Read Access', description: 'View data' }],
+ *   redirectUri: 'https://app.example.com/callback',
+ *   scopeString: 'read',
+ *   actionUrl: 'https://auth.example.com/api/oauth/consent'
+ * });
+ * ```
+ * @public
+ * @see file:./types.ts:16 - ConsentPageData interface
+ * @see file:./utils.ts:40 - HTML escaping utilities
  */
 export function renderConsentPage(data: ConsentPageData): string {
   // Load the HTML template
@@ -99,10 +125,30 @@ export function renderConsentPage(data: ConsentPageData): string {
 }
 
 /**
- * Validates consent page data to ensure all required fields are present
+ * Validates consent page data to ensure all required fields are present.
  *
- * @param data - Data to validate
- * @returns Validation result with any error messages
+ * Performs comprehensive validation including presence checks for required fields
+ * and URL format validation for redirectUri and actionUrl. This function is useful
+ * for pre-validation before attempting to render the consent page.
+ * @param data - Partial consent page data to validate (may have missing fields)
+ * @returns Validation result object with valid flag and array of error messages
+ * @example
+ * ```typescript
+ * const result = validateConsentPageData({
+ *   clientId: 'app123',
+ *   clientName: 'My App',
+ *   userEmail: 'user@example.com',
+ *   redirectUri: 'https://app.example.com/callback',
+ *   scopeString: 'read',
+ *   actionUrl: '/api/oauth/consent'
+ * });
+ *
+ * if (!result.valid) {
+ *   console.error('Validation errors:', result.errors);
+ * }
+ * ```
+ * @public
+ * @see file:./types.ts:16 - ConsentPageData interface
  */
 export function validateConsentPageData(data: Partial<ConsentPageData>): {
   valid: boolean;
@@ -158,11 +204,45 @@ export function validateConsentPageData(data: Partial<ConsentPageData>): {
 }
 
 /**
- * Creates consent page data from authorization request parameters
- * This is a helper function to construct ConsentPageData from OAuth flow data
+ * Creates consent page data from OAuth authorization request parameters.
  *
+ * This helper function constructs a complete ConsentPageData object from OAuth
+ * authorization flow parameters. It automatically generates the clientInitial,
+ * converts requestedScopes array to ScopeInfo objects with descriptions, creates
+ * the scopeString, and constructs the actionUrl from the baseUrl.
  * @param params - Parameters from OAuth authorization request
- * @returns Formatted consent page data
+ * @param params.clientId - OAuth client identifier
+ * @param params.clientName - Human-readable client application name
+ * @param params.userEmail - Email address of the user granting consent
+ * @param params.requestedScopes - Array of OAuth scope strings being requested
+ * @param params.redirectUri - Redirect URI from the authorization request
+ * @param params.state - Optional state parameter for CSRF protection
+ * @param params.codeChallenge - Optional PKCE code challenge
+ * @param params.codeChallengeMethod - Optional PKCE code challenge method (S256 or plain)
+ * @param params.baseUrl - Base URL of the authorization server (e.g., 'https://auth.example.com')
+ * @returns Complete consent page data ready for rendering
+ * @example
+ * ```typescript
+ * const consentData = createConsentPageData({
+ *   clientId: 'app123',
+ *   clientName: 'My Application',
+ *   userEmail: 'user@example.com',
+ *   requestedScopes: ['read', 'mcp:write'],
+ *   redirectUri: 'https://app.example.com/callback',
+ *   state: 'random-state-string',
+ *   codeChallenge: 'code-challenge-string',
+ *   codeChallengeMethod: 'S256',
+ *   baseUrl: 'https://auth.example.com'
+ * });
+ *
+ * // consentData.actionUrl will be 'https://auth.example.com/api/oauth/consent'
+ * // consentData.clientInitial will be 'M'
+ * // consentData.scopes will have full descriptions
+ * ```
+ * @public
+ * @see file:./types.ts:16 - ConsentPageData interface
+ * @see file:./utils.ts:82 - generateClientInitial function
+ * @see file:./utils.ts:62 - generateScopeInfo function
  */
 export function createConsentPageData(params: {
   clientId: string;

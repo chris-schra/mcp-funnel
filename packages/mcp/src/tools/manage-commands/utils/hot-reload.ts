@@ -1,18 +1,38 @@
 /**
- * Hot-reload utilities for manage-commands tool
+ * Hot-reload utilities for manage-commands tool.
+ *
+ * Provides functions to hot-reload installed commands without restarting the session.
+ * @public
  */
 
 import type { CommandInstaller } from '@mcp-funnel/commands-core';
 import type { CoreToolContext } from '../../core-tool.interface.js';
 
+/**
+ * Result of a hot-reload operation.
+ * @public
+ */
 export interface HotReloadResult {
+  /** Whether hot-reload was successful */
   hotReloaded: boolean;
+  /** Array of tool names discovered from the command */
   tools: string[];
+  /** Error message if hot-reload failed */
   hotReloadError?: string;
 }
 
 /**
- * Attempt to hot-reload a command and return its tools
+ * Attempts to hot-reload a command and discover its tools.
+ *
+ * Loads the command package, registers it with the tool registry, and returns
+ * the list of tools it provides. Used after install/update to make tools available
+ * without restarting the session.
+ * @param installer - Command installer instance
+ * @param commandPackage - Package name/spec to load
+ * @param commandName - Command name for filtering tools
+ * @param context - Core tool context with registry access
+ * @returns Hot-reload result with status and tools
+ * @public
  */
 export async function hotReloadCommand(
   installer: CommandInstaller,
@@ -48,7 +68,13 @@ export async function hotReloadCommand(
 }
 
 /**
- * Get tools for an existing command from the tool registry
+ * Gets tools for an existing command from the tool registry.
+ *
+ * Queries the tool registry for all discovered tools belonging to the specified command.
+ * @param commandName - Command name to filter tools
+ * @param context - Core tool context with registry access
+ * @returns Array of tool full names for the command
+ * @public
  */
 export function getExistingTools(
   commandName: string,

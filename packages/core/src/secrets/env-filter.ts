@@ -3,12 +3,14 @@
  *
  * Provides functions to filter environment variables based on allowlists
  * for security and configuration management.
+ * @public
  */
 
 /**
  * Defines additional environment variables that should be preserved for
  * specific platforms. Use this when a platform requires core variables to
  * resolve other paths (e.g. Windows expands %SystemRoot%).
+ * @public
  */
 export type PlatformEnvAllowlist = Partial<
   Record<NodeJS.Platform, readonly string[]>
@@ -59,6 +61,8 @@ const PLATFORM_ENV_ALLOWLIST: PlatformEnvAllowlist = {
  * Returns the default passthrough environment variable allowlist for the given
  * platform. The list combines the platform-independent core variables with any
  * platform-specific requirements.
+ * @param platform - The platform to get allowlist for (defaults to current platform)
+ * @public
  */
 export function getDefaultPassthroughEnv(
   platform: NodeJS.Platform = process.platform,
@@ -74,15 +78,15 @@ export function getDefaultPassthroughEnv(
 /**
  * Filters environment variables to only include specified keys.
  *
+ * Filters out any undefined values and only includes keys present in the allowlist.
  * @param env - Environment variables object to filter
  * @param allowlist - Array of environment variable names to include
- * @returns Filtered environment variables containing only allowed keys
- *
  * @example
  * ```typescript
  * const filtered = filterEnvVars(process.env, ['PATH', 'NODE_ENV']);
  * // Returns: { PATH: '/usr/bin:...', NODE_ENV: 'development' }
  * ```
+ * @public
  */
 export function filterEnvVars(
   env: Record<string, string | undefined>,

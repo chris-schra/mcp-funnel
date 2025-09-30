@@ -3,7 +3,6 @@
  *
  * This module provides the core types and interfaces for managing secrets
  * across different providers in the MCP Funnel system.
- *
  * @example
  * ```typescript
  * import { ISecretProvider, ISecretProviderRegistry } from '@mcp-funnel/mcp/secrets';
@@ -19,6 +18,7 @@
  *   }
  * }
  * ```
+ * @public
  */
 
 export type {

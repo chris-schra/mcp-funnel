@@ -2,7 +2,8 @@ import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 
 /**
- * Configuration options for spawning Node.js processes with inspector
+ * Configuration options for spawning Node.js processes with inspector.
+ * @public
  */
 export interface SpawnOptions {
   /** Runtime command (default: 'node') */
@@ -20,7 +21,8 @@ export interface SpawnOptions {
 }
 
 /**
- * Result of successful process spawn operation
+ * Result of successful process spawn operation.
+ * @public
  */
 export interface SpawnResult {
   /** Spawned child process */
@@ -32,7 +34,8 @@ export interface SpawnResult {
 }
 
 /**
- * Process output stream data
+ * Process output stream data emitted via the 'output' event.
+ * @public
  */
 export interface ProcessOutput {
   type: 'stdout' | 'stderr';
@@ -41,20 +44,71 @@ export interface ProcessOutput {
 }
 
 /**
- * Node.js process spawner with Chrome DevTools Protocol inspector support
+ * Node.js process spawner with Chrome DevTools Protocol inspector support.
  *
- * Spawns Node.js processes with --inspect or --inspect-brk flags and extracts
- * the WebSocket debugger URL from process output for CDP connections.
+ * Spawns Node.js processes with --inspect-brk flag and extracts the WebSocket
+ * debugger URL from stderr output, enabling CDP-based debugging. Always uses
+ * 'node' as the runtime command regardless of the `command` option value.
+ *
+ * Emits 'output' events with {@link ProcessOutput} data for monitoring process
+ * stdout/stderr, and 'exit' events when the spawned process terminates.
+ * @example Basic usage with default options
+ * ```typescript
+ * const spawner = new ProcessSpawner();
+ *
+ * // Spawn with default options (random port, stop on entry)
+ * const result = await spawner.spawn('./my-script.js');
+ * console.log(`Process spawned: ${result.process.pid}`);
+ * console.log(`WebSocket URL: ${result.wsUrl}`);
+ *
+ * // Connect to the CDP debugger using result.wsUrl
+ * await cdpClient.connect(result.wsUrl);
+ *
+ * // Clean up when done
+ * await spawner.kill(result.process);
+ * ```
+ * @example With custom options
+ * ```typescript
+ * const spawner = new ProcessSpawner();
+ *
+ * // Monitor process output
+ * spawner.on('output', (output) => {
+ *   if (output.type === 'stderr') {
+ *     console.error('Process stderr:', output.text);
+ *   }
+ * });
+ *
+ * // Spawn with specific port and additional Node.js arguments
+ * const result = await spawner.spawn('./my-script.js', {
+ *   port: 9229,
+ *   args: ['--enable-source-maps', '--max-old-space-size=2048'],
+ *   env: { NODE_ENV: 'development' },
+ *   timeoutMs: 5000
+ * });
+ * ```
+ * @see file:./connection-manager.ts:135 - Usage in ConnectionManager
+ * @public
  */
 export class ProcessSpawner extends EventEmitter {
   /**
-   * Spawn a Node.js process with inspector enabled
+   * Spawns a Node.js process with inspector enabled and extracts CDP WebSocket URL.
    *
-   * @param target - Script file path or inline script to execute
-   * @param options - Spawn configuration options
-   * @returns Promise resolving to spawn result with process and WebSocket URL
+   * Always uses 'node' as the runtime command and --inspect-brk flag to pause execution
+   * at the first statement. The command option is accepted but ignored - use the args
+   * option to pass runtime flags like --import for tsx support.
+   *
+   * Listens to stderr for the inspector URL pattern "Debugger listening on ws://..."
+   * and resolves once found. If the process exits or the timeout is reached before
+   * the URL is extracted, the promise rejects and the process is cleaned up.
+   * @param {string} target - Script file path to execute (absolute or relative)
+   * @param {SpawnOptions} options - Spawn configuration options (port, args, env, timeout)
+   * @returns {Promise<SpawnResult>} Promise resolving to spawn result with process handle, WebSocket URL, and port
+   * @throws {Error} When inspector URL extraction times out after timeoutMs milliseconds
+   * @throws {Error} When process spawning fails (invalid script path, permission denied, etc.)
+   * @throws {Error} When process exits before inspector URL is found
+   * @public
    */
-  async spawn(
+  public async spawn(
     target: string,
     options: SpawnOptions = {},
   ): Promise<SpawnResult> {
@@ -112,12 +166,17 @@ export class ProcessSpawner extends EventEmitter {
   }
 
   /**
-   * Terminate a spawned process gracefully
+   * Terminates a spawned process gracefully with automatic fallback to force kill.
    *
-   * @param process - Child process to terminate
-   * @param timeoutMs - Timeout for graceful termination (default: 2000ms)
+   * Sends SIGTERM for graceful shutdown and waits for process exit. If the process
+   * does not exit within timeoutMs, sends SIGKILL to force termination. Safe to call
+   * on already-terminated processes (no-op if process.killed is true or exitCode is set).
+   * @param {ChildProcess} process - Child process to terminate
+   * @param {number} timeoutMs - Timeout in milliseconds before forcing SIGKILL (default: 2000ms)
+   * @returns {Promise<void>} Promise resolving when the process has exited or been killed
+   * @public
    */
-  async kill(process: ChildProcess, timeoutMs = 2000): Promise<void> {
+  public async kill(process: ChildProcess, timeoutMs = 2000): Promise<void> {
     if (process.killed || process.exitCode !== null) {
       return;
     }
@@ -147,7 +206,17 @@ export class ProcessSpawner extends EventEmitter {
   }
 
   /**
-   * Build runtime arguments for different Node.js commands
+   * Builds runtime arguments for spawning the Node.js process with inspector.
+   *
+   * Always constructs --inspect-brk argument (uses port 0 for random port selection)
+   * and ignores the command parameter, always returning 'node' as runtime. This method
+   * exists as a protected seam for testing scenarios where inspector behavior needs
+   * to be overridden.
+   * @param {string} command - Requested command (currently ignored, always uses 'node')
+   * @param {number} port - Inspector port number (0 for random port)
+   * @param {string[]} userArgs - Additional Node.js runtime arguments to include
+   * @returns {{ runtime: string; runtimeArgs: string[] }} Object containing runtime command ('node') and complete argument array
+   * @internal
    */
   protected buildRuntimeArgs(
     command: string,
@@ -175,7 +244,19 @@ export class ProcessSpawner extends EventEmitter {
   }
 
   /**
-   * Extract inspector WebSocket URL from process output
+   * Extracts inspector WebSocket URL from spawned process stderr output.
+   *
+   * Monitors both stdout and stderr streams, looking for the pattern
+   * "Debugger listening on ws://..." which Node.js emits to stderr when
+   * the inspector is ready. Emits 'output' events for all stdout/stderr
+   * data and 'exit' event if the process terminates.
+   * @param {ChildProcess} process - Spawned ChildProcess with inspector enabled
+   * @param {number} timeoutMs - Maximum time to wait for inspector URL in milliseconds
+   * @returns {Promise<{ wsUrl: string; extractedPort: number }>} Promise resolving to object with WebSocket URL and extracted port number
+   * @throws {Error} When timeout is reached before URL is found
+   * @throws {Error} When process encounters spawn error
+   * @throws {Error} When process exits before URL is extracted
+   * @internal
    */
   private async extractInspectorUrl(
     process: ChildProcess,

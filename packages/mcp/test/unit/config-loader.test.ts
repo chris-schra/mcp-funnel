@@ -3,6 +3,11 @@ import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 
+/**
+ *
+ * @param file
+ * @param value
+ */
 function writeJson(file: string, value: unknown) {
   mkdirSync(resolve(file, '..'), { recursive: true });
   writeFileSync(file, JSON.stringify(value, null, 2), 'utf8');

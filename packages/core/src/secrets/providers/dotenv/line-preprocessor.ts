@@ -1,3 +1,12 @@
+/**
+ * Heuristic to detect if a line looks like a variable declaration.
+ *
+ * Used to determine if multiline value parsing should stop. Returns true
+ * if the line is empty, a comment, or starts with a pattern like KEY=.
+ * @param line - Line to check
+ * @returns true if line appears to be a new variable declaration
+ * @internal
+ */
 function isLikelyVariableDeclaration(line: string | undefined): boolean {
   if (!line) {
     return false;
@@ -19,6 +28,16 @@ function isLikelyVariableDeclaration(line: string | undefined): boolean {
   return /^[A-Z_][A-Z0-9_]*=/.test(trimmed);
 }
 
+/**
+ * Determines if a line needs continuation (multiline value not yet complete).
+ *
+ * Returns true if there's a backslash continuation or if quotes are unclosed.
+ * Handles escape sequences and tracks quote state to detect incomplete values.
+ * @param line - Current line being processed
+ * @param hasBackslashContinuation - Whether line ends with backslash
+ * @returns true if more lines needed to complete the value
+ * @internal
+ */
 function needsContinuation(
   line: string,
   hasBackslashContinuation: boolean,
@@ -76,6 +95,18 @@ function needsContinuation(
   return inQuotes;
 }
 
+/**
+ * Preprocesses .env file content into logical lines.
+ *
+ * Handles:
+ * - Backslash continuations (\ at end of line)
+ * - Multiline quoted values (unclosed quotes)
+ * - Heuristic-based continuation detection
+ * - Fallback to single-line parsing for pathological cases (>10 lines)
+ * @param content - Raw .env file contents
+ * @returns Array of logical lines ready for parsing
+ * @internal
+ */
 export function preprocessLines(content: string): string[] {
   const rawLines = content.split('\n');
   const logicalLines: string[] = [];

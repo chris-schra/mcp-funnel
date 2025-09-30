@@ -1,22 +1,34 @@
 /**
- * Hono middleware for inbound authentication
- * Validates incoming requests using configured authentication validators
+ * Hono middleware factory for request authentication validation.
+ *
+ * Creates middleware that validates requests using configured validators,
+ * returning 401 for authentication failures and attaching auth context
+ * to successful requests for downstream handlers.
+ *
+ * The middleware logs authentication events (successes and failures) with
+ * IP address, user agent, and timestamp for security monitoring.
+ * @example
+ * ```typescript
+ * const validator = createAuthValidator(config);
+ * const authMiddleware = createAuthMiddleware(validator);
+ *
+ * app.use('/api/*', authMiddleware);
+ * ```
+ * @public
+ * @see file:../interfaces/inbound-auth.interface.ts - Validator interface
  */
 
 import type { Context, Next, MiddlewareHandler } from 'hono';
 import type { IInboundAuthValidator } from '../interfaces/inbound-auth.interface.js';
 
 /**
- * Creates authentication middleware for Hono
+ * Creates Hono authentication middleware from validator.
  *
- * This middleware:
- * - Uses the provided validator to check incoming requests
- * - Returns 401 Unauthorized for failed authentication
- * - Adds authentication context to the request for downstream handlers
- * - Provides detailed error messages for debugging
- *
- * @param validator - The authentication validator to use
- * @returns Hono middleware function
+ * Returns 401 Unauthorized with WWW-Authenticate header when authentication
+ * fails. Attaches auth context to request via c.set('authContext') on success.
+ * @param {IInboundAuthValidator} validator - Authentication validator to use for request validation
+ * @returns {MiddlewareHandler} Hono middleware function
+ * @public
  */
 export function createAuthMiddleware(
   validator: IInboundAuthValidator,
@@ -81,7 +93,10 @@ export function createAuthMiddleware(
 }
 
 /**
- * Returns appropriate WWW-Authenticate header value based on auth type
+ * Returns WWW-Authenticate header value based on authentication type.
+ * @param {string} authType - Authentication type identifier (e.g., 'bearer', 'none')
+ * @returns {string} RFC 7235 compliant WWW-Authenticate header value
+ * @internal
  */
 function getWWWAuthenticateHeader(authType: string): string {
   switch (authType) {
@@ -93,8 +108,13 @@ function getWWWAuthenticateHeader(authType: string): string {
 }
 
 /**
- * Optional middleware to extract authentication context from requests
- * Use this if you need to access auth context in your handlers
+ * Extracts authentication context attached by createAuthMiddleware.
+ *
+ * Returns the context object attached via c.set('authContext') during
+ * authentication. Returns undefined if middleware hasn't run or auth failed.
+ * @param {Context} c - Hono context from request handler
+ * @returns {Record<string, unknown> | undefined} Authentication context or undefined
+ * @public
  */
 export function getAuthContext(
   c: Context,

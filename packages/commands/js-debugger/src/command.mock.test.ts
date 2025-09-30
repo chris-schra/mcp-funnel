@@ -29,6 +29,14 @@ interface DebugResponse {
   };
 }
 
+/**
+ * Test helper to extract and parse JSON from MCP CallToolResult response.
+ * @param {CallToolResult} result - MCP tool execution result containing text content
+ * @returns {T} Parsed JSON data from the result's text content
+ * @throws {Error} When result lacks text content or content is not a string
+ * @internal
+ * @see file:./command.ts - JsDebuggerCommand implementation being tested
+ */
 function parseResult<T = Record<string, unknown>>(result: CallToolResult): T {
   const textContent = result.content?.find((item) => item.type === 'text');
   if (!textContent || typeof textContent.text !== 'string') {

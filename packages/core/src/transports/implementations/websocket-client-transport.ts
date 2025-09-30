@@ -2,15 +2,18 @@
  * WebSocket Client Transport Implementation for MCP OAuth
  *
  * WebSocket transport for bidirectional client connections with OAuth authentication.
- * Implements the MCP SDK Transport interface with:
+ * Provides full-duplex communication with connection health monitoring.
+ *
+ * Key features:
  * - WebSocket for bidirectional client↔server messages
  * - Auth headers during WebSocket handshake
  * - UUID correlation between requests and responses
  * - Automatic reconnection with exponential backoff
- * - 401 response handling with token refresh retry
+ * - Connection state management and ping/pong heartbeat
  * - Proper resource cleanup and timeout support
  * - Security: token sanitization in error messages
- * - Connection state management and ping/pong handling
+ * @public
+ * @see file:./base-client-transport.ts - Base transport implementation
  */
 
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -23,7 +26,8 @@ import {
 import { logEvent } from '../../logger.js';
 
 /**
- * Configuration for WebSocket client transport
+ * Configuration for WebSocket client transport.
+ * @public
  */
 export interface WebSocketClientTransportConfig
   extends BaseClientTransportConfig {
@@ -32,7 +36,8 @@ export interface WebSocketClientTransportConfig
 }
 
 /**
- * WebSocket connection states
+ * WebSocket connection states.
+ * @internal
  */
 enum ConnectionState {
   DISCONNECTED = 'disconnected',
@@ -43,7 +48,8 @@ enum ConnectionState {
 }
 
 /**
- * WebSocket client transport implementing MCP SDK Transport interface
+ * WebSocket client transport implementing MCP SDK Transport interface.
+ * @public
  */
 export class WebSocketClientTransport extends BaseClientTransport {
   private readonly wsConfig: {
@@ -67,6 +73,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Validate and normalize URL for WebSocket
+   * @param config
    */
   protected validateAndNormalizeUrl(
     config: WebSocketClientTransportConfig,
@@ -136,6 +143,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Send WebSocket message
+   * @param message
    */
   protected async sendMessage(message: JSONRPCMessage): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -237,6 +245,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Handle WebSocket message event
+   * @param data
    */
   private handleWebSocketMessage(data: WebSocket.Data): void {
     try {
@@ -250,6 +259,8 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Handle WebSocket close event
+   * @param code
+   * @param reason
    */
   private handleWebSocketClose(code: number, reason: Buffer): void {
     const reasonText = reason.toString();
@@ -298,6 +309,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
 
   /**
    * Handle WebSocket error event
+   * @param error
    */
   private handleWebSocketError(error: Error): void {
     const transportError = TransportError.connectionFailed(

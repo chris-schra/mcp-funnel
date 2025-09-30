@@ -5,6 +5,7 @@
  * different providers (environment variables, credential stores, etc.).
  * Following the SEAMS principle, these interfaces provide extension points
  * for future provider implementations without changing the core API.
+ * @public
  */
 
 /**
@@ -13,7 +14,6 @@
  * Secret providers are responsible for resolving secrets from their specific
  * source (environment variables, credential stores, etc.) and returning them
  * as a flat key-value mapping.
- *
  * @example
  * ```typescript
  * class EnvSecretProvider implements ISecretProvider {
@@ -26,11 +26,11 @@
  *   }
  * }
  * ```
+ * @public
  */
 export interface ISecretProvider {
   /**
    * Resolves all secrets managed by this provider.
-   *
    * @returns A promise that resolves to a key-value mapping of secret names to values.
    *          Empty string values indicate missing or unset secrets.
    * @throws {Error} When the provider encounters an unrecoverable error accessing secrets.
@@ -42,7 +42,6 @@ export interface ISecretProvider {
    *
    * Used for registration, logging, and debugging purposes.
    * Should be a stable identifier that doesn't change between runs.
-   *
    * @returns The provider's unique name (e.g., 'environment', 'keychain', 'vault')
    */
   getName(): string;
@@ -53,6 +52,7 @@ export interface ISecretProvider {
  *
  * Provides both the resolved secrets and optional metadata about the resolution
  * process for debugging and auditing purposes.
+ * @public
  */
 export interface SecretResolutionResult {
   /**
@@ -91,7 +91,6 @@ export interface SecretResolutionResult {
  *
  * Provides a centralized way to register, retrieve, and manage secret providers.
  * Follows the registry pattern used elsewhere in the codebase for consistency.
- *
  * @example
  * ```typescript
  * const registry = new SecretProviderRegistry();
@@ -100,11 +99,11 @@ export interface SecretResolutionResult {
  * const provider = registry.get('env');
  * const allProviders = registry.getAll();
  * ```
+ * @public
  */
 export interface ISecretProviderRegistry {
   /**
    * Registers a secret provider with the given name.
-   *
    * @param name - Unique identifier for the provider. Should match provider.getName()
    * @param provider - The secret provider implementation to register
    * @throws {Error} If a provider with the same name is already registered
@@ -113,7 +112,6 @@ export interface ISecretProviderRegistry {
 
   /**
    * Retrieves a registered secret provider by name.
-   *
    * @param name - The name of the provider to retrieve
    * @returns The provider if found, undefined otherwise
    */
@@ -121,7 +119,6 @@ export interface ISecretProviderRegistry {
 
   /**
    * Returns all registered providers as a Map.
-   *
    * @returns A Map containing all registered providers with their names as keys
    */
   getAll(): Map<string, ISecretProvider>;

@@ -11,6 +11,13 @@ import type {
   BreakpointRegistration,
 } from '../types/index.js';
 
+/**
+ * Creates a stub IDebugAdapter for testing formatter behavior.
+ * Returns mock implementation with configurable stack frames.
+ * @param {StackFrame[]} stackFrames - Stack frames to return from getStackTrace
+ * @returns {IDebugAdapter} Stub adapter with no-op methods and provided stack frames
+ * @internal
+ */
 function createAdapterStub(stackFrames: StackFrame[]): IDebugAdapter {
   const adapter: Partial<IDebugAdapter> = {
     connect: async () => {},

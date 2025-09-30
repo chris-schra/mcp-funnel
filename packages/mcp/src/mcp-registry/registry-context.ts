@@ -54,6 +54,7 @@ import { filterRegistriesByName } from './utils/registry-filter.js';
  *
  * These options allow dependency injection for different implementations
  * across development phases and testing scenarios.
+ * @public
  */
 export interface RegistryContextOptions {
   /** Custom cache implementation. Defaults to NoOpCache for MVP */
@@ -75,6 +76,18 @@ export interface RegistryContextOptions {
  * Provides a single point of access for all registry operations including
  * server search, detailed information retrieval, temporary server management,
  * and configuration persistence.
+ * @example
+ * ```typescript
+ * // Initialize singleton on first use
+ * const context = RegistryContext.getInstance(config, { configPath: './config.json' });
+ *
+ * // Search across all registries
+ * const result = await context.searchServers('github');
+ *
+ * // Get detailed server information
+ * const server = await context.getServerDetails('server-uuid');
+ * ```
+ * @public
  */
 export class RegistryContext {
   /** Singleton instance */
@@ -97,9 +110,9 @@ export class RegistryContext {
    *
    * Initializes all dependencies with MVP defaults and creates registry clients
    * for each configured registry URL.
-   *
-   * @param config - Proxy configuration containing registry URLs and settings
-   * @param options - Optional dependency injection for custom implementations
+   * @param config
+   * @param options
+   * @internal
    */
   private constructor(
     private readonly config: ProxyConfig,
@@ -145,11 +158,10 @@ export class RegistryContext {
    *
    * **First Call:** Must provide config parameter to initialize the singleton.
    * **Subsequent Calls:** Config parameter is optional and will be ignored.
-   *
-   * @param config - Proxy configuration (required on first call only)
-   * @param options - Optional dependency injection settings
-   * @returns The singleton RegistryContext instance
+   * @param config
+   * @param options
    * @throws Error if config is not provided on first access
+   * @public
    */
   public static getInstance(
     config?: ProxyConfig,
@@ -171,6 +183,7 @@ export class RegistryContext {
    *
    * Primarily used for testing to ensure clean state between test runs.
    * In production, this should rarely be needed.
+   * @internal
    */
   public static reset(): void {
     RegistryContext.instance = null;
@@ -182,10 +195,9 @@ export class RegistryContext {
    * This method aggregates search results from all registry clients, handling
    * errors gracefully to ensure that failures in individual registries don't
    * prevent getting results from others.
-   *
-   * @param keywords - Search terms to query across registries
-   * @param registry - Optional registry filter to search within specific registry
-   * @returns Promise resolving to aggregated search results
+   * @param keywords
+   * @param registry
+   * @public
    */
   public async searchServers(
     keywords: string,
@@ -247,9 +259,8 @@ export class RegistryContext {
    *
    * Tries each configured registry in sequence until the server is found.
    * Returns null if the server is not found in any registry.
-   *
-   * @param registryId - Unique identifier for the server in the registry
-   * @returns Promise resolving to server details or null if not found
+   * @param registryId
+   * @public
    */
   public async getServerDetails(
     registryId: string,
@@ -297,9 +308,8 @@ export class RegistryContext {
    *
    * This creates a temporary server configuration that can be used immediately
    * without persisting to the main configuration file.
-   *
-   * @param server - Server configuration to enable temporarily
-   * @returns Promise resolving to unique server identifier
+   * @param server
+   * @public
    */
   public async enableTemporary(server: ServerConfig): Promise<string> {
     console.info(`[RegistryContext] Enabling temporary server: ${server.name}`);
@@ -311,10 +321,9 @@ export class RegistryContext {
    *
    * This moves a temporary server from the temporary registry to the persistent
    * configuration, making it available across application restarts.
-   *
-   * @param serverName - Name of the temporary server to make persistent
-   * @returns Promise resolving when persistence operation completes
+   * @param serverName
    * @throws Error if server is not found or persistence fails
+   * @public
    */
   public async persistTemporary(serverName: string): Promise<void> {
     console.info(
@@ -337,8 +346,7 @@ export class RegistryContext {
 
   /**
    * Checks if any registries are configured and available.
-   *
-   * @returns True if at least one registry is configured, false otherwise
+   * @public
    */
   public hasRegistries(): boolean {
     return this.registryClients.size > 0;
@@ -349,9 +357,8 @@ export class RegistryContext {
    *
    * Converts registry server metadata into a standardized ServerConfig that can
    * be used for server spawning or configuration persistence.
-   *
-   * @param server - Registry server data to convert
-   * @returns Server configuration ready for use
+   * @param server
+   * @public
    */
   public async generateServerConfig(
     server: RegistryServer,
@@ -364,9 +371,8 @@ export class RegistryContext {
    *
    * Provides everything needed to install and configure a server, including
    * the configuration snippet and human-readable installation instructions.
-   *
-   * @param server - Registry server to generate install info for
-   * @returns Complete installation information
+   * @param server
+   * @public
    */
   public async generateInstallInfo(
     server: RegistryServer,

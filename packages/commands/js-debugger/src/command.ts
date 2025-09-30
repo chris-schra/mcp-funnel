@@ -14,28 +14,59 @@ import type {
 } from './types/index.js';
 
 /**
- * Refactored js-debugger command - thin orchestrator following SEAMS architecture
+ * JavaScript debugger command supporting Node.js and browser debugging via Chrome DevTools Protocol.
  *
- * This class is now a thin orchestrator that delegates to specialized handlers,
- * eliminating the 800+ line monolithic command class and applying SEAMS and DRY principles.
+ * A thin orchestrator that delegates debugging operations to specialized handlers.
+ * This architecture eliminates the previous 800+ line monolithic implementation
+ * by applying SEAMS principles for extensibility and DRY for maintainability.
  *
- * SEAMS (extension points):
- * - IToolHandler: New MCP tools can be added by implementing this interface
- * - IResponseFormatter: Different response formats can be plugged in
- * - ISessionValidator: Session validation logic can be customized
- * - IMockSessionManager: Mock behavior can be modified or extended
- * - ToolRegistration: Centralized tool registration and MCP definitions
+ * The command manages debug sessions through a session manager singleton and routes
+ * tool invocations to appropriate handlers based on the tool name. It supports both
+ * mock mode (for testing) and real CDP connections (for actual debugging).
  *
- * DRY eliminations:
- * - JSON response formatting consolidated in DebugResponseFormatter
- * - Session validation logic consolidated in SessionValidator
- * - Mock session logic separated into MockSessionManager
- * - Tool registration logic extracted to ToolRegistration
- * - Common error handling patterns shared across handlers
+ * Architecture highlights:
+ * - Handler-based design: Each debug operation (debug, continue, get_stacktrace, etc.)
+ *   has its own handler implementing IToolHandler
+ * - Centralized formatting: All MCP responses go through DebugResponseFormatter
+ * - Session lifecycle: SessionManager tracks active/terminated sessions with auto-cleanup
+ * - Mock support: MockSessionManager provides test doubles without real process spawning
+ *
+ * Extension points (SEAMS):
+ * - IToolHandler: Add new debug operations by implementing this interface
+ * - IResponseFormatter: Customize MCP response formatting
+ * - ISessionValidator: Extend session validation rules
+ * - IMockSessionManager: Modify mock behavior for testing
+ * @example Basic usage through MCP
+ * ```typescript
+ * const command = new JsDebuggerCommand();
+ *
+ * // Start a debug session
+ * const result = await command.executeToolViaMCP('debug', {
+ *   platform: 'node',
+ *   target: './script.js',
+ *   breakpoints: [{ file: './script.js', line: 10 }]
+ * });
+ *
+ * // Get available tools
+ * const tools = command.getMCPDefinitions();
+ * ```
+ * @example Mock mode for testing
+ * ```typescript
+ * const result = await command.executeToolViaMCP('debug', {
+ *   platform: 'node',
+ *   target: './script.js',
+ *   useMock: true  // Uses MockSessionManager instead of real CDP
+ * });
+ * ```
+ * @public
+ * @see file:./session-manager.ts - Session lifecycle management
+ * @see file:./command/tool-registration.ts - Handler registration and MCP definitions
+ * @see file:./adapters/mock-session-manager.ts - Mock implementation for testing
  */
 export class JsDebuggerCommand implements ICommand {
-  readonly name = 'js-debugger';
-  readonly description = 'Debug JavaScript in Node.js or browser environments';
+  public readonly name = 'js-debugger';
+  public readonly description =
+    'Debug JavaScript in Node.js or browser environments';
 
   private sessionManager: ISessionManager;
   private mockSessionManager: IMockSessionManager;
@@ -43,7 +74,7 @@ export class JsDebuggerCommand implements ICommand {
   private sessionValidator: ISessionValidator;
   private toolRegistration: ToolRegistration;
 
-  constructor() {
+  public constructor() {
     // Initialize core services
     this.sessionManager = SessionManager.getInstance();
     this.mockSessionManager = new MockSessionManager();
@@ -58,17 +89,47 @@ export class JsDebuggerCommand implements ICommand {
   }
 
   /**
-   * Get MCP tool definitions from centralized registration
+   * Returns MCP tool definitions for all registered debug operations.
+   *
+   * Delegates to ToolRegistration which maintains the centralized registry
+   * of handlers and their corresponding MCP tool schemas. Each tool definition
+   * includes the tool name, description, and input schema for MCP protocol.
+   * @returns {Tool[]} Array of MCP Tool definitions with schemas for debug, continue, get_stacktrace,
+   *          get_variables, search_console_output, list_sessions, stop, and cleanup_sessions
+   * @see file:./command/tool-registration.ts:110 - Tool definition generation
    */
-  getMCPDefinitions(): Tool[] {
+  public getMCPDefinitions(): Tool[] {
     return this.toolRegistration.getMCPDefinitions();
   }
 
   /**
-   * Execute MCP tool via thin orchestration - no more 800+ line switch statement!
-   * This method now simply delegates to the appropriate handler
+   * Executes a debug tool by routing to the appropriate handler.
+   *
+   * This is the main entry point for MCP tool invocations. It performs lookup
+   * in the handler registry, constructs a shared context with all necessary
+   * dependencies, and delegates execution to the matched handler. Errors from
+   * handlers are caught and formatted into MCP-compliant error responses.
+   * @param {string} toolName - Name of the debug tool (e.g., 'debug', 'continue', 'get_stacktrace')
+   * @param {Record<string, unknown>} args - Tool-specific arguments as a JSON object (structure varies per tool)
+   * @returns {Promise<CallToolResult>} MCP-compliant result with text content containing JSON response
+   * @throws {never} Never throws - all errors are caught and returned as formatted error responses
+   * @example Starting a debug session
+   * ```typescript
+   * const result = await command.executeToolViaMCP('debug', {
+   *   platform: 'node',
+   *   target: './app.js',
+   *   breakpoints: [{ file: './app.js', line: 42 }]
+   * });
+   * ```
+   * @example Handling unknown tool
+   * ```typescript
+   * const result = await command.executeToolViaMCP('invalid_tool', {});
+   * // Returns error response with list of available tools
+   * ```
+   * @see file:./types/handlers.ts:22 - ToolHandlerContext interface
+   * @see file:./command/tool-registration.ts:44 - Handler lookup implementation
    */
-  async executeToolViaMCP(
+  public async executeToolViaMCP(
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<CallToolResult> {
@@ -104,9 +165,23 @@ export class JsDebuggerCommand implements ICommand {
   }
 
   /**
-   * CLI execution - preserved for compatibility
+   * Displays debug command capabilities and architecture information.
+   *
+   * This method provides a CLI information view showing the debugger's features,
+   * architecture highlights, and current configuration. It does not start an
+   * interactive debugging session - actual debugging is done through MCP tool invocations.
+   *
+   * The method checks the JS_DEBUGGER_REAL environment variable to display whether
+   * the command is operating in real CDP mode or mock mode.
+   *
+   * This is primarily an informational method. Interactive debugging happens
+   * through the MCP protocol via executeToolViaMCP, not through CLI execution.
+   *
+   * Environment variables:
+   * - JS_DEBUGGER_REAL: Set to 'false' to use mock mode, any other value uses real CDP
+   * @param {string[]} _args - Command line arguments (currently unused, reserved for future CLI options)
    */
-  async executeViaCLI(_args: string[]): Promise<void> {
+  public async executeViaCLI(_args: string[]): Promise<void> {
     const USE_REAL_CDP = process.env.JS_DEBUGGER_REAL !== 'false';
 
     console.info(chalk.blue.bold('\nJavaScript Debugger'));

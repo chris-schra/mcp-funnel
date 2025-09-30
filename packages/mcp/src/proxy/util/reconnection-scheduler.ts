@@ -2,17 +2,29 @@ import { ReconnectionManager } from '@mcp-funnel/core';
 import { prefixedLog, logger } from '../logging.js';
 
 /**
- * Configuration for reconnection scheduling
+ * Configuration for reconnection scheduling with backoff support.
+ * @public
  */
 export interface ReconnectionSchedulerConfig {
+  /** Server name for logging and identification */
   serverName: string;
+  /** Maximum reconnection attempts before giving up */
   maxAttempts: number;
+  /** ReconnectionManager instance that handles backoff strategy */
   reconnectionManager: ReconnectionManager;
 }
 
 /**
- * Schedules and manages reconnection attempts with backoff
- * Extracted to reduce complexity in transport classes
+ * Schedules and manages reconnection attempts with exponential backoff.
+ *
+ * Delegates to ReconnectionManager for backoff scheduling while handling
+ * logging and error propagation. Re-throws errors after max attempts reached.
+ * @param config - Reconnection configuration including manager and limits
+ * @param reconnectFn - Async function to execute reconnection logic
+ * @returns Promise that resolves on success or rejects on failure
+ * @throws {Error} When max reconnection attempts exceeded
+ * @public
+ * @see file:./reconnection-handler.ts - ReconnectionManager creation
  */
 export function scheduleReconnection(
   config: ReconnectionSchedulerConfig,

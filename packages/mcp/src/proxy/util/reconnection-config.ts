@@ -2,17 +2,34 @@ import type { ReconnectableTransportOptions } from '../types.js';
 import type { ReconnectionConfig } from '@mcp-funnel/models';
 
 /**
- * Result of creating normalized reconnection options
+ * Normalized reconnection options with all defaults filled in.
+ * @public
  */
 export interface NormalizedReconnectionOptions {
+  /** Whether health checks are enabled */
   healthChecks: boolean;
+  /** Health check interval in milliseconds */
   healthCheckInterval: number;
+  /** Complete reconnection configuration with all fields required */
   reconnection: Required<ReconnectionConfig>;
 }
 
 /**
- * Creates normalized reconnection options with all defaults filled in
- * Extracted pure function for better testability
+ * Creates normalized reconnection options with all defaults applied.
+ * Fills in missing values with defaults:
+ * - healthChecks: true
+ * - healthCheckInterval: 30000ms
+ * - initialDelayMs: 1000ms
+ * - maxDelayMs: 30000ms
+ * - maxAttempts: 10
+ * - backoffMultiplier: 2
+ * - jitter: 0.25
+ * Also creates alias fields (initialDelay, maxDelay, maxRetries) for backward compatibility.
+ * Extracted as pure function for testability.
+ * @param {ReconnectableTransportOptions} options - Partial reconnection options from configuration
+ * @returns {NormalizedReconnectionOptions} Normalized options with all defaults applied
+ * @public
+ * @see file:../transports/reconnectable-transport.ts:71 - Usage in transport constructor
  */
 export function createNormalizedReconnectionOptions(
   options: ReconnectableTransportOptions,

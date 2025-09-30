@@ -1,3 +1,19 @@
+/**
+ * MCP Funnel web server providing HTTP/WebSocket/SSE APIs for MCPProxy.
+ *
+ * Exposes multiple transport protocols:
+ * - REST API: Server and tool management endpoints
+ * - WebSocket: Real-time bidirectional communication
+ * - Streamable HTTP: MCP protocol SSE transport
+ * - OAuth: Authentication flow endpoints
+ *
+ * Security: Mandatory authentication by default. All API routes protected
+ * except health check (which can be moved before middleware to allow unauthenticated access).
+ * @public
+ * @see file:./dev.ts - Development server entry point
+ * @see file:./auth/auth-factory.ts - Authentication configuration
+ */
+
 import { Hono } from 'hono';
 import { serve, ServerType } from '@hono/node-server';
 import { cors } from 'hono/cors';
@@ -20,14 +36,22 @@ import {
   type InboundAuthConfig,
 } from './auth/index.js';
 
+/**
+ * Configuration options for web server startup.
+ * @public
+ */
 export interface ServerOptions {
+  /** HTTP server port, defaults to 3456 */
   port?: number;
+  /** Bind address, defaults to 0.0.0.0 */
   host?: string;
+  /** Path to static file directory for production UI serving */
   staticPath?: string;
   /**
-   * Configuration for inbound authentication to the proxy server
-   * Authentication is MANDATORY by default for security.
-   * Set DISABLE_INBOUND_AUTH=true environment variable to disable (DEV ONLY)
+   * Inbound authentication configuration.
+   *
+   * Authentication is MANDATORY for security. Server will refuse to start
+   * without this option. Set type: 'none' to disable (development only).
    */
   inboundAuth?: InboundAuthConfig;
 }
@@ -36,6 +60,33 @@ type Variables = {
   mcpProxy: MCPProxy;
 };
 
+/**
+ * Starts MCP Funnel web server with configured transport endpoints.
+ *
+ * Sets up Hono application with:
+ * - CORS and request logging middleware
+ * - Authentication middleware on all /api/* routes
+ * - REST API routes for servers, tools, config
+ * - WebSocket endpoint at /ws with auth validation
+ * - Streamable HTTP transport at /api/streamable/mcp
+ * - Optional static file serving
+ * @param {MCPProxy} mcpProxy - Initialized MCPProxy instance
+ * @param {ServerOptions} options - Server configuration options
+ * @returns {Promise<ServerType>} Promise resolving to Node.js HTTP server instance
+ * @throws {Error} When inboundAuth is not provided (security requirement)
+ * @throws {Error} When authentication configuration is invalid
+ * @example
+ * ```typescript
+ * const proxy = new MCPProxy(config);
+ * await proxy.initialize();
+ *
+ * const server = await startWebServer(proxy, {
+ *   port: 3456,
+ *   inboundAuth: { type: 'bearer', tokens: ['secret'] }
+ * });
+ * ```
+ * @public
+ */
 export async function startWebServer(
   mcpProxy: MCPProxy,
   options: ServerOptions = {},

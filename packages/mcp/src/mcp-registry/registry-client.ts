@@ -1,20 +1,18 @@
 /**
  * MCP Registry Client for interacting with the Model Context Protocol registry API.
  *
- * This client provides a high-level interface for searching and retrieving MCP server
+ * Provides a high-level interface for searching and retrieving MCP server
  * information from the registry, with built-in caching support for improved performance.
  *
- * Key features:
+ * **Key features:**
  * - Server search with keyword-based queries
  * - Individual server detail retrieval
  * - Configurable caching layer with TTL support
  * - Comprehensive error handling
  * - Type-safe API with full TypeScript support
- *
  * @example
  * ```typescript
  * import { MCPRegistryClient } from './registry-client.js';
- * import { NoOpCache } from './implementations/cache-noop.js';
  *
  * // Create client with default no-op cache
  * const client = new MCPRegistryClient('https://registry.modelcontextprotocol.io');
@@ -29,6 +27,7 @@
  *   console.log(`Server: ${server.name} - ${server.description}`);
  * }
  * ```
+ * @public
  */
 
 import type { ServerDetail, RegistryServer } from './types/registry.types.js';
@@ -43,7 +42,9 @@ import {
 
 /**
  * HTTP response interface for registry API responses.
+ *
  * Provides a consistent way to handle both successful and error responses.
+ * @internal
  */
 interface RegistryResponse<T> {
   /** Whether the HTTP request was successful */
@@ -58,7 +59,9 @@ interface RegistryResponse<T> {
 
 /**
  * Search response structure from the real MCP registry API.
+ *
  * The API returns a standardized structure with servers array and metadata.
+ * @internal
  */
 interface SearchResponse {
   /** Array of servers matching the search criteria */
@@ -76,25 +79,21 @@ interface SearchResponse {
  * MCPRegistryClient provides a high-level interface for interacting with the
  * Model Context Protocol registry API.
  *
- * This client handles all the complexity of API communication, caching, and
- * error handling, providing a clean TypeScript interface for registry operations.
+ * Handles all the complexity of API communication, caching, and error handling,
+ * providing a clean TypeScript interface for registry operations.
  *
- * Architecture decisions:
+ * **Architecture decisions:**
  * - Uses dependency injection for cache to support different implementations
  * - Implements comprehensive error handling with logging
  * - Provides type-safe responses with proper null handling
  * - Uses consistent cache key patterns for predictable behavior
  * - Supports configurable TTL for cache entries
  *
- * Error handling strategy:
+ * **Error handling strategy:**
  * - Throws errors for infrastructure failures (network, parsing, server errors)
  * - Returns empty arrays/null only for legitimate "not found" cases
- * - Logs different error types with specific context for debugging:
- *   - Network errors: Connection/fetch failures
- *   - Parsing errors: Malformed JSON responses
- *   - Unexpected errors: Other runtime exceptions
+ * - Logs different error types with specific context for debugging
  * - Allows calling layers to provide meaningful error messages to users
- *
  * @example
  * ```typescript
  * // Basic usage with default cache
@@ -104,6 +103,7 @@ interface SearchResponse {
  * const cache = new InMemoryCache();
  * const clientWithCache = new MCPRegistryClient('https://registry.modelcontextprotocol.io', cache);
  * ```
+ * @public
  */
 export class MCPRegistryClient {
   /** Cache instance for storing API responses */
@@ -120,10 +120,8 @@ export class MCPRegistryClient {
 
   /**
    * Creates a new MCPRegistryClient instance.
-   *
-   * @param baseUrl - The base URL of the MCP registry API (e.g., 'https://registry.modelcontextprotocol.io')
-   * @param cache - Optional cache implementation. Defaults to NoOpCache if not provided
-   *
+   * @param {string} baseUrl - The base URL of the MCP registry API (e.g., 'https://registry.modelcontextprotocol.io')
+   * @param {IRegistryCache<unknown>} [cache] - Optional cache implementation. Defaults to NoOpCache if not provided
    * @example
    * ```typescript
    * // With default no-op cache
@@ -144,25 +142,23 @@ export class MCPRegistryClient {
   /**
    * Searches for MCP servers in the registry based on keywords.
    *
-   * This method performs a keyword-based search across server names, descriptions,
-   * and other metadata. Results are cached to improve performance for repeated queries.
+   * Performs a keyword-based search across server names, descriptions, and other
+   * metadata. Results are cached to improve performance for repeated queries.
    *
-   * Cache behavior:
+   * **Cache behavior:**
    * - Cache key format: `${baseUrl}:search:${keywords}`
    * - TTL: 1 hour (3600000ms)
    * - Cache hits return immediately without API calls
    * - Cache misses trigger API requests and store results
    *
-   * Error handling:
+   * **Error handling:**
    * - Network errors: Logged and thrown
    * - HTTP errors: Logged and thrown
    * - JSON parsing errors: Logged and thrown
    * - Successfully returns empty array only when no servers match
-   *
-   * @param keywords - Search terms to query for (spaces and special characters are URL-encoded)
-   * @returns Promise resolving to array of matching servers (empty array if none found)
-   * @throws Error if network, parsing, or server errors occur
-   *
+   * @param {string} keywords - Search terms to query for (spaces and special characters are URL-encoded)
+   * @returns {Promise<ServerDetail[]>} Promise resolving to array of matching servers (empty array if none found)
+   * @throws {Error} if network, parsing, or server errors occur
    * @example
    * ```typescript
    * // Search for GitHub-related servers
@@ -252,26 +248,24 @@ export class MCPRegistryClient {
   /**
    * Retrieves detailed information for a specific MCP server by its name or ID.
    *
-   * This method intelligently chooses the appropriate API endpoint based on the identifier:
+   * Intelligently chooses the appropriate API endpoint based on the identifier:
    * - For UUIDs: Uses direct GET /v0/servers/{id} endpoint for fast retrieval
    * - For names: Performs search and exact name matching
    *
-   * Cache behavior:
+   * **Cache behavior:**
    * - Cache key format: `${baseUrl}:server:${id}`
    * - TTL: 1 hour (3600000ms)
    * - Cache hits return immediately without API calls
    * - Cache misses trigger appropriate API requests and store results
    *
-   * Error handling:
+   * **Error handling:**
    * - No exact match found: Return null (server not found)
    * - Network errors: Logged and thrown
    * - HTTP errors: Logged and thrown (except 404 which returns null)
    * - JSON parsing errors: Logged and thrown
-   *
-   * @param identifier - The name or UUID of the server to retrieve
-   * @returns Promise resolving to server details or null if not found
-   * @throws Error if network, parsing, or server errors occur
-   *
+   * @param {string} identifier - The name or UUID of the server to retrieve
+   * @returns {Promise<RegistryServer | null>} Promise resolving to server details or null if not found
+   * @throws {Error} if network, parsing, or server errors occur
    * @example
    * ```typescript
    * // Get server details by name
@@ -328,6 +322,12 @@ export class MCPRegistryClient {
     }
   }
 
+  /**
+   * Internal method to fetch server details from the API.
+   * @param {string} identifier - Server name or UUID
+   * @returns {Promise<RegistryServer | null>} Promise resolving to server details or null
+   * @internal
+   */
   private async fetchServerDetails(
     identifier: string,
   ): Promise<RegistryServer | null> {

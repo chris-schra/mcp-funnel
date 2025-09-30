@@ -6,23 +6,56 @@ import type {
   Variable,
 } from '../types/index.js';
 
+/**
+ * Arguments for retrieving variables from a debug session.
+ * @public
+ * @see file:./get-variables-handler.ts:20 - GetVariablesHandler implementation
+ */
 export interface GetVariablesHandlerArgs {
+  /** Session identifier from debug or continue operations */
   sessionId: string;
+  /** Dot-notation path to variable (e.g., 'user', 'user.profile', 'array.0') */
   path: string;
+  /** Stack frame index (defaults to 0 for top frame) */
   frameId?: number;
+  /** Maximum traversal depth (defaults to 3) */
   maxDepth?: number;
 }
 
 /**
- * Handler for getting variables from debug sessions
- * Implements the IToolHandler SEAM for modular tool handling
+ * MCP tool handler for inspecting variables within paused debug sessions.
+ *
+ * Retrieves variable values by dot-notation path, navigating nested objects and
+ * filtering out global scopes. Enriches values with type metadata and prevents
+ * circular references. Truncates large collections (arrays >100, objects >50 props).
+ * @example
+ * ```typescript
+ * await handler.handle({
+ *   sessionId: 'debug-123',
+ *   path: 'user.profile.email',
+ *   frameId: 1,
+ *   maxDepth: 5
+ * }, context);
+ * ```
+ * @public
+ * @see file:../types/handlers.ts:14 - IToolHandler interface
+ * @see file:../sessions/session-validator.ts:77 - Session validation
  */
 export class GetVariablesHandler
   implements IToolHandler<GetVariablesHandlerArgs>
 {
-  readonly name = 'get_variables';
+  public readonly name = 'get_variables';
 
-  async handle(
+  /**
+   * Handles variable retrieval for paused sessions.
+   *
+   * Validates session state, retrieves non-global scopes, and navigates path to find
+   * and enrich the variable. All errors are caught and returned as CallToolResult.
+   * @param {GetVariablesHandlerArgs} args - Variable request parameters
+   * @param {ToolHandlerContext} context - Handler context with session manager and formatters
+   * @returns {Promise<CallToolResult>} MCP-formatted response with variable data or error
+   */
+  public async handle(
     args: GetVariablesHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {
@@ -77,7 +110,14 @@ export class GetVariablesHandler
   }
 
   /**
-   * Get variable by dot-notation path
+   * Resolves variable by dot-notation path through debug scopes.
+   *
+   * Searches scopes for root variable, then navigates nested properties. Returns first
+   * match found (typically local scope). For nested paths, uses simple property access.
+   * @param {Scope[]} scopes - Debug scopes to search (local, closure, block)
+   * @param {string} path - Dot-notation path (e.g., 'user.profile.name')
+   * @param {number} maxDepth - Max traversal depth for enrichment
+   * @returns {Promise<{found: boolean; value?: unknown; type?: string; error?: string}>} Resolution result
    */
   private async getVariableByPath(
     scopes: Scope[],
@@ -147,7 +187,13 @@ export class GetVariablesHandler
   }
 
   /**
-   * Simple path navigation for basic objects
+   * Recursively navigates object properties following a path array.
+   *
+   * Validates each step points to an object before property access.
+   * @param {unknown} currentValue - Current navigation value
+   * @param {string[]} remainingPath - Properties still to navigate
+   * @returns {{value: unknown; type: string}} Final value and type
+   * @throws {Error} When accessing property on null/undefined/primitives
    */
   private navigateSimplePath(
     currentValue: unknown,
@@ -170,7 +216,18 @@ export class GetVariablesHandler
   }
 
   /**
-   * Enrich variable value with type information and structure
+   * Enriches variable values with type metadata and structured formatting.
+   *
+   * Handles primitives, special objects (Date, RegExp, Map, Set), arrays, and plain objects.
+   * Prevents infinite recursion via depth limit and circular detection. Truncates large
+   * collections: arrays >100 items (show 50), objects >50 props (show 50), Map/Set (show 20).
+   * Uses string representation for circular detection (simple, safe, may have false positives).
+   * @param {unknown} value - Value to enrich
+   * @param {string} type - Type hint from debugger
+   * @param {number} maxDepth - Max recursion depth
+   * @param {Set<string>} visitedObjects - Circular reference tracker
+   * @param {number} currentDepth - Current recursion level
+   * @returns {Promise<unknown>} Enriched value with type info or truncation markers
    */
   private async enrichVariableValue(
     value: unknown,
@@ -274,6 +331,15 @@ export class GetVariablesHandler
     return value;
   }
 
+  /**
+   * Formats primitive values with appropriate string representations.
+   *
+   * Handles symbols, functions, and bigints with special formatting. Other primitives
+   * (string, number, boolean, undefined) returned as-is.
+   * @param {unknown} value - Primitive value to format
+   * @param {string} type - Type string from debugger
+   * @returns {unknown} Formatted value for JSON serialization
+   */
   private formatPrimitiveValue(value: unknown, type: string): unknown {
     switch (type) {
       case 'string':

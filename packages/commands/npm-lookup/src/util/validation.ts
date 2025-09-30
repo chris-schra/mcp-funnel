@@ -1,10 +1,18 @@
 /**
- * Parameter validation functions for MCP tool calls
+ * Parameter validation utilities for MCP tool calls.
+ *
+ * Provides type-safe validation for MCP tool parameters with discriminated
+ * union return types, allowing callers to narrow types based on validation result.
+ * @internal
  */
 import { MAX_SEARCH_RESULTS } from '../types.js';
 
 /**
- * Validate packageName parameter from MCP tool args
+ * Validates packageName parameter is a string.
+ * @param {unknown} packageName - Untyped parameter from MCP tool arguments
+ * @returns {{ valid: false; error: string } | { valid: true; value: string }} Discriminated union: success with typed value or error with message
+ * @public
+ * @see file:../../command.ts:93 - Used in lookup tool execution
  */
 export function validatePackageNameParameter(
   packageName: unknown,
@@ -19,7 +27,11 @@ export function validatePackageNameParameter(
 }
 
 /**
- * Validate query parameter from MCP tool args
+ * Validates query parameter is a string.
+ * @param {unknown} query - Untyped parameter from MCP tool arguments
+ * @returns {{ valid: false; error: string } | { valid: true; value: string }} Discriminated union: success with typed value or error with message
+ * @public
+ * @see file:../../command.ts:111 - Used in search tool execution
  */
 export function validateQueryParameter(
   query: unknown,
@@ -31,7 +43,14 @@ export function validateQueryParameter(
 }
 
 /**
- * Validate limit parameter from MCP tool args
+ * Validates limit parameter is a valid number within allowed range.
+ *
+ * Accepts undefined (no limit specified) or a number between 1 and MAX_SEARCH_RESULTS.
+ * Returns a discriminated union to enable type narrowing.
+ * @param {unknown} limit - Untyped parameter from MCP tool arguments
+ * @returns {{ valid: false; error: string } | { valid: true; value: number | undefined }} Discriminated union: success with typed value/undefined or error with message
+ * @public
+ * @see file:../../command.ts:116 - Used in search tool execution
  */
 export function validateLimitParameter(
   limit: unknown,

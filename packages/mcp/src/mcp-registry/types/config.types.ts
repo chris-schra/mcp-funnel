@@ -4,6 +4,7 @@
  * This module defines the configuration structures used by the registry to manage
  * MCP server configurations, including extensions for registry-specific metadata
  * and internal caching mechanisms.
+ * @internal
  */
 
 // Import ServerConfig for both re-export and extension
@@ -19,6 +20,7 @@ export type { ServerConfig };
  * This type is used when storing server configurations that have been fetched
  * from a registry, allowing us to preserve the original registry data alongside
  * the normalized server configuration.
+ * @internal
  */
 export interface RegistryConfigEntry extends Omit<ServerConfig, 'headers'> {
   /**
@@ -49,8 +51,8 @@ export interface RegistryConfigEntry extends Omit<ServerConfig, 'headers'> {
  *
  * Used by the registry system to cache API responses, parsed configurations,
  * and other time-sensitive data with TTL (time-to-live) functionality.
- *
- * @template T The type of the cached value
+ * @typeParam T - The type of the cached value
+ * @internal
  */
 export interface CacheEntry<T = unknown> {
   /** The cached value of type T */

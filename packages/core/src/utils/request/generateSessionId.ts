@@ -1,6 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 
-// just a seam for now
-export function generateSessionId() {
+/**
+ * Generates a unique session ID using UUID v4.
+ *
+ * Simple wrapper around uuid v4 generation, providing a seam for
+ * potential future customization of session ID format.
+ * @returns UUID v4 string for session identification
+ * @public
+ */
+export function generateSessionId(): string {
   return uuidv4();
 }

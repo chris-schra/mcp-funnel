@@ -1,8 +1,15 @@
 /**
  * StreamableHTTP Client Transport Implementation
  *
- * A wrapper around the SDK's StreamableHTTPClientTransport that integrates with our
- * auth provider interface and base transport utilities.
+ * Wrapper around MCP SDK's StreamableHTTPClientTransport that integrates with
+ * our auth provider interface and provides consistent error handling.
+ *
+ * Delegates to SDK transport while adding:
+ * - IAuthProvider integration for header injection
+ * - Consistent logging and error handling
+ * - Auth header refresh on connection recreation
+ * @public
+ * @see file:../util/sdk-transport-helpers.ts - SDK transport integration utilities
  */
 import { StreamableHTTPClientTransport as SDKStreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import {
@@ -26,7 +33,10 @@ import {
   validateStreamableHTTPUrl,
 } from '../util/sdk-transport-helpers.js';
 
-/** Configuration for StreamableHTTP Client Transport */
+/**
+ * Configuration for StreamableHTTP Client Transport.
+ * @public
+ */
 export interface StreamableHTTPClientTransportConfig {
   /** The endpoint URL */
   url: string;
@@ -47,7 +57,10 @@ export interface StreamableHTTPClientTransportConfig {
   };
 }
 
-/** StreamableHTTP Client Transport wrapper that integrates with our architecture */
+/**
+ * StreamableHTTP Client Transport wrapper that integrates with our architecture.
+ * @public
+ */
 export class StreamableHTTPClientTransport implements Transport {
   private readonly config: {
     url: string;
@@ -125,7 +138,14 @@ export class StreamableHTTPClientTransport implements Transport {
     });
   }
 
-  /** Start the transport connection */
+  /**
+   * Starts the transport connection.
+   *
+   * Fetches auth headers if provider configured and recreates transport with auth.
+   * @throws {Error} When transport is closed
+   * @throws {TransportError} When connection or auth fails
+   * @public
+   */
   public async start(): Promise<void> {
     if (this.isStarted) return;
     if (this.isClosed) {
@@ -160,7 +180,16 @@ export class StreamableHTTPClientTransport implements Transport {
     }
   }
 
-  /** Send a JSON-RPC message */
+  /**
+   * Sends a JSON-RPC message.
+   *
+   * Delegates to SDK transport which handles HTTP requests and session management.
+   * @param message - JSON-RPC message to send
+   * @param options - Optional send options (resumption token support)
+   * @throws {Error} When transport is closed or not started
+   * @throws {TransportError} When send fails
+   * @public
+   */
   public async send(
     message: JSONRPCMessage,
     options?: TransportSendOptions,
@@ -198,7 +227,12 @@ export class StreamableHTTPClientTransport implements Transport {
     }
   }
 
-  /** Close the transport and clean up resources */
+  /**
+   * Closes the transport and cleans up resources.
+   *
+   * Idempotent - safe to call multiple times.
+   * @public
+   */
   public async close(): Promise<void> {
     if (this.isClosed) return;
     try {
@@ -218,13 +252,26 @@ export class StreamableHTTPClientTransport implements Transport {
     }
   }
 
-  /** Set protocol version (MCP SDK requirement) */
+  /**
+   * Sets the MCP protocol version.
+   *
+   * Delegates to SDK transport.
+   * @param version - Protocol version string
+   * @public
+   */
   public setProtocolVersion?(version: string): void {
     this.sdkTransport.setProtocolVersion(version);
     logEvent('debug', `${this.logPrefix}:protocol-version`, { version });
   }
 
-  /** Complete OAuth authorization */
+  /**
+   * Completes OAuth authorization flow.
+   *
+   * Delegates to SDK transport's OAuth handling.
+   * @param authorizationCode - Authorization code from OAuth callback
+   * @throws {TransportError} When authorization completion fails
+   * @public
+   */
   public async finishAuth(authorizationCode: string): Promise<void> {
     try {
       await this.sdkTransport.finishAuth(authorizationCode);
@@ -241,7 +288,12 @@ export class StreamableHTTPClientTransport implements Transport {
     }
   }
 
-  /** Terminate the current session */
+  /**
+   * Terminates the current session.
+   *
+   * Sends session termination request to server via SDK transport.
+   * @public
+   */
   public async terminateSession(): Promise<void> {
     try {
       await this.sdkTransport.terminateSession();
@@ -257,12 +309,20 @@ export class StreamableHTTPClientTransport implements Transport {
     }
   }
 
-  /** Get the current protocol version */
+  /**
+   * Gets the current protocol version.
+   * @public
+   */
   public get protocolVersion(): string | undefined {
     return this.sdkTransport.protocolVersion;
   }
 
-  /** Upgrade transport while preserving auth headers and state */
+  /**
+   * Upgrades transport type while preserving auth headers and state.
+   * @param _type - Target transport type (currently unused)
+   * @throws {Error} When transport is closed
+   * @public
+   */
   public async upgradeTransport(
     _type: 'websocket' | 'sse' | 'http',
   ): Promise<void> {
@@ -274,7 +334,12 @@ export class StreamableHTTPClientTransport implements Transport {
     }
   }
 
-  /** Recreate SDK transport with auth headers */
+  /**
+   * Recreates SDK transport with current auth headers.
+   *
+   * Used during start() and upgrade operations to inject auth headers.
+   * @private
+   */
   private async recreateTransportWithAuth(): Promise<void> {
     const requestInitWithAuth = mergeAuthHeaders(
       this.config.requestInit,

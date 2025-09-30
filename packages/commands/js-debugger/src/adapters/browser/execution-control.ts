@@ -4,6 +4,10 @@ import { BrowserEventHandlers } from './event-handlers.js';
 
 /**
  * Manages execution control for browser debugging (stepping, evaluation)
+ *
+ * Provides methods to control debugger execution flow including resuming,
+ * stepping through code, and evaluating expressions in the paused context.
+ * @internal
  */
 export class ExecutionControl {
   private cdpClient: CDPClient;
@@ -15,7 +19,9 @@ export class ExecutionControl {
   }
 
   /**
-   * Continue execution
+   * Resume execution until next breakpoint or completion.
+   * @returns Promise resolving to running state
+   * @throws {Error} When CDP resume command fails
    */
   async continue(): Promise<DebugState> {
     try {
@@ -29,7 +35,10 @@ export class ExecutionControl {
   }
 
   /**
-   * Step over current line
+   * Step over the current line, executing function calls without entering them.
+   * @param debugState - Current debug state to preserve and return
+   * @returns Promise resolving to the provided debug state (updated by event handlers)
+   * @throws {Error} When CDP stepOver command fails
    */
   async stepOver(debugState: DebugState): Promise<DebugState> {
     try {
@@ -43,7 +52,10 @@ export class ExecutionControl {
   }
 
   /**
-   * Step into function call
+   * Step into the next function call, entering function bodies.
+   * @param debugState - Current debug state to preserve and return
+   * @returns Promise resolving to the provided debug state (updated by event handlers)
+   * @throws {Error} When CDP stepInto command fails
    */
   async stepInto(debugState: DebugState): Promise<DebugState> {
     try {
@@ -57,7 +69,10 @@ export class ExecutionControl {
   }
 
   /**
-   * Step out of current function
+   * Step out of the current function, continuing until the caller is reached.
+   * @param debugState - Current debug state to preserve and return
+   * @returns Promise resolving to the provided debug state (updated by event handlers)
+   * @throws {Error} When CDP stepOut command fails
    */
   async stepOut(debugState: DebugState): Promise<DebugState> {
     try {
@@ -71,7 +86,14 @@ export class ExecutionControl {
   }
 
   /**
-   * Evaluate an expression in the current context
+   * Evaluate a JavaScript expression in the context of the top call frame.
+   *
+   * Uses the first frame's callFrameId to evaluate the expression with access
+   * to the current scope and variables. Returns evaluation results including
+   * value, type, and any errors encountered.
+   * @param expression - JavaScript expression to evaluate
+   * @param currentCallFrames - Stack frames from paused debugger (uses first frame)
+   * @returns Promise resolving to evaluation result with value, type, and optional error
    */
   async evaluate(
     expression: string,

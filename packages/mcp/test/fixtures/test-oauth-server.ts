@@ -49,7 +49,8 @@ export class TestOAuthServer {
   }
 
   /**
-   * Start the OAuth server
+   * Starts the OAuth server and returns port and URL
+   * @returns Server port and URL
    */
   public async start(): Promise<{ port: number; url: string }> {
     return new Promise((resolve, reject) => {
@@ -73,9 +74,7 @@ export class TestOAuthServer {
     });
   }
 
-  /**
-   * Stop the OAuth server
-   */
+  /** Stops the OAuth server */
   public async stop(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server.close((error?: Error) => {
@@ -89,14 +88,17 @@ export class TestOAuthServer {
   }
 
   /**
-   * Get information about issued tokens (for test verification)
+   * Returns all issued tokens for test verification
+   * @returns Array of issued tokens
    */
   public getIssuedTokens(): TestToken[] {
     return Array.from(this.issuedTokens.values());
   }
 
   /**
-   * Check if a token is valid
+   * Checks if a token is valid and not expired
+   * @param token - Access token to validate
+   * @returns True if token is valid
    */
   public isTokenValid(token: string): boolean {
     const issuedToken = this.issuedTokens.get(token);
@@ -110,7 +112,8 @@ export class TestOAuthServer {
   }
 
   /**
-   * Expire a specific token (for testing token refresh scenarios)
+   * Expires a specific token for testing refresh scenarios
+   * @param token - Access token to expire
    */
   public expireToken(token: string): void {
     const issuedToken = this.issuedTokens.get(token);
@@ -120,7 +123,9 @@ export class TestOAuthServer {
   }
 
   /**
-   * Handle incoming HTTP requests
+   * Handles incoming HTTP requests to the OAuth server
+   * @param req
+   * @param res
    */
   private async handleRequest(
     req: IncomingMessage,
@@ -180,7 +185,9 @@ export class TestOAuthServer {
   }
 
   /**
-   * Handle OAuth2 token requests (Client Credentials flow)
+   * Handles OAuth2 token requests using Client Credentials flow
+   * @param req
+   * @param res
    */
   private async handleTokenRequest(
     req: IncomingMessage,
@@ -258,7 +265,9 @@ export class TestOAuthServer {
   }
 
   /**
-   * Handle requests to protected resources (for testing token validation)
+   * Handles requests to protected resources for testing token validation
+   * @param req
+   * @param res
    */
   private async handleProtectedRequest(
     req: IncomingMessage,
@@ -297,7 +306,8 @@ export class TestOAuthServer {
   }
 
   /**
-   * Parse request body as text
+   * Parses request body as text
+   * @param req
    */
   private async parseRequestBody(req: IncomingMessage): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -313,7 +323,10 @@ export class TestOAuthServer {
   }
 
   /**
-   * Send JSON response
+   * Sends JSON response with given status code
+   * @param res
+   * @param statusCode
+   * @param data
    */
   private sendJsonResponse(
     res: ServerResponse,
@@ -328,7 +341,8 @@ export class TestOAuthServer {
 }
 
 /**
- * Helper function to create and start a test OAuth server
+ * Creates and starts a test OAuth server with given config
+ * @param config
  */
 export async function createTestOAuthServer(
   config?: TestOAuthServerConfig,

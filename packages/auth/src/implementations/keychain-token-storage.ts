@@ -22,9 +22,20 @@ const execFileAsync = promisify(execFile);
  * - Linux: Falls back to encrypted file storage with restrictive permissions
  *
  * No external dependencies - uses OS built-in commands and APIs following security protocols
- *
+ * @remarks
  * Security: All command execution uses execFile with argument arrays to prevent
  * command injection attacks. ServerIds are validated against a strict regex.
+ * @example
+ * ```typescript
+ * const storage = new KeychainTokenStorage('my-server-id');
+ * await storage.store({
+ *   accessToken: 'token123',
+ *   expiresAt: new Date(Date.now() + 3600000)
+ * });
+ * const token = await storage.retrieve();
+ * ```
+ * @public
+ * @see file:./util/keychain-utils.ts - Utility functions for token serialization
  */
 export class KeychainTokenStorage implements ITokenStorage {
   private readonly serviceName = 'mcp-funnel';
@@ -37,6 +48,9 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Store token data securely using OS keychain
+   * @param token - Token data to store including access token and expiry
+   * @throws {Error} When neither keychain storage nor file fallback succeeds
+   * @public
    */
   public async store(token: TokenData): Promise<void> {
     const key = `${this.serviceName}:${this.serverId}`;
@@ -64,6 +78,8 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Retrieve token data from OS keychain
+   * @returns Token data if found, null if not found or retrieval failed
+   * @public
    */
   public async retrieve(): Promise<TokenData | null> {
     const key = `${this.serviceName}:${this.serverId}`;
@@ -94,6 +110,10 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Remove token from OS keychain
+   * @remarks
+   * Attempts to remove from both keychain and file storage.
+   * Does not throw if removal fails - logs failures as debug events.
+   * @public
    */
   public async clear(): Promise<void> {
     const key = `${this.serviceName}:${this.serverId}`;
@@ -123,6 +143,8 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Check if stored token is expired
+   * @returns True if token is expired or not found, false if valid token exists
+   * @public
    */
   public async isExpired(): Promise<boolean> {
     const token = await this.retrieve();
@@ -138,6 +160,10 @@ export class KeychainTokenStorage implements ITokenStorage {
   /**
    * Store token in OS keychain using platform-specific commands
    * Uses execFile with argument arrays to prevent command injection
+   * @param key - Storage key in format serviceName:serverId
+   * @param value - Serialized token data to store
+   * @throws {Error} When keychain command fails or platform is unsupported
+   * @internal
    */
   private async storeInKeychain(key: string, value: string): Promise<void> {
     if (process.platform === 'darwin') {
@@ -168,6 +194,10 @@ export class KeychainTokenStorage implements ITokenStorage {
   /**
    * Retrieve token from OS keychain using platform-specific commands
    * Uses execFile with argument arrays to prevent command injection
+   * @param key - Storage key in format serviceName:serverId
+   * @returns Serialized token data from keychain
+   * @throws {Error} When keychain command fails or platform is unsupported
+   * @internal
    */
   private async retrieveFromKeychain(key: string): Promise<string> {
     if (process.platform === 'darwin') {
@@ -213,6 +243,9 @@ export class KeychainTokenStorage implements ITokenStorage {
   /**
    * Remove token from OS keychain using platform-specific commands
    * Uses execFile with argument arrays to prevent command injection
+   * @param key - Storage key in format serviceName:serverId
+   * @throws {Error} When keychain command fails or platform is unsupported
+   * @internal
    */
   private async removeFromKeychain(key: string): Promise<void> {
     if (process.platform === 'darwin') {
@@ -235,6 +268,10 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Store token in secure file as fallback (Linux/when keychain fails)
+   * @param key - Storage key in format serviceName:serverId
+   * @param value - Serialized token data to store
+   * @throws {Error} When file system operations fail
+   * @internal
    */
   private async storeInFile(key: string, value: string): Promise<void> {
     const filename = getFilename(key);
@@ -254,6 +291,10 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Retrieve token from secure file fallback
+   * @param key - Storage key in format serviceName:serverId
+   * @returns Serialized token data from file
+   * @throws {Error} When file read fails or file doesn't exist
+   * @internal
    */
   private async retrieveFromFile(key: string): Promise<string> {
     const filename = getFilename(key);
@@ -265,6 +306,9 @@ export class KeychainTokenStorage implements ITokenStorage {
 
   /**
    * Remove token from secure file fallback
+   * @param key - Storage key in format serviceName:serverId
+   * @throws {Error} When file deletion fails (ignores ENOENT)
+   * @internal
    */
   private async removeFromFile(key: string): Promise<void> {
     const filename = getFilename(key);

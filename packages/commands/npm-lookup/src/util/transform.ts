@@ -1,5 +1,10 @@
 /**
- * Data transformation functions for NPM API responses
+ * Data transformation utilities for NPM Registry API responses.
+ *
+ * Transforms raw NPM Registry API responses into normalized application types,
+ * handling various inconsistent formats and applying data sanitization like
+ * text truncation for large fields.
+ * @internal
  */
 import type {
   PackageInfo,
@@ -12,7 +17,13 @@ import type {
 import { truncateText } from './text.js';
 
 /**
- * Normalize author field from NPM package data
+ * Normalizes author field from various NPM package data formats.
+ *
+ * NPM API can return author as string, object with name property, or undefined.
+ * This function extracts the author name string consistently.
+ * @param {string | { name?: string } | undefined} author - Author data from NPM API in any supported format
+ * @returns {string | undefined} Author name string or undefined if not present
+ * @internal
  */
 function normalizeAuthor(
   author: string | { name?: string } | undefined,
@@ -27,7 +38,13 @@ function normalizeAuthor(
 }
 
 /**
- * Normalize license field from NPM package data
+ * Normalizes license field from various NPM package data formats.
+ *
+ * NPM API can return license as string, object with type property, or undefined.
+ * This function extracts the license type string consistently.
+ * @param {string | { type?: string } | undefined} license - License data from NPM API in any supported format
+ * @returns {string | undefined} License type string or undefined if not present
+ * @internal
  */
 function normalizeLicense(
   license: string | { type?: string } | undefined,
@@ -42,7 +59,27 @@ function normalizeLicense(
 }
 
 /**
- * Transform raw NPM package response to our PackageInfo format
+ * Transforms raw NPM Registry package response to normalized PackageInfo format.
+ *
+ * Extracts and normalizes data from the NPM Registry's package endpoint response,
+ * including handling various format inconsistencies, resolving the latest version,
+ * and applying text truncation to prevent excessively large responses.
+ *
+ * Key transformations:
+ * - Resolves latest version from dist-tags
+ * - Normalizes author and license fields (string or object)
+ * - Truncates README to 5000 chars and description to 500 chars
+ * - Falls back to version-specific data when package-level data missing
+ * @param {NPMPackageResponse} data - Raw NPM Registry package response
+ * @returns {PackageInfo} Normalized package information
+ * @example
+ * ```typescript
+ * const raw = await fetch('https://registry.npmjs.org/react');
+ * const packageInfo = transformPackageResponse(raw);
+ * // { name: 'react', version: '18.2.0', description: '...', ... }
+ * ```
+ * @public
+ * @see file:../../npm-client.ts:92 - Used after fetching package data
  */
 export function transformPackageResponse(
   data: NPMPackageResponse,
@@ -79,7 +116,21 @@ export function transformPackageResponse(
 }
 
 /**
- * Transform raw NPM search response to our SearchResults format
+ * Transforms raw NPM Registry search response to normalized SearchResults format.
+ *
+ * Maps the NPM Registry search endpoint response into a simplified format,
+ * extracting key fields and applying description truncation to keep response
+ * size manageable.
+ * @param {NPMSearchResponse} data - Raw NPM Registry search response
+ * @returns {SearchResults} Normalized search results with total count
+ * @example
+ * ```typescript
+ * const raw = await fetch('https://registry.npmjs.org/-/v1/search?text=react');
+ * const results = transformSearchResponse(raw);
+ * // { results: [...], total: 15234 }
+ * ```
+ * @public
+ * @see file:../../npm-client.ts:148 - Used after searching packages
  */
 export function transformSearchResponse(
   data: NPMSearchResponse,

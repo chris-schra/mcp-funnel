@@ -1,14 +1,26 @@
 /**
  * Base Client Transport Implementation
  *
- * Shared functionality for client transports to eliminate DRY violations.
- * Contains common logic for:
- * - Pending request management
- * - Message correlation
- * - Auth provider integration
- * - Reconnection management
- * - Data sanitization
- * - Lifecycle management
+ * Abstract base class providing shared functionality for MCP client transports.
+ * Eliminates code duplication across SSE, WebSocket, and HTTP transport implementations.
+ *
+ * Key responsibilities:
+ * - Pending request tracking with timeout management
+ * - JSON-RPC message correlation by request ID
+ * - Auth provider integration with automatic header injection
+ * - Reconnection management with exponential backoff
+ * - Lifecycle management (start, send, close)
+ * - Error handling and sanitization
+ *
+ * Subclasses must implement connection-specific methods:
+ * - validateAndNormalizeUrl() - URL validation for transport protocol
+ * - connect() - Establish connection
+ * - sendMessage() - Send message over transport
+ * - closeConnection() - Clean up connection resources
+ * @public
+ * @see file:./sse-client-transport.ts - SSE implementation
+ * @see file:./websocket-client-transport.ts - WebSocket implementation
+ * @see file:./streamable-http-client-transport.ts - HTTP implementation
  */
 
 import {
@@ -32,7 +44,11 @@ import { executeHttpRequest } from './utils/http-request.js';
 import { parseMessage } from './utils/message-parser.js';
 
 /**
- * Pending request state for message correlation
+ * Pending request state for JSON-RPC message correlation.
+ *
+ * Tracks in-flight requests awaiting responses, enabling timeout management
+ * and proper promise resolution/rejection when responses arrive.
+ * @public
  */
 export interface PendingRequest {
   /** Promise resolve function */
@@ -46,7 +62,8 @@ export interface PendingRequest {
 }
 
 /**
- * Base configuration for client transports
+ * Base configuration for client transports.
+ * @public
  */
 export interface BaseClientTransportConfig {
   /** The endpoint URL */
@@ -60,7 +77,8 @@ export interface BaseClientTransportConfig {
 }
 
 /**
- * Base transport class with shared functionality
+ * Base transport class with shared functionality for MCP client transports.
+ * @public
  */
 export abstract class BaseClientTransport implements Transport {
   protected readonly config: {
@@ -112,7 +130,11 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Start the transport connection and message processing
+   * Starts the transport connection and enables message processing.
+   *
+   * Idempotent - multiple calls are safe but only the first takes effect.
+   * @throws {TransportError} When connection fails
+   * @public
    */
   public async start(): Promise<void> {
     if (this.isStarted) {
@@ -124,7 +146,16 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Send a JSON-RPC message to the server
+   * Sends a JSON-RPC message to the server with automatic ID generation and timeout handling.
+   *
+   * For requests (messages with method), generates request ID if missing and creates
+   * a promise that resolves when the response arrives or rejects on timeout.
+   * For responses/notifications, sends immediately without correlation.
+   * @param message - JSON-RPC message to send
+   * @param _options - Transport send options (currently unused)
+   * @throws {Error} When transport is closed
+   * @throws {Error} When request times out after configured timeout
+   * @public
    */
   public async send(
     message: JSONRPCMessage,
@@ -182,7 +213,11 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Close the transport and clean up resources
+   * Closes the transport and cleans up all resources.
+   *
+   * Cancels reconnection attempts, closes connection, aborts pending requests,
+   * and triggers the onclose callback. Idempotent - safe to call multiple times.
+   * @public
    */
   public async close(): Promise<void> {
     if (this.isClosed) {
@@ -216,14 +251,22 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Set protocol version (MCP SDK requirement)
+   * Sets the MCP protocol version.
+   *
+   * Called by MCP SDK after protocol negotiation during initialization.
+   * @param version - Protocol version string (e.g., "1.0")
+   * @public
    */
   public setProtocolVersion?(version: string): void {
     logEvent('debug', `${this.logPrefix}:protocol-version`, { version });
   }
 
   /**
-   * Handle successful connection
+   * Handles successful connection establishment.
+   *
+   * Resets reconnection counter and generates session ID.
+   * Called by subclass when connection is established.
+   * @protected
    */
   protected handleConnectionOpen(): void {
     // Reset reconnection counter on successful connection
@@ -238,7 +281,12 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Handle received message from connection
+   * Handles received JSON-RPC messages with automatic response correlation.
+   *
+   * For messages with an ID, attempts to match with pending requests and
+   * resolve/reject the corresponding promise. Always forwards to onmessage callback.
+   * @param message - Received JSON-RPC message
+   * @protected
    */
   protected handleMessage(message: JSONRPCMessage): void {
     logEvent('debug', `${this.logPrefix}:message-received`, {
@@ -274,7 +322,12 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Handle connection error
+   * Handles connection errors with automatic retry for retryable errors.
+   *
+   * Converts errors to TransportError if needed, logs the error, triggers
+   * onerror callback, and schedules reconnection if the error is retryable.
+   * @param error - Error that occurred
+   * @protected
    */
   protected handleConnectionError(error: Error): void {
     const transportError =
@@ -301,7 +354,14 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Handle connection close
+   * Handles connection close with optional reconnection scheduling.
+   *
+   * Logs the closure, triggers onerror callback if error provided, and schedules
+   * reconnection if appropriate and not manually closed.
+   * @param reason - Optional close reason string
+   * @param shouldReconnect - Whether to attempt reconnection
+   * @param error - Optional error that caused the closure
+   * @protected
    */
   protected handleConnectionClose(
     reason?: string,
@@ -327,7 +387,10 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Get auth headers if auth provider is configured
+   * Gets authentication headers from the configured auth provider.
+   * @returns Auth headers object (empty if no provider configured)
+   * @throws {TransportError} When authentication fails
+   * @protected
    */
   protected async getAuthHeaders(): Promise<Record<string, string>> {
     if (!this.config.authProvider) {
@@ -348,7 +411,13 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Execute HTTP request with auth headers, 401 handling, and retry logic
+   * Executes HTTP POST request with auth headers, 401 handling, and retry logic.
+   *
+   * Delegates to shared utility function that handles token refresh on 401.
+   * @param message - JSON-RPC message to send
+   * @param signal - AbortSignal for timeout control
+   * @throws {TransportError} When request fails
+   * @protected
    */
   protected async executeHttpRequest(
     message: JSONRPCMessage,
@@ -365,20 +434,58 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /**
-   * Parse message with error handling
+   * Parses JSON-RPC message with error handling and logging.
+   *
+   * Delegates to shared utility that validates JSON-RPC structure.
+   * @param data - Raw message string
+   * @returns Parsed JSON-RPC message
+   * @throws {Error} When parsing or validation fails
+   * @protected
    */
   protected parseMessage(data: string): JSONRPCMessage {
     return parseMessage(data, this.logPrefix, this.onerror);
   }
 
-  // Abstract methods that subclasses must implement
+  /**
+   * Validates and normalizes the URL for the specific transport protocol.
+   *
+   * Subclasses should enforce protocol requirements (e.g., WSS in production)
+   * and throw TransportError.invalidUrl() if validation fails.
+   * @param config - Transport configuration containing URL
+   * @throws {TransportError} When URL is invalid for this transport
+   * @protected
+   */
   protected abstract validateAndNormalizeUrl(
     config: BaseClientTransportConfig,
   ): void;
 
+  /**
+   * Establishes the transport connection.
+   *
+   * Called by start() after ensuring transport is not already started.
+   * Should set up connection and event handlers.
+   * @throws {TransportError} When connection fails
+   * @protected
+   */
   protected abstract connect(): Promise<void>;
 
+  /**
+   * Sends a message over the established connection.
+   *
+   * Called by send() after handling request correlation setup.
+   * Should transmit the message using the transport protocol.
+   * @param message - JSON-RPC message to send
+   * @throws {TransportError} When send fails
+   * @protected
+   */
   protected abstract sendMessage(message: JSONRPCMessage): Promise<void>;
 
+  /**
+   * Closes the underlying connection and cleans up resources.
+   *
+   * Called by close() after handling pending requests.
+   * Should remove event listeners and close connections.
+   * @protected
+   */
   protected abstract closeConnection(): Promise<void>;
 }

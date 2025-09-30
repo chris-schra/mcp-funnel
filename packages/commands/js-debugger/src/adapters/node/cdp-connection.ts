@@ -1,3 +1,5 @@
+/* eslint-disable max-lines */
+
 import Emittery from 'emittery';
 import WebSocket from 'ws';
 import type { ITypedCDPClient } from '../../types/index.js';
@@ -8,7 +10,12 @@ import type {
 } from '../../cdp/types.js';
 
 /**
- * CDP Message interface matching Chrome DevTools Protocol format
+ * CDP Message interface matching Chrome DevTools Protocol format.
+ *
+ * Represents the structure of messages exchanged over the WebSocket connection
+ * with Chrome DevTools Protocol. Includes both command/response messages (with id)
+ * and event notifications (without id).
+ * @internal
  */
 interface CDPMessage {
   id?: number;
@@ -19,8 +26,13 @@ interface CDPMessage {
 }
 
 /**
- * Typed CDP events map for Emittery
- * Using optional data for better compatibility
+ * Typed CDP events map for Emittery-based event handling.
+ *
+ * Defines the event types and their associated parameter types for type-safe
+ * event subscription. Events use optional data types to handle cases where
+ * CDP may not always provide parameters.
+ * @internal
+ * @see file:../../cdp/types.ts - CDP type definitions
  */
 interface CDPEvents {
   'Debugger.paused': CDPDebuggerPausedParams | undefined;
@@ -35,11 +47,48 @@ interface CDPEvents {
 }
 
 /**
- * CDP Connection Handler
+ * CDP Connection Handler for Chrome DevTools Protocol communication.
  *
- * Handles WebSocket connection to Chrome DevTools Protocol,
- * manages message ID tracking and request/response correlation,
- * and provides a typed send() method that returns promises.
+ * Manages WebSocket connections to CDP endpoints, handles message correlation
+ * via request/response ID tracking, and provides both typed and untyped event
+ * handling interfaces. Implements the ITypedCDPClient interface for compatibility
+ * with debug adapters while offering enhanced type-safe event subscription through
+ * Emittery.
+ *
+ * Key features:
+ * - Automatic message ID generation and correlation
+ * - Promise-based command execution with 10-second timeout
+ * - Type-safe event handling via onTyped() method
+ * - Backward-compatible untyped on()/off() interface
+ * - Automatic cleanup of pending requests on disconnect
+ * @example Basic usage
+ * ```typescript
+ * const cdp = new CDPConnection();
+ * await cdp.connect('ws://localhost:9229/devtools/page/ABC123');
+ *
+ * // Type-safe event handling
+ * cdp.onTyped('Debugger.paused', (params) => {
+ *   console.log('Paused:', params?.reason);
+ * });
+ *
+ * // Send commands
+ * await cdp.send('Debugger.enable');
+ * await cdp.send('Debugger.pause');
+ * ```
+ * @example Backward-compatible interface
+ * ```typescript
+ * const cdp = new CDPConnection();
+ * await cdp.connect(wsUrl);
+ *
+ * // Untyped event handling (ITypedCDPClient interface)
+ * cdp.on('Debugger.paused', (params: unknown) => {
+ *   const pausedParams = params as CDPDebuggerPausedParams;
+ *   console.log('Paused:', pausedParams.reason);
+ * });
+ * ```
+ * @public
+ * @see file:../../types/adapter.ts:67 - ITypedCDPClient interface definition
+ * @see file:./cdp-connection-demo.ts - Usage examples
  */
 export class CDPConnection implements ITypedCDPClient {
   private ws: WebSocket | null = null;
@@ -55,14 +104,28 @@ export class CDPConnection implements ITypedCDPClient {
   private connected = false;
   private emitter = new Emittery<CDPEvents>();
 
-  constructor() {
+  public constructor() {
     // No super() call needed for composition
   }
 
   /**
-   * Connect to CDP WebSocket endpoint
+   * Establishes WebSocket connection to a CDP endpoint.
+   *
+   * Opens a WebSocket connection to the specified Chrome DevTools Protocol URL
+   * and sets up message handling. Rejects if already connected or if the connection
+   * fails to establish.
+   * @param wsUrl - WebSocket URL in format ws://host:port/devtools/page/target-id
+   * @throws {Error} When already connected to CDP
+   * @throws {Error} When WebSocket connection fails with the underlying error message
+   * @example
+   * ```typescript
+   * const cdp = new CDPConnection();
+   * await cdp.connect('ws://localhost:9229/devtools/page/ABC123');
+   * console.log('Connected:', cdp.isConnected()); // true
+   * ```
+   * @public
    */
-  async connect(wsUrl: string): Promise<void> {
+  public async connect(wsUrl: string): Promise<void> {
     if (this.connected) {
       throw new Error('Already connected to CDP');
     }
@@ -93,9 +156,20 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Disconnect from CDP WebSocket
+   * Closes WebSocket connection and cleans up pending requests.
+   *
+   * Gracefully closes the WebSocket connection, rejects all pending messages with
+   * a connection closed error, and resets internal state. Safe to call multiple
+   * times or when not connected.
+   * @returns Promise that resolves when disconnection is complete
+   * @example
+   * ```typescript
+   * await cdp.disconnect();
+   * console.log('Disconnected:', !cdp.isConnected()); // true
+   * ```
+   * @public
    */
-  async disconnect(): Promise<void> {
+  public async disconnect(): Promise<void> {
     if (!this.connected || !this.ws) {
       return;
     }
@@ -126,9 +200,34 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Send CDP command and wait for response
+   * Sends a CDP command and waits for the response.
+   *
+   * Executes a Chrome DevTools Protocol command with automatic message ID generation,
+   * request/response correlation, and timeout handling. The promise resolves with the
+   * command result or rejects on error or timeout (10 seconds).
+   * @param method - CDP method name (e.g., 'Debugger.enable', 'Runtime.evaluate')
+   * @param params - Optional parameters for the command
+   * @returns Promise resolving to the command result with type T
+   * @throws {Error} When not connected to CDP
+   * @throws {Error} When command times out after 10 seconds
+   * @throws {Error} When CDP returns an error response
+   * @example Enable debugger
+   * ```typescript
+   * await cdp.send('Debugger.enable');
+   * ```
+   * @example Evaluate expression
+   * ```typescript
+   * interface EvalResult {
+   *   result: { type: string; value: unknown };
+   * }
+   * const result = await cdp.send<EvalResult>('Runtime.evaluate', {
+   *   expression: '2 + 2'
+   * });
+   * console.log(result.result.value); // 4
+   * ```
+   * @public
    */
-  async send<T = unknown>(
+  public async send<T = unknown>(
     method: string,
     params?: Record<string, unknown>,
   ): Promise<T> {
@@ -156,9 +255,27 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Add typed event listener for CDP events
+   * Registers a type-safe event listener for CDP events.
+   *
+   * Provides type-safe event subscription with automatic parameter type inference
+   * based on the event name. The handler receives properly typed parameters for
+   * known CDP events.
+   * @param event - CDP event name (e.g., 'Debugger.paused', 'Runtime.consoleAPICalled')
+   * @param handler - Event handler receiving typed parameters for the event
+   * @returns Unsubscribe function to remove this specific listener
+   * @example
+   * ```typescript
+   * const unsubscribe = cdp.onTyped('Debugger.paused', (params) => {
+   *   // params is automatically typed as CDPDebuggerPausedParams | undefined
+   *   console.log('Paused at:', params?.callFrames[0]?.location);
+   * });
+   *
+   * // Later, remove the listener
+   * unsubscribe();
+   * ```
+   * @public
    */
-  onTyped<K extends keyof CDPEvents>(
+  public onTyped<K extends keyof CDPEvents>(
     event: K,
     handler: (params: CDPEvents[K]) => void,
   ): () => void {
@@ -166,9 +283,27 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Add event listener for CDP events (ITypedCDPClient interface compatibility)
+   * Registers an untyped event listener for CDP events.
+   *
+   * Implements the ITypedCDPClient interface for backward compatibility with existing
+   * code. Unlike onTyped(), this method does not provide automatic type inference and
+   * requires manual type casting of parameters.
+   * @param event - CDP event name as a string
+   * @param handler - Event handler receiving untyped parameters
+   * @remarks
+   * Prefer using onTyped() for new code to benefit from type safety. This method
+   * exists for ITypedCDPClient interface compatibility.
+   * @example
+   * ```typescript
+   * cdp.on('Debugger.paused', (params: unknown) => {
+   *   const pausedParams = params as CDPDebuggerPausedParams;
+   *   console.log('Paused:', pausedParams.reason);
+   * });
+   * ```
+   * @public
+   * @see file:../../types/adapter.ts:62 - ICDPClient.on() interface
    */
-  on(event: string, handler: (params?: unknown) => void): void {
+  public on(event: string, handler: (params?: unknown) => void): void {
     // Handle the special case of Debugger.resumed which has no params
     if (event === 'Debugger.resumed') {
       this.emitter.on('Debugger.resumed', () => {
@@ -182,9 +317,25 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Remove typed event listener for CDP events
+   * Removes a type-safe event listener for CDP events.
+   *
+   * Removes a previously registered typed event handler. The handler function
+   * reference must match the one used in onTyped() for successful removal.
+   * @param event - CDP event name matching the original subscription
+   * @param handler - Exact handler function reference to remove
+   * @example
+   * ```typescript
+   * const handler = (params: CDPEvents['Debugger.paused']) => {
+   *   console.log('Paused');
+   * };
+   * cdp.onTyped('Debugger.paused', handler);
+   *
+   * // Later, remove using the same handler reference
+   * cdp.offTyped('Debugger.paused', handler);
+   * ```
+   * @public
    */
-  offTyped<K extends keyof CDPEvents>(
+  public offTyped<K extends keyof CDPEvents>(
     event: K,
     handler: (params: CDPEvents[K]) => void,
   ): void {
@@ -192,9 +343,20 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Remove event listener for CDP events (ITypedCDPClient interface compatibility)
+   * Removes an untyped event listener for CDP events.
+   *
+   * Implements the ITypedCDPClient interface for backward compatibility. The handler
+   * function reference must match the one used in on() for successful removal.
+   * @param event - CDP event name as a string
+   * @param handler - Exact handler function reference to remove
+   * @remarks
+   * Due to Emittery's requirement for exact function reference matching, wrapped
+   * handlers may not be removable. Consider using onTyped() with the returned
+   * unsubscribe function for more reliable cleanup.
+   * @public
+   * @see file:../../types/adapter.ts:63 - ICDPClient.off() interface
    */
-  off(event: string, handler: (params?: unknown) => void): void {
+  public off(event: string, handler: (params?: unknown) => void): void {
     // Note: For Emittery, we need to pass the exact same handler function
     // This is a limitation of the current approach
     this.emitter.off(
@@ -204,14 +366,27 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Check if currently connected
+   * Checks if currently connected to a CDP endpoint.
+   * @returns true if WebSocket connection is active, false otherwise
+   * @example
+   * ```typescript
+   * if (cdp.isConnected()) {
+   *   await cdp.send('Debugger.pause');
+   * }
+   * ```
+   * @public
    */
-  isConnected(): boolean {
+  public isConnected(): boolean {
     return this.connected;
   }
 
   /**
-   * Setup message handling for incoming CDP messages
+   * Sets up WebSocket message and event handling.
+   *
+   * Registers listeners for incoming CDP messages, WebSocket errors, and connection
+   * close events. Parses JSON messages and routes them to handleMessage(). Emits
+   * error and disconnect events as appropriate.
+   * @internal
    */
   private setupMessageHandling(): void {
     if (!this.ws) {
@@ -249,7 +424,18 @@ export class CDPConnection implements ITypedCDPClient {
   }
 
   /**
-   * Handle incoming CDP message
+   * Routes incoming CDP messages to appropriate handlers.
+   *
+   * Handles three types of CDP messages:
+   * 1. Command responses (has id, matches pending message) - resolves/rejects promise
+   * 2. Event notifications (has method, no id) - emits typed event
+   * 3. Unexpected messages - emits unexpectedMessage event
+   *
+   * Known CDP events are emitted with proper type casting. Unknown events are logged
+   * as warnings, except for expected events like Runtime.executionContextCreated which
+   * are silently ignored.
+   * @param message - Parsed CDP message from WebSocket
+   * @internal
    */
   private handleMessage(message: CDPMessage): void {
     // Handle response to a command we sent

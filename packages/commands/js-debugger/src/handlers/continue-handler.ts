@@ -5,20 +5,81 @@ import type {
   DebugState,
 } from '../types/index.js';
 
+/**
+ * Arguments for debug session control operations.
+ *
+ * Supports multiple control actions (continue, stepping) as well as
+ * expression evaluation and session termination within a single unified interface.
+ * @public
+ * @see file:./continue-handler.ts:42 - ContinueHandler implementation
+ */
 export interface ContinueHandlerArgs {
+  /** Session ID to control */
   sessionId: string;
+  /** Control action to perform - defaults to 'continue' if not specified */
   action?: 'continue' | 'step_over' | 'step_into' | 'step_out' | 'stop';
+  /** JavaScript expression to evaluate in the current pause context */
   evaluate?: string;
 }
 
 /**
- * Handler for continuing debug sessions
- * Implements the IToolHandler SEAM for modular tool handling
+ * Tool handler for debug session control operations.
+ *
+ * Provides unified handling for:
+ * - Resuming execution (continue)
+ * - Step-based debugging (step_over, step_into, step_out)
+ * - Expression evaluation at breakpoints
+ * - Session termination
+ *
+ * The handler automatically routes between mock and real debug sessions,
+ * validates session state, and formats responses consistently.
+ *
+ * IMPORTANT: When using the 'continue' action with real (non-mock) sessions, the handler
+ * accesses the enhanced session's continue method via getEnhancedSession().
+ * This is necessary because DebugSession.adapter intentionally omits 'continue'
+ * to avoid conflicts with the enhanced session's continue implementation.
+ * @example Basic continue operation
+ * ```typescript
+ * const handler = new ContinueHandler();
+ * const result = await handler.handle(
+ *   { sessionId: 'session-123', action: 'continue' },
+ *   context
+ * );
+ * ```
+ * @example Step over with evaluation
+ * ```typescript
+ * const result = await handler.handle(
+ *   { sessionId: 'session-123', action: 'step_over', evaluate: 'user.name' },
+ *   context
+ * );
+ * ```
+ * @public
+ * @see file:../types/handlers.ts:14 - IToolHandler interface
+ * @see file:../types/session.ts:36 - DebugSession interface
+ * @see file:./index.ts:2 - Handler exports
  */
 export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
-  readonly name = 'continue';
+  public readonly name = 'continue';
 
-  async handle(
+  /**
+   * Executes debug session control operations based on the provided action.
+   *
+   * Processing flow:
+   * 1. Checks for mock session and routes to mock handler if found
+   * 2. Validates that real session exists and is accessible
+   * 3. Handles evaluation requests if `evaluate` is provided
+   * 4. Handles stop action by terminating session
+   * 5. Executes stepping actions (step_over, step_into, step_out)
+   * 6. Executes continue action via enhanced session
+   * 7. Updates session state and returns formatted response
+   * @param {ContinueHandlerArgs} args - Control operation parameters including session ID and action
+   * @param {ToolHandlerContext} context - Shared handler context providing session management and formatting
+   * @returns {Promise<CallToolResult>} Formatted result containing updated debug state or error information
+   * @see file:../types/handlers.ts:22 - ToolHandlerContext interface
+   * @see file:../types/session.ts:68-71 - Stepping methods on IDebugSession
+   * @see file:../enhanced-debug-session.ts - Enhanced session implementation
+   */
+  public async handle(
     args: ContinueHandlerArgs,
     context: ToolHandlerContext,
   ): Promise<CallToolResult> {

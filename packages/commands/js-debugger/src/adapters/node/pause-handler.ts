@@ -6,27 +6,77 @@ import type {
 import type { CDPDebuggerPausedParams } from '../../cdp/types.js';
 import { mapCDPPauseReason } from '../../cdp/pause-reason-mapper.js';
 
+/**
+ * Internal promise tracking structure for pause operations.
+ * Used to manage multiple concurrent waitForPause() calls and ensure
+ * all waiting callers are resolved when the debugger pauses.
+ * @see file:./pause-handler.ts:31 - waitForPause implementation
+ * @internal
+ */
 export interface PausePromiseInfo {
+  /** Resolves the promise with the debug state when pause occurs */
   resolve: (state: DebugState) => void;
+  /** Rejects the promise if timeout or session termination occurs */
   reject: (error: Error) => void;
+  /** Optional timeout handle for cleanup on resolution */
   timeout?: NodeJS.Timeout;
 }
 
 /**
- * Handles pause-related operations for the Node debug adapter
+ * Manages pause-related operations for Node.js debugging sessions.
+ * This class coordinates waiting for debugger pause events, resolving pending
+ * promises when pauses occur, and building DebugState from CDP pause events.
+ * It handles multiple concurrent waitForPause() calls and maintains script ID
+ * to file URL mappings for accurate location reporting.
+ *
+ * Key responsibilities:
+ * - Managing concurrent waitForPause() promises with timeout handling
+ * - Transforming CDP paused events into structured DebugState objects
+ * - Resolving file locations from script IDs and request targets
+ * - Extracting call frame information for evaluation context
+ * @example
+ * ```typescript
+ * const manager = new PauseHandlerManager(scriptIdToUrl, request);
+ * // Wait for next pause
+ * const state = await manager.waitForPause(5000, currentState);
+ * // Or handle CDP pause event
+ * const newState = manager.handlePaused(cdpParams, pauseCallback);
+ * ```
+ * @see file:../../types/debug-state.ts - DebugState structure
+ * @see file:./event-handlers.ts:206 - Usage in event handling
+ * @public
  */
 export class PauseHandlerManager {
   private pausePromises = new Set<PausePromiseInfo>();
 
-  constructor(
+  public constructor(
     private scriptIdToUrl: Map<string, string>,
     private request?: DebugRequest,
   ) {}
 
   /**
-   * Wait for the debugger to pause
+   * Waits for the debugger to pause, or returns immediately if already paused.
+   * Creates a promise that will be resolved when handlePaused() processes a
+   * CDP Debugger.paused event. Multiple concurrent calls are supported - all
+   * waiting promises will be resolved when the pause occurs. If a timeout
+   * occurs before pause, the promise is rejected and removed from tracking.
+   * @param timeoutMs Maximum milliseconds to wait before rejecting (default: 30000)
+   * @param currentState Current debug state to check if already paused
+   * @returns Promise resolving to the paused DebugState
+   * @throws {Error} When timeout expires before pause occurs
+   * @example
+   * ```typescript
+   * try {
+   *   const state = await manager.waitForPause(5000, currentState);
+   *   console.log(`Paused at ${state.location?.file}:${state.location?.line}`);
+   * } catch (err) {
+   *   console.error('Timeout waiting for pause');
+   * }
+   * ```
+   * @see file:./pause-handler.ts:113 - handlePaused() which resolves these promises
+   * @public
    */
-  async waitForPause(
+  public async waitForPause(
     timeoutMs = 30000,
     currentState: DebugState,
   ): Promise<DebugState> {
@@ -52,9 +102,34 @@ export class PauseHandlerManager {
   }
 
   /**
-   * Handle CDP paused event and build debug state
+   * Processes a CDP Debugger.paused event and constructs the corresponding DebugState.
+   * Transforms raw CDP pause parameters into a structured DebugState object by:
+   * - Resolving file paths from script IDs or falling back to request target
+   * - Mapping CDP pause reasons to our normalized pause reason types
+   * - Extracting location info with 1-based line numbers (CDP uses 0-based)
+   * - Including exception details if the pause was due to an exception
+   * - Resolving all pending waitForPause() promises with the new state
+   *
+   * This method resolves ALL waiting promises registered via waitForPause(),
+   * clears their timeouts, and invokes the optional legacy pauseHandler callback.
+   * @param params CDP Debugger.paused event parameters containing call frames and reason
+   * @param pauseHandler Optional legacy callback invoked after state construction
+   * @returns The constructed DebugState with status 'paused'
+   * @example
+   * ```typescript
+   * cdpClient.on('Debugger.paused', (params) => {
+   *   const state = manager.handlePaused(params, (state) => {
+   *     console.log('Legacy callback:', state);
+   *   });
+   *   // state.status === 'paused'
+   *   // All waitForPause() promises have been resolved
+   * });
+   * ```
+   * @see file:../../cdp/types.ts:49 - CDPDebuggerPausedParams structure
+   * @see file:../../cdp/pause-reason-mapper.ts - Reason mapping logic
+   * @public
    */
-  handlePaused(
+  public handlePaused(
     params: CDPDebuggerPausedParams,
     pauseHandler?: PauseHandler,
   ): DebugState {
@@ -110,9 +185,22 @@ export class PauseHandlerManager {
   }
 
   /**
-   * Reject all pending pause promises (e.g., on session termination)
+   * Rejects all pending waitForPause() promises with the provided error.
+   * Called during session termination or fatal errors to ensure no promises
+   * remain hanging. Clears all timeouts and empties the promise tracking set.
+   * This prevents memory leaks and provides proper error propagation to callers.
+   * @param error Error to reject all pending promises with
+   * @example
+   * ```typescript
+   * // During adapter disconnect
+   * const terminationError = new Error('Debug session terminated');
+   * manager.rejectPendingPromises(terminationError);
+   * // All waitForPause() callers receive rejection
+   * ```
+   * @see file:../node-adapter.ts:230 - Called during adapter termination
+   * @public
    */
-  rejectPendingPromises(error: Error): void {
+  public rejectPendingPromises(error: Error): void {
     Array.from(this.pausePromises).forEach((promise) => {
       if (promise.timeout) {
         clearTimeout(promise.timeout);
@@ -123,9 +211,17 @@ export class PauseHandlerManager {
   }
 
   /**
-   * Extract call frame info from paused params
+   * Extracts call frame information for evaluation context from CDP pause event.
+   * Returns the top call frame ID and full call frame array if available.
+   * These are used to set the evaluation context in the adapter, allowing
+   * variable inspection and expression evaluation within the paused scope.
+   * Returns undefined values if no call frames are present in the pause event.
+   * @param params CDP Debugger.paused event parameters
+   * @returns Object containing currentCallFrameId and currentCallFrames, or undefined values
+   * @see file:./event-handlers.ts:298 - Used to set evaluation context
+   * @public
    */
-  extractCallFrameInfo(params: CDPDebuggerPausedParams): {
+  public extractCallFrameInfo(params: CDPDebuggerPausedParams): {
     currentCallFrameId?: string;
     currentCallFrames?: CDPDebuggerPausedParams['callFrames'];
   } {

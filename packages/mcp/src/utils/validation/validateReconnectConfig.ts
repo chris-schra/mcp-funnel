@@ -2,7 +2,16 @@ import { TransportError } from '@mcp-funnel/core';
 import type { ReconnectionConfig } from '@mcp-funnel/models';
 
 /**
- * Validates reconnection configuration (shared by SSE, WebSocket, and StreamableHTTP).
+ * Validates reconnection configuration shared by SSE, WebSocket, and StreamableHTTP transports.
+ *
+ * Validation rules:
+ * - maxAttempts: Must be non-negative integer
+ * - initialDelayMs: Must be non-negative number
+ * - maxDelayMs: Must be non-negative number
+ * - backoffMultiplier: Must be greater than 1
+ * @param {ReconnectionConfig} reconnect - Reconnection configuration to validate
+ * @throws {TransportError} When any validation rule fails
+ * @public
  */
 export function validateReconnectConfig(reconnect: ReconnectionConfig): void {
   const { maxAttempts, initialDelayMs, maxDelayMs, backoffMultiplier } =

@@ -94,6 +94,9 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Simulate receiving an SSE message
+   * @param data
+   * @param eventType
+   * @param id
    */
   simulateMessage(data: string, eventType = 'message', id?: string): void {
     if (this.readyState !== MockEventSource.OPEN) {
@@ -118,6 +121,8 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Simulate an error condition
+   * @param error
+   * @param shouldReconnect
    */
   simulateError(error?: Error | string, shouldReconnect = true): void {
     const errorEvent: MockErrorEvent = {
@@ -158,6 +163,7 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Control whether the mock should attempt reconnections
+   * @param shouldReconnect
    */
   setReconnectionBehavior(shouldReconnect: boolean): void {
     this.shouldReconnect = shouldReconnect;
@@ -168,6 +174,7 @@ export class MockEventSource extends EventEmitter {
 
   /**
    * Set custom connection delay for testing timing scenarios
+   * @param delayMs
    */
   setConnectionDelay(delayMs: number): void {
     this.simulateConnectionDelay = delayMs;
@@ -236,6 +243,8 @@ export class MockEventSource extends EventEmitter {
 /**
  * Factory function for creating MockEventSource instances
  * Useful for mocking the global EventSource constructor
+ * @param url - URL string or object
+ * @param init
  */
 export function createMockEventSource(
   url: string | URL,

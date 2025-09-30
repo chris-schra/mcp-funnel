@@ -17,6 +17,10 @@ type TargetServerWithoutName = {
 
 type ServersRecord = Record<string, TargetServerWithoutName>;
 
+/**
+ *
+ * @param servers
+ */
 function normalizeServers(
   servers: TargetServer[] | ServersRecord,
 ): TargetServer[] {

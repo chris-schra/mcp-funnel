@@ -34,10 +34,24 @@ declare global {
   var __mcpProxyInstance: MCPProxy | undefined;
 }
 
+/**
+ * Options for starting the MCP proxy server
+ * @public
+ */
 export type ProxyStartOptions = {
   transport: 'stdio' | 'streamable-http';
 };
 
+/**
+ * Main MCP proxy server that connects to multiple MCP servers
+ * and exposes their tools through a unified interface.
+ * @example
+ * ```typescript
+ * const proxy = new MCPProxy(config, './config.json');
+ * await proxy.start({ transport: 'stdio' });
+ * ```
+ * @public
+ */
 export class MCPProxy extends EventEmitter {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
@@ -145,6 +159,8 @@ export class MCPProxy extends EventEmitter {
   /**
    * Get the status of a single server by name
    * Returns ServerStatus object with current connection state
+   * @param name
+   * @public
    */
   public getServerStatus(name: string): ServerStatus {
     return getServerStatus(
@@ -165,6 +181,8 @@ export class MCPProxy extends EventEmitter {
   /**
    * Reconnect to a disconnected server
    * Finds the server in disconnectedServers and attempts to reconnect
+   * @param name
+   * @public
    */
   public async reconnectServer(name: string): Promise<void> {
     return this.connectionManager.reconnectServer(name);
@@ -173,6 +191,8 @@ export class MCPProxy extends EventEmitter {
   /**
    * Disconnect from a connected server
    * Closes the connection and moves server to disconnected state
+   * @param name
+   * @public
    */
   public async disconnectServer(name: string): Promise<void> {
     return this.connectionManager.disconnectServer(name);
@@ -320,6 +340,9 @@ export class MCPProxy extends EventEmitter {
   /**
    * Complete OAuth2 authorization code flow
    * Uses O(1) static state lookup instead of O(n) iteration
+   * @param state
+   * @param code
+   * @public
    */
   public async completeOAuthFlow(state: string, code: string): Promise<void> {
     // Use O(1) lookup to find the provider for this state

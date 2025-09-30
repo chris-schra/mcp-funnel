@@ -18,7 +18,8 @@ import {
 } from './utils/process-spawn.js';
 
 /**
- * Configuration options for StdioClientTransport
+ * Configuration options for StdioClientTransport.
+ * @public
  */
 export interface StdioTransportOptions {
   /** Command to execute */
@@ -34,14 +35,16 @@ export interface StdioTransportOptions {
 }
 
 /**
- * StdioClientTransport implements the MCP SDK Transport interface for stdio-based communication.
- * This transport spawns a child process and communicates over stdin/stdout using JSON-RPC messages.
+ * StdioClientTransport implements MCP SDK Transport for stdio-based communication.
+ *
+ * Spawns a child process and communicates over stdin/stdout using newline-delimited JSON-RPC.
  *
  * Key features:
- * - Implements MCP SDK Transport interface fully
- * - Handles process lifecycle (spawn, cleanup, error handling)
- * - Supports structured logging and error reporting
- * - Extracts reusable stdio logic for future transports
+ * - Child process lifecycle management (spawn, cleanup, error handling)
+ * - Newline-delimited JSON-RPC message framing
+ * - Structured logging and error reporting
+ * - Process stderr forwarding for debugging
+ * @public
  */
 export class StdioClientTransport implements Transport {
   private process?: ChildProcess;
@@ -75,7 +78,10 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Starts the transport by spawning the child process and setting up communication.
-   * This method should only be called after callbacks are installed.
+   *
+   * Should only be called after callbacks (onmessage, onerror, onclose) are installed.
+   * @throws {TransportError} When process spawn fails or times out
+   * @public
    */
   public async start(): Promise<void> {
     if (this.isStarted) {
@@ -110,6 +116,12 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Sends a JSON-RPC message to the child process via stdin.
+   *
+   * Messages are serialized as JSON and terminated with newline.
+   * @param message - JSON-RPC message to send
+   * @param options - Optional send options (e.g., relatedRequestId)
+   * @throws {TransportError} When transport not started or send fails
+   * @public
    */
   public async send(
     message: JSONRPCMessage,
@@ -184,6 +196,7 @@ export class StdioClientTransport implements Transport {
   /**
    * Sets the protocol version used for the connection.
    * Called when the initialize response is received.
+   * @param version
    */
   public setProtocolVersion?(version: string): void {
     logEvent('debug', 'transport:stdio:protocol_version_set', {
@@ -256,6 +269,7 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Handles process-level errors.
+   * @param error
    */
   private handleProcessError(error: Error): void {
     const transportError = handleSpawnError(
@@ -276,6 +290,8 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Handles process close events.
+   * @param code
+   * @param signal
    */
   private handleProcessClose(
     code: number | null,
@@ -315,6 +331,8 @@ export class StdioClientTransport implements Transport {
 
   /**
    * Handles process exit events.
+   * @param code
+   * @param signal
    */
   private handleProcessExit(
     code: number | null,

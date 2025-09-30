@@ -21,7 +21,13 @@ import { emitBreakpointResolved } from './breakpoint-handler.js';
 import type { ScriptInfo } from './script-handler.js';
 
 /**
- * Context for pause handling operations
+ * Context for pause handling operations.
+ *
+ * Bundles all state references and callbacks needed by pause/resume handlers
+ * to update debug state, resolve breakpoints, and notify the main adapter
+ * of state changes. State is shared by reference and mutated in place.
+ * @internal
+ * @see file:../event-handlers.ts:292 - Context creation in BrowserEventHandlers
  */
 export interface PauseHandlerContext {
   scripts: Map<string, ScriptInfo>;
@@ -39,7 +45,26 @@ export interface PauseHandlerContext {
 }
 
 /**
- * Handles debugger paused event
+ * Handles debugger paused event and constructs the new debug state.
+ *
+ * Processes CDP Debugger.paused events by:
+ * - Extracting pause reason and location from call frames
+ * - Resolving breakpoint locations using script metadata
+ * - Detecting project root from absolute file paths
+ * - Resolving pending pause promises
+ * - Emitting typed events and notifying legacy callbacks
+ *
+ * Mutates context state in place (currentCallFrames, debugState, projectRoot)
+ * to maintain shared references with the main adapter.
+ * @param params - CDP Debugger.paused event parameters containing call frames, pause reason, and hit breakpoints
+ * @param context - Shared state context containing script/breakpoint registries and pending promises
+ * @param eventEmitter - Event bus for emitting typed 'paused' events to listeners
+ * @param pauseHandlers - Legacy callback handlers to notify when paused (for backward compatibility)
+ * @param breakpointResolvedHandlers - Handlers to notify when breakpoints are resolved during pause
+ * @returns The newly constructed debug state with status 'paused'
+ * @internal
+ * @see file:../event-handlers.ts:213 - Usage in BrowserEventHandlers.onDebuggerPaused
+ * @see file:../../../cdp/types.ts:50 - CDPDebuggerPausedParams definition
  */
 export function handleDebuggerPaused(
   params: CDPDebuggerPausedParams,
@@ -161,7 +186,21 @@ export function handleDebuggerPaused(
 }
 
 /**
- * Handles debugger resumed event
+ * Handles debugger resumed event and transitions to running state.
+ *
+ * Processes CDP Debugger.resumed events by:
+ * - Clearing call frames (debugger is no longer paused)
+ * - Creating new 'running' debug state
+ * - Emitting typed events and notifying legacy callbacks
+ *
+ * Mutates context state in place (currentCallFrames, debugState) to maintain
+ * shared references with the main adapter.
+ * @param context - Shared state context containing debug state and call frames to clear
+ * @param eventEmitter - Event bus for emitting typed 'resumed' events to listeners
+ * @param resumeHandlers - Legacy callback handlers to notify when resumed (for backward compatibility)
+ * @returns The newly constructed debug state with status 'running'
+ * @internal
+ * @see file:../event-handlers.ts:230 - Usage in BrowserEventHandlers.onDebuggerResumed
  */
 export function handleDebuggerResumed(
   context: PauseHandlerContext,

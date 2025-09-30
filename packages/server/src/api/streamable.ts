@@ -10,13 +10,19 @@ type Variables = {
 
 type Bindings = HttpBindings;
 
+/**
+ * Hono router for MCP Streamable HTTP transport endpoints.
+ * @public
+ * @see file:./streamable.ts:123 - Route handler implementation
+ */
 export const streamableRoute = new Hono<{
   Variables: Variables;
   Bindings: Bindings;
 }>();
 
 /**
- * Global storage for the StreamableHTTP transport and MCPProxy
+ * Internal bridge state connecting StreamableHTTP transport to MCPProxy.
+ * @internal
  */
 interface StreamableHTTPBridge {
   transport: StreamableHTTPServerTransport;
@@ -28,8 +34,14 @@ let globalStreamableBridge: StreamableHTTPBridge | null = null;
 let initializationPromise: Promise<StreamableHTTPBridge> | null = null;
 
 /**
- * Initialize the StreamableHTTP bridge
- * Connects the StreamableHTTP transport to the MCPProxy's existing server
+ * Initializes and connects StreamableHTTP transport to MCPProxy server.
+ *
+ * Returns existing bridge if already connected. Uses promise-based locking
+ * to prevent race conditions during concurrent initialization attempts.
+ * @param {MCPProxy} mcpProxy - MCPProxy instance to connect transport to
+ * @returns {Promise<StreamableHTTPBridge>} Promise resolving to connected bridge instance
+ * @throws {Error} When transport connection fails (e.g., another transport already connected)
+ * @internal
  */
 async function initializeStreamableBridge(
   mcpProxy: MCPProxy,
@@ -109,15 +121,17 @@ async function initializeStreamableBridge(
 }
 
 /**
- * StreamableHTTP MCP endpoint
- * Handles GET (SSE streams), POST (JSON-RPC messages), and DELETE (session termination)
+ * MCP protocol endpoint supporting GET (SSE streams), POST (JSON-RPC), and DELETE (session termination).
  *
- * This endpoint exposes the MCPProxy server via the MCP Streamable HTTP transport:
- * - GET: Establishes SSE stream for real-time communication with MCPProxy
- * - POST: Sends JSON-RPC messages to MCPProxy's tools
- * - DELETE: Terminates sessions
+ * Exposes the MCPProxy server via MCP Streamable HTTP transport protocol:
+ * - GET: Establishes SSE stream for bidirectional real-time communication
+ * - POST: Sends JSON-RPC messages to invoke MCP tools
+ * - DELETE: Terminates active sessions
  *
- * All MCPProxy tools and functionality are available through this transport
+ * The handler intercepts response writes for debugging and properly bridges
+ * between Hono's request/response model and Node.js IncomingMessage/ServerResponse
+ * required by the MCP SDK transport.
+ * @internal
  */
 streamableRoute.all('/mcp', async (c) => {
   const mcpProxy = c.get('mcpProxy');
@@ -217,7 +231,10 @@ streamableRoute.all('/mcp', async (c) => {
 });
 
 /**
- * Health check endpoint for StreamableHTTP transport
+ * Health check and documentation endpoint for StreamableHTTP transport.
+ *
+ * Returns transport status, available endpoints, and protocol documentation.
+ * @internal
  */
 streamableRoute.get('/health', (c) => {
   return c.json({

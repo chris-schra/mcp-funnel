@@ -1,8 +1,11 @@
 /**
- * SearchRegistryTools implementation for searching MCP registry servers
+ * SearchRegistryTools implementation for searching MCP registry servers.
  *
- * This tool provides functionality to search for MCP servers across registries
- * based on keywords. Returns minimal server information optimized for token efficiency.
+ * Provides keyword-based search across configured MCP registries to discover
+ * available servers and tools. Returns minimal server information optimized
+ * for token efficiency.
+ * @public
+ * @see file:../../mcp-registry/index.ts - RegistryContext implementation
  */
 
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -11,7 +14,12 @@ import { BaseCoreTool } from '../base-core-tool.js';
 import { RegistryContext } from '../../mcp-registry/index.js';
 
 /**
- * Tool for searching MCP registry servers by keywords
+ * Core tool for searching MCP registry servers by keywords.
+ *
+ * Searches across configured registries (official, community, custom) to find
+ * servers matching search keywords. Useful for discovering new tools to install.
+ * @public
+ * @see file:../core-tool.interface.ts - Core tool interface
  */
 export class SearchRegistryTools extends BaseCoreTool {
   public readonly name = 'search_registry_tools';
@@ -42,7 +50,15 @@ export class SearchRegistryTools extends BaseCoreTool {
   }
 
   /**
-   * Handle search request for registry servers
+   * Handles search request for registry servers.
+   *
+   * Searches configured registries for servers matching keywords. Optionally
+   * limits search to a specific registry if provided.
+   * @param args - Search arguments with keywords and optional registry filter
+   * @param context - Core tool context with configuration access
+   * @returns CallToolResult with matching servers or error message
+   * @throws {Error} When keywords are invalid or registry search fails
+   * @public
    */
   public async handle(
     args: Record<string, unknown>,

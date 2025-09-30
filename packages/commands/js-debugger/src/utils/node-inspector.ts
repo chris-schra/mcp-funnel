@@ -2,20 +2,44 @@ import { promises as fs } from 'fs';
 import http from 'http';
 
 /**
- * Node.js Inspector utilities for discovering and managing inspector connections
+ * Node.js Inspector target metadata from /json endpoint.
+ *
+ * Represents a debuggable Node.js process as reported by the inspector protocol.
+ * @public
+ * @see file:../adapters/node/connection-manager.ts - Usage in connection establishment
  */
-
 export interface InspectorTarget {
+  /** Unique identifier for the target */
   id: string;
+  /** Human-readable target name (usually the script path) */
   title: string;
+  /** Target type - always 'node' for Node.js processes */
   type: 'node';
+  /** HTTP URL for the inspector endpoint */
   url: string;
+  /** WebSocket URL for CDP connection */
   webSocketDebuggerUrl: string;
+  /** Optional DevTools frontend URL */
   devtoolsFrontendUrl?: string;
 }
 
 /**
- * Discover Node.js inspector targets on a given port
+ * Discovers Node.js inspector targets on a given port.
+ *
+ * Queries the inspector's /json endpoint to retrieve all debuggable Node.js processes.
+ * Filters results to include only targets of type 'node'.
+ * @param {number} port - Inspector port to query
+ * @param {string} host - Inspector host address
+ * @returns {Promise<InspectorTarget[]>} Promise resolving to array of Node.js inspector targets
+ * @throws {Error} When the HTTP request fails, times out (>2s), or response parsing fails
+ * @example
+ * ```typescript
+ * // Discover targets on default port
+ * const targets = await discoverInspectorTargets();
+ * console.log(targets[0].webSocketDebuggerUrl);
+ * ```
+ * @public
+ * @see file:../adapters/node/connection-manager.ts - Target discovery in adapters
  */
 export async function discoverInspectorTargets(
   port = 9229,
@@ -57,7 +81,21 @@ export async function discoverInspectorTargets(
 }
 
 /**
- * Find available port for Node.js inspector
+ * Finds an available port for Node.js inspector in the specified range.
+ *
+ * Sequentially tests ports by attempting to bind a temporary HTTP server.
+ * Returns the first port that successfully binds and closes cleanly.
+ * @param {number} startPort - First port in range to test
+ * @param {number} endPort - Last port in range to test (inclusive)
+ * @returns {Promise<number>} Promise resolving to first available port number
+ * @throws {Error} When no ports are available in the specified range
+ * @example
+ * ```typescript
+ * // Find port in default range (9229-9239)
+ * const port = await findAvailablePort();
+ * console.log(`Using inspector port: ${port}`);
+ * ```
+ * @public
  */
 export async function findAvailablePort(
   startPort = 9229,
@@ -72,7 +110,10 @@ export async function findAvailablePort(
 }
 
 /**
- * Check if a port is available
+ * Checks if a port is available by attempting to bind an HTTP server.
+ * @param {number} port - Port number to test
+ * @returns {Promise<boolean>} Promise resolving to true if port is available, false if in use
+ * @internal
  */
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -91,7 +132,29 @@ function isPortAvailable(port: number): Promise<boolean> {
 }
 
 /**
- * Validate Node.js script path
+ * Validates that a path points to an executable JavaScript/TypeScript file.
+ *
+ * Performs three checks:
+ * 1. Path exists and is a file (not directory)
+ * 2. Extension is .js, .ts, .mjs, or .cjs (case-insensitive)
+ * 3. If path contains spaces, checks if arguments were incorrectly embedded
+ *
+ * If the path contains spaces and doesn't exist, the validator attempts to extract
+ * a base path and provides a helpful error message directing users to use the
+ * separate `args` parameter for script arguments.
+ * @param {string} scriptPath - File path to validate
+ * @throws {Error} When path doesn't exist, isn't a file, has wrong extension, or contains embedded arguments
+ * @example
+ * ```typescript
+ * // Valid paths
+ * await validateScriptPath('./script.js');
+ * await validateScriptPath('/path/to/app.ts');
+ *
+ * // Invalid - will throw
+ * await validateScriptPath('./script.js --arg'); // Use args parameter instead
+ * ```
+ * @public
+ * @see file:../handlers/debug-handler.ts - Used during debug session initialization
  */
 export async function validateScriptPath(scriptPath: string): Promise<void> {
   try {
@@ -129,7 +192,21 @@ export async function validateScriptPath(scriptPath: string): Promise<void> {
 }
 
 /**
- * Parse Node.js inspector WebSocket URL from output
+ * Parses Node.js inspector WebSocket URL from process output.
+ *
+ * Searches for the "Debugger listening on ws://..." message that Node.js
+ * emits when inspector is enabled. This message appears in stderr when
+ * Node is started with --inspect or --inspect-brk flags.
+ * @param {string} output - Process output text (typically stderr)
+ * @returns {string | null} WebSocket URL if found, null otherwise
+ * @example
+ * ```typescript
+ * const stderr = 'Debugger listening on ws://127.0.0.1:9229/abc-123';
+ * const url = parseInspectorUrl(stderr);
+ * // Returns: 'ws://127.0.0.1:9229/abc-123'
+ * ```
+ * @public
+ * @see file:../adapters/node/process-spawner.ts - Used to extract inspector URL from spawned Node process
  */
 export function parseInspectorUrl(output: string): string | null {
   const wsRegex = /Debugger listening on (ws:\/\/[^\s]+)/;
@@ -138,7 +215,30 @@ export function parseInspectorUrl(output: string): string | null {
 }
 
 /**
- * Wait for condition with timeout
+ * Waits for a condition to become truthy with timeout and polling.
+ *
+ * Repeatedly evaluates the condition function at fixed intervals until it
+ * returns a non-null value or the timeout is reached. Exceptions during
+ * condition evaluation are caught and polling continues.
+ *
+ * This utility swallows errors from the condition function to allow transient
+ * failures during polling. Only timeout errors are propagated to the caller.
+ * @template T - The type of value returned when condition is satisfied
+ * @param {() => Promise<T | null> | T | null} condition - Function that returns the awaited value or null if not ready
+ * @param {number} timeoutMs - Maximum time to wait in milliseconds
+ * @param {number} intervalMs - Time between condition checks in milliseconds
+ * @returns {Promise<T>} Promise resolving to the non-null value returned by condition
+ * @throws {Error} When timeout is reached before condition returns non-null value
+ * @example
+ * ```typescript
+ * // Wait for inspector URL to appear in logs
+ * const url = await waitForCondition(
+ *   () => parseInspectorUrl(processOutput),
+ *   5000,
+ *   100
+ * );
+ * ```
+ * @public
  */
 export function waitForCondition<T>(
   condition: () => Promise<T | null> | T | null,

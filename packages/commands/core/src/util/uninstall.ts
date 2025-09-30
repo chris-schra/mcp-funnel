@@ -9,7 +9,27 @@ import * as fs from 'node:fs/promises';
 const execAsync = promisify(exec);
 
 /**
- * Uninstall a command package
+ * Uninstalls a command package from the isolated packages directory.
+ *
+ * This function orchestrates the complete uninstallation workflow:
+ * 1. Loads the manifest and searches for the command by package name or command name
+ * 2. Executes npm uninstall to remove the package from node_modules
+ * 3. Removes the command entry from the manifest
+ * 4. Optionally deletes associated data directory if removeData option is set
+ *
+ * The function supports flexible lookup - it can find commands by either their
+ * npm package name (e.g., '@mcp-funnel/commands-js-debugger') or their
+ * registered command name (e.g., 'js-debugger').
+ * @param context - Installer context containing directory paths and manifest location
+ * @param packageNameOrCommandName - Either the npm package name or the registered command name to uninstall
+ * @param options - Uninstall options controlling data cleanup behavior
+ * @throws {Error} When the specified command is not found in the manifest
+ * @throws {Error} When npm uninstall operation fails
+ * @public
+ * @see file:./writeManifest.ts - Manifest persistence after uninstall
+ * @see file:./readManifest.ts - Manifest loading
+ * @see file:../types/index.ts:19 - UninstallOptions definition
+ * @see file:../types/index.ts:23 - CommandInstallerContext definition
  */
 export async function uninstall(
   context: CommandInstallerContext,

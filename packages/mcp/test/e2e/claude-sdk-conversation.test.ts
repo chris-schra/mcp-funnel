@@ -48,6 +48,10 @@ const expectStrictNumber = (response: string, expected?: number) => {
   () => {
     const configDir = path.join(__dirname, '../fixtures/e2e-configs');
 
+    /**
+     * Creates conversation manager for async message exchange
+     * @returns Conversation manager with message generator and controls
+     */
     function createConversationManager() {
       const messageQueue: string[] = [];
       const responseResolvers: Array<{
@@ -59,7 +63,10 @@ const expectStrictNumber = (response: string, expected?: number) => {
       const sessionId = randomUUID();
       let isShutdown = false;
 
-      // Generator that yields messages on demand
+      /**
+       * Generator that yields messages on demand
+       * @yields User messages from the queue
+       */
       async function* messageGenerator(): AsyncGenerator<SDKUserMessage> {
         while (!isShutdown) {
           // Wait for a message to be available
@@ -87,7 +94,11 @@ const expectStrictNumber = (response: string, expected?: number) => {
         }
       }
 
-      // Send a message and get back a promise for the response
+      /**
+       * Sends message and returns promise for response
+       * @param content - Message content to send
+       * @returns Promise resolving to response text
+       */
       function sendMessage(content: string): Promise<string> {
         return new Promise((resolve, reject) => {
           if (isShutdown) {
@@ -106,7 +117,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
         });
       }
 
-      // Shutdown function to clean up
+      /** Shuts down conversation manager and cleans up */
       function shutdown() {
         isShutdown = true;
 
@@ -128,6 +139,11 @@ const expectStrictNumber = (response: string, expected?: number) => {
       return { messageGenerator, sendMessage, responseResolvers, shutdown };
     }
 
+    /**
+     * Starts Claude SDK conversation with given config file
+     * @param configFile - Config file name to use
+     * @returns Conversation interface with sendMessage and finish methods
+     */
     async function startConversation(configFile: string) {
       const messages: SDKMessage[] = [];
       const toolCalls: Array<{ name: string; input: Record<string, unknown> }> =

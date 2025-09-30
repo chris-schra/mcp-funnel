@@ -52,6 +52,8 @@ export class AuthenticationError extends Error {
 
   /**
    * Sanitizes error messages to prevent sensitive data exposure
+   * @param message - The error message to sanitize
+   * @returns Sanitized message with tokens and secrets redacted
    */
   private static sanitizeMessage(message: string): string {
     // Remove potential tokens, secrets, or other sensitive data patterns
@@ -66,6 +68,8 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for invalid or missing access token
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with INVALID_TOKEN code
    */
   public static invalidToken(cause?: Error): AuthenticationError {
     return new AuthenticationError(
@@ -77,6 +81,8 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for expired access token
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with TOKEN_EXPIRED code
    */
   public static expiredToken(cause?: Error): AuthenticationError {
     return new AuthenticationError(
@@ -88,6 +94,7 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for missing access token
+   * @returns AuthenticationError with MISSING_TOKEN code
    */
   public static missingToken(): AuthenticationError {
     return new AuthenticationError(
@@ -98,6 +105,8 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for revoked token
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with TOKEN_REVOKED code
    */
   public static revokedToken(cause?: Error): AuthenticationError {
     return new AuthenticationError(
@@ -109,6 +118,9 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for OAuth2 invalid_request error
+   * @param description - Optional additional context about the invalid request
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with INVALID_REQUEST code
    */
   public static invalidRequest(
     description?: string,
@@ -126,6 +138,8 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for OAuth2 invalid_client error
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with INVALID_CLIENT code
    */
   public static invalidClient(cause?: Error): AuthenticationError {
     return new AuthenticationError(
@@ -137,6 +151,9 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for OAuth2 invalid_grant error
+   * @param description - Optional additional context about the invalid grant
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with INVALID_GRANT code
    */
   public static invalidGrant(
     description?: string,
@@ -154,6 +171,8 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for OAuth2 access_denied error
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with ACCESS_DENIED code
    */
   public static accessDenied(cause?: Error): AuthenticationError {
     return new AuthenticationError(
@@ -165,6 +184,9 @@ export class AuthenticationError extends Error {
 
   /**
    * Creates an AuthenticationError for network-related authentication failures
+   * @param message - Description of the network error that occurred
+   * @param cause - Optional underlying error that caused this failure
+   * @returns AuthenticationError with NETWORK_ERROR code
    */
   public static networkError(
     message: string,
@@ -179,6 +201,7 @@ export class AuthenticationError extends Error {
 
   /**
    * Convert the error to a JSON representation (useful for logging/debugging)
+   * @returns Object containing error details including name, message, code, stack, and cause
    */
   public toJSON(): Record<string, unknown> {
     return {

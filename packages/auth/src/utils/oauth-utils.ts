@@ -3,7 +3,33 @@ import type { OAuth2ClientCredentialsConfigZod } from '../schemas.js';
 import { resolveEnvVar } from '@mcp-funnel/core';
 
 /**
- * Specific resolver for OAuth2 Authorization Code config
+ * Resolves environment variable references in OAuth2 Authorization Code configuration
+ *
+ * Processes all string fields in the config to resolve environment variable patterns
+ * (e.g., `${ENV_VAR}` or `$ENV_VAR`) to their actual values. String fields that don't
+ * contain environment variable patterns are returned unchanged. Optional fields that
+ * are undefined are preserved as undefined.
+ * @param config - OAuth2 Authorization Code configuration with potential env var references
+ * @returns New config object with all environment variables resolved
+ * @throws {Error} When a referenced environment variable is not defined or resolution fails
+ * @example
+ * ```typescript
+ * const config = {
+ *   type: 'oauth2-code',
+ *   clientId: '${OAUTH_CLIENT_ID}',
+ *   authorizationEndpoint: 'https://oauth.example.com/authorize',
+ *   tokenEndpoint: '${OAUTH_TOKEN_URL}',
+ *   redirectUri: 'http://localhost:3000/callback',
+ *   scope: 'read write'
+ * };
+ *
+ * const resolved = resolveOAuth2AuthCodeConfig(config);
+ * // resolved.clientId now contains the actual value from OAUTH_CLIENT_ID env var
+ * // resolved.tokenEndpoint now contains the actual value from OAUTH_TOKEN_URL env var
+ * ```
+ * @public
+ * @see file:../implementations/oauth2-authorization-code.ts:157 - Usage in OAuth2AuthCodeProvider constructor
+ * @see file:@mcp-funnel/core/src/env/environment-resolver.ts:193 - Environment variable resolution implementation
  */
 export function resolveOAuth2AuthCodeConfig(
   config: OAuth2AuthCodeConfig,
@@ -25,7 +51,32 @@ export function resolveOAuth2AuthCodeConfig(
 }
 
 /**
- * Specific resolver for OAuth2 Client Credentials config
+ * Resolves environment variable references in OAuth2 Client Credentials configuration
+ *
+ * Processes all string fields in the config to resolve environment variable patterns
+ * (e.g., `${ENV_VAR}` or `$ENV_VAR`) to their actual values. String fields that don't
+ * contain environment variable patterns are returned unchanged. Optional fields that
+ * are undefined are preserved as undefined.
+ * @param config - OAuth2 Client Credentials configuration with potential env var references
+ * @returns New config object with all environment variables resolved
+ * @throws {Error} When a referenced environment variable is not defined or resolution fails
+ * @example
+ * ```typescript
+ * const config = {
+ *   type: 'oauth2-client',
+ *   clientId: '${OAUTH_CLIENT_ID}',
+ *   clientSecret: '${OAUTH_CLIENT_SECRET}',
+ *   tokenEndpoint: '${OAUTH_TOKEN_URL}',
+ *   scope: 'api:read api:write'
+ * };
+ *
+ * const resolved = resolveOAuth2ClientCredentialsConfig(config);
+ * // resolved.clientId now contains the actual value from OAUTH_CLIENT_ID env var
+ * // resolved.clientSecret now contains the actual value from OAUTH_CLIENT_SECRET env var
+ * ```
+ * @public
+ * @see file:../implementations/oauth2-client-credentials.ts:66 - Usage in OAuth2ClientCredentialsProvider constructor
+ * @see file:@mcp-funnel/core/src/env/environment-resolver.ts:193 - Environment variable resolution implementation
  */
 export function resolveOAuth2ClientCredentialsConfig(
   config: OAuth2ClientCredentialsConfigZod,

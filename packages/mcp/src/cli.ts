@@ -31,6 +31,20 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+/**
+ * Main entry point for the MCP Funnel CLI.
+ *
+ * Handles command routing and proxy initialization:
+ * - Routes to command execution if 'run' subcommand is provided
+ * - Otherwise loads configuration and starts the MCP proxy server
+ * - Merges user-level (~/.mcp-funnel/.mcp-funnel.json) and project-level config
+ * - Project config takes precedence over user config
+ * @throws {Error} When configuration loading fails
+ * @throws {Error} When proxy initialization fails
+ * @internal
+ * @see file:./commands/run.ts - Command execution handler
+ * @see file:./config-loader.ts:47 - Configuration merging logic
+ */
 async function main() {
   // Establish a run id early for correlation
   if (!process.env.MCP_FUNNEL_RUN_ID) {

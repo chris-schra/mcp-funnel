@@ -3,6 +3,7 @@
  *
  * This module contains pure functions and helpers extracted from RegistryContext
  * to reduce file size and improve maintainability.
+ * @internal
  */
 
 import type { ProxyConfig } from '@mcp-funnel/schemas';
@@ -14,9 +15,8 @@ import type {
 
 /**
  * Converts headers from RegistryConfigEntry format to ServerConfig format.
- *
- * @param headers - Headers in either KeyValueInput[] or Record<string, string> format
- * @returns Headers in Record<string, string> format or undefined
+ * @param headers
+ * @internal
  */
 export function convertHeaders(
   headers: Record<string, string> | KeyValueInput[] | undefined,
@@ -44,9 +44,8 @@ export function convertHeaders(
  * **MVP Implementation:** Returns default registry URL as registries configuration
  * is not yet defined in the main config schema.
  * **Phase 2:** Will extract actual registry URLs from config.registries field.
- *
- * @param config - Proxy configuration to extract registries from
- * @returns Array of registry URLs
+ * @param config
+ * @internal
  */
 export function extractRegistryUrls(config: ProxyConfig): string[] {
   // MVP: Check for registries in config, fallback to default
@@ -70,10 +69,9 @@ export function extractRegistryUrls(config: ProxyConfig): string[] {
 /**
  * Determines if a failed registry request should be retried.
  * This is a seam for future retry logic implementation.
- *
- * @param _error - The error that occurred
- * @param _attemptNumber - The current attempt number (1-based)
- * @returns Whether to retry the request
+ * @param _error
+ * @param _attemptNumber
+ * @internal
  */
 export function shouldRetryRequest(
   _error: unknown,
@@ -85,9 +83,8 @@ export function shouldRetryRequest(
 
 /**
  * Converts ServerDetail to RegistrySearchResult server entry format.
- *
- * @param server - Server detail from registry API
- * @returns Converted server entry for search results
+ * @param server
+ * @internal
  */
 export function convertServerDetailToSearchResult(
   server: ServerDetail,
@@ -108,9 +105,8 @@ export function convertServerDetailToSearchResult(
 
 /**
  * Aggregates search results from multiple registries, handling errors gracefully.
- *
- * @param searchResults - Array of search results from different registries
- * @returns Aggregated search result with servers and error information
+ * @param searchResults
+ * @internal
  */
 export function aggregateSearchResults(
   searchResults: Array<{

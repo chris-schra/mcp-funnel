@@ -4,12 +4,13 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import {jsdoc} from 'eslint-plugin-jsdoc';
+import tsdoc from "eslint-plugin-tsdoc";
 
 export default tseslint.config(
   eslint.configs.recommended,
   tseslint.configs.recommended,
   jsdoc({
-    config: 'flat/recommended',
+    config: 'flat/requirements-typescript',
   }),
   {
     ignores: [
@@ -22,10 +23,15 @@ export default tseslint.config(
     ],
   },
   {
+    plugins : {
+      "tsdoc": tsdoc
+    },
     files: ['**/*.{ts,tsx}'],
     extends: [importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript],
     rules: {
+      "tsdoc/syntax": "warn",
       'import/no-unresolved': 'off',
+      'jsdoc/require-example': 'off',
       'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
       '@typescript-eslint/explicit-member-accessibility': 'warn'
     },

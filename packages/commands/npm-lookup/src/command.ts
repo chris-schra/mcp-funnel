@@ -15,9 +15,27 @@ import {
 } from './util/index.js';
 
 /**
- * NPM command implementation for MCP Funnel
- * @description Provides package lookup and search functionality via NPM Registry API
- * @implements {ICommand}
+ * NPM command implementation for MCP Funnel.
+ *
+ * Provides package lookup and search functionality via NPM Registry API,
+ * supporting both MCP protocol tool calls and direct CLI execution.
+ *
+ * Available tools:
+ * - lookup: Get detailed package information including dependencies and metadata
+ * - search: Search for packages by query with configurable result limits
+ * @example MCP tool usage
+ * ```typescript
+ * const cmd = new NPMCommand();
+ * const result = await cmd.executeToolViaMCP('lookup', { packageName: 'react' });
+ * ```
+ * @example CLI usage
+ * ```typescript
+ * const cmd = new NPMCommand();
+ * await cmd.executeViaCLI(['lookup', 'react']);
+ * await cmd.executeViaCLI(['search', 'typescript', '--limit', '10']);
+ * ```
+ * @public
+ * @see file:./npm-client.ts - NPM Registry API client
  */
 export class NPMCommand implements ICommand {
   public readonly name = 'npm';
@@ -25,16 +43,19 @@ export class NPMCommand implements ICommand {
   private client: NPMClient;
 
   /**
-   * Create NPM command instance
-   * @param client - Optional NPMClient instance for dependency injection
+   * Creates NPM command instance.
+   * @param {NPMClient} [client] - Optional NPMClient instance for dependency injection (primarily for testing)
    */
   public constructor(client?: NPMClient) {
     this.client = client || new NPMClient();
   }
 
   /**
-   * Get MCP tool definitions for this command
-   * @returns Array of tool definitions for lookup and search operations
+   * Returns MCP tool definitions for lookup and search operations.
+   *
+   * Provides tool schemas that describe parameters, types, and requirements
+   * for the MCP protocol integration.
+   * @returns {Tool[]} Array of tool definitions with input schemas
    */
   public getMCPDefinitions(): Tool[] {
     return [
@@ -78,10 +99,15 @@ export class NPMCommand implements ICommand {
   }
 
   /**
-   * Execute a tool via MCP protocol
-   * @param toolName - Name of the tool to execute ('lookup' or 'search')
-   * @param args - Tool arguments containing packageName, query, limit, etc.
-   * @returns Tool execution result with package data or error information
+   * Executes a tool via MCP protocol.
+   *
+   * Validates parameters, calls the NPM Registry API, and formats responses
+   * according to MCP protocol requirements. Handles all error cases including
+   * validation failures, network errors, and package not found scenarios.
+   * @param {string} toolName - Name of the tool to execute ('lookup' or 'search')
+   * @param {Record<string, unknown>} args - Tool arguments (packageName for lookup, query/limit for search)
+   * @returns {Promise<CallToolResult>} CallToolResult with formatted package data or error message
+   * @throws {never} Never throws - all errors are returned as CallToolResult with isError flag
    */
   public async executeToolViaMCP(
     toolName: string,
@@ -144,8 +170,16 @@ export class NPMCommand implements ICommand {
   }
 
   /**
-   * Execute command via CLI interface
-   * @param args - Command line arguments array
+   * Executes command via CLI interface.
+   *
+   * Parses CLI arguments, executes the requested operation, and outputs
+   * results to stdout. Exits process with code 1 on errors.
+   *
+   * Supported commands:
+   * - npm lookup <package-name>
+   * - npm search <query> [--limit N]
+   * @param {string[]} args - CLI arguments array (excluding 'npm' prefix)
+   * @throws {never} Never throws - errors are logged to stderr and process.exit(1) is called
    */
   public async executeViaCLI(args: string[]): Promise<void> {
     try {

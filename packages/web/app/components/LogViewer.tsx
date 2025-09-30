@@ -1,6 +1,9 @@
 import { useWebSocketStore } from '~/hooks/useWebSocket.js';
 import { cn } from '~/lib/cn.js';
 
+/**
+ *
+ */
 export function LogViewer() {
   const { logs, clearLogs } = useWebSocketStore();
 

@@ -15,6 +15,31 @@
 
 import type { DebugState } from '../types/index.js';
 
+/**
+ * Normalizes CDP-specific pause reasons to standardized DebugState pause reasons.
+ *
+ * CDP implementations send different pause reason strings depending on the runtime
+ * environment (Node.js vs Browser) and these don't always match the official
+ * devtools-protocol specification. This function provides defensive handling by
+ * mapping known CDP reasons to our internal types and gracefully handling unknown
+ * reasons with a warning.
+ * @param cdpReason - Raw pause reason string from CDP Debugger.paused event
+ * @returns Normalized pause reason, or 'debugger' for unknown reasons
+ * @example
+ * ```typescript
+ * // Node.js with --inspect-brk
+ * mapCDPPauseReason('Break on start'); // returns 'entry'
+ *
+ * // Standard breakpoint
+ * mapCDPPauseReason('breakpoint'); // returns 'breakpoint'
+ *
+ * // Unknown reason handled gracefully
+ * mapCDPPauseReason('unknownReason'); // logs warning, returns 'debugger'
+ * ```
+ * @see file:../types/debug-state.ts:14 - DebugState pauseReason type definition
+ * @see file:../adapters/node/pause-handler.ts:150 - Primary usage in pause handling
+ * @public
+ */
 export function mapCDPPauseReason(
   cdpReason: string,
 ): DebugState['pauseReason'] {
@@ -63,7 +88,21 @@ export function mapCDPPauseReason(
 }
 
 /**
- * Test helper to verify all known reasons are handled
+ * Returns comprehensive list of known CDP pause reasons across all runtimes.
+ *
+ * Useful for testing to verify that the mapper handles all documented CDP reasons.
+ * Includes both official CDP spec reasons and runtime-specific reasons observed
+ * in the wild (e.g., Node.js's "Break on start").
+ * @returns Array of all known CDP pause reason strings
+ * @example
+ * ```typescript
+ * const reasons = getAllKnownCDPReasons();
+ * reasons.forEach(reason => {
+ *   const mapped = mapCDPPauseReason(reason);
+ *   console.log(`${reason} -> ${mapped}`);
+ * });
+ * ```
+ * @public
  */
 export function getAllKnownCDPReasons(): string[] {
   return [

@@ -21,11 +21,19 @@ interface InspectorHandle {
   cleanup(): Promise<void>;
 }
 
+/**
+ *
+ * @param output
+ */
 function parseInspectorUrl(output: string): string | null {
   const match = output.match(/Debugger listening on (ws:\/\/[^\s]+)/);
   return match ? match[1] : null;
 }
 
+/**
+ *
+ * @param child
+ */
 async function terminateProcess(child: ChildProcess): Promise<void> {
   if (child.killed || child.exitCode !== null) {
     return;
@@ -43,6 +51,11 @@ async function terminateProcess(child: ChildProcess): Promise<void> {
   });
 }
 
+/**
+ *
+ * @param scriptPath
+ * @param options
+ */
 async function launchInspector(
   scriptPath: string,
   options: InspectorLaunchOptions = {},
@@ -103,6 +116,10 @@ async function launchInspector(
   };
 }
 
+/**
+ *
+ * @param ws
+ */
 function createCdpCommandSender(ws: WebSocket) {
   let nextId = 0;
 
@@ -161,6 +178,12 @@ function createCdpCommandSender(ws: WebSocket) {
   };
 }
 
+/**
+ *
+ * @param ws
+ * @param expectedCount
+ * @param timeoutMs
+ */
 async function collectConsoleEvents(
   ws: WebSocket,
   expectedCount: number,
@@ -198,6 +221,10 @@ async function collectConsoleEvents(
   }
 }
 
+/**
+ *
+ * @param url
+ */
 async function openWebSocket(url: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);

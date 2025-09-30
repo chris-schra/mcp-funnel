@@ -6,9 +6,9 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
 /**
  * Read-only configuration manager for MVP registry system.
  *
- * This implementation provides the complete IConfigManager interface but only
- * performs actual file operations for reading. Write operations (add/remove/update)
- * are logged to the console to show what would happen in the full implementation.
+ * Provides the complete IConfigManager interface but only performs actual file
+ * operations for reading. Write operations (add/remove/update) are logged to
+ * the console to show what would happen in the full implementation.
  *
  * **Phase 1 MVP Behavior:**
  * - `readConfig()`: Actually reads and parses the configuration file
@@ -23,21 +23,29 @@ import type { ProxyConfig } from '@mcp-funnel/schemas';
  * This approach allows the registry search and server management flow to be
  * fully developed and tested in Phase 1 without persistence concerns, then
  * seamlessly upgraded to full persistence in Phase 2.
+ * @example
+ * ```typescript
+ * const manager = new ReadOnlyConfigManager('/path/to/.mcp-funnel.json');
+ * const config = await manager.readConfig(); // Actually reads file
+ * await manager.addServer({ name: 'test', command: 'node' }); // Only logs
+ * ```
+ * @public
  */
 export class ReadOnlyConfigManager implements IConfigManager {
   /**
    * Creates a new ReadOnlyConfigManager instance.
-   *
-   * @param configPath - Absolute path to the configuration file (.mcp-funnel.json)
+   * @param {string} configPath - Absolute path to the configuration file (.mcp-funnel.json)
    */
   public constructor(private readonly configPath: string) {}
 
   /**
    * Checks if a server with the given name exists in the configuration.
    *
-   * @param config - The proxy configuration to check
-   * @param serverName - Name of the server to check for
-   * @returns true if the server exists, false otherwise
+   * Handles both array and object server configurations.
+   * @param {ProxyConfig} config - The proxy configuration to check
+   * @param {string} serverName - Name of the server to check for
+   * @returns {boolean} true if the server exists, false otherwise
+   * @internal
    */
   private serverExists(config: ProxyConfig, serverName: string): boolean {
     return Array.isArray(config.servers)
@@ -49,9 +57,9 @@ export class ReadOnlyConfigManager implements IConfigManager {
    * Reads and parses the current proxy configuration from the file system.
    *
    * This is the only method that performs actual file operations in the MVP.
-   *
-   * @returns Promise resolving to the current ProxyConfig
-   * @throws Error if configuration file cannot be read or contains invalid JSON
+   * @returns {Promise<ProxyConfig>} Promise resolving to the current ProxyConfig
+   * @throws {Error} if configuration file cannot be read or contains invalid JSON
+   * @inheritDoc
    */
   public async readConfig(): Promise<ProxyConfig> {
     try {
@@ -76,9 +84,9 @@ export class ReadOnlyConfigManager implements IConfigManager {
    *
    * In the full implementation, this would add the server to the configuration
    * file and validate that the name doesn't conflict with existing servers.
-   *
-   * @param server - The server configuration to add
-   * @throws Error if server name conflicts with existing server (simulated validation)
+   * @param {ServerConfig} server - The server configuration to add
+   * @throws {Error} if server name conflicts with existing server (simulated validation)
+   * @inheritDoc
    */
   public async addServer(server: ServerConfig): Promise<void> {
     // Simulate basic validation by checking existing config
@@ -111,9 +119,9 @@ export class ReadOnlyConfigManager implements IConfigManager {
    *
    * In the full implementation, this would remove the server from the
    * configuration file and validate that the server exists.
-   *
    * @param serverName - Name of the server to remove
    * @throws Error if server does not exist (simulated validation)
+   * @inheritDoc
    */
   public async removeServer(serverName: string): Promise<void> {
     // Simulate validation by checking if server exists
@@ -143,11 +151,11 @@ export class ReadOnlyConfigManager implements IConfigManager {
    *
    * In the full implementation, this would update the server configuration
    * in the file and validate that the server exists and updates are valid.
-   *
    * @param serverName - Name of the server to update
    * @param updates - Partial server configuration with fields to update
    * @throws Error if server does not exist (simulated validation)
    * @throws Error if updates would create invalid configuration (simulated validation)
+   * @inheritDoc
    */
   public async updateServer(
     serverName: string,

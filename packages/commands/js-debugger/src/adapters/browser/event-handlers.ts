@@ -32,7 +32,15 @@ import {
 } from './handlers/breakpoint-handler.js';
 
 /**
- * Manages CDP event handlers for browser debugging
+ * Manages Chrome DevTools Protocol event handlers for browser debugging sessions.
+ *
+ * Coordinates event handling between CDP events and the debug session, managing
+ * pause/resume states, breakpoints, console output, and script lifecycle events.
+ * Acts as the central event dispatcher that maintains debug state consistency.
+ * @internal
+ * @see file:./handlers/pause-handler.ts - Pause/resume event handling logic
+ * @see file:./handlers/breakpoint-handler.ts - Breakpoint resolution logic
+ * @see file:./handlers/script-handler.ts - Script parsing and source map handling
  */
 export class BrowserEventHandlers {
   private cdpClient: CDPClient;
@@ -61,6 +69,19 @@ export class BrowserEventHandlers {
     timeout?: NodeJS.Timeout;
   }>;
 
+  /**
+   * Creates a new browser event handler instance.
+   * @param cdpClient - CDP client for communicating with browser debugger
+   * @param eventEmitter - Event emitter for publishing debug session events
+   * @param consoleHandler - Handler for browser console messages and exceptions
+   * @param scripts - Map of scriptId to script metadata (shared reference, updated in place)
+   * @param breakpoints - Map of breakpointId to CDP breakpoint data (shared reference)
+   * @param debugState - Current debug state (will be updated by event handlers)
+   * @param pausePromises - Set of pending pause promises to resolve when debugger pauses
+   * @param currentCallFrames - Array of current call frames (shared reference, updated in place)
+   * @param projectRoot - Optional project root directory for resolving relative paths
+   * @param updateMainAdapterState - Optional callback to notify main adapter of state changes
+   */
   constructor(
     cdpClient: CDPClient,
     eventEmitter: Emittery<DebugSessionEvents>,
@@ -91,7 +112,11 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Setup all CDP event handlers
+   * Registers all CDP event handlers with the CDP client.
+   *
+   * Sets up listeners for debugger events (paused, resumed, scriptParsed, breakpointResolved)
+   * and console events (consoleAPICalled, exceptionThrown). Must be called once during
+   * initialization before starting the debug session.
    */
   setupEventHandlers(): void {
     // Debugger events
@@ -133,21 +158,27 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Register pause handler
+   * Registers a callback to be invoked when the debugger pauses.
+   * @param handler - Callback function that receives the new debug state when paused
    */
   onPaused(handler: PauseHandler): void {
     this.pauseHandlers.push(handler);
   }
 
   /**
-   * Register resume handler
+   * Registers a callback to be invoked when the debugger resumes execution.
+   * @param handler - Callback function invoked when execution resumes
    */
   onResumed(handler: ResumeHandler): void {
     this.resumeHandlers.push(handler);
   }
 
   /**
-   * Register breakpoint resolved handler
+   * Registers a callback to be invoked when a breakpoint is resolved by the browser.
+   *
+   * Breakpoints are resolved asynchronously after being set, once the browser
+   * confirms the actual location where the breakpoint was placed.
+   * @param handler - Callback function that receives breakpoint registration details
    */
   onBreakpointResolved(
     handler: (registration: BreakpointRegistration) => void,
@@ -156,7 +187,9 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Update state references (called when state changes in main adapter)
+   * Updates internal state references when the main adapter's state changes.
+   * @param debugState - Updated debug state from the main adapter
+   * @param projectRoot - Updated project root directory, if changed
    */
   updateState(debugState: DebugState, projectRoot?: string): void {
     this.debugState = debugState;
@@ -164,7 +197,11 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Handle debugger paused event - delegates to pause-handler
+   * Handles CDP Debugger.paused event and updates debug state accordingly.
+   *
+   * Processes pause reasons, call frames, hit breakpoints, and resolves any pending
+   * pause promises. Delegates the actual state update logic to pause-handler.
+   * @param params - CDP debugger paused event parameters containing call frames and pause reason
    */
   private onDebuggerPaused(params: CDPDebuggerPausedParams): void {
     const context = this.createPauseHandlerContext();
@@ -178,7 +215,10 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Handle debugger resumed event - delegates to pause-handler
+   * Handles CDP Debugger.resumed event and updates debug state to running.
+   *
+   * Clears call frames and notifies all resume handlers. Delegates the actual
+   * state update logic to pause-handler.
    */
   private onDebuggerResumed(): void {
     const context = this.createPauseHandlerContext();
@@ -190,7 +230,11 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Handle script parsed event - delegates to script-handler
+   * Handles CDP Debugger.scriptParsed event to track loaded scripts.
+   *
+   * Registers the script and initiates source map loading if available.
+   * Delegates processing to script-handler.
+   * @param params - CDP script parsed event parameters containing script metadata
    */
   private onScriptParsed(params: CDPScriptParsedParams): void {
     const context: ScriptHandlerContext = {
@@ -200,7 +244,16 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Handle breakpoint resolved event - delegates to breakpoint-handler
+   * Handles CDP Debugger.breakpointResolved event to track verified breakpoint locations.
+   *
+   * Updates the breakpoint registry with the resolved location and notifies handlers.
+   * Delegates processing to breakpoint-handler.
+   * @param params - Breakpoint resolution event parameters
+   * @param params.breakpointId - CDP breakpoint identifier
+   * @param params.location - Resolved breakpoint location in the script
+   * @param params.location.scriptId - Script identifier where breakpoint was resolved
+   * @param params.location.lineNumber - Zero-based line number in the script
+   * @param params.location.columnNumber - Optional zero-based column number
    */
   private handleBreakpointResolvedEvent(params: {
     breakpointId: string;
@@ -220,7 +273,11 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Creates context for pause handler operations
+   * Creates a context object containing all state needed for pause handling operations.
+   *
+   * Bundles together all the shared state references and callbacks that the pause handler
+   * needs to update debug state and notify the main adapter of changes.
+   * @returns Context object with state references and update callbacks
    */
   private createPauseHandlerContext(): PauseHandlerContext {
     return {
@@ -238,7 +295,11 @@ export class BrowserEventHandlers {
   }
 
   /**
-   * Creates context for breakpoint handler operations
+   * Creates a context object containing all state needed for breakpoint handling operations.
+   *
+   * Bundles together the script registry, breakpoint registry, and project root information
+   * that the breakpoint handler needs to resolve breakpoint locations.
+   * @returns Context object with state references for breakpoint resolution
    */
   private createBreakpointHandlerContext(): BreakpointHandlerContext {
     return {

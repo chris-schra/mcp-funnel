@@ -5,6 +5,9 @@ import { tmpdir } from 'os';
 import { DotEnvProvider } from '../index.js';
 
 // Test setup helpers
+/**
+ *
+ */
 function createTestDirectory(): string {
   const testDir = join(
     tmpdir(),
@@ -14,6 +17,12 @@ function createTestDirectory(): string {
   return testDir;
 }
 
+/**
+ *
+ * @param dir
+ * @param filename
+ * @param content
+ */
 function createTestEnvFile(
   dir: string,
   filename: string,
@@ -24,6 +33,10 @@ function createTestEnvFile(
   return filePath;
 }
 
+/**
+ *
+ * @param dir
+ */
 function cleanupTestDirectory(dir: string): void {
   try {
     rmSync(dir, { recursive: true, force: true });

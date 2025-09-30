@@ -184,6 +184,11 @@ export class E2ETestHelper {
   }
 }
 
+/**
+ * Creates test proxy config with optional overrides
+ * @param overrides - Partial config to merge with defaults
+ * @returns Complete proxy config
+ */
 export function createTestConfig(
   overrides: Partial<ProxyConfig> = {},
 ): ProxyConfig {

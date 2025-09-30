@@ -8,19 +8,23 @@ import type {
 } from '../types/index.js';
 
 /**
- * Stack trace and debugging state formatting utilities
+ * Stack trace and debugging state formatting utilities.
  *
- * Handles complex formatting for:
- * - Debug session states (paused, running, terminated)
- * - Stack trace information
- * - Breakpoint status summaries
- * - Location derivation and pause messaging
+ * Transforms debug session state into structured responses with contextual messaging,
+ * location derivation, and breakpoint tracking. All methods are static and side-effect-free.
+ * @public
+ * @see file:./debug-response-formatter.ts:29
  */
 export class StackFormatter {
   /**
-   * Format complete debug state response
+   * Formats complete debug state with stack trace, variables, and context. Queries adapter for
+   * stack/scopes (paused only), excludes global scope, includes last 10 console messages.
+   * @param sessionId - Unique session identifier
+   * @param session - Debug session with state, adapter, and console output
+   * @public
+   * @see file:./debug-response-formatter.ts:29
    */
-  static async formatDebugState(
+  public static async formatDebugState(
     sessionId: string,
     session: DebugSession,
   ): Promise<Record<string, unknown>> {
@@ -112,9 +116,15 @@ export class StackFormatter {
   }
 
   /**
-   * Format stack trace response
+   * Formats stack trace with location and breakpoint context. Accepts pre-fetched stack frames,
+   * excludes variables/scopes unlike formatDebugState.
+   * @param sessionId - Unique session identifier
+   * @param session - Debug session with state and breakpoint info
+   * @param stackTrace - Pre-fetched stack frames with origin tracking
+   * @public
+   * @see file:./debug-response-formatter.ts:96
    */
-  static formatStackTrace(
+  public static formatStackTrace(
     sessionId: string,
     session: DebugSession,
     stackTrace: Array<{
@@ -154,9 +164,13 @@ export class StackFormatter {
   }
 
   /**
-   * Derive current location from session state and stack frames
+   * Derives execution location from session state or top frame. Enriches with relativePath, adds origin descriptions.
+   * @param session - Debug session with potential pre-set location
+   * @param frames - Stack frames ordered from most recent to oldest
+   * @public
+   * @see file:../types/debug-state.ts:3
    */
-  static deriveCurrentLocation(
+  public static deriveCurrentLocation(
     session: DebugSession,
     frames: Array<{
       file: string;
@@ -196,9 +210,14 @@ export class StackFormatter {
   }
 
   /**
-   * Build contextual messaging for pause states
+   * Builds messaging for pause states. Generates messages/hints for debugger statements, entry pauses,
+   * library code, breakpoints, running/terminated states.
+   * @param state - Debug state with status and pause reason
+   * @param location - Derived location with origin type
+   * @public
+   * @see file:../types/debug-state.ts:12
    */
-  static buildPauseMessaging(
+  public static buildPauseMessaging(
     state: DebugState,
     location?: DebugLocation,
   ): { message: string; hint?: string } {
@@ -271,9 +290,12 @@ export class StackFormatter {
   }
 
   /**
-   * Build breakpoint status summary
+   * Builds breakpoint status summary. Identifies verified, pending, not-yet-registered. Returns undefined if none exist.
+   * @param session - Debug session with requested and registered breakpoints
+   * @public
+   * @see file:../types/breakpoint.ts:32
    */
-  static buildBreakpointSummary(
+  public static buildBreakpointSummary(
     session: DebugSession,
   ): BreakpointStatusSummary | undefined {
     const requested = session.request.breakpoints ?? [];
@@ -335,7 +357,10 @@ export class StackFormatter {
   }
 
   /**
-   * Generate breakpoint key for comparison
+   * Generates unique breakpoint key: `{normalizedPath}:{line}:{condition|''}`. @internal
+   * @param file
+   * @param line
+   * @param condition
    */
   private static breakpointKey(
     file: string,
@@ -346,7 +371,8 @@ export class StackFormatter {
   }
 
   /**
-   * Normalize file path for consistent comparison
+   * Normalizes path: preserves special paths, resolves to absolute, converts backslashes. @internal
+   * @param file
    */
   private static normalizePathForKey(file: string): string {
     if (!file || file.startsWith('[')) {
@@ -365,7 +391,8 @@ export class StackFormatter {
   }
 
   /**
-   * Ensure origin type is valid
+   * Coerces origin to valid CodeOrigin. @internal @see file:../types/debug-state.ts:1
+   * @param origin
    */
   private static ensureOrigin(origin?: string): DebugLocation['type'] {
     switch (origin) {

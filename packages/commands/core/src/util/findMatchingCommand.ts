@@ -2,7 +2,24 @@ import type { CommandManifest, InstalledCommand } from '../types/index.js';
 import { extractPackageNameFromSpec } from './extractPackageNameFromSpec.js';
 
 /**
- * Find a matching command in the manifest based on the package spec
+ * Finds an installed command that matches the given package spec.
+ *
+ * Searches the manifest for a command whose package name matches the provided spec.
+ * Handles multiple matching strategies including direct matches, normalized package
+ * names (without version info), and scoped package variations.
+ * @param manifest - Command manifest containing all installed commands
+ * @param packageSpec - Package specification to search for (can include version, git URL, scope, etc.)
+ * @returns The matching installed command, or undefined if no match found
+ * @example
+ * ```typescript
+ * const manifest = await readManifest(context.manifestPath);
+ * const existing = findMatchingCommand(manifest, '@myorg/tool@1.0.0');
+ * if (existing) {
+ *   console.log(`Found: ${existing.package} v${existing.version}`);
+ * }
+ * ```
+ * @see file:./extractPackageNameFromSpec.ts:5-29 - Package name normalization logic
+ * @internal
  */
 export function findMatchingCommand(
   manifest: CommandManifest,
@@ -14,7 +31,17 @@ export function findMatchingCommand(
 }
 
 /**
- * Check if an installed package matches the given package spec
+ * Checks if an installed package matches the given package spec.
+ *
+ * Implements flexible matching logic to handle various package specification formats:
+ * - Direct string equality
+ * - Normalized package names (strips version info)
+ * - Scoped package variations (with/without @ prefix)
+ * - Git URL extraction (e.g., git+https://host/scope/package.git)
+ * @param installedPackage - The package name as stored in the manifest (e.g., '@myorg/tool')
+ * @param packageSpec - The package specification provided by the user (can include version, git URL, etc.)
+ * @returns True if the package matches the spec, false otherwise
+ * @internal
  */
 function packageMatchesSpec(
   installedPackage: string,

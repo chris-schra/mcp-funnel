@@ -10,6 +10,9 @@ import { validateReconnectConfig } from './validateReconnectConfig';
 
 /**
  * Validates stdio transport configuration.
+ * @param {StdioTransportConfig} config - Stdio transport config
+ * @throws {TransportError} When command field is missing
+ * @internal
  */
 function validateStdioConfig(config: StdioTransportConfig): void {
   if (!config.command) {
@@ -21,6 +24,10 @@ function validateStdioConfig(config: StdioTransportConfig): void {
 
 /**
  * Validates SSE transport configuration.
+ * @param {SSETransportConfig} config - SSE transport config
+ * @throws {TransportError} When URL is missing or invalid
+ * @throws {TransportError} When reconnect config fails validation
+ * @internal
  */
 function validateSSEConfig(config: SSETransportConfig): void {
   if (!config.url) {
@@ -45,6 +52,12 @@ function validateSSEConfig(config: SSETransportConfig): void {
 
 /**
  * Validates WebSocket transport configuration.
+ * @param {WebSocketTransportConfig} config - WebSocket transport config
+ * @throws {TransportError} When URL is missing or invalid
+ * @throws {TransportError} When URL protocol is not ws:/wss:/http:/https:
+ * @throws {TransportError} When timeout is not positive
+ * @throws {TransportError} When reconnect config fails validation
+ * @internal
  */
 function validateWebSocketConfig(config: WebSocketTransportConfig): void {
   if (!config.url) {
@@ -86,6 +99,12 @@ function validateWebSocketConfig(config: WebSocketTransportConfig): void {
 
 /**
  * Validates StreamableHTTP transport configuration.
+ * @param {StreamableHTTPTransportConfig} config - StreamableHTTP transport config
+ * @throws {TransportError} When URL is missing or invalid
+ * @throws {TransportError} When URL protocol is not http: or https:
+ * @throws {TransportError} When timeout is not positive
+ * @throws {TransportError} When reconnect config fails validation
+ * @internal
  */
 function validateStreamableHTTPConfig(
   config: StreamableHTTPTransportConfig,
@@ -125,6 +144,17 @@ function validateStreamableHTTPConfig(
   }
 }
 
+/**
+ * Validates transport configuration based on type.
+ *
+ * Routes to type-specific validators and performs exhaustive type checking
+ * to ensure all transport types are handled.
+ * @param {TransportConfig} config - Transport configuration with explicit type
+ * @throws {TransportError} When transport type is unsupported
+ * @throws {TransportError} When type-specific validation fails
+ * @public
+ * @see file:./validateReconnectConfig.ts - Shared reconnection validation
+ */
 export function validateTransportConfig(config: TransportConfig): void {
   switch (config.type) {
     case 'stdio':

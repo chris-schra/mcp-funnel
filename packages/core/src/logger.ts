@@ -22,6 +22,11 @@ const LEVELS: Record<LogLevel, number> = {
   trace: 4,
 };
 
+/**
+ * Reads the current log level from MCP_FUNNEL_LOG_LEVEL environment variable.
+ * Defaults to 'info' if not set or invalid.
+ * @internal
+ */
 function currentLevel(): LogLevel {
   const env = (process.env.MCP_FUNNEL_LOG_LEVEL || '').toLowerCase();
   if (env && ['error', 'warn', 'info', 'debug', 'trace'].includes(env)) {
@@ -30,11 +35,21 @@ function currentLevel(): LogLevel {
   return 'info';
 }
 
+/**
+ * Checks if logging is enabled for a given level based on current configuration.
+ * @param min - Minimum log level to check
+ * @internal
+ */
 function enabled(min: LogLevel): boolean {
   const lvl = currentLevel();
   return LEVELS[lvl] >= LEVELS[min];
 }
 
+/**
+ * Gets or generates a stable per-process run identifier for log correlation.
+ * This allows multiple log files and events from the same process to be linked together.
+ * @internal
+ */
 function runId(): string {
   if (!process.env.MCP_FUNNEL_RUN_ID) {
     // Stable per-process identifier so multiple files can correlate
@@ -43,10 +58,24 @@ function runId(): string {
   return process.env.MCP_FUNNEL_RUN_ID;
 }
 
+/**
+ * Constructs the path to the main JSON Lines log file for the current run.
+ * @internal
+ */
 function logFile(): string {
   return resolve(LOG_DIR, `run-${runId()}.jsonl`);
 }
 
+/**
+ * Writes a structured log event to the JSON Lines log file.
+ *
+ * Respects both the MCP_FUNNEL_LOG enable flag and MCP_FUNNEL_LOG_LEVEL threshold.
+ * Error-level events are always logged regardless of configuration.
+ * @param level - Log severity level
+ * @param event - Event identifier for categorization
+ * @param data - Optional structured data to include
+ * @public
+ */
 export function logEvent(level: LogLevel, event: string, data?: unknown): void {
   // Always write to file when logging is enabled or level is error
   const loggingEnabled =
@@ -74,6 +103,16 @@ export function logEvent(level: LogLevel, event: string, data?: unknown): void {
   }
 }
 
+/**
+ * Logs an error event with rich context for debugging.
+ *
+ * Captures error details including message, stack trace, error code,
+ * process arguments, and current working directory.
+ * @param context - Contextual label identifying where the error occurred
+ * @param rawError - The error object or value that was thrown
+ * @param extra - Additional structured context to aid debugging
+ * @public
+ */
 export function logError(
   context: string,
   rawError: unknown,
@@ -90,6 +129,15 @@ export function logError(
   });
 }
 
+/**
+ * Constructs the path to a server's stdout or stderr log file.
+ *
+ * Each server gets separate files for stdout and stderr, named with
+ * the current run ID for correlation with main event logs.
+ * @param serverName - Identifier for the server
+ * @param stream - Which stream to get the path for
+ * @public
+ */
 export function getServerStreamLogPath(
   serverName: string,
   stream: 'stderr' | 'stdout',
@@ -103,10 +151,7 @@ export function getServerStreamLogPath(
  * Provides a clean interface for logging across secret providers and managers,
  * following the SEAMS principle to allow different logging implementations
  * without changing the core business logic.
- */
-
-/**
- * Interface for structured logging with context.
+ * @public
  */
 export interface ILogger {
   /**
@@ -148,6 +193,7 @@ export interface ILogger {
  *
  * Provides structured logging with optional context while maintaining
  * backward compatibility with console-based logging.
+ * @public
  */
 export class ConsoleLogger implements ILogger {
   public constructor(private prefix: string = '[secrets]') {}
@@ -207,6 +253,7 @@ export class ConsoleLogger implements ILogger {
 
 /**
  * No-op logger implementation for testing or when logging is disabled.
+ * @public
  */
 export class NoOpLogger implements ILogger {
   public debug(): void {}
@@ -218,14 +265,15 @@ export class NoOpLogger implements ILogger {
 /**
  * Default logger instance used throughout the secrets module.
  * Can be replaced with a custom implementation if needed.
+ * @public
  */
 export let defaultLogger: ILogger = new ConsoleLogger();
 
 /**
  * Sets the default logger for the secrets module.
  * Useful for dependency injection or testing scenarios.
- *
  * @param logger - The logger implementation to use
+ * @public
  */
 export function setDefaultLogger(logger: ILogger): void {
   defaultLogger = logger;
@@ -233,9 +281,8 @@ export function setDefaultLogger(logger: ILogger): void {
 
 /**
  * Creates a scoped logger with a specific prefix.
- *
  * @param scope - The scope/prefix for the logger
- * @returns A new logger instance with the specified scope
+ * @public
  */
 export function createScopedLogger(scope: string): ILogger {
   return new ConsoleLogger(`[secrets:${scope}]`);

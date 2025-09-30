@@ -4,17 +4,29 @@ import { RegistryConfigEntry } from './types/config.types.js';
 /**
  * Generates a server configuration snippet from registry server data.
  *
- * RUNTIME HINTS:
- * The function respects `pkg.runtime_hint` from the registry to allow
+ * Converts registry server metadata (packages or remotes) into a standardized
+ * configuration entry suitable for MCP client consumption. Supports multiple
+ * package registries (npm, pypi, oci, github) and remote server configurations.
+ *
+ * **Runtime Hints**: Respects `pkg.runtime_hint` from the registry to allow
  * alternate launchers (e.g., 'pnpm dlx', 'yarn dlx', 'pipx', 'podman').
  * Falls back to defaults ('npx', 'uvx', 'docker') when not specified.
  *
- * TYPE SAFETY:
- * Uses structured clone (JSON parse/stringify) for metadata to ensure deep copying
- * and type safety. This avoids shallow copy mutation issues and type casting violations.
- *
- * @param server - Registry server data containing package or remote configuration
- * @returns Configuration entry suitable for MCP client consumption
+ * **Type Safety**: Uses structured clone (JSON parse/stringify) for metadata
+ * to ensure deep copying and avoid shallow copy mutation issues.
+ * @param {RegistryServer} server - Registry server data containing package or remote configuration
+ * @returns {RegistryConfigEntry} Configuration entry suitable for MCP client consumption
+ * @example
+ * ```typescript
+ * // Generate config for an npm package-based server
+ * const server: RegistryServer = {
+ *   name: 'github-server',
+ *   packages: [{ registry_type: 'npm', identifier: '@modelcontextprotocol/server-github' }]
+ * };
+ * const config = generateConfigSnippet(server);
+ * // Returns: { name: 'github-server', command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] }
+ * ```
+ * @public
  */
 export function generateConfigSnippet(
   server: RegistryServer,
@@ -135,8 +147,15 @@ export function generateConfigSnippet(
 }
 
 /**
- * Helper to generate command and args JSON lines for install instructions
- * Eliminates redundancy across npm, pypi, and oci package types
+ * Generates command and args JSON lines for install instructions.
+ *
+ * Internal helper that eliminates redundancy across npm, pypi, and oci package types
+ * by centralizing the logic for generating command and args configuration lines.
+ * @param {Package} pkg - Package metadata from registry
+ * @param {string} defaultCommand - Default command to use if no runtime_hint is specified
+ * @param {string[]} defaultArgs - Default arguments array to use if no runtime_hint is specified
+ * @returns {{ lines: string[]; hasEnvVars: boolean }} Object containing generated lines and flag indicating if env vars follow
+ * @internal
  */
 function generateCommandArgsLines(
   pkg: Package,
@@ -172,7 +191,24 @@ function generateCommandArgsLines(
 }
 
 /**
- * Generates human-readable installation instructions for a server
+ * Generates human-readable installation instructions for a server.
+ *
+ * Creates comprehensive markdown-formatted instructions including prerequisites,
+ * configuration snippets, and authentication notes. Handles both package-based
+ * and remote server types.
+ * @param {RegistryServer} server - Registry server data to generate instructions for
+ * @returns {string} Markdown-formatted installation instructions
+ * @example
+ * ```typescript
+ * const instructions = generateInstallInstructions(server);
+ * console.log(instructions);
+ * // Output includes:
+ * // - Server description
+ * // - Prerequisites
+ * // - JSON configuration snippet
+ * // - Required environment variables
+ * ```
+ * @public
  */
 export function generateInstallInstructions(server: RegistryServer): string {
   const lines: string[] = [];

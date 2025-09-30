@@ -120,6 +120,8 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Memory snapshot for testing (not part of interface)
+   * @returns Object indicating whether a token is currently stored
+   * @internal
    */
   public _getMemorySnapshot(): unknown {
     return this.tokenData ? { hasToken: true } : { hasToken: false };
@@ -127,6 +129,8 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Trigger error for testing (not part of interface)
+   * @throws {Error} Always throws a test error
+   * @internal
    */
   public async _triggerError(): Promise<void> {
     throw new Error('Test error - no sensitive data exposed');
@@ -134,6 +138,8 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Validates token data before storage
+   * @param token - Token data to validate
+   * @throws {Error} When access token or token type is empty
    */
   private validateToken(token: TokenData): void {
     if (!token.accessToken?.trim()) {
@@ -149,6 +155,8 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Sanitizes token data by trimming whitespace (conservative approach)
+   * @param token - Token data to sanitize
+   * @returns Sanitized copy of the token data
    */
   private sanitizeToken(token: TokenData): TokenData {
     // Return a copy to avoid modifying the original
@@ -162,6 +170,8 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Checks if token is expired with buffer time for proactive refresh
+   * @param token - Token data to check for expiration
+   * @returns true if token is expired or has invalid date, false otherwise
    */
   private isTokenExpiredWithBuffer(token: TokenData): boolean {
     if (isNaN(token.expiresAt.getTime())) {
@@ -177,6 +187,7 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Schedules token refresh before expiry
+   * @param token - Token data used to calculate refresh timing
    */
   private scheduleTokenRefresh(token: TokenData): void {
     if (!this.refreshCallback) {
@@ -220,6 +231,8 @@ export class MemoryTokenStorage implements ITokenStorage {
 
   /**
    * Provides basic thread safety using a queue-based approach
+   * @param operation - Async operation to execute with lock protection
+   * @returns Promise resolving to the operation result
    */
   private async withLock<T>(operation: () => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -261,6 +274,7 @@ export class MemoryTokenStorage implements ITokenStorage {
 
 /**
  * Factory function to create a new MemoryTokenStorage instance
+ * @returns New instance of MemoryTokenStorage
  */
 export function createMemoryTokenStorage(): ITokenStorage {
   return new MemoryTokenStorage();

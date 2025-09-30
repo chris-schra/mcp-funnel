@@ -1,12 +1,20 @@
 import { TransportError, TransportErrorCode } from './transport-error.js';
 
 /**
- * Factory functions for creating TransportError instances.
+ * Factory functions for creating TransportError instances with standardized error codes and retryability.
+ *
+ * Provides a type-safe API for creating transport errors with appropriate categorization and retry behavior.
  * Extracted from TransportError class to reduce file size and improve maintainability.
+ * @public
+ * @see file:./transport-error.ts - TransportError base class
  */
 
 /**
- * Creates a TransportError for connection failures (retryable)
+ * Creates a retryable connection failure error.
+ * @param message - Descriptive error message
+ * @param cause - Optional underlying error that caused the failure
+ * @returns TransportError with CONNECTION_FAILED code and retryable=true
+ * @public
  */
 export function createConnectionFailedError(
   message: string,
@@ -21,7 +29,11 @@ export function createConnectionFailedError(
 }
 
 /**
- * Creates a TransportError for connection timeouts (retryable)
+ * Creates a retryable connection timeout error.
+ * @param timeout - Timeout value in milliseconds that was exceeded
+ * @param cause - Optional underlying error
+ * @returns TransportError with CONNECTION_TIMEOUT code and retryable=true
+ * @public
  */
 export function createConnectionTimeoutError(
   timeout: number,
@@ -36,7 +48,12 @@ export function createConnectionTimeoutError(
 }
 
 /**
- * Creates a TransportError for connection refused (retryable)
+ * Creates a retryable connection refused error.
+ * @param host - Hostname that refused the connection
+ * @param port - Optional port number
+ * @param cause - Optional underlying error
+ * @returns TransportError with CONNECTION_REFUSED code and retryable=true
+ * @public
  */
 export function createConnectionRefusedError(
   host: string,
@@ -53,7 +70,10 @@ export function createConnectionRefusedError(
 }
 
 /**
- * Creates a TransportError for connection reset (retryable)
+ * Creates a retryable connection reset error.
+ * @param cause - Optional underlying error
+ * @returns TransportError with CONNECTION_RESET code and retryable=true
+ * @public
  */
 export function createConnectionResetError(cause?: Error): TransportError {
   return new TransportError(
@@ -65,7 +85,11 @@ export function createConnectionResetError(cause?: Error): TransportError {
 }
 
 /**
- * Creates a TransportError for DNS lookup failures (retryable)
+ * Creates a retryable DNS lookup failure error.
+ * @param hostname - Hostname that failed DNS resolution
+ * @param cause - Optional underlying error
+ * @returns TransportError with DNS_LOOKUP_FAILED code and retryable=true
+ * @public
  */
 export function createDnsLookupFailedError(
   hostname: string,
@@ -80,7 +104,10 @@ export function createDnsLookupFailedError(
 }
 
 /**
- * Creates a TransportError for SSL handshake failures (usually not retryable)
+ * Creates a non-retryable SSL/TLS handshake failure error.
+ * @param cause - Optional underlying error
+ * @returns TransportError with SSL_HANDSHAKE_FAILED code and retryable=false
+ * @public
  */
 export function createSslHandshakeFailedError(cause?: Error): TransportError {
   return new TransportError(
@@ -92,7 +119,11 @@ export function createSslHandshakeFailedError(cause?: Error): TransportError {
 }
 
 /**
- * Creates a TransportError for protocol errors (not retryable)
+ * Creates a non-retryable protocol error.
+ * @param message - Descriptive error message
+ * @param cause - Optional underlying error
+ * @returns TransportError with PROTOCOL_ERROR code and retryable=false
+ * @public
  */
 export function createProtocolError(
   message: string,
@@ -107,7 +138,11 @@ export function createProtocolError(
 }
 
 /**
- * Creates a TransportError for invalid responses (not retryable)
+ * Creates a non-retryable invalid response error.
+ * @param message - Descriptive error message
+ * @param cause - Optional underlying error
+ * @returns TransportError with INVALID_RESPONSE code and retryable=false
+ * @public
  */
 export function createInvalidResponseError(
   message: string,
@@ -122,7 +157,11 @@ export function createInvalidResponseError(
 }
 
 /**
- * Creates a TransportError for request timeouts (retryable)
+ * Creates a retryable request timeout error.
+ * @param timeout - Timeout value in milliseconds that was exceeded
+ * @param cause - Optional underlying error
+ * @returns TransportError with REQUEST_TIMEOUT code and retryable=true
+ * @public
  */
 export function createRequestTimeoutError(
   timeout: number,
@@ -137,7 +176,11 @@ export function createRequestTimeoutError(
 }
 
 /**
- * Creates a TransportError for rate limiting (retryable with backoff)
+ * Creates a retryable rate limit error with optional retry-after hint.
+ * @param retryAfter - Optional retry-after delay in seconds
+ * @param cause - Optional underlying error
+ * @returns TransportError with RATE_LIMITED code and retryable=true
+ * @public
  */
 export function createRateLimitedError(
   retryAfter?: number,
@@ -155,7 +198,10 @@ export function createRateLimitedError(
 }
 
 /**
- * Creates a TransportError for service unavailable (retryable)
+ * Creates a retryable service unavailable error (HTTP 503).
+ * @param cause - Optional underlying error
+ * @returns TransportError with SERVICE_UNAVAILABLE code and retryable=true
+ * @public
  */
 export function createServiceUnavailableError(cause?: Error): TransportError {
   return new TransportError(
@@ -167,7 +213,10 @@ export function createServiceUnavailableError(cause?: Error): TransportError {
 }
 
 /**
- * Creates a TransportError for bad gateway (retryable)
+ * Creates a retryable bad gateway error (HTTP 502).
+ * @param cause - Optional underlying error
+ * @returns TransportError with BAD_GATEWAY code and retryable=true
+ * @public
  */
 export function createBadGatewayError(cause?: Error): TransportError {
   return new TransportError(
@@ -179,7 +228,10 @@ export function createBadGatewayError(cause?: Error): TransportError {
 }
 
 /**
- * Creates a TransportError for gateway timeout (retryable)
+ * Creates a retryable gateway timeout error (HTTP 504).
+ * @param cause - Optional underlying error
+ * @returns TransportError with GATEWAY_TIMEOUT code and retryable=true
+ * @public
  */
 export function createGatewayTimeoutError(cause?: Error): TransportError {
   return new TransportError(
@@ -191,7 +243,10 @@ export function createGatewayTimeoutError(cause?: Error): TransportError {
 }
 
 /**
- * Creates a TransportError for network unreachable (retryable)
+ * Creates a retryable network unreachable error.
+ * @param cause - Optional underlying error
+ * @returns TransportError with NETWORK_UNREACHABLE code and retryable=true
+ * @public
  */
 export function createNetworkUnreachableError(cause?: Error): TransportError {
   return new TransportError(
@@ -203,7 +258,11 @@ export function createNetworkUnreachableError(cause?: Error): TransportError {
 }
 
 /**
- * Creates a TransportError for host unreachable (retryable)
+ * Creates a retryable host unreachable error.
+ * @param host - Hostname that is unreachable
+ * @param cause - Optional underlying error
+ * @returns TransportError with HOST_UNREACHABLE code and retryable=true
+ * @public
  */
 export function createHostUnreachableError(
   host: string,
@@ -218,7 +277,11 @@ export function createHostUnreachableError(
 }
 
 /**
- * Creates a TransportError for too many redirects (not retryable)
+ * Creates a non-retryable too many redirects error.
+ * @param maxRedirects - Maximum number of redirects that was exceeded
+ * @param cause - Optional underlying error
+ * @returns TransportError with TOO_MANY_REDIRECTS code and retryable=false
+ * @public
  */
 export function createTooManyRedirectsError(
   maxRedirects: number,
@@ -233,7 +296,11 @@ export function createTooManyRedirectsError(
 }
 
 /**
- * Creates a TransportError for invalid URL (not retryable)
+ * Creates a non-retryable invalid URL error.
+ * @param url - Invalid URL string
+ * @param cause - Optional underlying error
+ * @returns TransportError with INVALID_URL code and retryable=false
+ * @public
  */
 export function createInvalidUrlError(
   url: string,
@@ -248,7 +315,11 @@ export function createInvalidUrlError(
 }
 
 /**
- * Creates a TransportError for authentication failures (not retryable)
+ * Creates a non-retryable authentication failure error.
+ * @param message - Descriptive error message
+ * @param cause - Optional underlying error
+ * @returns TransportError with AUTHENTICATION_FAILED code and retryable=false
+ * @public
  */
 export function createAuthenticationFailedError(
   message: string,
@@ -263,7 +334,11 @@ export function createAuthenticationFailedError(
 }
 
 /**
- * Creates a TransportError for server errors (retryable)
+ * Creates a retryable server error (HTTP 5xx).
+ * @param message - Descriptive error message
+ * @param cause - Optional underlying error
+ * @returns TransportError with SERVER_ERROR code and retryable=true
+ * @public
  */
 export function createServerError(
   message: string,
@@ -278,7 +353,12 @@ export function createServerError(
 }
 
 /**
- * Determines if an HTTP status code indicates a retryable error
+ * Determines if an HTTP status code indicates a retryable error.
+ *
+ * Returns true for 5xx server errors and specific 4xx codes (408, 429).
+ * @param statusCode - HTTP status code to check
+ * @returns True if the status code indicates a retryable error
+ * @internal
  */
 function isHttpStatusRetryable(statusCode: number): boolean {
   // 5xx server errors are generally retryable
@@ -297,7 +377,22 @@ function isHttpStatusRetryable(statusCode: number): boolean {
 }
 
 /**
- * Creates a TransportError from an HTTP status code
+ * Creates a TransportError from an HTTP status code with appropriate error code and retryability.
+ *
+ * Maps HTTP status codes to TransportErrorCode values and determines retry behavior:
+ * - 401/403: AUTHENTICATION_FAILED (non-retryable)
+ * - 429: RATE_LIMITED (retryable)
+ * - 502: BAD_GATEWAY (retryable)
+ * - 503: SERVICE_UNAVAILABLE (retryable)
+ * - 504: GATEWAY_TIMEOUT (retryable)
+ * - 408: REQUEST_TIMEOUT (retryable)
+ * - 5xx: SERVER_ERROR (retryable)
+ * - Others: UNKNOWN_ERROR with status-based retryability
+ * @param statusCode - HTTP status code
+ * @param statusText - Optional HTTP status text
+ * @param cause - Optional underlying error
+ * @returns TransportError with appropriate code and retryability
+ * @public
  */
 export function createErrorFromHttpStatus(
   statusCode: number,

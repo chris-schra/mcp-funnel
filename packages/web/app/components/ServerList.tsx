@@ -13,6 +13,9 @@ interface ServersResponse {
   servers: Server[];
 }
 
+/**
+ *
+ */
 export function ServerList() {
   const queryClient = useQueryClient();
 

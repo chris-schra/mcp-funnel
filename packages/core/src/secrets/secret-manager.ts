@@ -3,6 +3,7 @@
  *
  * Orchestrates secret resolution across multiple providers, handling errors
  * gracefully and merging results with proper precedence.
+ * @public
  */
 
 import { ISecretProvider, ISecretProviderRegistry } from './types.js';
@@ -10,6 +11,7 @@ import { defaultLogger, type ILogger } from '../logger.js';
 
 /**
  * Cache entry for resolved secrets with expiration.
+ * @internal
  */
 interface CacheEntry {
   secrets: Record<string, string>;
@@ -19,6 +21,7 @@ interface CacheEntry {
 
 /**
  * Options for configuring the SecretManager.
+ * @public
  */
 export interface SecretManagerOptions {
   /**
@@ -39,7 +42,6 @@ export interface SecretManagerOptions {
  * The SecretManager provides a unified interface for resolving secrets from
  * multiple providers, handling failures gracefully, and merging results with
  * proper precedence (later providers override earlier ones).
- *
  * @example
  * ```typescript
  * const manager = new SecretManager([
@@ -50,6 +52,7 @@ export interface SecretManagerOptions {
  * const secrets = await manager.resolveSecrets();
  * console.log(secrets.API_KEY); // Value from the last provider that resolved it
  * ```
+ * @public
  */
 export class SecretManager {
   private providers: ISecretProvider[];
@@ -60,7 +63,6 @@ export class SecretManager {
 
   /**
    * Creates a new SecretManager instance.
-   *
    * @param providers - Array of secret providers to use for resolution
    * @param registry - Optional registry for additional provider management
    * @param options - Configuration options for the manager
@@ -82,7 +84,6 @@ export class SecretManager {
    * Calls resolveSecrets() on all providers and merges the results.
    * Later providers in the array override values from earlier providers.
    * Provider errors are logged but do not stop the resolution process.
-   *
    * @returns A promise that resolves to the merged secrets from all providers
    */
   public async resolveSecrets(): Promise<Record<string, string>> {
@@ -129,7 +130,6 @@ export class SecretManager {
    *
    * The provider will be added to the end of the provider list,
    * giving it the highest precedence for secret resolution.
-   *
    * @param provider - The secret provider to add
    */
   public addProvider(provider: ISecretProvider): void {
@@ -139,7 +139,6 @@ export class SecretManager {
 
   /**
    * Removes the first provider from the manager by name.
-   *
    * @param name - The name of the provider to remove (from getName())
    * @returns true if a provider was removed, false if no provider with that name was found
    */
@@ -159,8 +158,8 @@ export class SecretManager {
 
   /**
    * Gets all providers managed by this instance.
-   *
    * @returns A defensive copy of all providers (direct + registry)
+   * @internal
    */
   private getAllProviders(): ISecretProvider[] {
     const combined: ISecretProvider[] = [...this.providers];
@@ -178,8 +177,8 @@ export class SecretManager {
 
   /**
    * Checks if the current cache entry is still valid.
-   *
    * @returns true if cache exists and hasn't expired, false otherwise
+   * @internal
    */
   private isCacheValid(): boolean {
     if (!this.cache || this.cacheTtl <= 0) {
@@ -193,6 +192,7 @@ export class SecretManager {
 
   /**
    * Invalidates the current cache.
+   * @internal
    */
   private invalidateCache(): void {
     this.cache = undefined;
@@ -200,7 +200,6 @@ export class SecretManager {
 
   /**
    * Gets the current cache status for debugging.
-   *
    * @returns Cache information or null if no cache exists
    */
   public getCacheInfo(): { valid: boolean; age: number; ttl: number } | null {
@@ -225,7 +224,6 @@ export class SecretManager {
 
   /**
    * Gets the list of provider names currently managed.
-   *
    * @returns Array of provider names
    */
   public getProviderNames(): string[] {

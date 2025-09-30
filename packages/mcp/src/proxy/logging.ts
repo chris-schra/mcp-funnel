@@ -17,6 +17,7 @@ try {
 /**
  * Default logger implementation that combines legacy file logging
  * with structured logging via the logger module
+ * @internal
  */
 export class DefaultLogger implements ILogger {
   public error(
@@ -56,6 +57,10 @@ export class DefaultLogger implements ILogger {
   /**
    * Legacy error logging for backward compatibility
    * Creates detailed error log files for debugging
+   * @param error
+   * @param context
+   * @param serverName
+   * @internal
    */
   private legacyErrorLog(
     error: unknown,
@@ -110,6 +115,8 @@ export class DefaultLogger implements ILogger {
  * Factory function to create loggers
  * SEAM: Can be extended to return different logger implementations
  * based on configuration (e.g., remote logging, different formats)
+ * @param type
+ * @internal
  */
 export function createLogger(type: 'default' | string = 'default'): ILogger {
   switch (type) {
@@ -123,11 +130,16 @@ export function createLogger(type: 'default' | string = 'default'): ILogger {
 
 /**
  * Singleton logger instance used throughout the proxy
+ * @internal
  */
 export const logger = createLogger();
 
 /**
  * Helper to log server stream output
+ * @param serverName
+ * @param streamType
+ * @param line
+ * @internal
  */
 export function logServerStream(
   serverName: string,
@@ -148,6 +160,9 @@ export function logServerStream(
 
 /**
  * Helper to create prefixed log messages
+ * @param serverName
+ * @param message
+ * @internal
  */
 export function prefixedLog(serverName: string, message: string): string {
   return `[${serverName}] ${message}`;

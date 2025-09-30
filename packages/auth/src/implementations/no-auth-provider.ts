@@ -20,6 +20,7 @@ import { type IAuthProvider, logEvent } from '@mcp-funnel/core';
  * - Connecting to APIs that don't require authentication
  * - Testing scenarios where auth is not needed
  * - Development environments with open endpoints
+ * @public
  */
 export class NoAuthProvider implements IAuthProvider {
   public constructor() {
@@ -33,6 +34,7 @@ export class NoAuthProvider implements IAuthProvider {
   /**
    * Returns empty headers since no authentication is provided
    * @returns Promise resolving to empty object
+   * @public
    */
   public async getHeaders(): Promise<Record<string, string>> {
     // Always return empty headers - no authentication
@@ -42,6 +44,7 @@ export class NoAuthProvider implements IAuthProvider {
   /**
    * Always returns true since no authentication means always valid
    * @returns Promise resolving to true
+   * @public
    */
   public async isValid(): Promise<boolean> {
     // NoAuth is always "valid" since there's nothing to validate
@@ -50,7 +53,9 @@ export class NoAuthProvider implements IAuthProvider {
 
   /**
    * No-op refresh method since there's nothing to refresh
-   * This method is optional but provided for completeness
+   *
+   * This method is optional but provided for completeness.
+   * @public
    */
   public async refresh?(): Promise<void> {
     // No-op: nothing to refresh for no-auth provider

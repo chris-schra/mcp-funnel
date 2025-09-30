@@ -1,16 +1,21 @@
 /**
  * SSE Client Transport Implementation for MCP OAuth
  *
- * Server-Sent Events (SSE) transport for client connections with OAuth authentication.
- * Implements the MCP SDK Transport interface with:
+ * Server-Sent Events transport for client connections with OAuth authentication.
+ * Uses EventSource for server-to-client streaming and HTTP POST for client-to-server messages.
+ *
+ * Key features:
  * - EventSource for server→client messages (SSE stream)
  * - HTTP POST for client→server messages with auth headers
  * - UUID correlation between requests and responses
- * - Secure auth token transmission via headers (eventsource package supports headers)
+ * - Secure auth token transmission via headers (never in URLs)
  * - Automatic reconnection with exponential backoff
  * - 401 response handling with token refresh retry
  * - Proper resource cleanup and timeout support
- * - Security: token sanitization in error messages and no token exposure in URLs
+ *
+ * Security: Auth tokens passed via headers to prevent logging/leakage.
+ * @public
+ * @see file:./base-client-transport.ts - Base transport implementation
  */
 
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -27,14 +32,16 @@ import {
 import { logEvent } from '../../logger.js';
 
 /**
- * Configuration for SSE client transport
+ * Configuration for SSE client transport.
+ * @public
  */
 export type SSEClientTransportConfig = BaseClientTransportConfig;
 
 // Removed - PendingRequest interface is now in base class
 
 /**
- * SSE client transport implementing MCP SDK Transport interface
+ * SSE client transport implementing MCP SDK Transport interface.
+ * @public
  */
 export class SSEClientTransport extends BaseClientTransport {
   private eventSource: EventSource | null = null;
@@ -54,6 +61,7 @@ export class SSEClientTransport extends BaseClientTransport {
 
   /**
    * Validate and normalize URL for SSE
+   * @param config
    */
   protected validateAndNormalizeUrl(config: SSEClientTransportConfig): void {
     try {
@@ -106,6 +114,7 @@ export class SSEClientTransport extends BaseClientTransport {
 
   /**
    * Send message via HTTP POST
+   * @param message
    */
   protected async sendMessage(message: JSONRPCMessage): Promise<void> {
     await this.executeHttpRequest(
@@ -166,6 +175,7 @@ export class SSEClientTransport extends BaseClientTransport {
    *
    * This ensures that authentication tokens are sent securely via headers
    * rather than being exposed in URLs.
+   * @param authHeaders
    */
   private createAuthenticatedFetch(authHeaders: Record<string, string>) {
     return async (
@@ -237,6 +247,7 @@ export class SSEClientTransport extends BaseClientTransport {
 
   /**
    * Handle EventSource message event
+   * @param event
    */
   private handleEventSourceMessage(event: MessageEvent): void {
     try {

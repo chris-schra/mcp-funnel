@@ -12,27 +12,43 @@ import { createAuthProvider } from './auth-provider-factory.js';
 import type { ToolRegistry } from '../../tool-registry/index.js';
 
 /**
- * Configuration for connecting to a single server
+ * Configuration for establishing a server connection.
+ * @public
  */
 export interface ConnectionConfig {
+  /** Server configuration (legacy or extended format) */
   targetServer: TargetServer | TargetServerZod;
+  /** Proxy configuration containing global settings */
   config: ProxyConfig;
+  /** Path to configuration file for resolving relative paths */
   configPath: string;
+  /** Tool registry for registering discovered tools */
   toolRegistry: ToolRegistry;
 }
 
 /**
- * Result of a successful server connection
+ * Result of a successful server connection.
+ * @public
  */
 export interface ConnectionResult {
+  /** Connected MCP client instance */
   client: Client;
+  /** Active transport for the connection */
   transport: Transport;
+  /** ISO timestamp when connection was established */
   connectedAt: string;
 }
 
 /**
- * Build the environment variables for a server connection
- * SECURITY: Always use buildServerEnvironment to ensure proper filtering
+ * Builds environment variables for server connection with secret resolution.
+ * SECURITY: Always uses buildServerEnvironment to ensure proper filtering of sensitive
+ * variables and secret resolution from configured providers.
+ * Handles both legacy (command/args at root) and extended (transport object) server formats.
+ * @param {TargetServer | TargetServerZod} targetServer - Server configuration
+ * @param {ProxyConfig} config - Proxy configuration
+ * @param {string} configPath - Config file path for secret resolution
+ * @returns {Promise<Record<string, string>>} Resolved environment variables map
+ * @internal
  */
 async function buildConnectionEnvironment(
   targetServer: TargetServer | TargetServerZod,
@@ -67,7 +83,14 @@ async function buildConnectionEnvironment(
 }
 
 /**
- * Create a transport for the server connection
+ * Creates a transport for server connection with authentication support.
+ * Handles both extended transport configuration (SSE, WebSocket, stdio) and legacy
+ * stdio-only format. Creates auth providers for OAuth2 and bearer token flows when configured.
+ * @param {TargetServer | TargetServerZod} targetServer - Server configuration
+ * @param {Record<string, string>} resolvedEnv - Resolved environment variables
+ * @returns {Promise<Transport>} Configured transport instance
+ * @throws {Error} When server has no command field in legacy format
+ * @internal
  */
 async function createServerTransport(
   targetServer: TargetServer | TargetServerZod,
@@ -145,7 +168,13 @@ async function createServerTransport(
 }
 
 /**
- * Discover tools from a connected server with timeout
+ * Discovers and registers tools from a connected server with timeout protection.
+ * Calls client.listTools() with a 5-second timeout to prevent hanging if the server
+ * crashes during discovery. Registers discovered tools with server name prefix.
+ * @param {Client} client - Connected MCP client
+ * @param {TargetServer | TargetServerZod} targetServer - Server configuration
+ * @param {ToolRegistry} toolRegistry - Registry for storing discovered tools
+ * @internal
  */
 async function discoverServerTools(
   client: Client,
@@ -179,8 +208,27 @@ async function discoverServerTools(
 }
 
 /**
- * Connect to a single target server
- * Returns the client, transport, and connection timestamp
+ * Establishes connection to a target server and discovers its tools.
+ * Complete connection flow:
+ * 1. Build environment variables with secret resolution
+ * 2. Create transport with authentication support
+ * 3. Connect MCP client to transport
+ * 4. Discover and register server tools
+ * Emits 'server:connect_start' and 'server:connect_success' events.
+ * @param {ConnectionConfig} connectionConfig - Connection configuration
+ * @returns {Promise<ConnectionResult>} Client, transport, and connection timestamp
+ * @throws Various errors from transport creation, client connection, or tool discovery
+ * @example
+ * ```typescript
+ * const result = await connectToServer({
+ *   targetServer: { name: 'my-server', command: 'node', args: ['server.js'] },
+ *   config: proxyConfig,
+ *   configPath: '/path/to/config.json',
+ *   toolRegistry
+ * });
+ * ```
+ * @public
+ * @see file:./server-connection-manager.ts:156 - Usage in connection manager
  */
 export async function connectToServer(
   connectionConfig: ConnectionConfig,

@@ -2,18 +2,28 @@ import type { ChildProcess } from 'child_process';
 import { logger, prefixedLog } from '../logging.js';
 
 /**
- * Configuration for setting up process error and exit handlers
+ * Configuration for setting up process error and exit handlers.
+ * @public
  */
 export interface ProcessHandlerConfig {
+  /** Server identifier for logging */
   serverName: string;
+  /** Child process to attach handlers to */
   process: ChildProcess;
+  /** Callback invoked on process error events */
   onError: (error: Error) => void;
+  /** Callback invoked when process closes (any exit code) */
   onClose: () => void;
 }
 
 /**
- * Sets up error and close handlers for a child process
- * Extracted pure function for better testability and reuse
+ * Sets up error and close handlers for a child process.
+ * Attaches 'error' and 'close' event listeners to the process. Non-zero exit codes
+ * are logged as errors with code and signal information. Extracted as pure function
+ * for testability and reuse across transport implementations.
+ * @param {ProcessHandlerConfig} config - Process handler configuration
+ * @public
+ * @see file:../transports/base-transport.ts:123 - Usage in base transport
  */
 export function setupProcessHandlers(config: ProcessHandlerConfig): void {
   config.process.on('error', (error) => {

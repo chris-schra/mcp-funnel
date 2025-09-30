@@ -1,10 +1,9 @@
 /**
  * Classifies errors into specific categories for better logging and debugging.
- *
- * @param error - The error to classify
- * @param operation - The operation that failed (e.g., 'search', 'server fetch')
- * @param context - Additional context for the error (e.g., identifier, keywords)
- * @returns The error type for logging purposes
+ * @param error
+ * @param operation
+ * @param context
+ * @internal
  */
 export function classifyAndLogError(
   error: unknown,

@@ -3,6 +3,7 @@
  *
  * Utility functions for managing MCP SDK transport instances,
  * including creation, callback setup, and lifecycle management.
+ * @internal
  */
 
 import {
@@ -14,7 +15,8 @@ import { TransportError } from '../errors/transport-error.js';
 import { logEvent } from '../../logger.js';
 
 /**
- * Configuration for creating an SDK StreamableHTTP transport
+ * Configuration for creating an SDK StreamableHTTP transport.
+ * @internal
  */
 export interface SDKTransportConfig {
   url: string;
@@ -29,8 +31,11 @@ export interface SDKTransportConfig {
 }
 
 /**
- * Callbacks for SDK transport events
- * Uses getter functions to enable dynamic callback resolution
+ * Callbacks for SDK transport events.
+ *
+ * Uses getter functions to enable dynamic callback resolution at invocation time,
+ * allowing callbacks to be updated without recreating the transport.
+ * @internal
  */
 export interface SDKTransportCallbacks {
   logPrefix: string;
@@ -41,7 +46,13 @@ export interface SDKTransportCallbacks {
 }
 
 /**
- * Create an SDK StreamableHTTP transport with the given configuration
+ * Creates an SDK StreamableHTTP transport with the given configuration.
+ *
+ * Converts internal config format to SDK options format, including
+ * reconnection configuration if specified.
+ * @param config - Transport configuration including URL and reconnection options
+ * @returns Configured SDK transport instance
+ * @internal
  */
 export function createSDKTransport(
   config: SDKTransportConfig,
@@ -65,8 +76,15 @@ export function createSDKTransport(
 }
 
 /**
- * Setup event callbacks for an SDK transport instance
- * Uses getter functions to dynamically resolve callbacks at invocation time
+ * Sets up event callbacks for an SDK transport instance.
+ *
+ * Uses getter functions to dynamically resolve callbacks at invocation time,
+ * allowing callback implementations to change without recreating the transport.
+ * This is essential for handling reconnection scenarios where callback references
+ * may need to be updated.
+ * @param sdkTransport - SDK transport instance to configure
+ * @param callbacks - Callback getters and configuration
+ * @internal
  */
 export function setupSDKTransportCallbacks(
   sdkTransport: SDKStreamableHTTPClientTransport,
@@ -103,8 +121,13 @@ export function setupSDKTransportCallbacks(
 }
 
 /**
- * Replace an SDK transport instance while preserving state
- * Closes the old transport gracefully before replacing it
+ * Replaces an SDK transport instance while preserving state.
+ *
+ * Closes the old transport gracefully before replacement. Ignores errors
+ * during cleanup since the old transport may already be closed.
+ * @param oldTransport - Existing transport to close, or null if none
+ * @param _newTransport - New transport instance (unused, for future extension)
+ * @internal
  */
 export async function replaceSDKTransport(
   oldTransport: SDKStreamableHTTPClientTransport | null,
@@ -121,7 +144,13 @@ export async function replaceSDKTransport(
 }
 
 /**
- * Validate and normalize a URL for StreamableHTTP transport
+ * Validates a URL for StreamableHTTP transport.
+ *
+ * Ensures the URL is properly formatted and uses http: or https: protocol.
+ * @param url - URL string to validate
+ * @throws {Error} When URL is empty or invalid format
+ * @throws {TransportError} When protocol is not http: or https:
+ * @internal
  */
 export function validateStreamableHTTPUrl(url: string): void {
   if (!url) {
@@ -143,7 +172,14 @@ export function validateStreamableHTTPUrl(url: string): void {
 }
 
 /**
- * Merge auth headers into request init
+ * Merges authentication headers into request initialization object.
+ *
+ * Combines existing headers from requestInit with authentication headers,
+ * with auth headers taking precedence in case of conflicts.
+ * @param requestInit - Existing request initialization or undefined
+ * @param authHeaders - Authentication headers to merge
+ * @returns New RequestInit object with merged headers
+ * @internal
  */
 export function mergeAuthHeaders(
   requestInit: RequestInit | undefined,

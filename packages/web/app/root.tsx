@@ -17,6 +17,11 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ *
+ * @param root0
+ * @param root0.children
+ */
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -38,6 +43,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ *
+ */
 export default function App() {
   return <Outlet />;
 }

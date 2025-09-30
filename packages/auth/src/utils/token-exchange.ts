@@ -13,6 +13,14 @@ export interface TokenExchangeParams {
 
 /**
  * Build token exchange request body
+ *
+ * Constructs URL-encoded form data for OAuth2 authorization code token exchange,
+ * including PKCE code verifier per RFC 7636.
+ * @param {TokenExchangeParams} params - Token exchange parameters
+ * @returns {URLSearchParams} URL-encoded request body with grant_type, code, redirect_uri, client_id, and code_verifier
+ * @internal
+ * @see file:./token-exchange.ts:8-12 - TokenExchangeParams interface
+ * @see file:../implementations/oauth2-authorization-code.ts:392 - Usage in OAuth2 flow
  */
 export function buildTokenExchangeBody(
   params: TokenExchangeParams,
@@ -30,6 +38,13 @@ export function buildTokenExchangeBody(
 
 /**
  * Build token exchange request headers
+ *
+ * Constructs HTTP headers for token exchange request with optional HTTP Basic
+ * authentication when client secret is available.
+ * @param {OAuth2AuthCodeConfig} config - OAuth2 authorization code configuration
+ * @returns {Record<string, string>} HTTP headers with Content-Type and optional Authorization header
+ * @internal
+ * @see file:../implementations/oauth2-authorization-code.ts:398 - Usage in OAuth2 flow
  */
 export function buildTokenExchangeHeaders(
   config: OAuth2AuthCodeConfig,
@@ -51,6 +66,16 @@ export function buildTokenExchangeHeaders(
 
 /**
  * Execute token exchange request
+ *
+ * Exchanges an authorization code for access and refresh tokens by making
+ * a POST request to the token endpoint with PKCE verification.
+ * @param {TokenExchangeParams} params - Token exchange parameters including code and code verifier
+ * @returns {Promise<OAuth2TokenResponse>} Promise resolving to OAuth2 token response with access_token and optional refresh_token
+ * @throws {Error} When token exchange request fails (non-2xx response)
+ * @public
+ * @see file:./oauth-types.ts:4-11 - OAuth2TokenResponse interface
+ * @see file:./token-exchange.ts:18 - buildTokenExchangeBody helper
+ * @see file:./token-exchange.ts:36 - buildTokenExchangeHeaders helper
  */
 export async function exchangeCodeForToken(
   params: TokenExchangeParams,

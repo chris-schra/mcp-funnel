@@ -5,6 +5,7 @@
  * with configurable filtering options including prefix, allowlist, and blocklist.
  * Following the SEAMS principle, this implementation provides the foundation
  * for environment-based secret resolution.
+ * @public
  */
 
 import { BaseSecretProvider } from './base-provider.js';
@@ -17,7 +18,6 @@ import type { ProcessEnvProviderConfig } from './provider-configs.js';
  * - Prefix filtering: Only include variables starting with a specific prefix
  * - Allowlist: Only include specific variable names
  * - Blocklist: Exclude specific variable names
- *
  * @example
  * ```typescript
  * // Filter by prefix
@@ -32,14 +32,15 @@ import type { ProcessEnvProviderConfig } from './provider-configs.js';
  *   config: { allowlist: ['API_KEY', 'DATABASE_URL'] }
  * });
  * ```
+ * @public
  */
 export class ProcessEnvProvider extends BaseSecretProvider {
   private readonly config: ProcessEnvProviderConfig['config'];
 
   /**
    * Creates a new ProcessEnvProvider instance.
-   *
    * @param config - Configuration specifying filtering rules for environment variables
+   * @public
    */
   public constructor(config: ProcessEnvProviderConfig) {
     super('process');
@@ -54,7 +55,8 @@ export class ProcessEnvProvider extends BaseSecretProvider {
    * 2. Prefix filtering (if specified) - only include variables with the prefix
    * 3. Blocklist (if specified) - exclude variables in the list
    *
-   * @returns A promise resolving to filtered environment variables as key-value pairs
+   * When a prefix is configured, it's stripped from the resulting secret keys.
+   * @internal
    */
   protected async doResolveSecrets(): Promise<Record<string, string>> {
     const secrets: Record<string, string> = {};

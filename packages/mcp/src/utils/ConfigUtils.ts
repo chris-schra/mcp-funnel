@@ -4,7 +4,14 @@ import type { LegacyConfig } from './transport/LegacyConfig.js';
 
 /**
  * Resolves environment variable patterns in transport configuration strings.
- * Supports nested variable resolution and validates variable existence.
+ *
+ * Processes string fields (command, args, url) for ${VAR_NAME} patterns
+ * and replaces them with actual environment variable values.
+ * @param {TransportConfig | LegacyConfig} config - Transport or legacy config with potential env var patterns
+ * @returns {ResolvedConfig} Config with all env var patterns resolved to actual values
+ * @throws {TransportError} When referenced environment variable doesn't exist
+ * @internal
+ * @see file:../../core/src/env/environment-resolver.ts - EnvVarPatternResolver implementation
  */
 function resolveTransportConfigVars(
   config: TransportConfig | LegacyConfig,
@@ -61,7 +68,8 @@ function resolveTransportConfigVars(
 }
 
 /**
- * Config with resolved environment variables
+ * Transport configuration with resolved environment variables.
+ * @internal
  */
 type ResolvedConfig = {
   command?: string;
@@ -80,7 +88,15 @@ type ResolvedConfig = {
 
 /**
  * Normalizes legacy configuration to modern transport configuration.
- * Handles legacy stdio detection based on command field presence.
+ *
+ * Legacy detection rules:
+ * - Explicit type field: Use as-is
+ * - Has command field: Infer as stdio transport
+ * - No type and no command: Invalid configuration
+ * @param {ResolvedConfig} config - Resolved config that may lack explicit type
+ * @returns {TransportConfig} Normalized config with explicit type field
+ * @throws {TransportError} When config has neither type nor command field
+ * @internal
  */
 function normalizeConfig(config: ResolvedConfig): TransportConfig {
   // If type is explicitly set, use it
@@ -105,7 +121,8 @@ function normalizeConfig(config: ResolvedConfig): TransportConfig {
 }
 
 /**
- * Default values for SSE transport configuration
+ * Default values for SSE transport configuration.
+ * @internal
  */
 const DEFAULT_SSE_CONFIG = {
   timeout: 30000,
@@ -118,7 +135,8 @@ const DEFAULT_SSE_CONFIG = {
 } as const;
 
 /**
- * Default values for WebSocket transport configuration
+ * Default values for WebSocket transport configuration.
+ * @internal
  */
 const DEFAULT_WEBSOCKET_CONFIG = {
   timeout: 30000,
@@ -131,7 +149,16 @@ const DEFAULT_WEBSOCKET_CONFIG = {
 } as const;
 
 /**
- * Applies default values to configuration based on transport type.
+ * Applies transport-specific default values to configuration.
+ *
+ * Each transport type has different defaults:
+ * - stdio: Empty args/env objects
+ * - sse: 30s timeout, reconnection with exponential backoff
+ * - websocket: 30s timeout, reconnection with exponential backoff
+ * - streamable-http: 30s timeout, optional reconnection
+ * @param {TransportConfig} config - Transport config with explicit type
+ * @returns {TransportConfig} Config with type-specific defaults applied
+ * @internal
  */
 function applyDefaults(config: TransportConfig): TransportConfig {
   switch (config.type) {

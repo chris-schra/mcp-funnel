@@ -6,7 +6,11 @@ import type {
 } from '../../types/index.js';
 
 /**
- * Type definition for mock variable scopes
+ * Represents the two scopes of variables in a mock debug session.
+ *
+ * Contains local variables (current function scope) and closure variables
+ * (captured from outer scopes).
+ * @public
  */
 export type MockVariableScopes = {
   local: Record<string, unknown>;
@@ -14,7 +18,22 @@ export type MockVariableScopes = {
 };
 
 /**
- * Mock console messages based on verbosity settings
+ * Generates mock console messages filtered by verbosity level.
+ *
+ * Returns different sets of console messages based on the verbosity:
+ * - 'all': Includes log messages and errors
+ * - 'warn-error': Only warnings and errors
+ * - 'error-only': Only error messages
+ * - Other values: Empty array
+ * @param verbosity - Console output verbosity level (defaults to 'all')
+ * @returns Array of mock console messages
+ * @example
+ * ```typescript
+ * const messages = createMockConsoleOutput('warn-error');
+ * // Returns only warning and error messages
+ * ```
+ * @public
+ * @see file:../../types/console.ts:3 - ConsoleMessage type definition
  */
 export const createMockConsoleOutput = (
   verbosity: string = 'all',
@@ -46,7 +65,27 @@ export const createMockConsoleOutput = (
 };
 
 /**
- * Create comprehensive mock variables for testing with sophisticated data structures
+ * Creates a comprehensive set of mock variables for testing variable inspection.
+ *
+ * Generates both local and closure scope variables with diverse data types including:
+ * - Primitives (numbers, booleans, strings)
+ * - Nested objects and arrays
+ * - Special types (Date, RegExp, Map, Set, Promise)
+ * - Circular references
+ * - Large arrays (150+ items)
+ *
+ * The generated variables are session-aware and include computed values based
+ * on the current breakpoint index.
+ * @param session - Mock debug session containing state for generating dynamic values
+ * @returns Object with 'local' and 'closure' variable scopes
+ * @example
+ * ```typescript
+ * const mockSession: MockDebugSession = { currentBreakpointIndex: 2, ... };
+ * const vars = createMockVariables(mockSession);
+ * console.log(vars.local.processedCount); // 62 (2 * 10 + 42)
+ * ```
+ * @public
+ * @see file:../../types/handlers.ts:166 - MockDebugSession type definition
  */
 export const createMockVariables = (
   session: MockDebugSession,
@@ -104,7 +143,23 @@ export const createMockVariables = (
 };
 
 /**
- * Create mock stack trace for a given location
+ * Generates a mock call stack for the current debug location.
+ *
+ * Creates a stack trace with multiple frames, each representing a function call
+ * in the call chain. Line numbers decrease going up the stack, and column numbers
+ * vary to simulate realistic call positions.
+ * @param location - Debug location representing the current execution point
+ * @param functionNames - Function names in call order from innermost to outermost
+ *                        (defaults to typical processing chain)
+ * @returns Array of stack frames with file, line, and column information
+ * @example
+ * ```typescript
+ * const location = { file: '/path/to/app.js', line: 42, type: 'user' };
+ * const stack = createMockStackTrace(location, ['fetchData', 'init', 'main']);
+ * // Returns 3 frames: fetchData at line 42, init at line 34, main at line 26
+ * ```
+ * @public
+ * @see file:../../types/debug-state.ts:3 - DebugLocation type definition
  */
 export const createMockStackTrace = (
   location: DebugLocation,
@@ -122,7 +177,24 @@ export const createMockStackTrace = (
 };
 
 /**
- * Mock breakpoint status summary
+ * Generates a summary of breakpoint registration status.
+ *
+ * Returns statistics about requested and successfully set breakpoints. In the mock
+ * implementation, all requested breakpoints are considered successfully set with no
+ * pending breakpoints.
+ * @param session - Mock debug session containing the breakpoint requests
+ * @returns Breakpoint status summary, or undefined if no breakpoints were requested
+ * @example
+ * ```typescript
+ * const session: MockDebugSession = {
+ *   request: { breakpoints: [{ file: 'app.js', line: 10 }] },
+ *   ...
+ * };
+ * const summary = createMockBreakpointsSummary(session);
+ * // Returns { requested: 1, set: 1, pending: [] }
+ * ```
+ * @public
+ * @see file:../../types/breakpoint.ts:32 - BreakpointStatusSummary type definition
  */
 export const createMockBreakpointsSummary = (
   session: MockDebugSession,
@@ -140,7 +212,24 @@ export const createMockBreakpointsSummary = (
 };
 
 /**
- * Mock evaluation results for different expression types
+ * Evaluates a JavaScript expression in mock mode by pattern matching.
+ *
+ * Simulates expression evaluation by recognizing common patterns:
+ * - `console.log(...)` returns undefined
+ * - Pure numbers return themselves as numbers
+ * - `typeof ...` returns "object" as a string
+ * - Other expressions return a mock placeholder string
+ * @param expression - JavaScript expression to evaluate
+ * @returns Evaluation result with expression, result value, and type
+ * @example
+ * ```typescript
+ * const result = createMockEvaluationResult('42');
+ * // Returns { expression: '42', result: '42', type: 'number' }
+ *
+ * const log = createMockEvaluationResult('console.log("test")');
+ * // Returns { expression: 'console.log("test")', result: 'undefined', type: 'undefined' }
+ * ```
+ * @public
  */
 export const createMockEvaluationResult = (expression: string) => {
   // Handle some common expression patterns
@@ -178,7 +267,20 @@ export const createMockEvaluationResult = (expression: string) => {
 };
 
 /**
- * Format console output for responses
+ * Formats console messages for response output, limiting to the most recent messages.
+ *
+ * Takes the last 10 messages and transforms them into a simplified format suitable
+ * for display in debug responses.
+ * @param messages - Array of console messages to format
+ * @returns Array of formatted console messages (up to last 10)
+ * @example
+ * ```typescript
+ * const messages: ConsoleMessage[] = [...]; // 50 messages
+ * const formatted = formatMockConsoleOutput(messages);
+ * // Returns only the last 10 messages
+ * ```
+ * @public
+ * @see file:../../types/console.ts:3 - ConsoleMessage type definition
  */
 export const formatMockConsoleOutput = (messages: ConsoleMessage[]) => {
   return messages.slice(-10).map((msg) => ({

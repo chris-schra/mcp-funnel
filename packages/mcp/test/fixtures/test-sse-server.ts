@@ -48,7 +48,8 @@ export class TestSSEServer {
   }
 
   /**
-   * Start the SSE server
+   * Starts the SSE server and returns port and URL
+   * @returns Server port and URL
    */
   public async start(): Promise<{ port: number; url: string }> {
     return new Promise((resolve, reject) => {
@@ -72,9 +73,7 @@ export class TestSSEServer {
     });
   }
 
-  /**
-   * Stop the SSE server
-   */
+  /** Stops the SSE server and closes all client connections */
   public async stop(): Promise<void> {
     // Close all client connections
     for (const client of this.clients.values()) {
@@ -96,7 +95,8 @@ export class TestSSEServer {
   }
 
   /**
-   * Send a message to all connected clients
+   * Broadcasts message to all connected clients
+   * @param data - Data to broadcast
    */
   public broadcast(data: unknown): void {
     const messageId = randomUUID();
@@ -126,7 +126,10 @@ export class TestSSEServer {
   }
 
   /**
-   * Send a message to a specific client
+   * Sends message to specific client, returns true if successful
+   * @param clientId - Target client ID
+   * @param data - Data to send
+   * @returns True if send was successful
    */
   public sendToClient(clientId: string, data: unknown): boolean {
     const client = this.clients.get(clientId);
@@ -147,9 +150,7 @@ export class TestSSEServer {
     }
   }
 
-  /**
-   * Get connected client count
-   */
+  /** Returns count of connected clients */
   public getClientCount(): number {
     // Clean up destroyed connections first
     for (const [clientId, client] of this.clients.entries()) {
@@ -160,9 +161,7 @@ export class TestSSEServer {
     return this.clients.size;
   }
 
-  /**
-   * Get message history
-   */
+  /** Returns all message history */
   public getMessageHistory(): Array<{
     id: string;
     data: unknown;
@@ -171,22 +170,23 @@ export class TestSSEServer {
     return [...this.messageHistory];
   }
 
-  /**
-   * Clear message history
-   */
+  /** Clears all message history */
   public clearMessageHistory(): void {
     this.messageHistory = [];
   }
 
   /**
-   * Set the valid token for authentication (for testing token changes)
+   * Sets valid token for authentication during token change testing
+   * @param token
    */
   public setValidToken(token: string): void {
     this.validToken = token;
   }
 
   /**
-   * Handle incoming HTTP requests
+   * Handles incoming HTTP requests to the SSE server
+   * @param req
+   * @param res
    */
   private async handleRequest(
     req: IncomingMessage,
@@ -241,7 +241,9 @@ export class TestSSEServer {
   }
 
   /**
-   * Handle SSE connection requests
+   * Handles SSE connection requests and sets up event stream
+   * @param req
+   * @param res
    */
   private async handleSSEConnection(
     req: IncomingMessage,
@@ -322,7 +324,9 @@ export class TestSSEServer {
   }
 
   /**
-   * Handle message sending requests (for testing)
+   * Handles message sending requests for testing
+   * @param req
+   * @param res
    */
   private async handleSendMessage(
     req: IncomingMessage,
@@ -353,7 +357,9 @@ export class TestSSEServer {
   }
 
   /**
-   * Format data as SSE message
+   * Formats data as SSE message with id and data fields
+   * @param id
+   * @param data
    */
   private formatSSEMessage(id: string, data: unknown): string {
     const jsonData = typeof data === 'string' ? data : JSON.stringify(data);
@@ -361,7 +367,8 @@ export class TestSSEServer {
   }
 
   /**
-   * Parse request body as text
+   * Parses request body as text
+   * @param req
    */
   private async parseRequestBody(req: IncomingMessage): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -377,7 +384,10 @@ export class TestSSEServer {
   }
 
   /**
-   * Send JSON response
+   * Sends JSON response with given status code
+   * @param res
+   * @param statusCode
+   * @param data
    */
   private sendJsonResponse(
     res: ServerResponse,
@@ -392,7 +402,8 @@ export class TestSSEServer {
 }
 
 /**
- * Helper function to create and start a test SSE server
+ * Creates and starts a test SSE server with given config
+ * @param config
  */
 export async function createTestSSEServer(
   config?: TestSSEServerConfig,

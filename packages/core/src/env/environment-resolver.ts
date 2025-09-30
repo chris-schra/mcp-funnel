@@ -1,7 +1,11 @@
 import type { EnvVarPatternResolverConfig } from '@mcp-funnel/models';
 
 /**
- * Error thrown when environment variable resolution fails
+ * Error thrown when environment variable resolution fails.
+ *
+ * Provides specific error types for different failure modes including
+ * missing variables, circular references, and depth limit violations.
+ * @public
  */
 export class EnvironmentResolutionError extends Error {
   public constructor(
@@ -44,7 +48,21 @@ export class EnvironmentResolutionError extends Error {
 }
 
 /**
- * Resolves environment variable patterns (${VAR}) in strings with security protections
+ * Resolves environment variable patterns (${VAR}) in strings with security protections.
+ *
+ * Supports ${VAR_NAME} and ${VAR_NAME:default_value} syntax with:
+ * - Recursive resolution of nested patterns
+ * - Circular reference detection
+ * - Maximum depth limits to prevent infinite loops
+ * - Variable name validation to prevent injection
+ * - Strict mode for required variables
+ * @example
+ * ```typescript
+ * const resolver = new EnvVarPatternResolver({ strict: true });
+ * const resolved = resolver.resolve('${HOME}/config/${APP_ENV:production}');
+ * // Returns: '/Users/alice/config/production'
+ * ```
+ * @public
  */
 export class EnvVarPatternResolver {
   private readonly maxDepth: number;
@@ -58,12 +76,15 @@ export class EnvVarPatternResolver {
   }
 
   /**
-   * Resolves environment variables in a string value
+   * Resolves environment variables in a string value.
    *
+   * Recursively processes all ${VAR} patterns while tracking visited variables
+   * to detect circular references and respecting the maximum depth limit.
    * @param value - String containing environment variable patterns
    * @param visitedVars - Set of variables being resolved (for circular detection)
    * @param depth - Current resolution depth
-   * @returns Resolved string value
+   * @throws {EnvironmentResolutionError} When circular reference, depth limit exceeded, or missing required variable
+   * @public
    */
   public resolve(
     value: string,
@@ -115,10 +136,12 @@ export class EnvVarPatternResolver {
   }
 
   /**
-   * Validates that a variable name follows secure naming conventions
+   * Validates that a variable name follows secure naming conventions.
    *
+   * Enforces uppercase letters, numbers, and underscores only,
+   * starting with a letter or underscore to prevent injection attacks.
    * @param varName - Variable name to validate
-   * @returns true if valid, false otherwise
+   * @internal
    */
   private isValidVariableName(varName: string): boolean {
     // Allow only uppercase letters, numbers, and underscores
@@ -127,15 +150,22 @@ export class EnvVarPatternResolver {
   }
 
   /**
-   * Utility method to check if a string contains environment variable patterns
+   * Checks if a string contains environment variable patterns.
+   * @param value - String to check for patterns
+   * @public
    */
   public static containsPattern(value: string): boolean {
     return /\$\{[A-Z_][A-Z0-9_]*(?::[^}]*)?\}/i.test(value);
   }
 
   /**
-   * Resolves environment variable patterns in a string
-   * TODO: check if okay since it creates a new instance every time
+   * Resolves environment variable patterns in a string.
+   *
+   * Convenience method that creates a resolver instance and resolves in one call.
+   * For repeated resolutions, create a resolver instance directly for better performance.
+   * @param value - String to resolve
+   * @param config - Optional resolver configuration
+   * @public
    */
   public static resolvePattern(
     value: string,
@@ -147,10 +177,15 @@ export class EnvVarPatternResolver {
 }
 
 /**
- * Resolves environment variable patterns in specific fields of a configuration object
- * @param config Configuration object with potential environment variables
- * @param fields Fields to check and resolve
- * @param envSource Optional custom environment source
+ * Resolves environment variable patterns in specific fields of a configuration object.
+ *
+ * Only processes string fields specified in the fields array, leaving other
+ * fields unchanged. Creates a defensive copy of the configuration object.
+ * @param config - Configuration object with potential environment variables
+ * @param fields - Fields to check and resolve
+ * @param envSource - Optional custom environment source
+ * @throws {Error} When environment variable resolution fails
+ * @public
  */
 export function resolveConfigFields<
   T extends Record<string, string | undefined>,
@@ -186,7 +221,12 @@ export function resolveConfigFields<
 }
 
 /**
- * Resolves a single environment variable reference
+ * Resolves a single environment variable reference.
+ *
+ * Simple wrapper around EnvVarPatternResolver for resolving a single value.
+ * @param value - String potentially containing environment variable patterns
+ * @throws {Error} When environment variable resolution fails
+ * @public
  */
 export function resolveEnvVar(value: string): string {
   try {

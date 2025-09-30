@@ -6,12 +6,17 @@ import type { EventEmitter } from 'events';
 import type { ToolRegistry } from '../../tool-registry/index.js';
 
 /**
- * Configuration for setting up disconnect handling
+ * Configuration for setting up disconnect handling on a transport.
+ * @public
  */
 export interface DisconnectHandlingConfig {
+  /** Server configuration */
   targetServer: TargetServer | TargetServerZod;
+  /** Connected MCP client */
   client: Client;
+  /** Active transport instance */
   transport: Transport;
+  /** Callback invoked when transport disconnects or errors */
   onDisconnect: (
     targetServer: TargetServer | TargetServerZod,
     reason: string,
@@ -20,8 +25,13 @@ export interface DisconnectHandlingConfig {
 }
 
 /**
- * Set up disconnect handling for a connected server
- * Listens for transport close events and handles cleanup/reconnection
+ * Sets up disconnect handling for a connected server transport.
+ * Wraps the transport's onclose and onerror handlers to trigger disconnect callbacks.
+ * The onDisconnect callback is called with 'transport_closed' for clean closes and
+ * 'transport_error' for connection errors.
+ * @param {DisconnectHandlingConfig} config - Disconnect handling configuration
+ * @public
+ * @see file:./server-connection-manager.ts:168 - Usage in connection manager
  */
 export function setupDisconnectHandling(
   config: DisconnectHandlingConfig,
@@ -65,27 +75,49 @@ export function setupDisconnectHandling(
 }
 
 /**
- * Configuration for handling server disconnection
+ * Configuration for handling server disconnection cleanup.
+ * @public
  */
 export interface ServerDisconnectionConfig {
+  /** Server that disconnected */
   targetServer: TargetServer | TargetServerZod;
+  /** Disconnect reason ('manual_disconnect', 'transport_closed', 'transport_error') */
   reason: string;
+  /** Optional error message from transport */
   errorMessage?: string;
+  /** Whether disconnect was manually requested by user */
   manualDisconnectRequested: boolean;
+  /** Event emitter for server status events */
   eventEmitter: EventEmitter;
+  /** Map of currently connected servers */
   connectedServers: Map<string, TargetServer | TargetServerZod>;
+  /** Map of disconnected servers with error info */
   disconnectedServers: Map<
     string,
     (TargetServer | TargetServerZod) & { error?: string }
   >;
+  /** Map of server name to client instance */
   clients: Map<string, Client>;
+  /** Map of server name to connection timestamp */
   connectionTimestamps: Map<string, string>;
+  /** Map of server name to transport */
   transports: Map<string, Transport>;
+  /** Tool registry for removing server tools */
   toolRegistry: ToolRegistry;
 }
 
 /**
- * Handle server disconnection by cleaning up resources and moving to disconnected state
+ * Handles server disconnection by cleaning up resources and updating state.
+ * Cleanup performed:
+ * - Moves server from connected to disconnected map with error info
+ * - Removes client from clients map
+ * - Removes all tools registered by this server from tool registry
+ * - Deletes connection timestamp and transport references
+ * - Emits 'server.disconnected' event
+ * Manual disconnects are marked as 'manual_disconnect' regardless of the provided reason.
+ * @param {ServerDisconnectionConfig} config - Disconnection configuration with all necessary state maps
+ * @public
+ * @see file:./server-connection-manager.ts:186 - Usage in disconnect callback
  */
 export function handleServerDisconnection(
   config: ServerDisconnectionConfig,

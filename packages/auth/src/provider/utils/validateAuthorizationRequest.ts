@@ -6,7 +6,28 @@ import {
 } from '@mcp-funnel/models';
 
 /**
- * Validate authorization request parameters
+ * Validates OAuth 2.0 authorization request parameters according to RFC 6749.
+ *
+ * Performs comprehensive validation including:
+ * - Required parameters (response_type, client_id, redirect_uri)
+ * - Response type support (only 'code' flow)
+ * - Redirect URI format (must be valid URL)
+ * - PKCE parameters consistency (code_challenge_method required when code_challenge present)
+ * @param params - Partial authorization request parameters to validate
+ * @returns Validation result with success flag and optional error details
+ * @example
+ * ```typescript
+ * const result = validateAuthorizationRequest({
+ *   response_type: 'code',
+ *   client_id: 'my-client',
+ *   redirect_uri: 'http://localhost:3000/callback'
+ * });
+ * if (!result.valid) {
+ *   console.error(result.error?.error_description);
+ * }
+ * ```
+ * @see file:./validateTokenRequest.ts - Related token request validation
+ * @public
  */
 export function validateAuthorizationRequest(
   params: Partial<AuthorizationRequest>,

@@ -4,17 +4,32 @@ import type { ReconnectionConfig } from '@mcp-funnel/models';
 import type { EventEmitter } from 'events';
 
 /**
- * Configuration for creating a ReconnectionManager
+ * Configuration for creating a ReconnectionManager.
+ * @public
  */
 export interface ReconnectionManagerConfig {
+  /** Proxy configuration containing autoReconnect settings */
   config: ProxyConfig;
+  /** Server identifier */
   serverName: string;
+  /** Callback invoked when max reconnection attempts are reached */
   onMaxAttemptsReached: (serverName: string) => void;
 }
 
 /**
- * Create a ReconnectionManager for a server
- * Sets up state change handler for max attempts
+ * Creates a ReconnectionManager for a server with configured retry behavior.
+ * Extracts reconnection config from proxy autoReconnect settings and creates a manager
+ * with default values:
+ * - maxAttempts: 10
+ * - initialDelayMs: 1000ms
+ * - backoffMultiplier: 2
+ * - maxDelayMs: 60000ms
+ * - jitter: 0.25
+ * Sets up state change listener to invoke callback when max attempts are reached.
+ * @param {ReconnectionManagerConfig} managerConfig - Manager configuration
+ * @returns {ReconnectionManager} Configured ReconnectionManager instance
+ * @public
+ * @see file:./server-connection-manager.ts:95 - Usage in server connection manager
  */
 export function createReconnectionManager(
   managerConfig: ReconnectionManagerConfig,
@@ -49,20 +64,35 @@ export function createReconnectionManager(
 }
 
 /**
- * Configuration for reconnection attempt
+ * Configuration for a reconnection attempt.
+ * @public
  */
 export interface ReconnectionAttemptConfig {
+  /** Server to reconnect to */
   targetServer: TargetServer;
+  /** Reconnection manager for attempt tracking (optional) */
   reconnectionManager: ReconnectionManager | undefined;
+  /** Event emitter for reconnection status events */
   eventEmitter: EventEmitter;
+  /** Function to perform the actual connection */
   connectFn: (targetServer: TargetServer) => Promise<void>;
+  /** Callback invoked on successful reconnection */
   onSuccess: (serverName: string) => void;
+  /** Callback invoked on reconnection failure */
   onFailure: (serverName: string, error: unknown) => void;
 }
 
 /**
- * Attempt to reconnect to a disconnected server
- * Used by ReconnectionManager for automatic reconnection
+ * Attempts to reconnect to a disconnected server with retry tracking.
+ * Orchestrates a reconnection attempt:
+ * 1. Emits 'server.reconnecting' event with retry attempt count
+ * 2. Calls the connection function
+ * 3. On success: resets reconnection manager and emits success events
+ * 4. On failure: logs error and invokes failure callback
+ * Used by ReconnectionManager's automatic reconnection logic.
+ * @param {ReconnectionAttemptConfig} attemptConfig - Reconnection attempt configuration
+ * @public
+ * @see file:./server-connection-manager.ts:201 - Usage in connection manager
  */
 export async function attemptReconnection(
   attemptConfig: ReconnectionAttemptConfig,
@@ -108,7 +138,15 @@ export async function attemptReconnection(
 }
 
 /**
- * Check if automatic reconnection should be enabled
+ * Determines whether automatic reconnection should be enabled.
+ * Returns true only if:
+ * - autoReconnect.enabled is not explicitly false in config
+ * - AND disconnect was not manually requested by user
+ * @param {ProxyConfig} config - Proxy configuration
+ * @param {boolean} isManualDisconnect - Whether disconnect was manually triggered
+ * @returns {boolean} True if automatic reconnection should be attempted
+ * @public
+ * @see file:./server-connection-manager.ts:197 - Usage in disconnect handler
  */
 export function shouldAutoReconnect(
   config: ProxyConfig,

@@ -1,6 +1,7 @@
 /**
  * Command loading and registration logic
  * Extracted from MCPProxy to reduce file size and improve maintainability
+ * @internal
  */
 
 import { Dirent } from 'fs';
@@ -16,6 +17,8 @@ import type { ToolRegistry } from '../tool-registry/index.js';
 
 /**
  * Type guard to validate if an object is a valid ICommand
+ * @param obj
+ * @internal
  */
 function isValidCommand(obj: unknown): obj is ICommand {
   if (!obj || typeof obj !== 'object') return false;
@@ -31,6 +34,10 @@ function isValidCommand(obj: unknown): obj is ICommand {
 
 /**
  * Register tools from a command registry
+ * @param registry
+ * @param enabledCommands
+ * @param toolRegistry
+ * @internal
  */
 async function registerFromRegistry(
   registry: Awaited<ReturnType<typeof discoverCommands>>,
@@ -74,6 +81,9 @@ async function registerFromRegistry(
 
 /**
  * Load bundled commands from the commands directory
+ * @param enabledCommands
+ * @param toolRegistry
+ * @internal
  */
 async function loadBundledCommands(
   enabledCommands: string[],
@@ -100,6 +110,9 @@ async function loadBundledCommands(
 
 /**
  * Load command packages installed under node_modules/@mcp-funnel
+ * @param enabledCommands
+ * @param toolRegistry
+ * @internal
  */
 async function loadInstalledCommandPackages(
   enabledCommands: string[],
@@ -183,6 +196,9 @@ async function loadInstalledCommandPackages(
 
 /**
  * Load user-installed commands from ~/.mcp-funnel/packages
+ * @param enabledCommands
+ * @param toolRegistry
+ * @internal
  */
 async function loadUserCommands(
   enabledCommands: string[],
@@ -198,6 +214,9 @@ async function loadUserCommands(
 
 /**
  * Main entry point: Load all commands based on configuration
+ * @param config
+ * @param toolRegistry
+ * @internal
  */
 export async function loadDevelopmentCommands(
   config: ProxyConfig,

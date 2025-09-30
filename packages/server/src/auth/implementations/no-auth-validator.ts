@@ -1,6 +1,21 @@
 /**
- * No-authentication validator for inbound requests
- * Allows all requests without authentication checks
+ * Pass-through validator that accepts all requests without authentication.
+ *
+ * Always returns isAuthenticated: true. Provides consistent IInboundAuthValidator
+ * interface for scenarios where authentication is disabled or handled externally.
+ *
+ * Appropriate use cases:
+ * - Development environments with no security requirements
+ * - Proxy behind external authentication layer (e.g., API gateway)
+ * - Testing scenarios requiring open access
+ * @example
+ * ```typescript
+ * const validator = new NoAuthValidator();
+ * const result = await validator.validateRequest(context);
+ * // result.isAuthenticated is always true
+ * ```
+ * @public
+ * @see file:../interfaces/inbound-auth.interface.ts - Interface definition
  */
 
 import type { Context } from 'hono';
@@ -10,17 +25,8 @@ import type {
 } from '../interfaces/inbound-auth.interface.js';
 
 /**
- * Validator that allows all requests without authentication
- *
- * This validator:
- * - Always returns isAuthenticated: true
- * - Used when inbound authentication is disabled
- * - Provides a consistent interface for open access scenarios
- *
- * Use this validator when:
- * - Running in development environments
- * - The proxy is behind other authentication layers
- * - Authentication is handled externally
+ * No-authentication validator.
+ * @public
  */
 export class NoAuthValidator implements IInboundAuthValidator {
   public constructor() {

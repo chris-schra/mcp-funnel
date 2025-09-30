@@ -2,13 +2,45 @@ import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 
 /**
- * WebSocket connection management for CDP clients
+ * WebSocket connection management for CDP clients.
  *
- * Handles:
+ * Provides robust WebSocket connection handling with automatic reconnection,
+ * exponential backoff, and comprehensive lifecycle management. Used internally
+ * by CDPClient to manage the underlying WebSocket transport layer.
+ *
+ * Key capabilities:
  * - WebSocket lifecycle (connect, disconnect, reconnect)
- * - Connection state management
+ * - Connection state management with thread-safe flags
  * - Automatic reconnection with exponential backoff
- * - Resource cleanup
+ * - Proper resource cleanup and event listener removal
+ * - URL validation ensuring ws:// or wss:// protocols
+ *
+ * Events emitted:
+ * - `connect`: Fired when connection is successfully established
+ * - `disconnect`: Fired when connection is closed (manual or unexpected)
+ * - `message`: Fired when WebSocket receives data (payload is WebSocket.RawData)
+ * - `error`: Fired on connection errors or when max reconnect attempts reached
+ * - `reconnecting`: Fired before each reconnection attempt (payload: {attempt: number, delay: number})
+ * - `reconnected`: Fired after successful reconnection
+ * @example Basic usage
+ * ```typescript
+ * const client = new WebSocketClient({
+ *   connectionTimeout: 30000,
+ *   maxReconnectAttempts: 3,
+ *   reconnectDelay: 1000,
+ *   autoReconnect: true
+ * });
+ *
+ * client.on('connect', () => console.log('Connected'));
+ * client.on('disconnect', () => console.log('Disconnected'));
+ * client.on('message', (data) => console.log('Received:', data));
+ *
+ * await client.connect('ws://localhost:9229/abc123');
+ * client.send(JSON.stringify({ id: 1, method: 'Runtime.enable' }));
+ * await client.disconnect();
+ * ```
+ * @see file:./client.ts:77 - Used by CDPClient for WebSocket transport
+ * @internal
  */
 export class WebSocketClient extends EventEmitter {
   private ws: WebSocket | null = null;
@@ -18,7 +50,7 @@ export class WebSocketClient extends EventEmitter {
   private reconnectAttempts = 0;
   private reconnectTimeout: NodeJS.Timeout | null = null;
 
-  constructor(
+  public constructor(
     private readonly options: {
       connectionTimeout: number;
       maxReconnectAttempts: number;
@@ -30,9 +62,20 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Connect to a WebSocket endpoint
+   * Establishes WebSocket connection to CDP endpoint.
+   *
+   * Validates URL format (must be ws:// or wss://), creates WebSocket connection,
+   * and waits for successful connection or timeout. Connection state prevents
+   * multiple simultaneous connection attempts.
+   * @param url - WebSocket URL to connect to (e.g., 'ws://localhost:9229/abc123')
+   * @returns Promise that resolves when connection is established
+   * @throws {Error} When already connected or connecting
+   * @throws {Error} When URL format is invalid (not ws:// or wss://)
+   * @throws {Error} When connection times out (after connectionTimeout ms)
+   * @throws {Error} When WebSocket connection fails
+   * @see file:./client.ts:94 - Called by CDPClient.connect()
    */
-  async connect(url: string): Promise<void> {
+  public async connect(url: string): Promise<void> {
     if (this.isConnected || this.isConnecting) {
       throw new Error('Client is already connected or connecting');
     }
@@ -100,9 +143,17 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Disconnect from the WebSocket endpoint
+   * Gracefully disconnects from WebSocket endpoint.
+   *
+   * Temporarily disables automatic reconnection, cancels any pending reconnection
+   * attempts, closes the WebSocket connection, and cleans up resources. After
+   * disconnect completes, the autoReconnect setting is restored to its original value.
+   *
+   * Safe to call even when not connected - will clean up and emit disconnect event.
+   * @returns Promise that resolves when disconnect is complete
+   * @see file:./client.ts:101 - Called by CDPClient.disconnect()
    */
-  async disconnect(): Promise<void> {
+  public async disconnect(): Promise<void> {
     // Disable reconnection for manual disconnect
     const originalAutoReconnect = this.options.autoReconnect;
     this.options.autoReconnect = false;
@@ -138,9 +189,15 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Send data through the WebSocket
+   * Sends string data through the WebSocket connection.
+   *
+   * Used for sending JSON-RPC messages to the CDP endpoint. Must be connected
+   * before calling - will throw if not connected.
+   * @param data - String data to send (typically JSON-serialized CDP protocol message)
+   * @throws {Error} When WebSocket is not connected
+   * @see file:./client.ts:126 - Called by CDPClient.send() via callback
    */
-  send(data: string): void {
+  public send(data: string): void {
     if (!this.ws || !this.isConnected) {
       throw new Error('WebSocket is not connected');
     }
@@ -149,21 +206,30 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Get connection status
+   * Connection status indicator.
+   * @returns `true` when WebSocket is open and ready to send/receive, `false` otherwise
    */
-  get connected(): boolean {
+  public get connected(): boolean {
     return this.isConnected;
   }
 
   /**
-   * Get the current WebSocket URL
+   * Current WebSocket connection URL.
+   * @returns The URL passed to {@link connect}, or `null` if never connected
    */
-  get connectionUrl(): string | null {
+  public get connectionUrl(): string | null {
     return this.url;
   }
 
   /**
-   * Initialize WebSocket event handlers after connection
+   * Attaches WebSocket event listeners after successful connection.
+   *
+   * Sets up handlers for:
+   * - 'message': Emits received data to client listeners
+   * - 'close': Triggers disconnection handling and potential reconnection
+   * - 'error': Forwards errors to client listeners
+   *
+   * Called once after connection is established (on 'open' event).
    */
   private setupWebSocketHandlers(): void {
     if (!this.ws) return;
@@ -178,7 +244,12 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Handle WebSocket disconnection
+   * Handles WebSocket disconnection and initiates reconnection if configured.
+   *
+   * Updates connection state flags, emits 'disconnect' event if previously connected,
+   * and schedules automatic reconnection if enabled and within retry limits.
+   *
+   * Called by WebSocket 'close' event handler.
    */
   private handleDisconnection(): void {
     const wasConnected = this.isConnected;
@@ -200,7 +271,13 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Schedule automatic reconnection with exponential backoff
+   * Schedules automatic reconnection attempt with exponential backoff.
+   *
+   * Calculates delay as: `reconnectDelay * 2^(attempt - 1)`, increments attempt counter,
+   * emits 'reconnecting' event, and schedules connection attempt. If reconnection fails,
+   * will recursively schedule another attempt until max attempts reached.
+   *
+   * Emits 'error' event with "Max reconnection attempts reached" when all attempts exhausted.
    */
   private scheduleReconnection(): void {
     if (this.reconnectTimeout) {
@@ -237,7 +314,11 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Clean up resources
+   * Cleans up all resources and resets connection state.
+   *
+   * Resets connection flags, removes all WebSocket event listeners, closes the
+   * WebSocket if still open, clears reconnection timeout, and nullifies references.
+   * Safe to call multiple times.
    */
   private cleanup(): void {
     this.isConnected = false;
@@ -258,7 +339,9 @@ export class WebSocketClient extends EventEmitter {
   }
 
   /**
-   * Validate WebSocket URL format
+   * Validates WebSocket URL format using URL parser.
+   * @param url - URL string to validate
+   * @returns `true` if URL uses ws:// or wss:// protocol, `false` otherwise (including malformed URLs)
    */
   private isValidWebSocketUrl(url: string): boolean {
     try {

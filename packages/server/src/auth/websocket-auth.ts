@@ -1,13 +1,18 @@
 /**
- * WebSocket authentication utilities
- * Validates authentication for WebSocket upgrade requests
+ * WebSocket upgrade request authentication utilities.
+ *
+ * Provides authentication validation for WebSocket connections by adapting
+ * Node.js IncomingMessage to Hono Context interface expected by validators.
+ * @public
+ * @see file:./middleware/auth-middleware.ts - HTTP middleware equivalent
  */
 
 import type { IncomingMessage } from 'node:http';
 import type { IInboundAuthValidator } from './interfaces/inbound-auth.interface.js';
 
 /**
- * Minimal context interface for WebSocket auth validation
+ * Minimal Hono Context subset required for authentication validation.
+ * @internal
  */
 interface MinimalContext {
   req: {
@@ -20,8 +25,11 @@ interface MinimalContext {
 }
 
 /**
- * Mock context object for WebSocket auth validation
- * Adapts IncomingMessage to look like a Hono Context for validator compatibility
+ * Adapts Node.js IncomingMessage to Hono Context interface for auth validators.
+ *
+ * Implements minimal Context subset required by IInboundAuthValidator.validateRequest.
+ * Stub methods (set, get) are no-ops as validators don't use them during validation.
+ * @internal
  */
 class WebSocketAuthContext implements MinimalContext {
   private request: IncomingMessage;
@@ -46,11 +54,26 @@ class WebSocketAuthContext implements MinimalContext {
 }
 
 /**
- * Validates authentication for WebSocket upgrade requests
+ * Validates WebSocket upgrade request authentication using existing HTTP validators.
  *
- * @param request - Incoming WebSocket upgrade request
- * @param validator - Authentication validator to use
- * @returns Promise resolving to true if authenticated, false otherwise
+ * Adapts Node.js IncomingMessage to Hono Context interface, allowing reuse of
+ * HTTP authentication validators for WebSocket connections without duplication.
+ * @param {IncomingMessage} request - Node.js HTTP upgrade request
+ * @param {IInboundAuthValidator} validator - Authentication validator instance
+ * @returns {Promise<{ isAuthenticated: boolean; error?: string }>} Promise with authentication result and optional error message
+ * @example
+ * ```typescript
+ * server.on('upgrade', async (request, socket, head) => {
+ *   const result = await validateWebSocketAuth(request, validator);
+ *   if (!result.isAuthenticated) {
+ *     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+ *     socket.destroy();
+ *     return;
+ *   }
+ *   // proceed with upgrade
+ * });
+ * ```
+ * @public
  */
 export async function validateWebSocketAuth(
   request: IncomingMessage,

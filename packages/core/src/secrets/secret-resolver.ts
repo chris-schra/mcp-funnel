@@ -3,6 +3,7 @@
  *
  * This module provides helper functions to streamline secret resolution
  * across different parts of the application, following the DRY principle.
+ * @public
  */
 
 import { SecretManager } from './secret-manager.js';
@@ -15,6 +16,15 @@ const secretManagerCache = new Map<string, SecretManager>();
 const loggerIds = new WeakMap<ILogger, string>();
 let loggerIdCounter = 0;
 
+/**
+ * Gets a unique cache identifier for a logger instance.
+ *
+ * Returns 'default' for the default logger, otherwise generates and caches
+ * a unique identifier for custom logger instances.
+ * @param logger - Logger instance to get cache ID for
+ * @returns Unique cache identifier string
+ * @internal
+ */
 function getLoggerCacheId(logger: ILogger): string {
   if (logger === defaultLogger) {
     return 'default';
@@ -29,6 +39,19 @@ function getLoggerCacheId(logger: ILogger): string {
   return id;
 }
 
+/**
+ * Computes a cache key for a SecretManager based on configuration.
+ *
+ * Creates a deterministic cache key by serializing provider configs,
+ * directory path, logger ID, and rethrowErrors flag. Used to ensure
+ * identical configurations share the same SecretManager instance.
+ * @param providerConfigs - Array of secret provider configurations
+ * @param configDir - Directory path for resolving relative paths
+ * @param logger - Logger instance for ID generation
+ * @param rethrowErrors - Whether to rethrow errors
+ * @returns JSON string cache key
+ * @internal
+ */
 function computeManagerCacheKey(
   providerConfigs: SecretProviderConfig[],
   configDir: string,
@@ -51,6 +74,7 @@ function computeManagerCacheKey(
 
 /**
  * Options for secret resolution helper function.
+ * @public
  */
 export interface ResolveSecretsOptions {
   /**
@@ -87,15 +111,17 @@ export interface ResolveSecretsOptions {
  *
  * This helper function encapsulates the common pattern of:
  * 1. Creating providers from configuration
- * 2. Creating a SecretManager instance
+ * 2. Creating a SecretManager instance (cached per unique config)
  * 3. Resolving secrets
  * 4. Handling errors with appropriate logging
  *
+ * SecretManager instances are cached based on configuration, so identical
+ * configurations will reuse the same manager instance and benefit from
+ * its internal caching.
  * @param providerConfigs - Array of secret provider configurations
  * @param configDir - Directory path for resolving relative paths in configurations
  * @param options - Additional options for resolution and logging
- * @returns Promise resolving to the secrets object, or empty object if resolution fails
- *
+ * @returns Promise resolving to the secrets object, or empty object if resolution fails (when rethrowErrors is false)
  * @example
  * ```typescript
  * // Resolve default secrets
@@ -116,6 +142,7 @@ export interface ResolveSecretsOptions {
  *   }
  * );
  * ```
+ * @public
  */
 export async function resolveSecretsFromConfig(
   providerConfigs: SecretProviderConfig[],
@@ -178,7 +205,11 @@ export async function resolveSecretsFromConfig(
 
 /**
  * Clears the in-memory cache of SecretManager instances.
+ *
  * Useful for testing or when configuration changes require fresh resolution.
+ * After calling this, subsequent resolveSecretsFromConfig calls will create
+ * new SecretManager instances even for previously cached configurations.
+ * @public
  */
 export function clearSecretManagerCache(): void {
   secretManagerCache.clear();

@@ -7,6 +7,10 @@ import {
 const USER_ID = 'user-123';
 const CLIENT_ID = 'client-abc';
 
+/**
+ *
+ * @param options
+ */
 function createService(options?: MemoryUserConsentServiceOptions) {
   return new MemoryUserConsentService(options);
 }

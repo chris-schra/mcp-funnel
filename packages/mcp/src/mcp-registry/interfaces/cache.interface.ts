@@ -1,21 +1,23 @@
 /**
  * Generic cache interface for MCP registry data storage and retrieval.
  *
- * This interface is designed to support multiple cache implementations:
+ * Designed to support multiple cache implementations across development phases.
+ *
+ * **Implementation Strategy:**
  * - MVP: No-op cache for immediate development
  * - Phase 2: In-memory cache with TTL support
  * - Future: Redis, file-based, or other persistent cache backends
  *
  * The generic type parameter allows for type-safe caching of specific data structures
  * while maintaining flexibility for different value types.
+ * @template T - The type of values stored in the cache
+ * @public
  */
 export interface IRegistryCache<T = unknown> {
   /**
    * Retrieves a value from the cache by key.
-   *
    * @param key - The cache key to look up
    * @returns Promise resolving to the cached value, or null if not found or expired
-   *
    * @example
    * ```typescript
    * const toolData = await cache.get<ToolDefinition>('tool:github__create_issue');
@@ -28,13 +30,11 @@ export interface IRegistryCache<T = unknown> {
 
   /**
    * Stores a value in the cache with an optional time-to-live.
-   *
    * @param key - The cache key to store under
    * @param value - The value to cache
    * @param ttlMs - Optional time-to-live in milliseconds. If not provided,
    *                implementation may use a default TTL or store indefinitely
    * @returns Promise that resolves when the value has been stored
-   *
    * @example
    * ```typescript
    * // Cache for 5 minutes
@@ -48,10 +48,8 @@ export interface IRegistryCache<T = unknown> {
 
   /**
    * Checks if a key exists in the cache and is not expired.
-   *
    * @param key - The cache key to check
    * @returns Promise resolving to true if the key exists and is valid, false otherwise
-   *
    * @example
    * ```typescript
    * if (await cache.has('expensive:computation')) {
@@ -66,10 +64,8 @@ export interface IRegistryCache<T = unknown> {
 
   /**
    * Removes a specific key from the cache.
-   *
    * @param key - The cache key to remove
    * @returns Promise that resolves when the key has been removed
-   *
    * @example
    * ```typescript
    * // Invalidate cache when data changes
@@ -80,9 +76,7 @@ export interface IRegistryCache<T = unknown> {
 
   /**
    * Clears all entries from the cache.
-   *
    * @returns Promise that resolves when the cache has been cleared
-   *
    * @example
    * ```typescript
    * // Clear cache during configuration reload
@@ -95,9 +89,10 @@ export interface IRegistryCache<T = unknown> {
 /**
  * Type alias for registry tool cache to provide semantic meaning.
  *
- * This provides type safety for common registry caching patterns.
+ * Provides type safety for common registry caching patterns.
  * In Phase 2, this could be expanded to a full interface with
  * tool-specific methods like getToolsByServer, invalidateServerCache, etc.
+ * @public
  */
 export type IRegistryToolCache = IRegistryCache<unknown>;
 
@@ -106,16 +101,31 @@ export type IRegistryToolCache = IRegistryCache<unknown>;
  *
  * Using these constants helps prevent typos and ensures consistent cache
  * key naming patterns across different parts of the system.
+ * @example
+ * ```typescript
+ * const key = CacheKeys.TOOLS.SINGLE('github', 'create_issue');
+ * // Returns: 'tool:github__create_issue'
+ * ```
+ * @public
  */
 export const CacheKeys = {
   /**
    * Cache key patterns for tool-related data.
    */
   TOOLS: {
-    /** Pattern: `tool:${serverName}__${toolName}` */
+    /**
+     * Pattern: `tool:${serverName}__${toolName}`
+     *
+     * @param {string} serverName - Server name
+     * @param {string} toolName - Tool name
+     * @returns {string} Cache key in format `tool:${serverName}__${toolName}`
+     */
     SINGLE: (serverName: string, toolName: string) =>
       `tool:${serverName}__${toolName}`,
-    /** Pattern: `tools:server:${serverName}` */
+    /**
+     * Pattern: `tools:server:${serverName}`
+     * @param serverName
+     */
     BY_SERVER: (serverName: string) => `tools:server:${serverName}`,
     /** Pattern: `tools:all` */
     ALL: 'tools:all',
@@ -129,7 +139,10 @@ export const CacheKeys = {
     SERVERS: 'registry:servers',
     /** Pattern: `registry:stats` */
     STATS: 'registry:stats',
-    /** Pattern: `registry:config:${configHash}` */
+    /**
+     * Pattern: `registry:config:${configHash}`
+     * @param configHash
+     */
     CONFIG: (configHash: string) => `registry:config:${configHash}`,
   },
 } as const;

@@ -1,11 +1,42 @@
 /**
- * Base abstract class for MCP Funnel commands
+ * Base abstract class for MCP Funnel commands.
+ *
+ * Provides common functionality including option parsing and logging helpers
+ * that handle both MCP protocol and CLI execution contexts.
+ * @remarks
+ * Subclasses must implement the ICommand interface methods to define
+ * command-specific behavior for tool execution and MCP tool definitions.
+ * @example Basic command implementation
+ * ```typescript
+ * export class MyCommand extends BaseCommand {
+ *   readonly name = 'my-command';
+ *   readonly description = 'My command description';
+ *
+ *   async executeToolViaMCP(toolName: string, args: Record<string, unknown>) {
+ *     const options = this.parseCommonOptions(args);
+ *     // Implementation
+ *   }
+ *
+ *   async executeViaCLI(args: string[]) {
+ *     const options = this.parseCommonOptions(args);
+ *     this.log('Processing...', options);
+ *     // Implementation
+ *   }
+ *
+ *   getMCPDefinitions() {
+ *     return [{ name: this.name, description: this.description, inputSchema: {} }];
+ *   }
+ * }
+ * ```
+ * @see file:./interfaces.ts:8 - ICommand interface definition
+ * @public
  */
 
 import type { ICommand, ICommandOptions } from './interfaces.js';
 
 /**
- * Abstract base class that provides common functionality for all commands
+ * Abstract base class that provides common functionality for all commands.
+ * @public
  */
 export abstract class BaseCommand implements ICommand {
   public abstract readonly name: string;
@@ -19,7 +50,23 @@ export abstract class BaseCommand implements ICommand {
   public abstract getMCPDefinitions(): import('@modelcontextprotocol/sdk/types.js').Tool[];
 
   /**
-   * Parse common command options from arguments
+   * Parse common command options from arguments.
+   *
+   * Extracts standard options (verbose, dryRun, format) from either
+   * MCP protocol arguments (object) or CLI arguments (string array).
+   * Supports both `--verbose`/`-v` flags and `--format <type>` options.
+   * @param {Record<string, unknown> | string[]} args - MCP arguments as object or CLI arguments as string array
+   * @returns {ICommandOptions} Parsed options with verbose, dryRun, and format properties
+   * @example MCP usage
+   * ```typescript
+   * const options = this.parseCommonOptions({ verbose: true, format: 'json' });
+   * // Returns: { verbose: true, format: 'json' }
+   * ```
+   * @example CLI usage
+   * ```typescript
+   * const options = this.parseCommonOptions(['--verbose', '--format', 'json']);
+   * // Returns: { verbose: true, format: 'json' }
+   * ```
    */
   protected parseCommonOptions(
     args: Record<string, unknown> | string[],
@@ -54,7 +101,17 @@ export abstract class BaseCommand implements ICommand {
   }
 
   /**
-   * Log output based on format preference
+   * Log output based on format preference.
+   *
+   * Outputs informational messages to console unless format is 'json',
+   * in which case logging is suppressed to avoid corrupting JSON output.
+   * @param {string} message - The message to log
+   * @param {ICommandOptions} [options] - Command options containing format preference
+   * @example
+   * ```typescript
+   * this.log('Processing complete', { format: 'text' }); // Logs to console
+   * this.log('Processing complete', { format: 'json' }); // Suppressed
+   * ```
    */
   protected log(message: string, options: ICommandOptions = {}): void {
     if (options.format === 'json') {
@@ -65,7 +122,17 @@ export abstract class BaseCommand implements ICommand {
   }
 
   /**
-   * Log error output
+   * Log error output.
+   *
+   * Outputs error messages to stderr unless format is 'json',
+   * in which case logging is suppressed to avoid corrupting JSON output.
+   * @param {string} message - The error message to log
+   * @param {ICommandOptions} [options] - Command options containing format preference
+   * @example
+   * ```typescript
+   * this.logError('Failed to process', { format: 'text' }); // Logs to stderr
+   * this.logError('Failed to process', { format: 'json' }); // Suppressed
+   * ```
    */
   protected logError(message: string, options: ICommandOptions = {}): void {
     if (options.format === 'json') {

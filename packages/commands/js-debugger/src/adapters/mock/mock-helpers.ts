@@ -7,7 +7,16 @@ import type {
 import type { MockVariableScopes } from './mock-data.js';
 
 /**
- * Build a mock debug location from file and line
+ * Constructs a mock debug location object from file path and line number.
+ *
+ * Converts relative file paths to absolute paths and generates a workspace-relative
+ * path for display purposes. Used by the mock debug adapter to simulate breakpoint
+ * locations.
+ * @param file - File path (relative or absolute)
+ * @param line - Line number in the file (1-based)
+ * @returns Debug location with absolute and relative paths
+ * @internal
+ * @see file:./mock-adapter.ts:50 - Usage in createInitialResponse
  */
 export const buildMockLocation = (
   file: string,
@@ -28,7 +37,18 @@ export const buildMockLocation = (
 };
 
 /**
- * Handle path-based variable access in mock variables
+ * Resolves and accesses variables in mock debug session using dot-notation paths.
+ *
+ * Traverses mock variable scopes (local and closure) to find the requested variable
+ * by path. Returns formatted results including the value, type, and any errors
+ * encountered during traversal.
+ * @param sessionId - Debug session identifier
+ * @param path - Dot-notation path to variable (e.g., "userData.profile.settings.theme")
+ * @param frameId - Stack frame identifier (currently unused in mock implementation)
+ * @param mockVariables - Mock variable scopes containing local and closure variables
+ * @returns Serialized variable inspection result with success or error details
+ * @internal
+ * @see file:./mock-adapter.ts:252 - Usage in createVariablesResponse
  */
 export const handleMockPathAccess = (
   sessionId: string,
@@ -88,7 +108,23 @@ export const handleMockPathAccess = (
 };
 
 /**
- * Serialize mock variable result into CallToolResult format
+ * Converts variable inspection results into standardized MCP tool response format.
+ *
+ * Serializes variable access results (both successful and failed) into the
+ * CallToolResult format expected by the MCP protocol. Includes session context,
+ * frame information, and detailed result data in JSON format.
+ * @param sessionId - Debug session identifier
+ * @param frameId - Stack frame identifier
+ * @param path - Dot-notation variable path that was accessed
+ * @param result - Inspection result object
+ * @param result.found - Whether the variable was successfully located
+ * @param result.value - The variable's value (when found)
+ * @param result.type - The variable's type (when found)
+ * @param result.error - Error message (when not found)
+ * @param isError - Whether this represents an error response (default: false)
+ * @returns Formatted tool result with JSON-serialized content
+ * @internal
+ * @see file:./mock-helpers.ts:39 - Usage in handleMockPathAccess
  */
 export const serializeMockVariableResult = (
   sessionId: string,
@@ -124,7 +160,17 @@ export const serializeMockVariableResult = (
 };
 
 /**
- * Create a standardized error response for mock operations
+ * Creates a standardized error response for failed mock debug operations.
+ *
+ * Generates an MCP-compliant error response with session context and optional
+ * operation details. Used throughout the mock adapter to report failures
+ * consistently.
+ * @param sessionId - Debug session identifier
+ * @param error - Error message describing what went wrong
+ * @param operation - Optional operation name that failed (e.g., "continue", "getVariables")
+ * @returns Error tool result with isError flag set to true
+ * @internal
+ * @see file:../mock-session-manager.ts:86 - Usage when session not found
  */
 export const createMockErrorResponse = (
   sessionId: string,
@@ -147,7 +193,17 @@ export const createMockErrorResponse = (
 };
 
 /**
- * Create a standardized success response for mock operations
+ * Creates a standardized success response for mock debug operations.
+ *
+ * Generates an MCP-compliant success response with session context, operation
+ * data, and an optional message. Formats the response as pretty-printed JSON
+ * for readability.
+ * @param sessionId - Debug session identifier
+ * @param data - Operation result data to include in response
+ * @param message - Optional success message (default: "[MOCK] Operation completed successfully")
+ * @returns Success tool result with formatted JSON content
+ * @internal
+ * @see file:./mock-adapter.ts:40 - Usage in createInitialResponse
  */
 export const createMockSuccessResponse = (
   sessionId: string,
@@ -173,7 +229,14 @@ export const createMockSuccessResponse = (
 };
 
 /**
- * Validate and normalize variable path for mock access
+ * Validates and normalizes variable path input for mock variable access.
+ *
+ * Ensures the path is a non-empty string after trimming whitespace. Returns
+ * null for invalid inputs (non-strings or empty strings).
+ * @param path - Variable path to validate (accepts unknown for runtime validation)
+ * @returns Trimmed path string, or null if invalid
+ * @internal
+ * @see file:../mock-session-manager.ts:200 - Usage before accessing variables
  */
 export const validateAndNormalizePath = (path: unknown): string | null => {
   const trimmedPath = typeof path === 'string' ? path.trim() : '';
@@ -181,7 +244,15 @@ export const validateAndNormalizePath = (path: unknown): string | null => {
 };
 
 /**
- * Generate location label for display purposes
+ * Generates a human-readable location label for display purposes.
+ *
+ * Prefers the relative path from workspace root when available, falling back
+ * to absolute path or the provided fallback string.
+ * @param location - Debug location object with path information
+ * @param fallback - Fallback label when location has no path information
+ * @returns Display-friendly location string
+ * @internal
+ * @see file:./mock-adapter.ts:53 - Usage in formatting pause messages
  */
 export const generateLocationLabel = (
   location: DebugLocation,
@@ -191,14 +262,28 @@ export const generateLocationLabel = (
 };
 
 /**
- * Generate line suffix for location display
+ * Generates a line number suffix for location display.
+ *
+ * Formats line numbers as ":N" when present, or returns empty string when
+ * line number is undefined.
+ * @param line - Line number (1-based, optional)
+ * @returns Formatted line suffix (e.g., ":42") or empty string
+ * @internal
+ * @see file:./mock-adapter.ts:52 - Usage in formatting pause messages
  */
 export const generateLineSuffix = (line?: number): string => {
   return line ? `:${line}` : '';
 };
 
 /**
- * Check if a mock session should be auto-terminated (e.g., no breakpoints)
+ * Determines if a mock debug session should be automatically terminated.
+ *
+ * Sessions without breakpoints complete immediately since there are no pause
+ * points to simulate. This prevents unnecessary session lifecycle overhead.
+ * @param session - Mock debug session to check
+ * @returns True if session has no breakpoints and should terminate immediately
+ * @internal
+ * @see file:../mock-session-manager.ts:123 - Usage in initial response creation
  */
 export const shouldAutoTerminateSession = (
   session: MockDebugSession,
@@ -209,7 +294,15 @@ export const shouldAutoTerminateSession = (
 };
 
 /**
- * Check if session has reached the end of breakpoints
+ * Checks if a mock session has visited all configured breakpoints.
+ *
+ * Compares the current breakpoint index against the total breakpoint count
+ * to determine if the session should complete.
+ * @param session - Mock debug session to check
+ * @returns True if all breakpoints have been visited
+ * @internal
+ * @see file:./mock-adapter.ts:119 - Usage in continue response logic
+ * @see file:../mock-session-manager.ts:101 - Usage to terminate sessions
  */
 export const hasReachedEndOfBreakpoints = (
   session: MockDebugSession,

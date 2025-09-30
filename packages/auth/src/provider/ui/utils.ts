@@ -38,6 +38,8 @@ const DEFAULT_SCOPE_DESCRIPTIONS: Record<string, ScopeInfo> = {
 
 /**
  * HTML escapes a string to prevent XSS attacks
+ * @param {string} unsafe - The string to escape
+ * @returns {string} The escaped string safe for HTML content
  */
 function escapeHtml(unsafe: string): string {
   return unsafe
@@ -50,6 +52,8 @@ function escapeHtml(unsafe: string): string {
 
 /**
  * Escapes HTML attributes (stricter than regular HTML escaping)
+ * @param {string} unsafe - The string to escape for use in HTML attributes
+ * @returns {string} The escaped string safe for HTML attribute values
  */
 function escapeAttribute(unsafe: string): string {
   return escapeHtml(unsafe).replace(/\s/g, '&#32;');
@@ -57,6 +61,8 @@ function escapeAttribute(unsafe: string): string {
 
 /**
  * Safely generates scope information with fallback descriptions
+ * @param {string[]} scopes - Array of OAuth scope strings to convert to ScopeInfo objects
+ * @returns {ScopeInfo[]} Array of scope information with names and descriptions for UI display
  */
 function generateScopeInfo(scopes: string[]): ScopeInfo[] {
   return scopes.map((scope) => {
@@ -77,6 +83,8 @@ function generateScopeInfo(scopes: string[]): ScopeInfo[] {
 
 /**
  * Generates a client initial from the client name
+ * @param {string} clientName - The client application name to extract an initial from
+ * @returns {string} A single uppercase letter representing the client, or '?' if the name is empty
  */
 function generateClientInitial(clientName: string): string {
   const cleaned = clientName.trim();

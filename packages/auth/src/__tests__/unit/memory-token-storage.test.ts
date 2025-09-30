@@ -14,6 +14,10 @@ interface MockTimerInfo {
 }
 
 // Helper to create test token data
+/**
+ *
+ * @param expiresInMs
+ */
 function createTestToken(expiresInMs: number = 3600000): TokenData {
   return {
     accessToken:

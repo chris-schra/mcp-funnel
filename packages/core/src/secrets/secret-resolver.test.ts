@@ -8,6 +8,11 @@ import {
 } from './secret-resolver.js';
 import type { SecretProviderConfig } from './provider-configs.js';
 
+/**
+ *
+ * @param path
+ * @param name
+ */
 function createDotEnvConfig(path: string, name?: string): SecretProviderConfig {
   return {
     name,

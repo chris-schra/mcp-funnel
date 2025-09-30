@@ -1,5 +1,13 @@
 /**
- * Command discovery utilities for MCP Funnel commands
+ * Command discovery utilities for MCP Funnel commands.
+ *
+ * Provides functions to discover and load command packages from various locations:
+ * - Default bundled commands directory
+ * - Custom search paths
+ * - User-installed commands from ~/.mcp-funnel
+ * @internal
+ * @see file:./interfaces.ts - ICommand interface definition
+ * @see file:./registry.ts - CommandRegistry implementation
  */
 
 import { promises as fs } from 'fs';
@@ -10,7 +18,18 @@ import type { ICommand } from './interfaces.js';
 import { CommandRegistry } from './registry.js';
 
 /**
- * Discover and load commands from the default commands directory
+ * Discovers and loads commands from the default commands directory.
+ *
+ * Navigates from the core/src directory to the parent tools directory
+ * (two levels up) to discover bundled commands.
+ * @returns Promise resolving to CommandRegistry containing all discovered commands
+ * @example
+ * ```typescript
+ * const registry = await discoverCommandsFromDefault();
+ * console.log(`Found ${registry.size()} commands`);
+ * ```
+ * @public
+ * @see file:./registry.ts:11 - CommandRegistry class
  */
 export async function discoverCommandsFromDefault(): Promise<CommandRegistry> {
   const __filename = fileURLToPath(import.meta.url);
@@ -21,7 +40,22 @@ export async function discoverCommandsFromDefault(): Promise<CommandRegistry> {
 }
 
 /**
- * Discover and load commands from a search path
+ * Discovers and loads commands from a specified directory path.
+ *
+ * Scans the given directory for subdirectories (excluding 'core') and attempts
+ * to load each as a command package. Invalid or failed command loads are logged
+ * as warnings but do not prevent other commands from loading.
+ * @param searchPath - Absolute path to directory containing command packages
+ * @returns Promise resolving to CommandRegistry with all successfully loaded commands
+ * @example
+ * ```typescript
+ * const registry = await discoverCommands('/path/to/commands');
+ * for (const name of registry.getAllCommandNames()) {
+ *   console.log(`Discovered command: ${name}`);
+ * }
+ * ```
+ * @public
+ * @see file:./registry.ts:11 - CommandRegistry class
  */
 export async function discoverCommands(
   searchPath: string,
@@ -53,7 +87,31 @@ export async function discoverCommands(
 }
 
 /**
- * Discover commands from multiple locations including user-installed commands
+ * Discovers commands from multiple locations including project-local and user-installed commands.
+ *
+ * Attempts to load commands from:
+ * 1. Project-local directory (if projectPath provided)
+ * 2. User-installed commands from ~/.mcp-funnel (if includeUserCommands is true)
+ *
+ * User commands are loaded from ~/.mcp-funnel/commands-manifest.json which tracks
+ * installed command packages. If the manifest doesn't exist, no user commands are loaded
+ * but the function continues successfully.
+ * @param projectPath - Optional path to project-local commands directory
+ * @param includeUserCommands - Whether to include user-installed commands from ~/.mcp-funnel
+ * @returns Promise resolving to CommandRegistry containing all discovered commands
+ * @example
+ * ```typescript
+ * // Load all commands including user-installed
+ * const registry = await discoverAllCommands('./packages/commands');
+ *
+ * // Load only project commands
+ * const projectOnly = await discoverAllCommands('./packages/commands', false);
+ *
+ * // Load only user-installed commands
+ * const userOnly = await discoverAllCommands(undefined, true);
+ * ```
+ * @public
+ * @see file:./registry.ts:11 - CommandRegistry class
  */
 export async function discoverAllCommands(
   projectPath?: string,
@@ -137,7 +195,24 @@ export async function discoverAllCommands(
 }
 
 /**
- * Load a single command from a package directory
+ * Loads a single command from a package directory.
+ *
+ * Attempts to load a command in the following order:
+ * 1. src/index.ts (in development mode or when MCP_FUNNEL_PREFER_SRC=1)
+ * 2. Entry point specified in package.json (module or main field)
+ * 3. Fallback to src/index.ts if entry point fails
+ *
+ * The function looks for exports in this priority:
+ * - module.default
+ * - module.command
+ * - Any export implementing ICommand interface
+ * @param commandPath - Absolute path to command package directory
+ * @returns Promise resolving to ICommand if valid command found, null otherwise
+ * @remarks
+ * This function silently handles missing files and invalid packages by returning null
+ * rather than throwing. Warnings are logged to console for debugging.
+ * @internal
+ * @see file:./interfaces.ts:8 - ICommand interface definition
  */
 async function loadCommand(commandPath: string): Promise<ICommand | null> {
   try {
@@ -225,7 +300,14 @@ async function loadCommand(commandPath: string): Promise<ICommand | null> {
 }
 
 /**
- * Find a command implementation in a module's exports
+ * Searches a module's exports for an object implementing ICommand interface.
+ *
+ * Iterates through all named exports looking for the first export that
+ * satisfies the ICommand interface contract.
+ * @param module - Module object whose exports should be searched
+ * @returns First valid ICommand found, or null if none found
+ * @internal
+ * @see file:./interfaces.ts:8 - ICommand interface definition
  */
 function findCommandInModule(module: unknown): ICommand | null {
   // Look for any export that looks like a command
@@ -240,7 +322,19 @@ function findCommandInModule(module: unknown): ICommand | null {
 }
 
 /**
- * Validate that an object implements the ICommand interface
+ * Validates that an object implements the ICommand interface.
+ *
+ * Performs runtime type checking to verify an object has all required
+ * ICommand properties with correct types:
+ * - name: string
+ * - description: string
+ * - executeToolViaMCP: function
+ * - executeViaCLI: function
+ * - getMCPDefinitions: function
+ * @param command - Object to validate
+ * @returns Type predicate indicating if command implements ICommand
+ * @internal
+ * @see file:./interfaces.ts:8 - ICommand interface definition
  */
 function isValidCommand(command: unknown): command is ICommand {
   if (command == null || typeof command !== 'object') {

@@ -12,9 +12,8 @@ interface RegistryResponse<T> {
 
 /**
  * Checks if a string is a valid UUID.
- *
- * @param identifier - String to validate
- * @returns True if the identifier is a valid UUID
+ * @param identifier
+ * @internal
  */
 export function isUuid(identifier: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -24,11 +23,10 @@ export function isUuid(identifier: string): boolean {
 
 /**
  * Fetches server details directly from the registry API by UUID.
- *
- * @param baseUrl - Registry base URL
- * @param uuid - Server UUID
- * @returns Server details or null if not found
+ * @param baseUrl
+ * @param uuid
  * @throws Error on HTTP errors (non-404)
+ * @internal
  */
 export async function fetchServerByUuid(
   baseUrl: string,
@@ -70,10 +68,9 @@ export async function fetchServerByUuid(
 
 /**
  * Finds a server by exact name match from search results.
- *
- * @param servers - Array of servers from search results
- * @param name - Server name to find (case-insensitive)
- * @returns Matching server or null if not found
+ * @param servers
+ * @param name
+ * @internal
  */
 export function findServerByName(
   servers: ServerDetail[],

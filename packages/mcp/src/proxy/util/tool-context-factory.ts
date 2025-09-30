@@ -5,8 +5,17 @@ import type { ToolRegistry } from '../../tool-registry/index.js';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 /**
- * Create a tool context for core tools
- * Provides access to tool registry and configuration
+ * Creates a tool context for core tools with registry and notification support.
+ *
+ * Provides core tools with access to tool registry, configuration, and the ability
+ * to enable tools dynamically and send notifications to the MCP client.
+ * @param toolRegistry - Registry for tool management and discovery
+ * @param config - Proxy configuration including tool visibility rules
+ * @param configPath - Path to configuration file
+ * @param server - MCP server instance for sending notifications
+ * @returns CoreToolContext for use by core tools
+ * @public
+ * @see file:../../tools/core-tool.interface.ts - CoreToolContext interface
  */
 export function createToolContext(
   toolRegistry: ToolRegistry,

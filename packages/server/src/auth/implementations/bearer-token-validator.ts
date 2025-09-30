@@ -1,6 +1,28 @@
 /**
- * Bearer token validator for inbound authentication
- * Validates Bearer tokens in Authorization headers against configured tokens
+ * Bearer token authentication validator for inbound HTTP requests.
+ *
+ * Validates Authorization header Bearer tokens against configured allowlist
+ * with environment variable resolution support and timing-attack protection.
+ *
+ * Security features:
+ * - Constant-time token comparison using crypto.timingSafeEqual
+ * - Environment variable resolution for token values
+ * - Token format validation before comparison
+ * - No token values logged in output
+ * @example
+ * ```typescript
+ * const validator = new BearerTokenValidator({
+ *   type: 'bearer',
+ *   tokens: ['${AUTH_TOKEN}', 'static-token']
+ * });
+ *
+ * const result = await validator.validateRequest(honoContext);
+ * if (result.isAuthenticated) {
+ *   // proceed
+ * }
+ * ```
+ * @public
+ * @see file:../interfaces/inbound-auth.interface.ts:41 - Config interface
  */
 
 import { timingSafeEqual } from 'crypto';
@@ -16,18 +38,8 @@ import {
 } from '@mcp-funnel/core';
 
 /**
- * Validates incoming requests using Bearer token authentication
- *
- * This validator:
- * - Extracts Bearer tokens from Authorization headers
- * - Validates against a configured list of accepted tokens
- * - Supports environment variable resolution in tokens
- * - Returns detailed authentication results
- *
- * Security considerations:
- * - Tokens are compared securely using constant-time comparison
- * - Never logs actual token values
- * - Validates token format before comparison
+ * Bearer token authentication validator.
+ * @public
  */
 export class BearerTokenValidator implements IInboundAuthValidator {
   private readonly validTokens: string[];
@@ -126,8 +138,10 @@ export class BearerTokenValidator implements IInboundAuthValidator {
   }
 
   /**
-   * Validates a token against the configured valid tokens
-   * Uses constant-time comparison to prevent timing attacks
+   * Validates token against configured allowlist using constant-time comparison.
+   * @param {string} token - Token to validate
+   * @returns {boolean} True if token matches any configured valid token
+   * @internal
    */
   private isValidToken(token: string): boolean {
     const tokenBuffer = Buffer.from(token);

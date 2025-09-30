@@ -19,6 +19,45 @@ import { exec } from 'child_process';
 
 const execAsync = promisify(exec);
 
+/**
+ * Installs a command package from npm registry to the isolated packages directory.
+ *
+ * This function orchestrates the complete installation workflow:
+ * 1. Checks if the package is already installed (throws unless force option is set)
+ * 2. Executes npm install to download the package
+ * 3. Resolves the actual installed package name from package.json dependencies
+ * 4. Validates the package exports implement ICommand interface
+ * 5. Updates the manifest with installation metadata
+ * 6. Rolls back on validation failure
+ *
+ * The function handles complex package resolution scenarios including:
+ * - Version-suffixed specs (e.g., 'package@1.0.0')
+ * - Scoped packages (e.g., '@org/package')
+ * - Git URLs (e.g., 'git+https://github.com/org/repo.git')
+ * @param context - Installer context containing directory paths and manifest location
+ * @param packageSpec - npm package specifier (name, name@version, git URL, or tarball URL)
+ * @param options - Installation options for force reinstall and version pinning
+ * @returns Metadata about the installed command including name, version, and installation timestamp
+ * @throws {Error} When package is already installed and force option is not set
+ * @throws {Error} When npm install fails (network error, package not found, invalid version)
+ * @throws {Error} When installed package does not export a valid ICommand interface
+ * @example
+ * ```typescript
+ * // Install latest version of a scoped package
+ * const cmd = await install(context, '@mcp-funnel/commands-js-debugger');
+ * console.log(`Installed ${cmd.name} v${cmd.version}`);
+ *
+ * // Install specific version
+ * const cmd = await install(context, 'weather-tool', { version: '2.1.0' });
+ *
+ * // Force reinstall existing package
+ * const cmd = await install(context, '@mcp-funnel/commands-js-debugger', { force: true });
+ * ```
+ * @see file:./resolveInstalledPackageName.ts:24 - Package name resolution logic
+ * @see file:./loadCommand.ts:28 - Command validation and loading
+ * @see file:../installer.ts:90 - Public API wrapper
+ * @internal
+ */
 export async function install(
   context: CommandInstallerContext,
   packageSpec: string,

@@ -1,13 +1,20 @@
 /**
- * Centralized validation utilities to eliminate DRY violations
+ * Centralized validation utilities to eliminate DRY violations.
+ *
+ * Provides reusable validation functions for URLs, server IDs, and configuration
+ * objects, ensuring consistent error messages and security checks across the codebase.
+ * @public
  */
 
 // Security validation for serverId (from keychain-token-storage.ts)
 const SAFE_SERVER_ID_REGEX = /^[a-zA-Z0-9._-]+$/;
 
 /**
- * Validates a URL string
- * @throws Error if URL is invalid
+ * Validates a URL string.
+ * @param url - URL string to validate
+ * @param context - Optional context string for error messages
+ * @throws {Error} When URL is empty or invalid format
+ * @internal
  */
 function validateUrl(url: string, context?: string): void {
   if (!url) {
@@ -24,7 +31,10 @@ function validateUrl(url: string, context?: string): void {
 }
 
 /**
- * Validates multiple URLs
+ * Validates multiple URLs from a record.
+ * @param urls - Record of URL strings, undefined values are skipped
+ * @throws {Error} When any URL is invalid, with key in error message
+ * @internal
  */
 function validateUrls(urls: Record<string, string | undefined>): void {
   for (const [key, url] of Object.entries(urls)) {
@@ -34,12 +44,21 @@ function validateUrls(urls: Record<string, string | undefined>): void {
   }
 }
 
+/**
+ * Collection of validation utility functions.
+ * @public
+ */
 export const ValidationUtils = {
   validateUrl,
   validateUrls,
   /**
-   * Sanitizes and validates a serverId for safe command execution
-   * @throws Error if serverId contains unsafe characters
+   * Sanitizes and validates a serverId for safe command execution.
+   *
+   * Prevents command injection by ensuring server IDs only contain
+   * alphanumeric characters, dots, underscores, and hyphens.
+   * @param serverId - Server ID to validate
+   * @returns The same serverId if valid
+   * @throws {Error} When serverId contains unsafe characters
    */
   sanitizeServerId: (serverId: string): string => {
     if (!SAFE_SERVER_ID_REGEX.test(serverId)) {
@@ -50,7 +69,11 @@ export const ValidationUtils = {
     return serverId;
   },
   /**
-   * Validates required config fields
+   * Validates required config fields are present.
+   * @param config - Configuration object to validate
+   * @param requiredFields - Array of field names that must be present
+   * @param context - Optional context string for error messages
+   * @throws {Error} When any required field is missing
    */
   validateRequired: <T>(
     config: T,
@@ -65,6 +88,16 @@ export const ValidationUtils = {
       }
     }
   },
+  /**
+   * Validates OAuth configuration URLs.
+   *
+   * Convenience method for validating the common set of URLs used in OAuth flows.
+   * @param config - OAuth configuration with optional URL fields
+   * @param config.authorizationEndpoint
+   * @param config.tokenEndpoint
+   * @param config.redirectUri
+   * @throws {Error} When any present URL is invalid
+   */
   validateOAuthUrls: (config: {
     authorizationEndpoint?: string;
     tokenEndpoint?: string;
@@ -79,5 +112,12 @@ export const ValidationUtils = {
     ValidationUtils.validateUrls(urlFields);
   },
 };
-// Export regex patterns for cases where direct regex access is needed
+
+/**
+ * Regex pattern for validating safe server IDs.
+ *
+ * Exported for cases where direct regex access is needed for validation
+ * without throwing errors.
+ * @public
+ */
 export const SAFE_SERVER_ID_REGEX_PATTERN = SAFE_SERVER_ID_REGEX;

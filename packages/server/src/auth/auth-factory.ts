@@ -1,6 +1,12 @@
 /**
- * Factory for creating inbound authentication validators
- * Provides centralized creation and configuration of auth validators
+ * Factory for creating inbound authentication validators.
+ *
+ * Provides centralized creation and configuration of auth validators with
+ * exhaustive type checking to ensure all configuration types are handled.
+ * @public
+ * @see file:./interfaces/inbound-auth.interface.ts - Configuration types
+ * @see file:./implementations/bearer-token-validator.ts - Bearer implementation
+ * @see file:./implementations/no-auth-validator.ts - No-auth implementation
  */
 
 import type {
@@ -11,11 +17,18 @@ import { BearerTokenValidator } from './implementations/bearer-token-validator.j
 import { NoAuthValidator } from './implementations/no-auth-validator.js';
 
 /**
- * Creates an authentication validator based on the provided configuration
- *
- * @param config - Authentication configuration
- * @returns Configured authentication validator
- * @throws Error if configuration is invalid or unsupported
+ * Creates an authentication validator instance from configuration.
+ * @param {InboundAuthConfig} config - Authentication configuration
+ * @returns {IInboundAuthValidator} Configured validator implementing IInboundAuthValidator
+ * @throws {Error} When configuration type is unsupported
+ * @example
+ * ```typescript
+ * const validator = createAuthValidator({
+ *   type: 'bearer',
+ *   tokens: ['secret-token']
+ * });
+ * ```
+ * @public
  */
 export function createAuthValidator(
   config: InboundAuthConfig,
@@ -38,9 +51,14 @@ export function createAuthValidator(
 }
 
 /**
- * Validates authentication configuration
- * @param config - Configuration to validate
- * @throws Error if configuration is invalid
+ * Validates authentication configuration structure and required fields.
+ *
+ * Performs deep validation including type-specific requirements:
+ * - Bearer: validates tokens array is non-empty and contains only strings
+ * - None: no additional validation beyond type presence
+ * @param {InboundAuthConfig} config - Configuration to validate
+ * @throws {Error} When configuration is missing required fields or has invalid values
+ * @public
  */
 export function validateAuthConfig(config: InboundAuthConfig): void {
   if (!config || typeof config !== 'object') {

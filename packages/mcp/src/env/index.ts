@@ -8,7 +8,11 @@ import {
 import type { TargetServer, ProxyConfig } from '@mcp-funnel/schemas';
 
 /**
- * SEAM: Interface for building server environment with different strategies
+ * Interface for building server environment with different strategies.
+ *
+ * SEAM: Allows alternative environment building strategies (e.g., vault-based,
+ * AWS Secrets Manager) to be plugged in without changing consumers.
+ * @public
  */
 export interface IServerEnvBuilder {
   build(
@@ -19,11 +23,19 @@ export interface IServerEnvBuilder {
 }
 
 /**
- * Default server environment builder that implements the standard precedence order:
- * 1. Start with filtered process.env if defaultPassthroughEnv is set
- * 2. Apply default secret providers if configured
- * 3. Apply server-specific secret providers
- * 4. Apply server-specific env (highest priority)
+ * Default server environment builder implementing standard precedence order.
+ *
+ * Environment variable precedence (last wins):
+ * 1. Filtered process.env (using defaultPassthroughEnv or secure defaults)
+ * 2. Default secret providers (config.defaultSecretProviders)
+ * 3. Server-specific secret providers (targetServer.secretProviders)
+ * 4. Server-specific env (targetServer.env) - highest priority
+ * @example
+ * ```typescript
+ * const builder = new DefaultServerEnvBuilder();
+ * const env = await builder.build(targetServer, config, '/path/to/config.json');
+ * ```
+ * @public
  */
 export class DefaultServerEnvBuilder implements IServerEnvBuilder {
   public async build(
@@ -75,9 +87,13 @@ export class DefaultServerEnvBuilder implements IServerEnvBuilder {
 }
 
 /**
- * Factory function to create server environment builders
- * SEAM: Can be extended to return different builder implementations
- * based on configuration (e.g., vault-based, AWS Secrets Manager, etc.)
+ * Creates server environment builders based on type.
+ *
+ * SEAM: Extension point for alternative builder implementations
+ * (e.g., 'vault', 'aws-secrets', 'azure-keyvault').
+ * @param {string} [type] - Builder type identifier (currently only 'default' implemented)
+ * @returns {IServerEnvBuilder} Environment builder instance
+ * @public
  */
 export function createServerEnvBuilder(
   type: 'default' | string = 'default',
@@ -93,8 +109,22 @@ export function createServerEnvBuilder(
 }
 
 /**
- * Builds environment for a server using the configured strategy
- * Uses the default builder unless specified otherwise
+ * Builds environment variables for a server using the configured strategy.
+ * @param {TargetServer} targetServer - Server configuration including env overrides and secret providers
+ * @param {ProxyConfig} config - Global proxy configuration with default secret providers
+ * @param {string} configPath - Absolute path to config file (for resolving relative secret paths)
+ * @param {string} [builderType] - Optional builder type (defaults to 'default')
+ * @returns {Promise<Record<string, string>>} Fully resolved environment variable map ready for process spawning
+ * @example
+ * ```typescript
+ * const env = await buildServerEnvironment(
+ *   { name: 'github', command: 'gh-server', env: { DEBUG: '1' } },
+ *   proxyConfig,
+ *   '/path/to/.mcp-funnel.json'
+ * );
+ * ```
+ * @public
+ * @see file:./index.ts:28 - DefaultServerEnvBuilder implementation
  */
 export async function buildServerEnvironment(
   targetServer: TargetServer,
