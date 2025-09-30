@@ -159,19 +159,22 @@ describe('ProcessSpawner', () => {
         `,
       );
 
-      // Spawn two processes with different ports
+      // Spawn two processes with dynamic port allocation (port 0)
+      // This ensures no port conflicts in test environments
       const [result1, result2] = await Promise.all([
-        spawner.spawn(scriptPath1, { port: 9001 }),
-        spawner.spawn(scriptPath2, { port: 9002 }),
+        spawner.spawn(scriptPath1, { port: 0 }),
+        spawner.spawn(scriptPath2, { port: 0 }),
       ]);
 
       trackProcess(result1.process);
       trackProcess(result2.process);
 
-      expect(result1.port).toBe(9001);
-      expect(result2.port).toBe(9002);
-      expect(result1.wsUrl).toContain(':9001/');
-      expect(result2.wsUrl).toContain(':9002/');
+      // Verify both processes have valid ports and they are different
+      expect(result1.port).toBeGreaterThan(0);
+      expect(result2.port).toBeGreaterThan(0);
+      expect(result1.port).not.toBe(result2.port);
+      expect(result1.wsUrl).toContain(`:${result1.port}/`);
+      expect(result2.wsUrl).toContain(`:${result2.port}/`);
     });
   });
 
