@@ -1,9 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import {
-  OAuth2ErrorResponse,
-  OAuthUtils,
-} from '@mcp-funnel/auth';
+import { OAuth2ErrorResponse, OAuthUtils } from '@mcp-funnel/auth';
 
 const { parseErrorResponse } = OAuthUtils;
 

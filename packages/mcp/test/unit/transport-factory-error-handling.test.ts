@@ -72,7 +72,9 @@ describe('TransportFactory - Error Handling', () => {
 
   it('should handle auth provider initialization failure', async () => {
     const failingAuthProvider = {
-      getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer test-token' }),
+      getHeaders: vi
+        .fn()
+        .mockResolvedValue({ Authorization: 'Bearer test-token' }),
       isValid: vi.fn().mockRejectedValue(new Error('Auth failure')),
       refresh: vi.fn().mockResolvedValue(undefined),
     };

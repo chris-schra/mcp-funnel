@@ -147,9 +147,7 @@ export function getSessionWithActivity(
  * ```
  * @public
  */
-export function listSessions(
-  context: SessionRetrievalContext,
-): Array<{
+export function listSessions(context: SessionRetrievalContext): Array<{
   id: string;
   platform: string;
   target: string;

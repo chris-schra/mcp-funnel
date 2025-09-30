@@ -126,12 +126,7 @@ export class TestWebSocketServer {
       if (client.ws.readyState === WebSocket.OPEN) {
         try {
           client.ws.send(messageText);
-          recordMessage(
-            this.messageHistory,
-            clientId,
-            message,
-            'outgoing',
-          );
+          recordMessage(this.messageHistory, clientId, message, 'outgoing');
         } catch (error) {
           console.error(`Error broadcasting to client ${clientId}:`, error);
           this.clients.delete(clientId);
@@ -173,7 +168,8 @@ export class TestWebSocketServer {
    */
   getClientCount(): number {
     for (const [clientId, client] of this.clients.entries()) {
-      if (client.ws.readyState === WebSocket.CLOSED) this.clients.delete(clientId);
+      if (client.ws.readyState === WebSocket.CLOSED)
+        this.clients.delete(clientId);
     }
     return this.clients.size;
   }
@@ -270,7 +266,11 @@ export class TestWebSocketServer {
           return;
         }
 
-        const client: WebSocketClient = { id: clientId, ws, connectedAt: new Date() };
+        const client: WebSocketClient = {
+          id: clientId,
+          ws,
+          connectedAt: new Date(),
+        };
         this.clients.set(clientId, client);
         ws.send(JSON.stringify(createWelcomeMessage(clientId)));
         ws.on('message', (data: Buffer) => {
@@ -281,7 +281,10 @@ export class TestWebSocketServer {
               ws.send(JSON.stringify(createEchoResponse(message)));
             }
           } catch (error) {
-            console.error(`Error processing message from client ${clientId}:`, error);
+            console.error(
+              `Error processing message from client ${clientId}:`,
+              error,
+            );
             ws.send(JSON.stringify(createParseErrorResponse()));
           }
         });
@@ -316,12 +319,18 @@ export class TestWebSocketServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleHttpRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async handleHttpRequest(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
     try {
       const url = new URL(req.url!, `http://localhost:${this.port}`);
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, Cache-Control',
+      );
 
       if (req.method === 'OPTIONS') {
         res.writeHead(200);
@@ -339,7 +348,10 @@ export class TestWebSocketServer {
       }
 
       if (url.pathname === '/ws') {
-        sendJsonResponse(res, 426, { error: 'Upgrade Required', message: 'This endpoint requires WebSocket upgrade' });
+        sendJsonResponse(res, 426, {
+          error: 'Upgrade Required',
+          message: 'This endpoint requires WebSocket upgrade',
+        });
         return;
       }
       sendJsonResponse(res, 404, { error: 'Not found' });

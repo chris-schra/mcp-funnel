@@ -18,7 +18,6 @@ import { ConsentTemplateUtils } from './utils.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-
 /**
  * Renders the OAuth consent page HTML with the provided data.
  *

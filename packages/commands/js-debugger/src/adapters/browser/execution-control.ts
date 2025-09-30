@@ -13,7 +13,10 @@ export class ExecutionControl {
   private cdpClient: CDPClient;
   private eventHandlers: BrowserEventHandlers;
 
-  public constructor(cdpClient: CDPClient, eventHandlers: BrowserEventHandlers) {
+  public constructor(
+    cdpClient: CDPClient,
+    eventHandlers: BrowserEventHandlers,
+  ) {
     this.cdpClient = cdpClient;
     this.eventHandlers = eventHandlers;
   }

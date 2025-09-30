@@ -31,7 +31,7 @@ export interface DotEnvProviderConfig extends ProviderConfigBase {
     path: string;
     /**
      * File encoding to use when reading the .env file.
-     * @default 'utf-8'
+     * @defaultValue 'utf-8'
      */
     encoding?: string;
   };
@@ -83,7 +83,7 @@ export interface InlineProviderConfig extends ProviderConfigBase {
     /**
      * Direct key-value pairs of secrets.
      * Keys become the secret names, values are the secret values.
-     * @example { 'API_KEY': 'secret123', 'DATABASE_URL': 'postgres://...' }
+     * @example \{ 'API_KEY': 'secret123', 'DATABASE_URL': 'postgres://...' \}
      */
     values: Record<string, string>;
   };

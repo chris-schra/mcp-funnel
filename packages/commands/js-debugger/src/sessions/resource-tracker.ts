@@ -38,7 +38,9 @@ export class SessionResourceTracker implements ResourceTracker {
     return this.resources.get(sessionId)?.size || 0;
   }
 
-  public getAllResources(sessionId: string): Array<{ id: string; type: string }> {
+  public getAllResources(
+    sessionId: string,
+  ): Array<{ id: string; type: string }> {
     const sessionResources = this.resources.get(sessionId);
     if (!sessionResources) return [];
 

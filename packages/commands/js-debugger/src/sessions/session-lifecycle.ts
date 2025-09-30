@@ -6,10 +6,7 @@ import {
 } from '../types/index.js';
 import { EnhancedDebugSession } from '../enhanced-debug-session.js';
 import { SessionCompatibilityWrapper } from '../session-compatibility-wrapper.js';
-import {
-  IAdapterFactory,
-  setInitialBreakpoints,
-} from './session-factory.js';
+import { IAdapterFactory, setInitialBreakpoints } from './session-factory.js';
 import { SessionResourceTracker } from './resource-tracker.js';
 import { SessionActivityTracker } from './activity-tracker.js';
 import { TerminatedSessionManager } from './terminated-session-manager.js';
@@ -85,11 +82,7 @@ export async function createDebugSession(
     request.platform,
     request,
   );
-  const enhancedSession = new EnhancedDebugSession(
-    sessionId,
-    adapter,
-    request,
-  );
+  const enhancedSession = new EnhancedDebugSession(sessionId, adapter, request);
 
   // Store session before initialization
   context.sessions.set(sessionId, enhancedSession);

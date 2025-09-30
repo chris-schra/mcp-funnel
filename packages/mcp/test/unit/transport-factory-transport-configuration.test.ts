@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import type {
-  SSETransportConfig,
-  TransportConfig,
-} from '@mcp-funnel/models';
+import type { SSETransportConfig, TransportConfig } from '@mcp-funnel/models';
 import { createTransport } from '../../src/utils/transport/index.js';
 
 describe('TransportFactory - Transport Configuration', () => {

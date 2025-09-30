@@ -146,10 +146,8 @@ export class MockSSEServer {
     };
 
     this.messageQueue.push(message);
-    broadcastToConnections(
-      this.connections,
-      message,
-      (id) => this.connections.delete(id),
+    broadcastToConnections(this.connections, message, (id) =>
+      this.connections.delete(id),
     );
   }
 
@@ -213,7 +211,9 @@ export class MockSSEServer {
    */
   getStats() {
     return {
-      activeConnections: Array.from(this.connections.values()).filter((c) => c.isActive).length,
+      activeConnections: Array.from(this.connections.values()).filter(
+        (c) => c.isActive,
+      ).length,
       totalConnections: this.connections.size,
       messagesSent: this.messageQueue.length,
       messagesReceived: this.receivedMessages.length,
@@ -272,7 +272,9 @@ export class MockSSEServer {
     app.get('/events', this.handleSSEConnection.bind(this));
 
     app.post('/messages', this.handleMessagePost.bind(this));
-    app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
+    app.get('/health', (req, res) =>
+      res.json({ status: 'ok', timestamp: Date.now() }),
+    );
     app.get('/error/:code', (req, res) => {
       const code = parseInt(req.params.code, 10);
       res.status(code).json({ error: `Simulated ${code} error` });
@@ -281,8 +283,14 @@ export class MockSSEServer {
     return app;
   }
 
-  private async handleSSEConnection(req: Request, res: Response): Promise<void> {
-    if (this.shouldSimulateConnectionError || Math.random() < this.connectionFailureRate) {
+  private async handleSSEConnection(
+    req: Request,
+    res: Response,
+  ): Promise<void> {
+    if (
+      this.shouldSimulateConnectionError ||
+      Math.random() < this.connectionFailureRate
+    ) {
       res.status(503).json({ error: 'Service temporarily unavailable' });
       return;
     }
@@ -293,7 +301,10 @@ export class MockSSEServer {
     if (this.config.requireAuth) {
       const authHeader = req.headers.authorization;
       const providedToken = authHeader ? extractBearerToken(authHeader) : null;
-      if (this.shouldSimulateAuthFailure || providedToken !== this.config.authToken) {
+      if (
+        this.shouldSimulateAuthFailure ||
+        providedToken !== this.config.authToken
+      ) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
       }
@@ -353,7 +364,10 @@ export class MockSSEServer {
     if (this.config.requireAuth) {
       const authHeader = req.headers.authorization;
       const providedToken = authHeader ? extractBearerToken(authHeader) : null;
-      if (this.shouldSimulateAuthFailure || providedToken !== this.config.authToken) {
+      if (
+        this.shouldSimulateAuthFailure ||
+        providedToken !== this.config.authToken
+      ) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
       }
@@ -366,10 +380,13 @@ export class MockSSEServer {
       await new Promise((resolve) => setTimeout(resolve, this.responseDelayMs));
     }
     const messageId = uuidv4();
-    this.receivedMessages.push({ id: messageId, data: req.body, timestamp: Date.now() });
+    this.receivedMessages.push({
+      id: messageId,
+      data: req.body,
+      timestamp: Date.now(),
+    });
     res.json({ success: true, messageId, timestamp: Date.now() });
   }
-
 }
 
 /**

@@ -140,7 +140,9 @@ export class InspectionManager {
       id: idx,
       functionName: frame.functionName || '<anonymous>',
       file:
-        frame.url || this.scriptIdToUrl.get(frame.location.scriptId) || 'unknown',
+        frame.url ||
+        this.scriptIdToUrl.get(frame.location.scriptId) ||
+        'unknown',
       line: frame.location.lineNumber + 1, // Convert to 1-based
       column: frame.location.columnNumber,
       origin: determineCodeOrigin(

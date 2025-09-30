@@ -1,10 +1,9 @@
-import { describe, it, expect, } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import {
   type OAuth2ClientCredentialsConfigZod,
   resolveOAuth2ClientCredentialsConfig,
 } from '@mcp-funnel/auth';
-
 
 describe('OAuth Utils - resolveOAuth2ClientCredentialsConfig', () => {
   it('should resolve all OAuth2 client credentials environment variables', () => {

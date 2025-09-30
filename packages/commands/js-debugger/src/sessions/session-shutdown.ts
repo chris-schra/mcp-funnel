@@ -43,9 +43,7 @@ export interface ShutdownContext {
  * @see file:./process-handlers.ts:25-45 - Process signal handling
  * @see file:./cleanup-manager.ts:140-160 - Cleanup manager shutdown
  */
-export async function performShutdown(
-  context: ShutdownContext,
-): Promise<void> {
+export async function performShutdown(context: ShutdownContext): Promise<void> {
   context.processHandlerManager.removeHandlers();
 
   console.info('SessionManager shutting down...');

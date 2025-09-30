@@ -212,7 +212,9 @@ export class StackFormatter {
     location?: DebugLocation,
   ): { message: string; hint?: string } {
     if (state.status === 'running') {
-      return { message: 'Running… Will pause at next breakpoint or completion.' };
+      return {
+        message: 'Running… Will pause at next breakpoint or completion.',
+      };
     }
     if (state.status === 'terminated') {
       return { message: 'Debug session completed' };
@@ -235,7 +237,8 @@ export class StackFormatter {
 
     if (location?.type === 'internal' && state.pauseReason === 'entry') {
       return {
-        message: 'Debugger attached and paused at entry. Continue to run to your breakpoints.',
+        message:
+          'Debugger attached and paused at entry. Continue to run to your breakpoints.',
         hint: 'Currently paused in runtime internals. Use js-debugger_continue to reach your code.',
       };
     }
@@ -254,7 +257,9 @@ export class StackFormatter {
       };
     }
     if (state.pauseReason === 'breakpoint' && locationLabel) {
-      return { message: `Paused at breakpoint in ${locationLabel}${lineSuffix}` };
+      return {
+        message: `Paused at breakpoint in ${locationLabel}${lineSuffix}`,
+      };
     }
     if (locationLabel) {
       return { message: `Paused in ${locationLabel}${lineSuffix}` };
