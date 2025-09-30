@@ -69,7 +69,7 @@ export const useWebSocketStore = create<WebSocketState>((set) => ({
  * - `tools.changed`: Dispatches 'tools-changed' CustomEvent
  * - `server.connected/disconnected`: Dispatches 'servers-changed' CustomEvent
  * - `tool.executing/result`: Dispatches 'tool-event' CustomEvent with payload
- * @returns {{isConnected: boolean, sendMessage: (message: unknown) => void}} Object containing connection status and message sending function
+ * @returns Object containing connection status and message sending function
  * @example
  * ```typescript
  * import { useWebSocket } from '~/hooks/useWebSocket.js';
