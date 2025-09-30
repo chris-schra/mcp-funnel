@@ -148,8 +148,7 @@ describe('MCPProxy Reconnection Logic - Automatic Reconnection', () => {
     mcpProxy.on('server.reconnecting', reconnectingHandler);
 
     // Simulate transport error that triggers automatic reconnection
-    const connectionError =
-      TransportError.connectionFailed('connection lost');
+    const connectionError = TransportError.connectionFailed('connection lost');
 
     // Get the current transport's error handler
     const currentTransport = getMockTransport(serverName);

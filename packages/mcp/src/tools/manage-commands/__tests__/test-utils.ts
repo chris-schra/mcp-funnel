@@ -44,9 +44,7 @@ export const createMockCommand = (
 
 export const setupTestContext = async (): Promise<TestContext> => {
   // Create temporary directory for testing
-  const testDir = await fs.mkdtemp(
-    join(tmpdir(), 'manage-commands-test-'),
-  );
+  const testDir = await fs.mkdtemp(join(tmpdir(), 'manage-commands-test-'));
 
   // Create a mock tool registry with hot-reload capability
   const mockToolRegistry: Partial<ToolRegistry> = {

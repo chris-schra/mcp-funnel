@@ -84,8 +84,6 @@ describe('BaseClientTransport - Authentication Integration', () => {
       authProvider: mockAuthProvider,
     });
 
-    await expect(transport['getAuthHeaders']()).rejects.toThrow(
-      TransportError,
-    );
+    await expect(transport['getAuthHeaders']()).rejects.toThrow(TransportError);
   });
 });

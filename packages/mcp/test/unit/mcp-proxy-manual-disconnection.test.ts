@@ -212,9 +212,9 @@ describe('MCPProxy Reconnection Logic - Manual Disconnection', () => {
 
     // Verify resources are cleaned up
     const targetServers = mcpProxy.getTargetServers();
-    expect(
-      targetServers.connected.some(([name]) => name === serverName),
-    ).toBe(false);
+    expect(targetServers.connected.some(([name]) => name === serverName)).toBe(
+      false,
+    );
     expect(
       targetServers.disconnected.some(([name]) => name === serverName),
     ).toBe(true);

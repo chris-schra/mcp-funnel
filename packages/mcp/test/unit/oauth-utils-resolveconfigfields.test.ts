@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - resolveConfigFields', () => {
   it('should resolve environment variables in config', () => {
     process.env.TEST_VAR = 'resolved-value';
@@ -52,11 +51,7 @@ describe('OAuth Utils - resolveConfigFields', () => {
 
     process.env.TEST_VAR = 'resolved';
 
-    const result = resolveConfigFields(config, [
-      'field1',
-      'field2',
-      'field3',
-    ]);
+    const result = resolveConfigFields(config, ['field1', 'field2', 'field3']);
 
     expect(result).toEqual({
       field1: 'resolved',

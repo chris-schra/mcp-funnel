@@ -45,7 +45,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-
 describe('TransportFactory - Transport Creation', () => {
   it('should create stdio transport for stdio config', async () => {
     const config: TransportConfig = {

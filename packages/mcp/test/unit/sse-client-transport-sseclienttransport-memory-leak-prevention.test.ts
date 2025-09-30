@@ -48,8 +48,34 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
   };
 });
 
-
 describe('SSEClientTransport - SSEClientTransport Memory Leak Prevention', () => {
+  let serverUrl: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    // Set up mock SSE server
+    const serverInfo = await createMockSSEServer({
+      port: 0,
+      requireAuth: true,
+      authToken: 'test-bearer-token',
+    });
+    serverUrl = serverInfo.url;
+
+    // Stop the server immediately since these tests don't need a running server
+    await serverInfo.server.stop();
+
+    // Configure mock fetch for HTTP POST requests
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: true }),
+    } as Response);
+  });
+
+  afterEach(async () => {
+    vi.resetAllMocks();
+  });
   it('should prevent memory leaks by using same bound function references', async () => {
     const transport = new SSEClientTransport({
       url: serverUrl,

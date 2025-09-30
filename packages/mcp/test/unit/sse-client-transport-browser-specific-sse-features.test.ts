@@ -48,7 +48,6 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
   };
 });
 
-
 describe('SSEClientTransport - Browser-Specific SSE Features', () => {
   it('should support auth tokens via query parameters due to browser limitations', () => {
     const baseUrl = 'https://api.example.com/events';

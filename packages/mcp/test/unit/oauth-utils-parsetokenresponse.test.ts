@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - parseTokenResponse', () => {
   it('should parse complete token response', () => {
     const tokenResponse: OAuth2TokenResponse = {

@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - createOAuth2Error', () => {
   it('should create error for invalid_request', () => {
     const errorResponse: OAuth2ErrorResponse = {
@@ -46,9 +45,7 @@ describe('OAuth Utils - createOAuth2Error', () => {
 
     const result = createOAuth2Error(errorResponse, 401);
 
-    expect(result.message).toBe(
-      'OAuth2 authentication failed: invalid_client',
-    );
+    expect(result.message).toBe('OAuth2 authentication failed: invalid_client');
     expect(result.code).toBe(OAuth2ErrorCode.INVALID_CLIENT);
   });
 

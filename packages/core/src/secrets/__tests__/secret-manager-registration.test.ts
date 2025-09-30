@@ -44,9 +44,7 @@ describe('SecretManager - Provider Registration', () => {
   });
 
   it('should return false when removing non-existent provider', () => {
-    const manager = new SecretManager([
-      createInlineProvider({ API_KEY: 'x' }),
-    ]);
+    const manager = new SecretManager([createInlineProvider({ API_KEY: 'x' })]);
 
     const removed = manager.removeProvider('missing');
     expect(removed).toBe(false);

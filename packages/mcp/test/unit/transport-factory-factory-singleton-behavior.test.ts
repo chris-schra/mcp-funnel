@@ -45,7 +45,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-
 describe('TransportFactory - Factory Singleton Behavior', () => {
   it('should return same transport instance for identical config', async () => {
     const config: TransportConfig = {
@@ -101,17 +100,13 @@ describe('TransportFactory - Factory Singleton Behavior', () => {
 
     // Create two different auth provider instances with same functionality
     const authProvider1: IAuthProvider = {
-      getHeaders: vi
-        .fn()
-        .mockResolvedValue({ Authorization: 'Bearer token1' }),
+      getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer token1' }),
       isValid: vi.fn().mockResolvedValue(true),
       refresh: vi.fn().mockResolvedValue(undefined),
     };
 
     const authProvider2: IAuthProvider = {
-      getHeaders: vi
-        .fn()
-        .mockResolvedValue({ Authorization: 'Bearer token2' }),
+      getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer token2' }),
       isValid: vi.fn().mockResolvedValue(true),
       refresh: vi.fn().mockResolvedValue(undefined),
     };
@@ -178,9 +173,7 @@ describe('TransportFactory - Factory Singleton Behavior', () => {
     };
 
     const authProvider: IAuthProvider = {
-      getHeaders: vi
-        .fn()
-        .mockResolvedValue({ Authorization: 'Bearer token' }),
+      getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer token' }),
       isValid: vi.fn().mockResolvedValue(true),
       refresh: vi.fn().mockResolvedValue(undefined),
     };

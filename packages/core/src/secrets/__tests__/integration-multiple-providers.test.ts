@@ -148,11 +148,7 @@ describe('SecretManager Integration Tests - Multiple Provider Types', () => {
       '# This is a comment',
       'SIMPLE_VALUE=simple',
     ].join('\n');
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.complex',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.complex', envContent);
 
     const dotenvProvider = new DotEnvProvider({
       path: envFilePath,

@@ -45,7 +45,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-
 describe('TransportFactory - Auth Integration', () => {
   it('should inject auth provider into transport', async () => {
     const config: TransportConfig = {

@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - Edge Cases and Error Conditions', () => {
   it('should handle malformed JSON in parseErrorResponse', async () => {
     const mockResponse = {

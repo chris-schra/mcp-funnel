@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - parseErrorResponse', () => {
   it('should parse valid JSON error response', async () => {
     const errorResponse: OAuth2ErrorResponse = {

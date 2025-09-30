@@ -45,7 +45,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-
 describe('TransportFactory - Transport Configuration', () => {
   it('should apply default timeout for SSE transport', async () => {
     const config: TransportConfig = {
@@ -84,9 +83,9 @@ describe('TransportFactory - Transport Configuration', () => {
     expect(
       (transport.config as SSETransportConfig).reconnect?.initialDelayMs,
     ).toBe(1000);
-    expect(
-      (transport.config as SSETransportConfig).reconnect?.maxDelayMs,
-    ).toBe(30000);
+    expect((transport.config as SSETransportConfig).reconnect?.maxDelayMs).toBe(
+      30000,
+    );
     expect(
       (transport.config as SSETransportConfig).reconnect?.backoffMultiplier,
     ).toBe(2);

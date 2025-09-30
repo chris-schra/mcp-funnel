@@ -94,8 +94,7 @@ describe('BaseClientTransport - Reconnection Manager Integration', () => {
     const manager = transport.getReconnectionManager();
     const scheduleSpy = vi.spyOn(manager, 'scheduleReconnection');
 
-    const nonRetryableError =
-      TransportError.authenticationFailed('Auth error');
+    const nonRetryableError = TransportError.authenticationFailed('Auth error');
     transport.testHandleConnectionError(nonRetryableError);
 
     expect(scheduleSpy).not.toHaveBeenCalled();

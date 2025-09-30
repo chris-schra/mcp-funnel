@@ -48,7 +48,6 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
   };
 });
 
-
 describe('SSEClientTransport - SSE Message Reception', () => {
   it('should receive and parse valid JSON-RPC messages from SSE events', () => {
     const eventSource = new MockEventSource('https://api.example.com/events');

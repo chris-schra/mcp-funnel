@@ -244,9 +244,9 @@ describe('BaseClientTransport - Message Correlation', () => {
     const sendPromise = shortTimeoutTransport.send(request);
 
     await expect(sendPromise).rejects.toThrow('Request timeout after 100ms');
-    expect(
-      shortTimeoutTransport.getPendingRequests().has('timeout-test'),
-    ).toBe(false);
+    expect(shortTimeoutTransport.getPendingRequests().has('timeout-test')).toBe(
+      false,
+    );
   });
 
   it('handles multiple concurrent requests correctly', async () => {

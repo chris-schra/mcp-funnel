@@ -45,7 +45,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-
 describe('TransportFactory - Legacy Detection', () => {
   it('should detect legacy stdio config with command field', async () => {
     const legacyConfig = {

@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - resolveOAuth2AuthCodeConfig', () => {
   it('should resolve all OAuth2 authorization code environment variables', () => {
     process.env.CLIENT_ID = 'auth-client-id';

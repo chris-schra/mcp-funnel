@@ -45,7 +45,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-
 describe('TransportFactory - Error Handling', () => {
   it('should throw for invalid stdio config missing command', async () => {
     const config: InvalidConfig = {

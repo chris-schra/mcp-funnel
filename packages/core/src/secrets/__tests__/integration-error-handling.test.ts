@@ -3,10 +3,7 @@ import { SecretManager } from '../secret-manager.js';
 import { DotEnvProvider } from '../providers/dotenv/index.js';
 import { ProcessEnvProvider } from '../process-env-provider.js';
 import { InlineProvider } from '../inline-provider.js';
-import {
-  createTestDirectory,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, cleanupTestDirectory } from './test-utils.js';
 
 describe('SecretManager Integration Tests - Error Handling Integration', () => {
   let testDir: string;

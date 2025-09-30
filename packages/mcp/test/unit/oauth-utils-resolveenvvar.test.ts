@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - resolveEnvVar', () => {
   it('should resolve environment variable with ${VAR} syntax', () => {
     process.env.TEST_VAR = 'test-value';

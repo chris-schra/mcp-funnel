@@ -48,7 +48,6 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
   };
 });
 
-
 describe('SSEClientTransport - EventSource Connection Lifecycle', () => {
   it('should handle EventSource open events', async () => {
     const eventSource = new MockEventSource('https://api.example.com/events');

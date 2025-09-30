@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { JSONRPCRequest, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import type {
+  JSONRPCRequest,
+  JSONRPCMessage,
+} from '@modelcontextprotocol/sdk/types.js';
 import {
   BaseClientTransport,
   type BaseClientTransportConfig,

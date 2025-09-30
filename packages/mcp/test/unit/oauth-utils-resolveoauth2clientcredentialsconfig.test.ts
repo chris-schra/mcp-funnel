@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - resolveOAuth2ClientCredentialsConfig', () => {
   it('should resolve all OAuth2 client credentials environment variables', () => {
     process.env.CLIENT_ID = 'test-client-id';

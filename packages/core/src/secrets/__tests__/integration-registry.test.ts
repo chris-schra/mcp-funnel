@@ -32,11 +32,7 @@ describe('SecretManager Integration Tests - Registry Integration', () => {
     };
 
     const envContent = 'FILE_SECRET=file-secret';
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.registry',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.registry', envContent);
 
     // Create registry and providers
     const registry = new SecretProviderRegistry();

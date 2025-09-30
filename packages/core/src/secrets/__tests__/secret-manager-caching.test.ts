@@ -68,9 +68,7 @@ describe('SecretManager - Caching', () => {
   });
 
   it('should handle cache invalidation correctly', async () => {
-    const manager = new SecretManager([
-      createInlineProvider({ KEY: 'value' }),
-    ]);
+    const manager = new SecretManager([createInlineProvider({ KEY: 'value' })]);
 
     await manager.resolveSecrets();
     manager.clearCache();

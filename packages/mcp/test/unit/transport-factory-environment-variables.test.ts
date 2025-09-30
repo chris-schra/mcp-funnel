@@ -45,7 +45,6 @@ const mockTokenStorage: ITokenStorage = {
   scheduleRefresh: vi.fn(),
 };
 
-
 describe('TransportFactory - Environment Variables', () => {
   it('should resolve environment variables in command', async () => {
     process.env.NODE_PATH = '/usr/bin/node';

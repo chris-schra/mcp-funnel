@@ -48,7 +48,6 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
   };
 });
 
-
 describe('SSEClientTransport - EventSource Connection Management', () => {
   it('should create EventSource with correct URL and configuration', () => {
     const testUrl = 'https://api.example.com/events';
@@ -88,20 +87,14 @@ describe('SSEClientTransport - EventSource Connection Management', () => {
   });
 
   it('should configure withCredentials for CORS requests', () => {
-    const eventSource1 = new MockEventSource(
-      'https://api.example.com/events',
-      {
-        withCredentials: true,
-      },
-    );
+    const eventSource1 = new MockEventSource('https://api.example.com/events', {
+      withCredentials: true,
+    });
     expect(eventSource1.withCredentials).toBe(true);
 
-    const eventSource2 = new MockEventSource(
-      'https://api.example.com/events',
-      {
-        withCredentials: false,
-      },
-    );
+    const eventSource2 = new MockEventSource('https://api.example.com/events', {
+      withCredentials: false,
+    });
     expect(eventSource2.withCredentials).toBe(false);
   });
 

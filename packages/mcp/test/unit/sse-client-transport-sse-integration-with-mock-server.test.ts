@@ -48,8 +48,36 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
   };
 });
 
-
 describe('SSEClientTransport - SSE Integration with Mock Server', () => {
+  let mockSSEServer: MockSSEServer;
+  let serverUrl: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    // Set up mock SSE server
+    const serverInfo = await createMockSSEServer({
+      port: 0,
+      requireAuth: true,
+      authToken: 'test-bearer-token',
+    });
+    mockSSEServer = serverInfo.server;
+    serverUrl = serverInfo.url;
+
+    // Configure mock fetch for HTTP POST requests
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: true }),
+    } as Response);
+  });
+
+  afterEach(async () => {
+    vi.resetAllMocks();
+    if (mockSSEServer) {
+      await mockSSEServer.stop();
+    }
+  });
   it('should interact with mock SSE server for testing', async () => {
     // Test the mock server itself to verify it works correctly
     const stats = mockSSEServer.getStats();

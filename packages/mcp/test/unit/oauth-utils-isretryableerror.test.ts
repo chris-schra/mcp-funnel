@@ -22,7 +22,6 @@ const {
   createOAuth2Error,
 } = OAuthUtils;
 
-
 describe('OAuth Utils - isRetryableError', () => {
   it('should identify retryable network errors by code', () => {
     const retryableCodes = [

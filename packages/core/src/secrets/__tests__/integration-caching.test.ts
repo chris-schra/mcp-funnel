@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SecretManager } from '../secret-manager.js';
 import { ProcessEnvProvider } from '../process-env-provider.js';
-import {
-  createTestDirectory,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, cleanupTestDirectory } from './test-utils.js';
 
 describe('SecretManager Integration Tests - Caching Integration', () => {
   let testDir: string;
