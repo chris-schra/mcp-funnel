@@ -55,6 +55,9 @@ async function main() {
   // 1. Explicit: npx mcp-funnel path/to/config.json
   // 2. Implicit: npx mcp-funnel (uses .mcp-funnel.json from cwd)
   // Check for 'run' command
+  console.log('This is line 58');
+  console.log('This is line 59');
+  console.log('This is line 60');
   if (process.argv[2] === 'run') {
     const { runCommand } = await import('./commands/run.js');
     const commandName = process.argv[3];

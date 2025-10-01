@@ -28,7 +28,7 @@ Debugger command package for MCP Funnel. This implementation focuses on a lean N
 ## Launch Strategy
 
 1. Generate a session identifier (UUID when not provided).
-2. Spawn Node with `--inspect-brk=0` (+ `--import tsx/register` when `useTsx` is true).
+2. Spawn Node with `--inspect-brk=0` (+ `--import tsx` when `useTsx` is true).
 3. Parse the "Debugger listening" banner, connect via WebSocket, and enable `Runtime`, `Debugger`, and `Log` domains.
 4. Wait for the initial pause, apply any requested breakpoints, and optionally resume.
 

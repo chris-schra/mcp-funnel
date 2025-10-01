@@ -1,8 +1,8 @@
 /**
  * Single navigation step inside a scope object graph.
  *
- * String values represent property keys, while the object form with an `index`
- * targets array-like positions. This abstraction allows callers to walk
- * arbitrarily nested structures without exposing CDP-specific handles.
+ * `{ property }` selects a named property, while `{ index }` addresses
+ * array-like positions. The explicit object form keeps JSON schema validation
+ * straightforward for MCP tooling.
  */
-export type ScopePathSegment = string | { index: number };
+export type ScopePathSegment = { index: number } | { property: string };

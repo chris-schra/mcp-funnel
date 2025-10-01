@@ -230,16 +230,12 @@ const debuggerCommandSchema = {
 } as Tool['inputSchema'];
 
 const scopePathSegmentSchema = ({
-    anyOf: [
-        { type: STRING },
-        {
-            type: 'object',
-            properties: {
-                index: { type: NUMBER },
-            },
-            required: ['index'],
-        },
-    ],
+    type: ['string', 'object'],
+    properties: {
+        index: { type: NUMBER },
+        property: { type: STRING },
+    },
+    additionalProperties: false,
 } as unknown) as Tool['inputSchema'];
 
 const scopeQuerySchema = {
@@ -452,12 +448,16 @@ function parseScopePath(value: unknown, label: string): ScopePathSegment[] {
         throw new Error(`${label} must be an array.`);
     }
     return value.map((segment, index) => {
-        if (typeof segment === 'string') {
-            return segment;
-        }
         const record = expectRecord(segment, `${label}[${index}]`);
-        const idx = expectNumber(record.index, `${label}[${index}].index`);
-        return { index: idx };
+        if ('index' in record) {
+            const idx = expectNumber(record.index, `${label}[${index}].index`);
+            return { index: idx };
+        }
+        if ('property' in record) {
+            const prop = expectString(record.property, `${label}[${index}].property`);
+            return { property: prop };
+        }
+        throw new Error(`${label}[${index}] must include either "index" or "property".`);
     });
 }
 

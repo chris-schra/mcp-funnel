@@ -1,8 +1,11 @@
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { execa } from 'execa';
 import Emittery from 'emittery';
 import WebSocket from 'ws';
+import { SourceMapConsumer } from 'source-map';
+import type { BasicSourceMapConsumer, NullablePosition, RawSourceMap } from 'source-map';
 
 import type {
     BreakLocationSpec,
@@ -35,6 +38,8 @@ import type {
     RemoteObjectSubtype,
     RemoteObjectSummary,
     RemoteObjectType,
+    ScriptMetadata,
+    ScriptSourceMap,
     Scope,
     ScopePathSegment,
     ScopeQuery,
@@ -59,6 +64,7 @@ interface PendingCommand {
 
 interface BreakpointRecord {
     id: string;
+    cdpId: string;
     spec: BreakpointSpec;
     resolved: BreakpointLocation[];
 }
@@ -157,6 +163,29 @@ interface LogEntry {
     level: string;
     timestamp: number;
     args?: CdpRemoteObject[];
+}
+
+interface ScriptParsedEvent {
+    scriptId: string;
+    url?: string;
+    sourceMapURL?: string;
+}
+
+interface NormalizedScriptReference {
+    original: string;
+    path?: string;
+    fileUrl?: string;
+}
+
+interface GeneratedLocation {
+    lineNumber: number;
+    columnNumber?: number;
+}
+
+interface PendingBreakpointUpgrade {
+    recordId: string;
+    reference: NormalizedScriptReference;
+    keys: string[];
 }
 
 interface CdpMessage {
@@ -384,10 +413,20 @@ export class DebuggerSession {
     private lastPause?: PauseDetails;
     private readonly breakpointRecords = new Map<string, BreakpointRecord>();
     private readonly scriptUrls = new Map<string, string>();
+    private readonly scripts = new Map<string, ScriptMetadata>();
+    private readonly scriptIdsByPath = new Map<string, string>();
+    private readonly scriptIdsByFileUrl = new Map<string, string>();
+    private readonly pendingBreakpointUpgrades = new Map<string, PendingBreakpointUpgrade>();
+    private readonly pendingBreakpointKeys = new Map<string, Set<string>>();
+    private readonly targetWorkingDirectory: string;
 
     public constructor(id: DebugSessionId, config: DebugSessionConfig) {
         this.id = id;
         this.config = config;
+        const nodeTarget = this.getNodeTargetConfig(config.target);
+        this.targetWorkingDirectory = nodeTarget.cwd
+            ? path.resolve(nodeTarget.cwd)
+            : process.cwd();
         this.descriptor = this.createInitialDescriptor();
         this.inspectorPromise = new Promise<string>((resolve, reject) => {
             this.inspectorResolver = resolve;
@@ -420,7 +459,13 @@ export class DebuggerSession {
         );
         await this.connectToInspector(inspectorUrl);
 
-        const initialPause = await this.waitForPause('Initial pause after attach', true);
+        let initialPause: PauseDetails | undefined;
+        try {
+            initialPause = await this.waitForPause('Initial pause after attach', true);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`Session ${this.id}: did not receive initial pause (${message}).`);
+        }
 
         let createdBreakpoints: BreakpointSummary[] | undefined;
         if (this.config.breakpoints && this.config.breakpoints.length > 0) {
@@ -453,8 +498,10 @@ export class DebuggerSession {
 
         switch (command.action) {
             case 'continue':
+                await this.trySendCommand('Runtime.runIfWaitingForDebugger');
                 await this.sendCommand('Debugger.resume');
                 await this.waitForResumed('resume');
+                this.updateStatus('running');
                 resumed = true;
                 break;
             case 'pause':
@@ -653,8 +700,8 @@ export class DebuggerSession {
 
         await this.sendCommand('Runtime.enable', {});
         await this.sendCommand('Debugger.enable', {});
-        await this.sendCommand('Log.enable', {});
-        await this.sendCommand('Debugger.setAsyncCallStackDepth', { maxDepth: 32 });
+        await this.trySendCommand('Log.enable', {});
+        await this.trySendCommand('Debugger.setAsyncCallStackDepth', { maxDepth: 32 });
         this.updateStatus('awaiting-debugger');
     }
 
@@ -680,7 +727,7 @@ export class DebuggerSession {
     }
 
     private async waitForResumed(reason: string): Promise<void> {
-        if (this.status === 'running') {
+        if (this.status === 'running' || this.status === 'awaiting-debugger') {
             return;
         }
         await this.withTimeout(
@@ -723,6 +770,21 @@ export class DebuggerSession {
         });
     }
 
+    private async trySendCommand(method: string, params?: Record<string, unknown>): Promise<void> {
+        try {
+            await this.sendCommand(method, params);
+        } catch (error) {
+            if (
+                error instanceof Error &&
+                /wasn't found|not found|unrecognized|Unhandled method/i.test(error.message)
+            ) {
+                console.warn(`CDP command ${method} not available: ${error.message}`);
+                return;
+            }
+            throw error;
+        }
+    }
+
     private async applyBreakpointMutation(
         mutation?: BreakpointMutation,
     ): Promise<{ set: BreakpointSummary[]; removed: string[] }> {
@@ -735,11 +797,13 @@ export class DebuggerSession {
 
         if (mutation.remove) {
             for (const id of mutation.remove) {
-                if (!this.breakpointRecords.has(id)) {
+                const record = this.breakpointRecords.get(id);
+                if (!record) {
                     continue;
                 }
-                await this.sendCommand('Debugger.removeBreakpoint', { breakpointId: id });
+                await this.sendCommand('Debugger.removeBreakpoint', { breakpointId: record.cdpId });
                 this.breakpointRecords.delete(id);
+                this.clearPendingUpgrade(id);
                 removed.push(id);
             }
         }
@@ -774,6 +838,7 @@ export class DebuggerSession {
             };
             this.breakpointRecords.set(result.breakpointId, {
                 id: result.breakpointId,
+                cdpId: result.breakpointId,
                 spec,
                 resolved: summary.resolvedLocations,
             });
@@ -781,30 +846,645 @@ export class DebuggerSession {
         }
 
         if (spec.location.url) {
-            const result = (await this.sendCommand('Debugger.setBreakpointByUrl', {
-                url: spec.location.url,
-                lineNumber: spec.location.lineNumber,
-                columnNumber: spec.location.columnNumber,
-                condition: spec.condition,
-            })) as {
-                breakpointId: string;
-                locations: CdpLocation[];
-            };
-            const resolved = result.locations.map((location) => this.fromCdpLocation(location));
-            const summary: BreakpointSummary = {
-                id: result.breakpointId,
-                requested: spec,
-                resolvedLocations: resolved,
-            };
-            this.breakpointRecords.set(result.breakpointId, {
-                id: result.breakpointId,
-                spec,
-                resolved,
-            });
+            const reference = this.normalizeLocationReference(spec.location.url);
+            const metadata = this.resolveScriptMetadata(reference);
+            if (metadata) {
+                try {
+                    return await this.registerBreakpointForScript(metadata, spec, reference);
+                } catch (error) {
+                    console.warn(
+                        `Session ${this.id}: Failed to map breakpoint for ${spec.location.url}: ${
+                            error instanceof Error ? error.message : String(error)
+                        }. Falling back to Debugger.setBreakpointByUrl.`,
+                    );
+                    const summary = await this.registerBreakpointByUrl(spec);
+                    this.trackPendingUpgrade(summary.id, reference);
+                    return summary;
+                }
+            }
+            const summary = await this.registerBreakpointByUrl(spec);
+            this.trackPendingUpgrade(summary.id, reference);
             return summary;
         }
 
         throw new Error('Breakpoint location requires either a scriptId or url.');
+    }
+
+    private async registerBreakpointByUrl(spec: BreakpointSpec): Promise<BreakpointSummary> {
+        const result = (await this.sendCommand('Debugger.setBreakpointByUrl', {
+            url: spec.location.url,
+            lineNumber: spec.location.lineNumber,
+            columnNumber: spec.location.columnNumber,
+            condition: spec.condition,
+        })) as {
+            breakpointId: string;
+            locations: CdpLocation[];
+        };
+        const resolved = result.locations.map((location) => this.fromCdpLocation(location));
+        const summary: BreakpointSummary = {
+            id: result.breakpointId,
+            requested: spec,
+            resolvedLocations: resolved,
+        };
+        this.breakpointRecords.set(result.breakpointId, {
+            id: result.breakpointId,
+            cdpId: result.breakpointId,
+            spec,
+            resolved,
+        });
+        if (resolved.length === 0) {
+            console.warn(
+                `Session ${this.id}: Breakpoint ${result.breakpointId} is pending resolution for ${spec.location.url}:${spec.location.lineNumber}.`,
+            );
+        }
+        return summary;
+    }
+
+    private async registerBreakpointForScript(
+        metadata: ScriptMetadata,
+        spec: BreakpointSpec,
+        reference: NormalizedScriptReference,
+    ): Promise<BreakpointSummary> {
+        const sourceMap = metadata.sourceMap;
+        if (sourceMap && spec.location.url) {
+            const sourceId = this.resolveSourceIdentifier(sourceMap, reference);
+            if (sourceId) {
+                const originalLine = spec.location.lineNumber + 1;
+                const originalColumn = spec.location.columnNumber ?? 0;
+                const generated = this.getGeneratedLocation(
+                    sourceMap.consumer,
+                    sourceId,
+                    originalLine,
+                    originalColumn,
+                );
+                if (generated) {
+                    const snapped = await this.snapToValidBreakpoint(metadata.scriptId, generated);
+                    if (snapped) {
+                        console.info(
+                            `Session ${this.id}: Resolved breakpoint for ${spec.location.url}:${spec.location.lineNumber} to generated ${metadata.scriptId}:${snapped.lineNumber}:${snapped.columnNumber ?? 0}.`,
+                        );
+                        return this.setBreakpointAtGeneratedLocation(metadata.scriptId, snapped, spec);
+                    }
+                }
+            }
+        }
+
+        if (spec.location.url) {
+            console.warn(
+                `Session ${this.id}: Falling back to Debugger.setBreakpointByUrl for ${spec.location.url}:${spec.location.lineNumber}.`,
+            );
+            const summary = await this.registerBreakpointByUrl(spec);
+            this.trackPendingUpgrade(summary.id, reference);
+            return summary;
+        }
+
+        throw new Error('Unable to register breakpoint by scriptId without a source URL.');
+    }
+
+    private async setBreakpointAtGeneratedLocation(
+        scriptId: string,
+        location: GeneratedLocation,
+        spec: BreakpointSpec,
+    ): Promise<BreakpointSummary> {
+        const result = (await this.sendCommand('Debugger.setBreakpoint', {
+            location: {
+                scriptId,
+                lineNumber: location.lineNumber,
+                columnNumber: location.columnNumber,
+            },
+            condition: spec.condition,
+        })) as {
+            breakpointId: string;
+            actualLocation: CdpLocation;
+        };
+
+        const summary: BreakpointSummary = {
+            id: result.breakpointId,
+            requested: spec,
+            resolvedLocations: [this.fromCdpLocation(result.actualLocation)],
+        };
+        this.breakpointRecords.set(result.breakpointId, {
+            id: result.breakpointId,
+            cdpId: result.breakpointId,
+            spec,
+            resolved: summary.resolvedLocations,
+        });
+        return summary;
+    }
+
+    private getGeneratedLocation(
+        consumer: BasicSourceMapConsumer,
+        sourceId: string,
+        originalLine: number,
+        originalColumn: number,
+    ): GeneratedLocation | undefined {
+        const direct = this.lookupGeneratedPosition(consumer, sourceId, originalLine, originalColumn);
+        if (direct) {
+            return direct;
+        }
+
+        const candidates = this.collectGeneratedCandidates(consumer, sourceId, originalLine, originalColumn);
+        if (candidates.length === 0) {
+            return undefined;
+        }
+        const best = candidates.reduce((winner, current) => {
+            if (!winner) {
+                return current;
+            }
+            if (current.lineNumber !== winner.lineNumber) {
+                return current.lineNumber < winner.lineNumber ? current : winner;
+            }
+            if (current.columnNumber === undefined) {
+                return winner;
+            }
+            if (winner.columnNumber === undefined) {
+                return current;
+            }
+            return current.columnNumber < winner.columnNumber ? current : winner;
+        });
+        return best;
+    }
+
+    private async snapToValidBreakpoint(
+        scriptId: string,
+        desired: GeneratedLocation,
+    ): Promise<GeneratedLocation | undefined> {
+        const start = {
+            scriptId,
+            lineNumber: desired.lineNumber,
+            columnNumber: Math.max(0, desired.columnNumber ?? 0),
+        };
+        const end = {
+            scriptId,
+            lineNumber: desired.lineNumber + 1,
+            columnNumber: 0,
+        };
+        try {
+            const response = (await this.sendCommand('Debugger.getPossibleBreakpoints', {
+                start,
+                end,
+                restrictToFunction: false,
+            })) as {
+                locations: Array<{ scriptId: string; lineNumber: number; columnNumber?: number }>;
+            };
+
+            if (!response.locations || response.locations.length === 0) {
+                return desired;
+            }
+
+            const sameLine = response.locations.filter((location) => location.lineNumber === desired.lineNumber);
+            const candidates = sameLine.length > 0 ? sameLine : response.locations;
+            const sorted = [...candidates].sort((a, b) => {
+                if (a.lineNumber !== b.lineNumber) {
+                    return a.lineNumber - b.lineNumber;
+                }
+                const colA = a.columnNumber ?? 0;
+                const colB = b.columnNumber ?? 0;
+                return colA - colB;
+            });
+            const column = desired.columnNumber ?? 0;
+            const match = sorted.find((location) => (location.columnNumber ?? 0) >= column) ?? sorted[sorted.length - 1];
+            return {
+                lineNumber: match.lineNumber,
+                columnNumber: match.columnNumber ?? 0,
+            };
+        } catch (error) {
+            console.warn(
+                `Session ${this.id}: Failed to snap breakpoint for ${scriptId}:${desired.lineNumber}:${desired.columnNumber ?? 0} (${error instanceof Error ? error.message : String(error)}).`,
+            );
+            return desired;
+        }
+    }
+
+    private lookupGeneratedPosition(
+        consumer: BasicSourceMapConsumer,
+        sourceId: string,
+        originalLine: number,
+        originalColumn: number,
+    ): GeneratedLocation | undefined {
+        const lowerBound = consumer.generatedPositionFor({
+            source: sourceId,
+            line: originalLine,
+            column: originalColumn,
+            bias: SourceMapConsumer.GREATEST_LOWER_BOUND,
+        });
+        if (lowerBound.line) {
+            return {
+                lineNumber: Math.max(0, lowerBound.line - 1),
+                columnNumber: lowerBound.column ?? 0,
+            };
+        }
+        const upperBound = consumer.generatedPositionFor({
+            source: sourceId,
+            line: originalLine,
+            column: originalColumn,
+            bias: SourceMapConsumer.LEAST_UPPER_BOUND,
+        });
+        if (upperBound.line) {
+            return {
+                lineNumber: Math.max(0, upperBound.line - 1),
+                columnNumber: upperBound.column ?? 0,
+            };
+        }
+        return undefined;
+    }
+
+    private collectGeneratedCandidates(
+        consumer: BasicSourceMapConsumer,
+        sourceId: string,
+        originalLine: number,
+        originalColumn: number,
+    ): GeneratedLocation[] {
+        const direct = consumer.allGeneratedPositionsFor({
+            source: sourceId,
+            line: originalLine,
+            column: originalColumn,
+        });
+        const positions = direct.length > 0 ? direct : consumer.allGeneratedPositionsFor({ source: sourceId, line: originalLine });
+        return positions
+            .map((position) => this.toGeneratedLocation(position))
+            .filter((location): location is GeneratedLocation => location !== undefined);
+    }
+
+    private toGeneratedLocation(position: NullablePosition): GeneratedLocation | undefined {
+        if (!position.line) {
+            return undefined;
+        }
+        return {
+            lineNumber: Math.max(0, position.line - 1),
+            columnNumber: position.column ?? 0,
+        };
+    }
+
+    private resolveSourceIdentifier(
+        sourceMap: ScriptSourceMap,
+        reference: NormalizedScriptReference,
+    ): string | undefined {
+        if (reference.path) {
+            const source = sourceMap.sourcesByPath.get(reference.path);
+            if (source) {
+                return source;
+            }
+        }
+        if (reference.fileUrl && sourceMap.sourcesByFileUrl?.has(reference.fileUrl)) {
+            return sourceMap.sourcesByFileUrl.get(reference.fileUrl);
+        }
+        if (sourceMap.map.sources.includes(reference.original)) {
+            return reference.original;
+        }
+        return undefined;
+    }
+
+    private normalizeLocationReference(raw: string): NormalizedScriptReference {
+        const trimmed = raw.trim();
+        const reference: NormalizedScriptReference = { original: trimmed };
+        if (!trimmed) {
+            return reference;
+        }
+
+        let candidatePath: string | undefined;
+        if (trimmed.startsWith('file://')) {
+            try {
+                candidatePath = fileURLToPath(trimmed);
+            } catch {
+                candidatePath = undefined;
+            }
+        } else if (path.isAbsolute(trimmed)) {
+            candidatePath = trimmed;
+        } else if (!this.hasUriScheme(trimmed)) {
+            candidatePath = path.resolve(this.targetWorkingDirectory, trimmed);
+        }
+
+        if (candidatePath) {
+            const normalized = path.normalize(candidatePath);
+            reference.path = normalized;
+            try {
+                reference.fileUrl = pathToFileURL(normalized).href;
+            } catch {
+                reference.fileUrl = undefined;
+            }
+        } else if (trimmed.startsWith('file://')) {
+            reference.fileUrl = trimmed;
+        }
+
+        return reference;
+    }
+
+    private resolveScriptMetadata(reference: NormalizedScriptReference): ScriptMetadata | undefined {
+        if (reference.path) {
+            const scriptId = this.scriptIdsByPath.get(reference.path);
+            if (scriptId) {
+                return this.scripts.get(scriptId);
+            }
+        }
+        if (reference.fileUrl) {
+            const scriptId = this.scriptIdsByFileUrl.get(reference.fileUrl);
+            if (scriptId) {
+                return this.scripts.get(scriptId);
+            }
+        }
+        for (const metadata of this.scripts.values()) {
+            if (metadata.url === reference.original) {
+                return metadata;
+            }
+        }
+        return undefined;
+    }
+
+    private trackPendingUpgrade(recordId: string, reference: NormalizedScriptReference): void {
+        const keys = this.buildReferenceKeys(reference);
+        if (keys.length === 0) {
+            return;
+        }
+        this.clearPendingUpgrade(recordId);
+        const upgrade: PendingBreakpointUpgrade = {
+            recordId,
+            reference,
+            keys,
+        };
+        this.pendingBreakpointUpgrades.set(recordId, upgrade);
+        for (const key of keys) {
+            const set = this.pendingBreakpointKeys.get(key) ?? new Set<string>();
+            set.add(recordId);
+            this.pendingBreakpointKeys.set(key, set);
+        }
+    }
+
+    private clearPendingUpgrade(recordId: string): void {
+        const upgrade = this.pendingBreakpointUpgrades.get(recordId);
+        if (!upgrade) {
+            return;
+        }
+        for (const key of upgrade.keys) {
+            const set = this.pendingBreakpointKeys.get(key);
+            if (!set) {
+                continue;
+            }
+            set.delete(recordId);
+            if (set.size === 0) {
+                this.pendingBreakpointKeys.delete(key);
+            }
+        }
+        this.pendingBreakpointUpgrades.delete(recordId);
+    }
+
+    private async upgradePendingBreakpoints(metadata: ScriptMetadata): Promise<void> {
+        const keys = this.buildMetadataKeys(metadata);
+        if (keys.length === 0) {
+            return;
+        }
+        const recordIds = new Set<string>();
+        for (const key of keys) {
+            const set = this.pendingBreakpointKeys.get(key);
+            if (!set) {
+                continue;
+            }
+            for (const id of set) {
+                recordIds.add(id);
+            }
+        }
+        for (const id of recordIds) {
+            const upgrade = this.pendingBreakpointUpgrades.get(id);
+            if (!upgrade) {
+                continue;
+            }
+            this.clearPendingUpgrade(id);
+            try {
+                await this.upgradeBreakpoint(metadata, upgrade);
+            } catch (error) {
+                console.warn(
+                    `Session ${this.id}: Failed to upgrade breakpoint ${id}: ${
+                        error instanceof Error ? error.message : String(error)
+                    }.`,
+                );
+            }
+        }
+    }
+
+    private async upgradeBreakpoint(
+        metadata: ScriptMetadata,
+        upgrade: PendingBreakpointUpgrade,
+    ): Promise<void> {
+        const record = this.breakpointRecords.get(upgrade.recordId);
+        if (!record) {
+            return;
+        }
+        if (!metadata.sourceMap || !record.spec.location.url) {
+            return;
+        }
+        const sourceId = this.resolveSourceIdentifier(metadata.sourceMap, upgrade.reference);
+        if (!sourceId) {
+            return;
+        }
+        const originalLine = record.spec.location.lineNumber + 1;
+        const originalColumn = record.spec.location.columnNumber ?? 0;
+        const generated = this.getGeneratedLocation(
+            metadata.sourceMap.consumer,
+            sourceId,
+            originalLine,
+            originalColumn,
+        );
+        if (!generated) {
+            return;
+        }
+        const snapped = await this.snapToValidBreakpoint(metadata.scriptId, generated);
+        if (!snapped) {
+            return;
+        }
+        const oldCdpId = record.cdpId;
+        const result = (await this.sendCommand('Debugger.setBreakpoint', {
+            location: {
+                scriptId: metadata.scriptId,
+                lineNumber: snapped.lineNumber,
+                columnNumber: snapped.columnNumber,
+            },
+            condition: record.spec.condition,
+        })) as {
+            breakpointId: string;
+            actualLocation: CdpLocation;
+        };
+
+        const resolvedLocation = this.fromCdpLocation(result.actualLocation);
+        record.cdpId = result.breakpointId;
+        record.resolved = [resolvedLocation];
+        this.breakpointRecords.set(record.id, record);
+
+        if (oldCdpId !== result.breakpointId) {
+            try {
+                await this.sendCommand('Debugger.removeBreakpoint', { breakpointId: oldCdpId });
+            } catch (error) {
+                console.warn(
+                    `Session ${this.id}: Failed to remove fallback breakpoint ${oldCdpId}: ${
+                        error instanceof Error ? error.message : String(error)
+                    }.`,
+                );
+            }
+        }
+        console.info(
+            `Session ${this.id}: Upgraded breakpoint ${record.id} to generated ${metadata.scriptId}:${resolvedLocation.lineNumber}:${resolvedLocation.columnNumber ?? 0}.`,
+        );
+    }
+
+    private buildReferenceKeys(reference: NormalizedScriptReference): string[] {
+        const keys = new Set<string>();
+        if (reference.original) {
+            keys.add(reference.original);
+        }
+        if (reference.path) {
+            keys.add(reference.path);
+        }
+        if (reference.fileUrl) {
+            keys.add(reference.fileUrl);
+        }
+        return Array.from(keys);
+    }
+
+    private buildMetadataKeys(metadata: ScriptMetadata): string[] {
+        const keys = new Set<string>();
+        if (metadata.url) {
+            keys.add(metadata.url);
+        }
+        if (metadata.normalizedPath) {
+            keys.add(metadata.normalizedPath);
+        }
+        if (metadata.fileUrl) {
+            keys.add(metadata.fileUrl);
+        }
+        return Array.from(keys);
+    }
+
+    private indexScriptMetadata(metadata: ScriptMetadata): void {
+        if (metadata.normalizedPath) {
+            this.scriptIdsByPath.set(metadata.normalizedPath, metadata.scriptId);
+        }
+        if (metadata.fileUrl) {
+            this.scriptIdsByFileUrl.set(metadata.fileUrl, metadata.scriptId);
+        }
+    }
+
+    private async createSourceMap(
+        metadata: ScriptMetadata,
+        sourceMapUrl: string,
+    ): Promise<ScriptSourceMap | undefined> {
+        const raw = await this.parseSourceMap(sourceMapUrl);
+        if (!raw) {
+            return undefined;
+        }
+        const consumer = (await new SourceMapConsumer(raw)) as BasicSourceMapConsumer;
+        const sourcesByPath = new Map<string, string>();
+        const sourcesByFileUrl = new Map<string, string>();
+        const scriptDir = metadata.normalizedPath ? path.dirname(metadata.normalizedPath) : undefined;
+        const sourceRoot = this.resolveSourceRoot(raw.sourceRoot, scriptDir);
+
+        for (const sourceId of consumer.sources) {
+            const normalized = this.normalizeSourcePath(sourceId, sourceRoot, scriptDir);
+            if (normalized) {
+                if (!sourcesByPath.has(normalized)) {
+                    sourcesByPath.set(normalized, sourceId);
+                }
+                try {
+                    const fileUrl = pathToFileURL(normalized).href;
+                    if (!sourcesByFileUrl.has(fileUrl)) {
+                        sourcesByFileUrl.set(fileUrl, sourceId);
+                    }
+                } catch {
+                    // ignore conversion failures
+                }
+            }
+            if (sourceId.startsWith('file://') && !sourcesByFileUrl.has(sourceId)) {
+                sourcesByFileUrl.set(sourceId, sourceId);
+            }
+        }
+
+        return {
+            map: raw,
+            consumer,
+            sourcesByPath,
+            sourcesByFileUrl: sourcesByFileUrl.size > 0 ? sourcesByFileUrl : undefined,
+        };
+    }
+
+    private async parseSourceMap(url: string): Promise<RawSourceMap | undefined> {
+        if (url.startsWith('data:')) {
+            return this.decodeDataUrlSourceMap(url);
+        }
+        console.warn(`Session ${this.id}: External source map URLs are not supported yet (${url}).`);
+        return undefined;
+    }
+
+    private decodeDataUrlSourceMap(dataUrl: string): RawSourceMap | undefined {
+        const commaIndex = dataUrl.indexOf(',');
+        if (commaIndex === -1) {
+            return undefined;
+        }
+        const metadata = dataUrl.slice(5, commaIndex);
+        const payload = dataUrl.slice(commaIndex + 1);
+        const isBase64 = /;base64/i.test(metadata);
+        try {
+            const json = isBase64 ? Buffer.from(payload, 'base64').toString('utf8') : decodeURIComponent(payload);
+            return JSON.parse(json) as RawSourceMap;
+        } catch (error) {
+            throw new Error(
+                `Failed to decode inline source map: ${error instanceof Error ? error.message : String(error)}`,
+            );
+        }
+    }
+
+    private resolveSourceRoot(sourceRoot: string | undefined, scriptDir: string | undefined): string | undefined {
+        if (!sourceRoot) {
+            return scriptDir;
+        }
+        if (sourceRoot.startsWith('file://')) {
+            try {
+                return path.normalize(fileURLToPath(sourceRoot));
+            } catch {
+                return scriptDir;
+            }
+        }
+        if (path.isAbsolute(sourceRoot)) {
+            return path.normalize(sourceRoot);
+        }
+        if (!this.hasUriScheme(sourceRoot)) {
+            if (scriptDir) {
+                return path.normalize(path.resolve(scriptDir, sourceRoot));
+            }
+            return path.normalize(path.resolve(this.targetWorkingDirectory, sourceRoot));
+        }
+        return scriptDir;
+    }
+
+    private normalizeSourcePath(
+        source: string,
+        sourceRoot: string | undefined,
+        scriptDir: string | undefined,
+    ): string | undefined {
+        try {
+            if (source.startsWith('file://')) {
+                return path.normalize(fileURLToPath(source));
+            }
+        } catch {
+            return undefined;
+        }
+
+        if (path.isAbsolute(source)) {
+            return path.normalize(source);
+        }
+
+        if (this.hasUriScheme(source)) {
+            return undefined;
+        }
+
+        if (sourceRoot) {
+            return path.normalize(path.resolve(sourceRoot, source));
+        }
+        if (scriptDir) {
+            return path.normalize(path.resolve(scriptDir, source));
+        }
+        return path.normalize(path.resolve(this.targetWorkingDirectory, source));
+    }
+
+    private hasUriScheme(value: string): boolean {
+        return /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value);
     }
 
     private toCdpLocation(location: BreakLocationSpec): CdpLocation {
@@ -816,14 +1496,14 @@ export class DebuggerSession {
             };
         }
         if (location.url) {
-            for (const [scriptId, url] of this.scriptUrls.entries()) {
-                if (url === location.url) {
-                    return {
-                        scriptId,
-                        lineNumber: location.lineNumber,
-                        columnNumber: location.columnNumber,
-                    };
-                }
+            const reference = this.normalizeLocationReference(location.url);
+            const metadata = this.resolveScriptMetadata(reference);
+            if (metadata) {
+                return {
+                    scriptId: metadata.scriptId,
+                    lineNumber: location.lineNumber,
+                    columnNumber: location.columnNumber,
+                };
             }
             throw new Error(`No scriptId registered for url ${location.url}.`);
         }
@@ -833,7 +1513,7 @@ export class DebuggerSession {
     private fromCdpLocation(location: CdpLocation): BreakpointLocation {
         return {
             scriptId: location.scriptId,
-            url: this.scriptUrls.get(location.scriptId),
+            url: this.scripts.get(location.scriptId)?.url ?? this.scriptUrls.get(location.scriptId),
             lineNumber: location.lineNumber,
             columnNumber: location.columnNumber,
         };
@@ -920,13 +1600,9 @@ export class DebuggerSession {
             case 'Debugger.resumed':
                 this.onResumed();
                 break;
-            case 'Debugger.scriptParsed': {
-                const payload = params as { scriptId: string; url: string };
-                if (payload?.scriptId) {
-                    this.scriptUrls.set(payload.scriptId, payload.url);
-                }
+            case 'Debugger.scriptParsed':
+                void this.onScriptParsed(params as ScriptParsedEvent);
                 break;
-            }
             case 'Runtime.consoleAPICalled':
                 this.onConsoleAPICalled(params as ConsoleAPICalledEvent);
                 break;
@@ -941,6 +1617,45 @@ export class DebuggerSession {
         }
     }
 
+    private async onScriptParsed(event: ScriptParsedEvent): Promise<void> {
+        if (!event.scriptId) {
+            return;
+        }
+
+        const metadata: ScriptMetadata = {
+            scriptId: event.scriptId,
+            url: event.url,
+            sourceMapUrl: event.sourceMapURL,
+        };
+
+        if (event.url) {
+            const reference = this.normalizeLocationReference(event.url);
+            metadata.normalizedPath = reference.path;
+            metadata.fileUrl = reference.fileUrl;
+        }
+
+        this.scriptUrls.set(event.scriptId, event.url ?? '');
+        this.scripts.set(event.scriptId, metadata);
+        this.indexScriptMetadata(metadata);
+
+        if (event.sourceMapURL) {
+            try {
+                const sourceMap = await this.createSourceMap(metadata, event.sourceMapURL);
+                if (sourceMap) {
+                    metadata.sourceMap = sourceMap;
+                }
+            } catch (error) {
+                console.warn(
+                    `Session ${this.id}: Failed to load source map for ${event.url ?? event.scriptId}: ${
+                        error instanceof Error ? error.message : String(error)
+                    }`,
+                );
+            }
+        }
+
+        await this.upgradePendingBreakpoints(metadata);
+    }
+
     private onPaused(payload: {
         reason: string;
         callFrames: CdpCallFrame[];
@@ -951,7 +1666,7 @@ export class DebuggerSession {
         const pause: PauseDetails = {
             reason: payload.reason,
             callFrames: payload.callFrames.map(mapCallFrame),
-            hitBreakpoints: payload.hitBreakpoints,
+            hitBreakpoints: this.mapHitBreakpoints(payload.hitBreakpoints),
             data: payload.data,
             asyncStackTrace: mapStackTrace(payload.asyncStackTrace),
         };
@@ -964,6 +1679,31 @@ export class DebuggerSession {
         this.lastPause = undefined;
         this.updateStatus('running');
         void this.events.emit('resumed');
+    }
+
+    private mapHitBreakpoints(hit?: string[]): string[] | undefined {
+        if (!hit || hit.length === 0) {
+            return hit;
+        }
+        const mapped: string[] = [];
+        for (const cdpId of hit) {
+            const record = this.findRecordByCdpId(cdpId);
+            if (!record) {
+                mapped.push(cdpId);
+                continue;
+            }
+            mapped.push(record.id);
+        }
+        return mapped;
+    }
+
+    private findRecordByCdpId(cdpId: string): BreakpointRecord | undefined {
+        for (const record of this.breakpointRecords.values()) {
+            if (record.cdpId === cdpId) {
+                return record;
+            }
+        }
+        return undefined;
     }
 
     private onConsoleAPICalled(event: ConsoleAPICalledEvent): void {
@@ -1022,6 +1762,18 @@ export class DebuggerSession {
             pending.reject(new Error('Session terminated before command completed.'));
         }
         this.pendingCommands.clear();
+        for (const metadata of this.scripts.values()) {
+            try {
+                metadata.sourceMap?.consumer.destroy();
+            } catch {
+                // ignore cleanup failures
+            }
+        }
+        this.scripts.clear();
+        this.scriptIdsByPath.clear();
+        this.scriptIdsByFileUrl.clear();
+        this.pendingBreakpointKeys.clear();
+        this.pendingBreakpointUpgrades.clear();
         void this.events.emit('terminated', { code, signal: signal ?? null });
     }
 
@@ -1048,7 +1800,14 @@ export class DebuggerSession {
             if (!current.objectId) {
                 throw new Error('Cannot navigate into a primitive value.');
             }
-            const propertyName = typeof segment === 'string' ? segment : segment.index.toString();
+            let propertyName: string;
+            if ('index' in segment) {
+                propertyName = segment.index.toString();
+            } else if ('property' in segment) {
+                propertyName = segment.property;
+            } else {
+                throw new Error('Unsupported scope path segment encountered.');
+            }
             const descriptor = await this.getPropertyDescriptor(current.objectId, propertyName);
             if (!descriptor || !descriptor.value) {
                 throw new Error(`Property ${propertyName} not found while resolving path.`);
