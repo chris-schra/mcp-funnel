@@ -328,6 +328,15 @@ export class MCPProxy extends EventEmitter {
     return this.toolRegistry;
   }
 
+  /**
+   * Gracefully shut down the proxy and all server connections.
+   * Prevents reconnections and closes all active connections.
+   * @public
+   */
+  public async shutdown(): Promise<void> {
+    await this.connectionManager.shutdown();
+  }
+
   // Backward compatibility for tests that access private fields
   private get transports() {
     return this.connectionManager.getTransports();

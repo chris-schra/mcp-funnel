@@ -50,6 +50,7 @@ export class ServerConnectionManager {
   private reconnectionManagers = new Map<string, ReconnectionManager>();
   private manualReconnections = new Map<string, Promise<void>>();
   private manualDisconnectRequests = new Set<string>();
+  private isShuttingDown = false;
 
   public constructor(
     private config: ProxyConfig,
@@ -105,7 +106,9 @@ export class ServerConnectionManager {
     const isManualDisconnect =
       reason === 'manual_disconnect' || manualDisconnectRequested;
 
-    if (shouldAutoReconnect(this.config, isManualDisconnect)) {
+    if (
+      shouldAutoReconnect(this.config, isManualDisconnect, this.isShuttingDown)
+    ) {
       this.setupAutoReconnection(targetServer);
     }
 
@@ -375,5 +378,38 @@ export class ServerConnectionManager {
    */
   public getReconnectionManagers() {
     return this.reconnectionManagers;
+  }
+
+  /**
+   * Initiates graceful shutdown of all connections.
+   * Prevents new reconnections and cleans up all active connections.
+   * @public
+   */
+  public async shutdown(): Promise<void> {
+    console.error('SessionManager shutting down...');
+    this.isShuttingDown = true;
+
+    // Cancel all active reconnection timers
+    for (const [name, manager] of this.reconnectionManagers.entries()) {
+      manager.cancel();
+      this.reconnectionManagers.delete(name);
+    }
+
+    // Close all active client connections
+    const disconnectPromises = Array.from(this.connectedServers.keys()).map(
+      async (name) => {
+        try {
+          const client = this.clients.get(name);
+          if (client) {
+            await client.close();
+          }
+        } catch (error) {
+          // Ignore errors during shutdown
+        }
+      },
+    );
+
+    await Promise.allSettled(disconnectPromises);
+    console.error('SessionManager shutdown complete');
   }
 }

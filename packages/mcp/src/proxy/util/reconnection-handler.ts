@@ -142,8 +142,10 @@ export async function attemptReconnection(
  * Returns true only if:
  * - autoReconnect.enabled is not explicitly false in config
  * - AND disconnect was not manually requested by user
+ * - AND proxy is not shutting down
  * @param config - Proxy configuration
  * @param isManualDisconnect - Whether disconnect was manually triggered
+ * @param isShuttingDown - Whether the proxy is shutting down
  * @returns True if automatic reconnection should be attempted
  * @public
  * @see file:./server-connection-manager.ts:197 - Usage in disconnect handler
@@ -151,9 +153,10 @@ export async function attemptReconnection(
 export function shouldAutoReconnect(
   config: ProxyConfig,
   isManualDisconnect: boolean,
+  isShuttingDown: boolean,
 ): boolean {
   const autoReconnectConfig = config.autoReconnect;
   const isAutoReconnectEnabled = autoReconnectConfig?.enabled !== false;
 
-  return isAutoReconnectEnabled && !isManualDisconnect;
+  return isAutoReconnectEnabled && !isManualDisconnect && !isShuttingDown;
 }

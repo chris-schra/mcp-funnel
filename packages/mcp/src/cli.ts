@@ -45,7 +45,7 @@ process.on('unhandledRejection', (reason, promise) => {
  * @see {@link runCommand} - Command execution handler
  * @see {@link resolveMergedProxyConfig} - Configuration merging logic
  */
-async function main() {
+async function main(): Promise<MCPProxy | void> {
   // Establish a run id early for correlation
   if (!process.env.MCP_FUNNEL_RUN_ID) {
     process.env.MCP_FUNNEL_RUN_ID = `${Date.now()}-${process.pid}`;
@@ -146,10 +146,34 @@ async function main() {
   logEvent('info', 'cli:proxy_starting');
   await proxy.start();
   logEvent('info', 'cli:proxy_started');
+
+  return proxy;
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  logError('main-fatal', error);
-  process.exit(1);
-});
+// Setup shutdown handlers
+let isShuttingDown = false;
+async function handleShutdown(signal: string, proxy?: MCPProxy) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logEvent('info', `cli:shutdown`, { signal, exit_code: 0 });
+
+  if (proxy) {
+    await proxy.shutdown();
+  }
+
+  process.exit(0);
+}
+
+main()
+  .then((proxy) => {
+    if (proxy) {
+      process.on('SIGINT', () => handleShutdown('SIGINT', proxy));
+      process.on('SIGTERM', () => handleShutdown('SIGTERM', proxy));
+    }
+  })
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    logError('main-fatal', error);
+    process.exit(1);
+  });
