@@ -1111,6 +1111,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/auth@workspace:packages/auth"
   dependencies:
+    "@mcp-funnel/core": "workspace:*"
     zod: "npm:^4.1.8"
   bin:
     auth: ./dist/cli.js
@@ -1192,7 +1193,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@mcp-funnel/core@workspace:packages/core":
+"@mcp-funnel/core@workspace:*, @mcp-funnel/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/core@workspace:packages/core"
   dependencies:
@@ -1212,7 +1213,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@mcp-funnel/schemas@workspace:packages/schemas":
+"@mcp-funnel/schemas@workspace:*, @mcp-funnel/schemas@workspace:packages/schemas":
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/schemas@workspace:packages/schemas"
   dependencies:
@@ -5285,6 +5286,7 @@ __metadata:
     "@hono/zod-validator": "npm:^0.7.2"
     "@mcp-funnel/auth": "workspace:*"
     "@mcp-funnel/commands-core": "workspace:*"
+    "@mcp-funnel/schemas": "workspace:*"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
     "@types/eventsource": "npm:^3.0.0"
     "@types/express": "npm:^5.0.0"
