@@ -1154,9 +1154,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/auth@workspace:packages/auth"
   dependencies:
+    "@mcp-funnel/core": "workspace:*"
     zod: "npm:^4.1.8"
-  bin:
-    auth: ./dist/cli.js
   languageName: unknown
   linkType: soft
 
@@ -1244,8 +1243,6 @@ __metadata:
     "@types/fast-redact": "npm:^3.0.4"
     fast-redact: "npm:^3.5.0"
     pino: "npm:^9.12.0"
-  bin:
-    core: ./dist/cli.js
   languageName: unknown
   linkType: soft
 
@@ -1262,8 +1259,6 @@ __metadata:
   resolution: "@mcp-funnel/schemas@workspace:packages/schemas"
   dependencies:
     "@mcp-funnel/auth": "workspace:*"
-  bin:
-    schemas: ./dist/cli.js
   languageName: unknown
   linkType: soft
 
@@ -5332,6 +5327,7 @@ __metadata:
     "@mcp-funnel/auth": "workspace:*"
     "@mcp-funnel/commands-core": "workspace:*"
     "@mcp-funnel/core": "workspace:*"
+    "@mcp-funnel/schemas": "workspace:*"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
     "@types/eventsource": "npm:^3.0.0"
     "@types/express": "npm:^5.0.0"
