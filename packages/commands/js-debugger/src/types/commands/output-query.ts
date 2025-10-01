@@ -7,35 +7,35 @@ import type { OutputCursor } from './output-entry';
  * Query parameters for retrieving buffered output from a session.
  */
 export interface OutputQuery {
-    /** Session identifier the query targets. */
-    sessionId: DebugSessionId;
+  /** Session identifier the query targets. */
+  sessionId: DebugSessionId;
 
-    /**
-     * Cursor returned from a previous query. Results strictly newer than this
-     * cursor are returned. When omitted, the query starts from the beginning.
-     */
-    since?: OutputCursor;
+  /**
+   * Cursor returned from a previous query. Results strictly newer than this
+   * cursor are returned. When omitted, the query starts from the beginning.
+   */
+  since?: OutputCursor;
 
-    /** Maximum number of entries to return. */
-    limit?: number;
+  /** Maximum number of entries to return. */
+  limit?: number;
 
-    /**
-     * Restrict results to specific process streams (stdout or stderr).
-     */
-    streams?: StreamName[];
+  /**
+   * Restrict results to specific process streams (stdout or stderr).
+   */
+  streams?: StreamName[];
 
-    /**
-     * Restrict console messages by severity. Ignored for stdio entries.
-     */
-    levels?: ConsoleLevel[];
+  /**
+   * Restrict console messages by severity. Ignored for stdio entries.
+   */
+  levels?: ConsoleLevel[];
 
-    /**
-     * Include runtime exceptions in the response. Defaults to true.
-     */
-    includeExceptions?: boolean;
+  /**
+   * Include runtime exceptions in the response. Defaults to true.
+   */
+  includeExceptions?: boolean;
 
-    /**
-     * Free-text search applied to rendered output strings.
-     */
-    search?: string;
+  /**
+   * Free-text search applied to rendered output strings.
+   */
+  search?: string;
 }

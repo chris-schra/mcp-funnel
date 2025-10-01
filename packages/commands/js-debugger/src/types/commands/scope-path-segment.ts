@@ -6,4 +6,7 @@
  * property. The server normalises the shorthand to the object representation so
  * future extensions can enrich the metadata without breaking callers.
  */
-export type ScopePathSegment = { index: number } | { property: string } | string;
+export type ScopePathSegment =
+  | { index: number }
+  | { property: string }
+  | string;

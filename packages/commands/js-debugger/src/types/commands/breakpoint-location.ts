@@ -6,16 +6,16 @@
  * `columnNumber` follows CDP's zero-based convention.
  */
 export interface BreakpointLocation {
-    /**
-     * Unique script identifier known to the debugger.
-     *
-     * Either `scriptId` or `url` must be supplied.
-     */
-    scriptId?: string;
-    /** Resolved URL or absolute path pointing to the script resource. */
-    url?: string;
-    /** Zero-based line number. */
-    lineNumber: number;
-    /** Optional zero-based column to disambiguate multiple statements. */
-    columnNumber?: number;
+  /**
+   * Unique script identifier known to the debugger.
+   *
+   * Either `scriptId` or `url` must be supplied.
+   */
+  scriptId?: string;
+  /** Resolved URL or absolute path pointing to the script resource. */
+  url?: string;
+  /** Zero-based line number. */
+  lineNumber: number;
+  /** Optional zero-based column to disambiguate multiple statements. */
+  columnNumber?: number;
 }

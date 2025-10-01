@@ -4,13 +4,13 @@ export type { BreakpointMutation } from './breakpoint-mutation';
 export type { BreakpointSpec } from './breakpoint-spec';
 export type { BreakpointSummary } from './breakpoint-summary';
 export type {
-    ContinueCommand,
-    ContinueToLocationCommand,
-    DebuggerCommand,
-    PauseCommand,
-    StepIntoCommand,
-    StepOutCommand,
-    StepOverCommand,
+  ContinueCommand,
+  ContinueToLocationCommand,
+  DebuggerCommand,
+  PauseCommand,
+  StepIntoCommand,
+  StepOutCommand,
+  StepOverCommand,
 } from './debugger-command';
 export type { DebuggerCommandResult } from './debugger-command-result';
 export type { OutputCursor, OutputEntry } from './output-entry';

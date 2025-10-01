@@ -6,13 +6,13 @@ import type { Scope } from './scope';
  * Call frame structure returned from `Debugger.paused`.
  */
 export interface DebuggerCallFrame {
-    callFrameId: string;
-    functionName: string;
-    functionLocation?: Location;
-    location: Location;
-    url: string;
-    scopeChain: Scope[];
-    this: RemoteObjectSummary;
-    returnValue?: RemoteObjectSummary;
-    canBeRestarted?: boolean;
+  callFrameId: string;
+  functionName: string;
+  functionLocation?: Location;
+  location: Location;
+  url: string;
+  scopeChain: Scope[];
+  this: RemoteObjectSummary;
+  returnValue?: RemoteObjectSummary;
+  canBeRestarted?: boolean;
 }

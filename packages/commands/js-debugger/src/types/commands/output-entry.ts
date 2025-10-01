@@ -11,36 +11,36 @@ import type { StdioEntry } from '../output/stdio-entry';
 export type OutputCursor = number;
 
 export type StdioOutputEntry = {
-    /** Source stream identifier. */
-    kind: 'stdio';
-    /** Monotonic cursor associated with this entry. */
-    cursor: OutputCursor;
-    /** Captured stdout/stderr data. */
-    entry: StdioEntry;
+  /** Source stream identifier. */
+  kind: 'stdio';
+  /** Monotonic cursor associated with this entry. */
+  cursor: OutputCursor;
+  /** Captured stdout/stderr data. */
+  entry: StdioEntry;
 };
 
 export type ConsoleOutputEntry = {
-    /** Source stream identifier. */
-    kind: 'console';
-    /** Monotonic cursor associated with this entry. */
-    cursor: OutputCursor;
-    /** Console message payload. */
-    entry: ConsoleEntry;
+  /** Source stream identifier. */
+  kind: 'console';
+  /** Monotonic cursor associated with this entry. */
+  cursor: OutputCursor;
+  /** Console message payload. */
+  entry: ConsoleEntry;
 };
 
 export type ExceptionOutputEntry = {
-    /** Source stream identifier. */
-    kind: 'exception';
-    /** Monotonic cursor associated with this entry. */
-    cursor: OutputCursor;
-    /** Runtime exception details. */
-    entry: ExceptionEntry;
+  /** Source stream identifier. */
+  kind: 'exception';
+  /** Monotonic cursor associated with this entry. */
+  cursor: OutputCursor;
+  /** Runtime exception details. */
+  entry: ExceptionEntry;
 };
 
 /**
  * Tagged union describing the origin of a returned output record.
  */
 export type OutputEntry =
-    | StdioOutputEntry
-    | ConsoleOutputEntry
-    | ExceptionOutputEntry;
+  | StdioOutputEntry
+  | ConsoleOutputEntry
+  | ExceptionOutputEntry;
