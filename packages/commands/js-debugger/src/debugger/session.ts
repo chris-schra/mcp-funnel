@@ -55,6 +55,7 @@ const INSPECTOR_URL_REGEX = /Debugger listening on (ws:\/\/[\w.:\-\/]+)/;
 const COMMAND_TIMEOUT_MS = 10_000;
 const DEFAULT_SCOPE_DEPTH = 1;
 const DEFAULT_MAX_PROPERTIES = 25;
+const MAX_SCOPE_OUTPUT_CHARS = 2000;
 const STDIO_ENCODING: BufferEncoding = 'utf8';
 
 interface PendingCommand {
@@ -477,12 +478,18 @@ export class DebuggerSession {
 
         if (this.config.resumeAfterConfigure) {
             await this.resumeExecution();
+            this.emitInstructions(
+                'Session ready. Execution resumed automatically. Use js-debugger_debuggerCommand for actions like "pause" or "stepOver". Line and column numbers follow CDP zero-based coordinates.',
+            );
             return {
                 session: this.getDescriptor(),
                 breakpoints: createdBreakpoints,
             };
         }
 
+        this.emitInstructions(
+            'Session ready. Use js-debugger_debuggerCommand with actions like "continue", "pause", or "stepOver". Include breakpoints.set/remove to adjust breakpoints. Line and column numbers follow CDP zero-based coordinates.',
+        );
         return {
             session: this.getDescriptor(),
             breakpoints: createdBreakpoints,
@@ -498,9 +505,11 @@ export class DebuggerSession {
 
         switch (command.action) {
             case 'continue':
-                await this.trySendCommand('Runtime.runIfWaitingForDebugger');
-                await this.sendCommand('Debugger.resume');
-                await this.waitForResumed('resume');
+                await this.tryRunIfWaitingForDebugger();
+                if (this.status === 'paused') {
+                    await this.sendCommand('Debugger.resume');
+                    await this.waitForResumed('resume');
+                }
                 this.updateStatus('running');
                 resumed = true;
                 break;
@@ -572,7 +581,18 @@ export class DebuggerSession {
         }
 
         const path = query.path ?? [];
-        const depth = Math.max(query.depth ?? DEFAULT_SCOPE_DEPTH, 1);
+        const isRootRequest = path.length === 0;
+        const requestedDepth = Math.max(query.depth ?? DEFAULT_SCOPE_DEPTH, 1);
+        let depth = requestedDepth;
+        if (isRootRequest && requestedDepth > 1) {
+            depth = 1;
+            this.emitInstructions(
+                'Scope query depth reduced to 1 when no path is provided. Use the path parameter to inspect nested properties.',
+            );
+        }
+        if (isRootRequest && depth !== 1) {
+            depth = 1;
+        }
         const maxProperties = Math.max(query.maxProperties ?? DEFAULT_MAX_PROPERTIES, 1);
 
         const { target, resolvedPath } = await this.resolveScopePath(scope.object, path);
@@ -592,11 +612,24 @@ export class DebuggerSession {
             new Set([target.objectId]),
         );
 
-        return {
+        const result: ScopeQueryResult = {
             path: resolvedPath,
             variables,
             truncated,
         };
+
+        if (JSON.stringify(result).length > MAX_SCOPE_OUTPUT_CHARS) {
+            this.emitInstructions(
+                'Scope result is large. Query specific properties with the path parameter or reduce depth to inspect values incrementally.',
+            );
+            return {
+                path: resolvedPath,
+                variables: [],
+                truncated: true,
+            };
+        }
+
+        return result;
     }
 
     public onTerminated(handler: (value: SessionEvents['terminated']) => void) {
@@ -706,13 +739,26 @@ export class DebuggerSession {
     }
 
     private async resumeExecution(): Promise<void> {
+        await this.tryRunIfWaitingForDebugger();
+        if (this.status === 'paused') {
+            await this.sendCommand('Debugger.resume');
+            await this.waitForResumed('resume');
+        }
+    }
+
+    private async tryRunIfWaitingForDebugger(): Promise<boolean> {
         try {
             await this.sendCommand('Runtime.runIfWaitingForDebugger');
+            return true;
         } catch (error) {
-            // Ignore if runtime is not waiting.
+            if (
+                error instanceof Error &&
+                /not waiting|cannot be run|No process is waiting/i.test(error.message)
+            ) {
+                return false;
+            }
+            throw error instanceof Error ? error : new Error(String(error));
         }
-        await this.sendCommand('Debugger.resume');
-        await this.waitForResumed('resume');
     }
 
     private async waitForPause(reason: string, useExisting = false): Promise<PauseDetails> {
@@ -958,11 +1004,11 @@ export class DebuggerSession {
             actualLocation: CdpLocation;
         };
 
-        const summary: BreakpointSummary = {
-            id: result.breakpointId,
-            requested: spec,
-            resolvedLocations: [this.fromCdpLocation(result.actualLocation)],
-        };
+            const summary: BreakpointSummary = {
+                id: result.breakpointId,
+                requested: spec,
+                resolvedLocations: [this.fromCdpLocation(result.actualLocation)],
+            };
         this.breakpointRecords.set(result.breakpointId, {
             id: result.breakpointId,
             cdpId: result.breakpointId,
@@ -1100,7 +1146,9 @@ export class DebuggerSession {
             line: originalLine,
             column: originalColumn,
         });
-        const positions = direct.length > 0 ? direct : consumer.allGeneratedPositionsFor({ source: sourceId, line: originalLine });
+        const positions = direct.length > 0
+            ? direct
+            : consumer.allGeneratedPositionsFor({ source: sourceId, line: originalLine, column: 0 });
         return positions
             .map((position) => this.toGeneratedLocation(position))
             .filter((location): location is GeneratedLocation => location !== undefined);
@@ -1679,6 +1727,12 @@ export class DebuggerSession {
         this.lastPause = undefined;
         this.updateStatus('running');
         void this.events.emit('resumed');
+    }
+
+    private emitInstructions(text: string): void {
+        const entry = buildConsoleEntry('info', 'log-entry', [], Date.now(), undefined);
+        entry.text = text;
+        this.outputBuffer.addConsole(entry);
     }
 
     private mapHitBreakpoints(hit?: string[]): string[] | undefined {
