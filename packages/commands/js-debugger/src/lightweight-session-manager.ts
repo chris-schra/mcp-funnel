@@ -172,11 +172,9 @@ export class LightweightSessionManager {
       const wrapper = new SessionCompatibilityWrapper(session);
       this.wrappedSessions.set(sessionId, wrapper);
 
-      // Auto-cleanup when session terminates
-      session.on('terminated', () => {
-        this.sessions.delete(sessionId);
-        this.wrappedSessions.delete(sessionId);
-      });
+      // NOTE: We intentionally do NOT auto-delete sessions when they terminate.
+      // See session-lifecycle.ts:124-133 for detailed rationale.
+      // Sessions persist for post-mortem inspection until explicitly deleted.
 
       return session.id;
     } catch (error) {

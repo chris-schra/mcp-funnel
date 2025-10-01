@@ -121,12 +121,16 @@ export async function createDebugSession(
     );
     context.compatibilitySessions.set(sessionId, compatibilityWrapper);
 
-    // Auto-cleanup when session terminates
-    enhancedSession.on('terminated', () => {
-      context.sessions.delete(sessionId);
-      context.compatibilitySessions.delete(sessionId);
-      context.activityTracker.removeSession(sessionId);
-    });
+    // NOTE: We intentionally do NOT auto-delete sessions when they terminate.
+    // Terminated sessions should persist in the session manager so users can:
+    // - Inspect final variables and state
+    // - Review complete console output
+    // - Examine stack traces and exit conditions
+    //
+    // Sessions are removed via:
+    // 1. Explicit deleteSession() calls (user via stop tool or manual cleanup)
+    // 2. Cleanup manager based on timeout/memory thresholds
+    // 3. SessionManager.shutdown() during process termination
 
     context.activityTracker.recordActivity(sessionId, 'state_change');
   } catch (error) {

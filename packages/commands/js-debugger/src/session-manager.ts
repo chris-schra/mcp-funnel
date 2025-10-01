@@ -89,11 +89,13 @@ export class SessionManager implements ISessionManager {
     );
     this.cleanupManager.initialize();
 
-    // Initialize process handler manager
+    // Initialize process handler manager (but don't auto-register handlers)
     this.processHandlerManager = new ProcessHandlerManager({
       shutdown: this.shutdown.bind(this),
     });
-    this.processHandlerManager.setupHandlers();
+    // Note: Process handlers are NOT automatically registered to avoid interfering
+    // with the host process lifecycle (e.g., MCP server, tests).
+    // Call enableProcessHandlers() explicitly if needed for standalone usage.
   }
 
   /**
@@ -305,6 +307,27 @@ export class SessionManager implements ISessionManager {
       },
       timeoutMs,
     );
+  }
+
+  /**
+   * Enables automatic process signal handlers for cleanup on process exit.
+   *
+   * Registers handlers for SIGINT, SIGTERM, and process exit events that will
+   * automatically call shutdown() when the process is terminating. This is useful
+   * for standalone applications but should NOT be called in hosted environments
+   * (like MCP servers or test suites) where the host manages process lifecycle.
+   *
+   * Note: This is NOT called automatically by the constructor to avoid interfering
+   * with host process lifecycle management.
+   * @example Standalone application
+   * ```typescript
+   * const manager = SessionManager.getInstance();
+   * manager.enableProcessHandlers(); // Register cleanup on process exit
+   * ```
+   * @public
+   */
+  public enableProcessHandlers(): void {
+    this.processHandlerManager.setupHandlers();
   }
 
   /**

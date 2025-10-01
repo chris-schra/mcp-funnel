@@ -37,9 +37,10 @@
 
 import { JsDebuggerCommand } from './command.js';
 
-// Export main command
+// Export main command class
 export { JsDebuggerCommand };
-export default new JsDebuggerCommand();
+// Export class as default (NOT an instance) to avoid side effects during module import
+export default JsDebuggerCommand;
 
 // Export types
 export * from './types/index.js';

@@ -195,6 +195,37 @@ export async function discoverAllCommands(
 }
 
 /**
+ * Resolves a command export to an ICommand instance.
+ * If the export is a class constructor, instantiates it.
+ * If it's already an instance, returns it as-is.
+ * @param exported - The exported value from the module
+ * @returns ICommand instance or null if invalid
+ * @internal
+ */
+function resolveCommandExport(exported: unknown): ICommand | null {
+  if (!exported) return null;
+
+  // Check if it's already a valid command instance
+  if (isValidCommand(exported)) {
+    return exported as ICommand;
+  }
+
+  // Check if it's a class constructor (has prototype with the required methods)
+  if (typeof exported === 'function' && exported.prototype) {
+    try {
+      const instance = new (exported as new () => unknown)();
+      if (isValidCommand(instance)) {
+        return instance as ICommand;
+      }
+    } catch {
+      // Instantiation failed, not a valid command constructor
+    }
+  }
+
+  return null;
+}
+
+/**
  * Loads a single command from a package directory.
  *
  * Attempts to load a command in the following order:
@@ -206,6 +237,8 @@ export async function discoverAllCommands(
  * - module.default
  * - module.command
  * - Any export implementing ICommand interface
+ *
+ * Exported classes are automatically instantiated.
  * @param commandPath - Absolute path to command package directory
  * @returns Promise resolving to ICommand if valid command found, null otherwise
  * @remarks
@@ -248,13 +281,14 @@ async function loadCommand(commandPath: string): Promise<ICommand | null> {
       try {
         await fs.access(srcIndexPath);
         const module = await import(srcIndexPath);
-        const command =
+        const exported =
           module.default ||
           module.command ||
           findCommandInModule(module as unknown);
 
-        if (isValidCommand(command)) {
-          return command as ICommand;
+        const command = resolveCommandExport(exported);
+        if (command) {
+          return command;
         }
         // fall through to dist if src did not export a valid command
       } catch {
@@ -270,11 +304,12 @@ async function loadCommand(commandPath: string): Promise<ICommand | null> {
       const module = await import(modulePath);
 
       // Look for default export or named exports that implement ICommand
-      const command =
+      const exported =
         module.default || module.command || findCommandInModule(module);
 
-      if (isValidCommand(command)) {
-        return command as ICommand;
+      const command = resolveCommandExport(exported);
+      if (command) {
+        return command;
       }
     } catch (_importError) {
       // Try fallback to src/index.ts for development
@@ -282,11 +317,12 @@ async function loadCommand(commandPath: string): Promise<ICommand | null> {
       try {
         await fs.access(srcIndexPath);
         const module = await import(srcIndexPath);
-        const command =
+        const exported =
           module.default || module.command || findCommandInModule(module);
 
-        if (isValidCommand(command)) {
-          return command as ICommand;
+        const command = resolveCommandExport(exported);
+        if (command) {
+          return command;
         }
       } catch (srcError) {
         console.warn(`Could not import command from ${commandPath}:`, srcError);
