@@ -32,7 +32,8 @@ export function createBreakpointLocationSchema(): Tool['inputSchema'] {
 
 /**
  * Creates a breakpoint spec schema
- * @param locationSchema
+ * @param locationSchema - Breakpoint location schema to include
+ * @returns Breakpoint spec schema
  */
 export function createBreakpointSpecSchema(
   locationSchema: Tool['inputSchema'],
@@ -52,7 +53,8 @@ export function createBreakpointSpecSchema(
 
 /**
  * Creates a breakpoint mutation schema
- * @param breakpointSpecSchema
+ * @param breakpointSpecSchema - Breakpoint spec schema for set operations
+ * @returns Breakpoint mutation schema
  */
 export function createBreakpointMutationSchema(
   breakpointSpecSchema: Tool['inputSchema'],
@@ -77,7 +79,8 @@ export function createBreakpointMutationSchema(
 
 /**
  * Creates a start debug session schema
- * @param breakpointSpecSchema
+ * @param breakpointSpecSchema - Breakpoint spec schema for initial breakpoints
+ * @returns Start debug session schema
  */
 export function createStartSessionSchema(
   breakpointSpecSchema: Tool['inputSchema'],
@@ -157,8 +160,9 @@ export function createStartSessionSchema(
 
 /**
  * Creates a debugger command schema
- * @param breakpointLocationSchema
- * @param breakpointMutationSchema
+ * @param breakpointLocationSchema - Breakpoint location schema for continueToLocation
+ * @param breakpointMutationSchema - Breakpoint mutation schema for breakpoint operations
+ * @returns Debugger command schema
  */
 export function createDebuggerCommandSchema(
   breakpointLocationSchema: Tool['inputSchema'],
@@ -182,7 +186,8 @@ export function createDebuggerCommandSchema(
       },
       location: {
         ...breakpointLocationSchema,
-        description: 'Required when action is "continueToLocation". Breakpoint location to continue to.',
+        description:
+          'Required when action is "continueToLocation". Breakpoint location to continue to.',
       },
       breakpoints: breakpointMutationSchema,
     },
@@ -192,6 +197,7 @@ export function createDebuggerCommandSchema(
 
 /**
  * Creates a scope query schema
+ * @returns Scope query schema
  */
 export function createScopeQuerySchema(): Tool['inputSchema'] {
   const scopePathSegmentSchema = {
@@ -238,6 +244,7 @@ export function createScopeQuerySchema(): Tool['inputSchema'] {
 
 /**
  * Creates an output query schema
+ * @returns Output query schema
  */
 export function createOutputQuerySchema(): Tool['inputSchema'] {
   return {
