@@ -1,330 +1,53 @@
 # @mcp-funnel/command-js-debugger
 
-A powerful JavaScript debugger command for MCP Funnel that enables debugging Node.js and browser JavaScript applications through the Chrome DevTools Protocol (CDP).
+Debugger command package for MCP Funnel. This implementation focuses on a lean Node.js debugging experience with clear seams for future adapters.
 
-## 🎯 Overview
+## Status
 
-The js-debugger command provides comprehensive debugging capabilities for JavaScript environments, allowing you to:
+- `src/index.ts` exposes the MCP tools for starting sessions, issuing debugger commands, inspecting scopes, and querying buffered output.
+- `src/debugger` contains the Node session runtime (process spawning, CDP bridge, output buffering, breakpoint management).
+- `src/types` documents the command payloads, session descriptors, and CDP projections used throughout the tool.
 
-- Debug Node.js applications with full inspector support
-- Debug browser JavaScript in Chrome, Edge, and Chromium-based browsers
-- Set breakpoints, step through code, and inspect variables
-- Capture and search console output
-- Evaluate expressions in debugging context
-- Manage multiple debugging sessions simultaneously
+## Architecture Snapshot
 
-## ✨ Features
+- `src/debugger/output-buffer.ts` – cursor-based buffering for stdout, stderr, console, and exceptions.
+- `src/debugger/session.ts` – full lifecycle for a Node.js debug session (launch, CDP wiring, breakpoint handling, scope inspection).
+- `src/debugger/session-manager.ts` – lightweight registry for active sessions.
+- `src/index.ts` – MCP command facade with input validation and schema definitions.
+- `src/types/common|cdp|commands|output|session` – strongly typed contracts with JSDoc for future reference.
 
-### Core Debugging
-- **Breakpoint Management**: Set conditional breakpoints at specific lines
-- **Execution Control**: Continue, step over, step into, step out
-- **Variable Inspection**: Explore local, closure, and global scopes
-- **Stack Trace Analysis**: Navigate call stacks with source mapping
-- **Expression Evaluation**: Execute code in the current debugging context
-- **Console Monitoring**: Capture and filter console output by levels
+## Available MCP Tools
 
-### Platform Support
-- **Node.js**: Debug scripts, TypeScript (via tsx/ts-node), and long-running processes
-- **Browser**: Debug JavaScript in Chrome, Edge, Brave, Opera (Chromium-based)
-- **Source Maps**: Automatic resolution for transpiled code (TypeScript, Babel)
-- **Mock Sessions**: Built-in mock debugging for testing and demos
+| Tool method             | Input schema          | Notes |
+|-------------------------|-----------------------|-------|
+| `startDebugSession`     | `DebugSessionConfig`  | Spawns `node --inspect-brk=0`, attaches over CDP, registers optional breakpoints, returns descriptor + initial pause info. |
+| `debuggerCommand`       | `DebuggerCommand`     | Executes `continue`, `pause`, `step*`, or `continueToLocation`, with inline breakpoint mutations. |
+| `getScopeVariables`     | `ScopeQuery`          | Expands scoped variables using bounded depth/size. |
+| `queryOutput`           | `OutputQuery`         | Pages through buffered stdio/console/exception output with cursor + filters. |
 
-### Production Features
-- **Session Management**: Track and manage multiple concurrent debug sessions
-- **Resource Cleanup**: Automatic cleanup of inactive sessions
-- **Error Recovery**: Robust error handling and connection management
-- **Type Safety**: Full TypeScript support with comprehensive type definitions
+## Launch Strategy
 
-## 📦 Installation
+1. Generate a session identifier (UUID when not provided).
+2. Spawn Node with `--inspect-brk=0` (+ `--import tsx/register` when `useTsx` is true).
+3. Parse the "Debugger listening" banner, connect via WebSocket, and enable `Runtime`, `Debugger`, and `Log` domains.
+4. Wait for the initial pause, apply any requested breakpoints, and optionally resume.
 
-The js-debugger command is included with MCP Funnel. To use it, ensure MCP Funnel is configured:
+## Output Buffering
 
-```bash
-# Via npx (recommended)
-npx mcp-funnel
+- Each stdio/console/exception event increments a cursor and is stored in `OutputBuffer` (default cap: 2000 entries).
+- `queryOutput` supports `since`, `limit`, stream/level filters, case-insensitive search, and optional exception suppression.
 
-# Or install globally
-npm install -g mcp-funnel
-```
+## Scope Inspection
 
-## 🚀 Quick Start
+- `getScopeVariables` requires `sessionId`, `callFrameId`, and `scopeNumber`.
+- Optional `path`, `depth`, and `maxProperties` keep traversal predictable.
+- Remote values are returned as `RemoteObjectSummary` with rendered text and preserved `objectId` handles for follow-up expansion.
 
-### Node.js Debugging
+## Next Steps
 
-```bash
-# Start debugging a Node.js script
-npx mcp-funnel run js-debugger debug --platform node --target ./app.js
+1. Add automated tests that exercise the session lifecycle against sample scripts.
+2. Consider a browser adapter (via Puppeteer) behind the same abstractions.
+3. Layer in session cleanup tooling and cancellation support.
+4. Explore richer formatting for complex console arguments or scope previews.
 
-# Debug with breakpoints
-npx mcp-funnel run js-debugger debug \
-  --platform node \
-  --target ./app.js \
-  --breakpoint app.js:10 \
-  --breakpoint utils.js:25:condition="user.id > 100"
-
-# Debug TypeScript with tsx
-npx mcp-funnel run js-debugger debug \
-  --platform node \
-  --target ./app.ts \
-  --command tsx
-```
-
-### Browser Debugging
-
-```bash
-# First, start Chrome with debugging enabled
-chrome --remote-debugging-port=9222
-
-# Then connect the debugger
-npx mcp-funnel run js-debugger debug --platform browser --target auto
-
-# Or connect to specific page
-npx mcp-funnel run js-debugger debug \
-  --platform browser \
-  --target "localhost:3000"
-```
-
-## 🛠 MCP Tools
-
-When used through MCP protocol, the js-debugger exposes these tools:
-
-### `js-debugger_debug`
-Start a debugging session for Node.js or browser JavaScript.
-
-**Parameters:**
-- `platform`: "node" | "browser" - Target platform
-- `target`: Script path (Node) or URL/auto (browser)
-- `command?`: Runtime command for Node (node, tsx, ts-node)
-- `args?`: Additional CLI arguments passed to the script (Node only)
-- `breakpoints?`: Array of breakpoint definitions
-- `timeout?`: Session timeout in milliseconds
-- `evalExpressions?`: Expressions to evaluate when paused
-- `captureConsole?`: Enable console output capture
-- `consoleVerbosity?`: "all" | "warn-error" | "error-only" | "none"
-
-### `js-debugger_continue`
-Resume execution from a breakpoint.
-
-**Parameters:**
-- `sessionId`: Debug session ID
-- `action?`: "stepOver" | "stepInto" | "stepOut" | "continue"
-- `evaluate?`: Expression to evaluate before continuing
-
-### `js-debugger_stop`
-Terminate a debugging session.
-
-**Parameters:**
-- `sessionId`: Debug session ID
-- `force?`: Force termination without cleanup
-
-### `js-debugger_list_sessions`
-List all active debugging sessions.
-
-**Parameters:**
-- `includeMock?`: Include mock sessions in the list
-- `includeMetadata?`: Include session metadata
-
-### `js-debugger_get_stacktrace`
-Get the current stack trace when paused.
-
-**Parameters:**
-- `sessionId`: Debug session ID
-- `maxFrames?`: Maximum number of frames to return
-
-### `js-debugger_get_variables`
-Inspect variables at a specific scope or path.
-
-**Parameters:**
-- `sessionId`: Debug session ID
-- `frameId?`: Stack frame ID (0 for top frame)
-- `path`: Dot-notation path to the variable (required)
-- `maxDepth?`: Maximum object traversal depth
-
-### Pause Behaviour
-- Sessions always pause at the runtime entry point before user code runs; use `js-debugger_continue` to reach your breakpoints.
-- Pauses triggered by manual `debugger;` statements surface as `pauseReason: "debugger"` with guidance on how to proceed.
-- Responses include breakpoint summaries so you can see which breakpoints are resolved or still pending immediately after launch.
-
-### `js-debugger_search_console_output`
-Search and filter console output.
-
-**Parameters:**
-- `sessionId`: Debug session ID
-- `search?`: Search text
-- `levels?`: Filter by log levels
-- `since?`: Timestamp to search from
-- `limit?`: Maximum results to return
-
-### `js-debugger_cleanup_sessions`
-Clean up inactive or terminated sessions.
-
-**Parameters:**
-- `olderThanMinutes?`: Clean sessions older than specified minutes
-- `force?`: Force cleanup of all sessions
-
-## 📖 Usage Examples
-
-### Basic Node.js Debugging
-
-```typescript
-// Using MCP protocol
-const result = await callTool('js-debugger_debug', {
-  platform: 'node',
-  target: './server.js',
-  breakpoints: [
-    { file: 'server.js', line: 42 },
-    { file: 'auth.js', line: 15, condition: 'token === null' }
-  ],
-  captureConsole: true
-});
-
-// Session ID returned
-const { sessionId } = result;
-
-// When breakpoint hits, continue execution
-await callTool('js-debugger_continue', {
-  sessionId,
-  action: 'stepOver'
-});
-```
-
-### Browser Debugging with Variable Inspection
-
-```typescript
-// Connect to browser
-const { sessionId } = await callTool('js-debugger_debug', {
-  platform: 'browser',
-  target: 'auto',
-  captureConsole: true,
-  consoleVerbosity: 'warn-error'
-});
-
-// When paused, inspect variables
-const variables = await callTool('js-debugger_get_variables', {
-  sessionId,
-  path: 'window.app.state',
-  maxDepth: 3
-});
-```
-
-### Console Output Search
-
-```typescript
-// Search console output for errors
-const results = await callTool('js-debugger_search_console_output', {
-  sessionId,
-  search: 'error',
-  levels: { error: true, warn: true },
-  limit: 50
-});
-```
-
-## 🏗 Architecture
-
-The js-debugger follows the SEAMS (Simple Extensions, Abstract Minimally, Ship) architecture:
-
-```
-┌─────────────────────────┐
-│  JsDebuggerCommand      │  ← Thin orchestrator
-└───────────┬─────────────┘
-            │
-    ┌───────┴────────┐
-    │                │
-┌───▼───┐      ┌────▼────┐
-│Handlers│      │Services │
-└───┬───┘      └────┬────┘
-    │               │
-┌───▼────────────────▼───┐
-│   Platform Adapters    │
-├────────────┬───────────┤
-│NodeAdapter │BrowserAdapter│
-└────────────┴───────────┘
-            │
-    ┌───────▼────────┐
-    │  CDP Protocol  │
-    └────────────────┘
-```
-
-### Extension Points
-
-- **IDebugAdapter**: Platform-specific debugging implementation
-- **IToolHandler**: MCP tool handling logic
-- **IResponseFormatter**: Response formatting strategy
-- **ISessionValidator**: Session validation logic
-
-## 🔧 Configuration
-
-### Session Management
-
-Default cleanup configuration:
-- Session timeout: 30 minutes
-- Heartbeat interval: 5 minutes
-- Max console entries: 1000
-- Max inactive sessions: 10
-- Memory threshold: 100MB
-
-### CDP Connection
-
-Configure CDP client options:
-- Connection timeout: 30 seconds
-- Request timeout: 10 seconds
-- Auto-reconnect: Enabled
-- Max reconnect attempts: 3
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**"Chrome DevTools endpoint not available"**
-```bash
-# Ensure Chrome is running with debugging
-chrome --remote-debugging-port=9222
-```
-
-**"Could not find debugging target"**
-- For Node.js: Check script path and permissions
-- For browser: Ensure target page is loaded
-
-**"Session timeout"**
-- Increase timeout in debug request
-- Check for infinite loops or blocking code
-
-### Debug Mode
-
-Enable verbose logging:
-```bash
-DEBUG=js-debugger:* npx mcp-funnel run js-debugger debug ...
-```
-
-## 🧪 Testing
-
-The package includes comprehensive tests:
-
-```bash
-# Run tests from repository root
-yarn test packages/commands/js-debugger
-
-# Run specific test suites
-yarn test browser-adapter
-yarn test node-adapter
-yarn test session-manager
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Key areas:
-
-1. **Platform Support**: Additional runtime support (Deno, Bun)
-2. **Features**: Advanced debugging capabilities
-3. **Performance**: Optimization for large applications
-4. **Documentation**: Examples and guides
-
-## 📄 License
-
-MIT - Part of the MCP Funnel project
-
-## 🔗 Links
-
-- [MCP Funnel Repository](https://github.com/chris-schra/mcp-funnel)
-- [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)
-- [Node.js Debugging Guide](https://nodejs.org/en/docs/guides/debugging-getting-started/)
+This README is designed to help future developers or AI agents rehydrate context quickly—start by reviewing the type contracts in `src/types`, then follow the flow in `src/debugger/session.ts` and `src/index.ts`.
