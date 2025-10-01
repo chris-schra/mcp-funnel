@@ -1,4 +1,6 @@
 import path from 'path';
+import { realpathSync } from 'fs';
+import { pathToFileURL } from 'url';
 import type {
   IToolHandler,
   ToolHandlerContext,
@@ -172,26 +174,41 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
       let target = args.target;
       let breakpoints = args.breakpoints;
 
-      const isMock = Boolean(args.useMock);
+      const shouldUseMock =
+        args.useMock || process.env.JS_DEBUGGER_REAL === 'false';
       const isNodePlatform = args.platform === 'node';
       const isInspectorTarget =
         typeof target === 'string' &&
         (target.startsWith('ws://') || target.startsWith('wss://'));
 
-      if (isNodePlatform && !isMock && !isInspectorTarget) {
-        target = path.isAbsolute(target) ? target : path.resolve(target);
+      if (isNodePlatform && !shouldUseMock && !isInspectorTarget) {
+        // Resolve to absolute path, then to real path (resolve symlinks)
+        const absoluteTarget = path.isAbsolute(target)
+          ? target
+          : path.resolve(target);
+        target = realpathSync(absoluteTarget);
+
         if (breakpoints) {
-          breakpoints = breakpoints.map((bp) => ({
-            ...bp,
-            file: path.isAbsolute(bp.file) ? bp.file : path.resolve(bp.file),
-          }));
+          // Resolve breakpoint paths relative to the target file's directory
+          const targetDir = path.dirname(target);
+          breakpoints = breakpoints.map((bp) => {
+            const absoluteBpPath = path.isAbsolute(bp.file)
+              ? bp.file
+              : path.resolve(targetDir, bp.file);
+            // Resolve symlinks and convert to file:// URL for CDP compatibility
+            const realBpPath = realpathSync(absoluteBpPath);
+            return {
+              ...bp,
+              file: pathToFileURL(realBpPath).href,
+            };
+          });
         }
       }
 
       const request: DebugRequest = {
         platform: args.platform,
         target,
-        command: args.command,
+        command: args.command ?? 'node',
         args: args.args,
         runtimeArgs: args.runtimeArgs,
         stopOnEntry: true,
@@ -202,10 +219,7 @@ export class DebugHandler implements IToolHandler<DebugHandlerArgs> {
         consoleVerbosity: args.consoleVerbosity,
       };
 
-      // Check if we should use mock implementation
-      const shouldUseMock =
-        args.useMock || process.env.JS_DEBUGGER_REAL === 'false';
-
+      // Use mock implementation if requested
       if (shouldUseMock) {
         if (!context.mockSessionManager) {
           return context.responseFormatter.error(
