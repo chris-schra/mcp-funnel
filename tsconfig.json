@@ -28,5 +28,11 @@
     }
   },
   "include": ["./src/**/*.ts", "./test/**/*.ts", "./packages/**/*"],
-  "exclude": ["**/node_modules/**/*", "**/dist/**/*", "docs/**/*", "**/*.md", "**/test/fixtures/**/*"]
+  "exclude": [
+    "**/node_modules/**/*",
+    "**/dist/**/*",
+    "docs/**/*",
+    "**/*.md",
+    "**/test/fixtures/**/*"
+  ]
 }
