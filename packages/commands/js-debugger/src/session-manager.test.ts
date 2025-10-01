@@ -45,53 +45,56 @@ describe('SessionManager (Node integration)', () => {
     SessionManager.resetInstance();
   });
 
-  (process.env.TEST_E2E === 'true' ? it : it.skip)('captures console output according to verbosity filters', async () => {
-    const manager = SessionManager.getInstance();
+  (process.env.TEST_E2E === 'true' ? it : it.skip)(
+    'captures console output according to verbosity filters',
+    async () => {
+      const manager = SessionManager.getInstance();
 
-    const session = await manager.createSession({
-      platform: 'node',
-      target: consoleFixture.tempPath,
-      captureConsole: true,
-      consoleVerbosity: 'error-only',
-      timeout: 10000,
-    });
+      const session = await manager.createSession({
+        platform: 'node',
+        target: consoleFixture.tempPath,
+        captureConsole: true,
+        consoleVerbosity: 'error-only',
+        timeout: 10000,
+      });
 
-    try {
-      // Wait for WebSocket connection to be fully established
-      await session.waitForPause(5000);
-
-      await session.evaluate('console.error("session-manager test error")');
-
-      const sessionWithOutput = await waitFor(
-        () => {
-          const current = manager.getSession(session.id);
-          if (!current) {
-            return null;
-          }
-          return current.consoleOutput.length > 0 ? current : null;
-        },
-        { timeoutMs: 5000, intervalMs: 100 },
-      );
-
-      expect(sessionWithOutput.consoleOutput.length).toBeGreaterThan(0);
-      expect(sessionWithOutput.consoleOutput[0]?.level).toBe('error');
-      expect(sessionWithOutput.consoleOutput[0]?.message).toContain(
-        'session-manager test error',
-      );
-
-      const listed = manager
-        .listSessions()
-        .find((item) => item.id === session.id);
-      expect(listed).toBeDefined();
-    } finally {
-      // Ensure cleanup even if test fails
       try {
-        await manager.deleteSession(session.id);
-      } catch {
-        // Ignore cleanup errors
+        // Wait for WebSocket connection to be fully established
+        await session.waitForPause(5000);
+
+        await session.evaluate('console.error("session-manager test error")');
+
+        const sessionWithOutput = await waitFor(
+          () => {
+            const current = manager.getSession(session.id);
+            if (!current) {
+              return null;
+            }
+            return current.consoleOutput.length > 0 ? current : null;
+          },
+          { timeoutMs: 5000, intervalMs: 100 },
+        );
+
+        expect(sessionWithOutput.consoleOutput.length).toBeGreaterThan(0);
+        expect(sessionWithOutput.consoleOutput[0]?.level).toBe('error');
+        expect(sessionWithOutput.consoleOutput[0]?.message).toContain(
+          'session-manager test error',
+        );
+
+        const listed = manager
+          .listSessions()
+          .find((item) => item.id === session.id);
+        expect(listed).toBeDefined();
+      } finally {
+        // Ensure cleanup even if test fails
+        try {
+          await manager.deleteSession(session.id);
+        } catch {
+          // Ignore cleanup errors
+        }
       }
-    }
-  });
+    },
+  );
 
   it('cleans up inactive sessions when thresholds are exceeded', async () => {
     const manager = SessionManager.getInstance(undefined, {

@@ -31,6 +31,8 @@
     "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {
+    "@mcp-funnel/models": "workspace:*",
+    "@mcp-funnel/schemas": "workspace:*",
     "fast-redact": "^3.5.0",
     "pino": "^9.12.0"
   },

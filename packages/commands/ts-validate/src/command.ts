@@ -7,7 +7,7 @@ import {
 } from './validator.js';
 import path from 'path';
 import chalk from 'chalk';
-import githubCore from "@actions/core";
+import githubCore from '@actions/core';
 /*
 import { setupConsoleLogging, rootLogger } from '@mcp-funnel/core';
 
@@ -135,7 +135,8 @@ ${chalk.bold('Examples:')}
     const globPattern =
       !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
 
-    const githubActions = flags.includes('--github-actions') || process.env.GH_CI === 'true';
+    const githubActions =
+      flags.includes('--github-actions') || process.env.GH_CI === 'true';
 
     const options: ValidateOptions = {
       files: files,
@@ -157,17 +158,22 @@ ${chalk.bold('Examples:')}
               file: filename,
             }));
           })
-          .filter((it) => it.severity !== "info");
+          .filter((it) => it.severity !== 'info');
 
         issues.forEach((issue) => {
-          githubCore.error(issue.message, {file: issue.file, startLine: issue.line, endLine: issue.endLine})
+          githubCore.error(issue.message, {
+            file: issue.file,
+            startLine: issue.line,
+            endLine: issue.endLine,
+          });
         });
 
-        if(summary.filesWithErrors) {
-          githubCore.setFailed(`Validation failed: ${summary.filesWithErrors} files with issues`);
+        if (summary.filesWithErrors) {
+          githubCore.setFailed(
+            `Validation failed: ${summary.filesWithErrors} files with issues`,
+          );
           process.exit(1);
         }
-
       } else if (flags.includes('--json')) {
         console.info(JSON.stringify(summary, null, 2));
       } else {

@@ -123,16 +123,16 @@ export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
       }
 
       // Handle step actions
-      let newState: DebugState;
+      // Note: All operations internally update session state via executeStepOperation
       switch (args.action) {
         case 'step_over':
-          newState = await session.adapter.stepOver();
+          await session.adapter.stepOver();
           break;
         case 'step_into':
-          newState = await session.adapter.stepInto();
+          await session.adapter.stepInto();
           break;
         case 'step_out':
-          newState = await session.adapter.stepOut();
+          await session.adapter.stepOut();
           break;
         case 'continue':
         default: {
@@ -158,7 +158,7 @@ export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
           };
 
           if (hasValidContinue(enhancedSession)) {
-            newState = await enhancedSession.continue();
+            await enhancedSession.continue();
           } else {
             throw new Error(
               'Enhanced session not available for continue operation',
@@ -168,7 +168,6 @@ export class ContinueHandler implements IToolHandler<ContinueHandlerArgs> {
         }
       }
 
-      session.state = newState;
       return await context.responseFormatter.debugState(
         args.sessionId,
         session,

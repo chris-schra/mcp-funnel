@@ -161,79 +161,83 @@ async function startStaticServer(rootDir: string): Promise<StaticServerHandle> {
   };
 }
 
-(process.env.TEST_E2E === 'true' ? describe : describe.skip)('BrowserAdapter integration', () => {
-  let fixturesRoot: FixtureHandle;
+(process.env.TEST_E2E === 'true' ? describe : describe.skip)(
+  'BrowserAdapter integration',
+  () => {
+    let fixturesRoot: FixtureHandle;
 
-  beforeAll(async () => {
-    fixturesRoot = await prepareBrowserFixturesRoot();
-  });
-
-  afterAll(async () => {
-    await fixturesRoot.cleanup();
-  });
-
-  it('pauses on debugger statement, inspects state, and captures console output', async () => {
-    const chrome = await launchHeadlessChromium();
-    const staticServer = await startStaticServer(fixturesRoot.tempPath);
-    const adapter = new BrowserAdapter({
-      host: '127.0.0.1',
-      port: chrome.port,
-    });
-    const cdpClient = await chromium.connectOverCDP(
-      `http://127.0.0.1:${chrome.port}`,
-    );
-    const [context] = cdpClient.contexts();
-    const page = context.pages()[0] ?? (await context.newPage());
-    await page.goto(`${staticServer.baseUrl}/simple-page.html`);
-
-    const pauseStates: DebugState[] = [];
-    const consoleMessages: ConsoleMessage[] = [];
-    let resumeCount = 0;
-
-    adapter.onPaused((state) => pauseStates.push(state));
-    adapter.onResumed(() => {
-      resumeCount += 1;
-    });
-    adapter.onConsoleOutput((message) => {
-      consoleMessages.push(message);
+    beforeAll(async () => {
+      fixturesRoot = await prepareBrowserFixturesRoot();
     });
 
-    try {
-      await adapter.connect('auto');
+    afterAll(async () => {
+      await fixturesRoot.cleanup();
+    });
 
-      const pauseState = await waitFor(() => pauseStates.shift() ?? null, {
-        timeoutMs: 6000,
-        intervalMs: 50,
+    it('pauses on debugger statement, inspects state, and captures console output', async () => {
+      const chrome = await launchHeadlessChromium();
+      const staticServer = await startStaticServer(fixturesRoot.tempPath);
+      const adapter = new BrowserAdapter({
+        host: '127.0.0.1',
+        port: chrome.port,
+      });
+      const cdpClient = await chromium.connectOverCDP(
+        `http://127.0.0.1:${chrome.port}`,
+      );
+      const [context] = cdpClient.contexts();
+      const page = context.pages()[0] ?? (await context.newPage());
+      await page.goto(`${staticServer.baseUrl}/simple-page.html`);
+
+      const pauseStates: DebugState[] = [];
+      const consoleMessages: ConsoleMessage[] = [];
+      let resumeCount = 0;
+
+      adapter.onPaused((state) => pauseStates.push(state));
+      adapter.onResumed(() => {
+        resumeCount += 1;
+      });
+      adapter.onConsoleOutput((message) => {
+        consoleMessages.push(message);
       });
 
-      expect(pauseState.status).toBe('paused');
+      try {
+        await adapter.connect('auto');
 
-      const stackTrace = await adapter.getStackTrace();
-      expect(stackTrace.length).toBeGreaterThan(0);
-      expect(stackTrace[0]?.functionName).toBe('triggerDebugger');
+        const pauseState = await waitFor(() => pauseStates.shift() ?? null, {
+          timeoutMs: 6000,
+          intervalMs: 50,
+        });
 
-      const evaluation = await adapter.evaluate('window.__debugData.counter');
-      expect(evaluation.value).toBe(1);
+        expect(pauseState.status).toBe('paused');
 
-      await adapter.continue();
+        const stackTrace = await adapter.getStackTrace();
+        expect(stackTrace.length).toBeGreaterThan(0);
+        expect(stackTrace[0]?.functionName).toBe('triggerDebugger');
 
-      await waitFor(
-        () => (consoleMessages.length > 0 ? consoleMessages : null),
-        { timeoutMs: 4000, intervalMs: 50 },
-      );
+        const evaluation = await adapter.evaluate('window.__debugData.counter');
+        expect(evaluation.value).toBe(1);
 
-      expect(
-        consoleMessages.some(
-          (msg) =>
-            msg.message.includes('Browser fixture log') && msg.level === 'log',
-        ),
-      ).toBe(true);
-      expect(resumeCount).toBeGreaterThanOrEqual(1);
-    } finally {
-      await adapter.disconnect();
-      await cdpClient.close();
-      await staticServer.close();
-      await chrome.cleanup();
-    }
-  });
-});
+        await adapter.continue();
+
+        await waitFor(
+          () => (consoleMessages.length > 0 ? consoleMessages : null),
+          { timeoutMs: 4000, intervalMs: 50 },
+        );
+
+        expect(
+          consoleMessages.some(
+            (msg) =>
+              msg.message.includes('Browser fixture log') &&
+              msg.level === 'log',
+          ),
+        ).toBe(true);
+        expect(resumeCount).toBeGreaterThanOrEqual(1);
+      } finally {
+        await adapter.disconnect();
+        await cdpClient.close();
+        await staticServer.close();
+        await chrome.cleanup();
+      }
+    });
+  },
+);

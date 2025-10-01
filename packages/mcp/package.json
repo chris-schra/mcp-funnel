@@ -43,6 +43,7 @@
   "dependencies": {
     "@mcp-funnel/auth": "workspace:*",
     "@mcp-funnel/commands-core": "workspace:*",
+    "@mcp-funnel/core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.18.0",
     "deepmerge-ts": "^7.0.5",
     "eventsource": "^4.0.0",
