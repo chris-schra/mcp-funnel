@@ -23,8 +23,9 @@ export interface ScopeQuery {
     /**
      * Optional path describing which nested property to expand before reading
      * child variables. When omitted, the top-level scope object is returned.
-     * String entries reference object keys and `{ index }` entries address
-     * array-like collections.
+     *
+     * String entries act as shorthand for `{ property: "name" }`, while
+     * `{ index }` entries address array-like collections.
      */
     path?: ScopePathSegment[];
 

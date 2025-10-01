@@ -31,8 +31,15 @@ export interface ScopeQueryResult {
     /** Collected variables at the requested depth. */
     variables: ScopeVariable[];
     /**
-     * True when additional properties were available but trimmed due to the
-     * `maxProperties` limit. Callers can re-issue a query with different bounds.
+     * True when the server trimmed the payload (because of `maxProperties` or
+     * overall response size guards). Callers should re-issue a narrower query
+     * when this flag is set.
      */
     truncated: boolean;
+    /**
+     * Optional guidance emitted by the debugger runtime (e.g., reminders to
+     * drill into nested properties). Presented inline so agents do not need to
+     * cross-reference console output.
+     */
+    messages?: string[];
 }

@@ -448,6 +448,12 @@ function parseScopePath(value: unknown, label: string): ScopePathSegment[] {
         throw new Error(`${label} must be an array.`);
     }
     return value.map((segment, index) => {
+        if (typeof segment === 'string') {
+            if (!segment.trim()) {
+                throw new Error(`${label}[${index}] must be a non-empty string.`);
+            }
+            return { property: segment };
+        }
         const record = expectRecord(segment, `${label}[${index}]`);
         if ('index' in record) {
             const idx = expectNumber(record.index, `${label}[${index}].index`);

@@ -580,15 +580,18 @@ export class DebuggerSession {
             throw new Error(`Scope index ${query.scopeNumber} out of range.`);
         }
 
-        const path = query.path ?? [];
+        const rawPath = query.path ?? [];
+        const path = this.normalizeScopePath(rawPath);
+        const messages: string[] = [];
         const isRootRequest = path.length === 0;
         const requestedDepth = Math.max(query.depth ?? DEFAULT_SCOPE_DEPTH, 1);
         let depth = requestedDepth;
         if (isRootRequest && requestedDepth > 1) {
             depth = 1;
-            this.emitInstructions(
-                'Scope query depth reduced to 1 when no path is provided. Use the path parameter to inspect nested properties.',
-            );
+            const note =
+                'Scope query depth reduced to 1 when no path is provided. Use the path parameter to inspect nested properties.';
+            this.emitInstructions(note);
+            messages.push(note);
         }
         if (isRootRequest && depth !== 1) {
             depth = 1;
@@ -612,24 +615,11 @@ export class DebuggerSession {
             new Set([target.objectId]),
         );
 
-        const result: ScopeQueryResult = {
+        return this.normalizeScopeResult({
             path: resolvedPath,
             variables,
             truncated,
-        };
-
-        if (JSON.stringify(result).length > MAX_SCOPE_OUTPUT_CHARS) {
-            this.emitInstructions(
-                'Scope result is large. Query specific properties with the path parameter or reduce depth to inspect values incrementally.',
-            );
-            return {
-                path: resolvedPath,
-                variables: [],
-                truncated: true,
-            };
-        }
-
-        return result;
+        }, messages);
     }
 
     public onTerminated(handler: (value: SessionEvents['terminated']) => void) {
@@ -1841,9 +1831,34 @@ export class DebuggerSession {
         this.touchDescriptor();
     }
 
+    private normalizeScopePath(path: ScopePathSegment[]): Array<{ index: number } | { property: string }> {
+        return path.map((segment, index) => {
+            if (typeof segment === 'string') {
+                const trimmed = segment.trim();
+                if (!trimmed) {
+                    throw new Error(`Scope path segment ${index} must be a non-empty string.`);
+                }
+                return { property: trimmed };
+            }
+            if ('property' in segment) {
+                if (!segment.property) {
+                    throw new Error(`Scope path segment ${index} must include a non-empty property name.`);
+                }
+                return { property: segment.property };
+            }
+            if ('index' in segment) {
+                if (!Number.isInteger(segment.index)) {
+                    throw new Error(`Scope path segment ${index} must provide an integer index.`);
+                }
+                return { index: segment.index };
+            }
+            throw new Error(`Unsupported scope path segment encountered at position ${index}.`);
+        });
+    }
+
     private async resolveScopePath(
         root: RemoteObjectSummary,
-        path: ScopePathSegment[],
+        path: Array<{ index: number } | { property: string }>,
     ): Promise<{ target: RemoteObjectSummary; resolvedPath: ScopePathSegment[] }> {
         if (path.length === 0) {
             return { target: root, resolvedPath: [] };
@@ -1870,6 +1885,54 @@ export class DebuggerSession {
             resolved.push(segment);
         }
         return { target: current, resolvedPath: resolved };
+    }
+
+    private normalizeScopeResult(
+        result: Omit<ScopeQueryResult, 'messages'>,
+        existingMessages: string[],
+    ): ScopeQueryResult {
+        const baseMessages = existingMessages.length > 0 ? [...existingMessages] : [];
+        const withMessages: ScopeQueryResult = {
+            ...result,
+            messages: baseMessages.length > 0 ? baseMessages : undefined,
+        };
+        if (this.isWithinScopeOutputLimit(withMessages)) {
+            return withMessages;
+        }
+
+        const shallowVariables = result.variables.map((variable) => ({
+            name: variable.name,
+            value: variable.value,
+            truncated: true,
+        }));
+        const shallowNote =
+            'Scope result trimmed to top-level summaries. Drill into individual properties with the path parameter for full details.';
+        this.emitInstructions(shallowNote);
+        const shallowMessages = [...baseMessages, shallowNote];
+        const shallowResult: ScopeQueryResult = {
+            path: result.path,
+            variables: shallowVariables,
+            truncated: true,
+            messages: shallowMessages,
+        };
+
+        if (this.isWithinScopeOutputLimit(shallowResult)) {
+            return shallowResult;
+        }
+
+        const fallbackNote =
+            'Scope result is large. Query specific properties with the path parameter or reduce depth to inspect values incrementally.';
+        this.emitInstructions(fallbackNote);
+        return {
+            path: result.path,
+            variables: [],
+            truncated: true,
+            messages: [...shallowMessages, fallbackNote],
+        };
+    }
+
+    private isWithinScopeOutputLimit(result: ScopeQueryResult): boolean {
+        return JSON.stringify(result).length <= MAX_SCOPE_OUTPUT_CHARS;
     }
 
     private async getPropertyDescriptor(

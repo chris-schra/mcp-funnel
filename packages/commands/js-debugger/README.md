@@ -40,7 +40,13 @@ Debugger command package for MCP Funnel. This implementation focuses on a lean N
 ## Scope Inspection
 
 - `getScopeVariables` requires `sessionId`, `callFrameId`, and `scopeNumber`.
-- Optional `path`, `depth`, and `maxProperties` keep traversal predictable.
+- Optional `path`, `depth`, and `maxProperties` keep traversal predictable. `path`
+  entries accept either `{ property: "name" }` / `{ index: 0 }` objects or the
+  shorthand string form (`"name"`).
+- Large payloads are trimmed to top-level summaries once they exceed the
+  configured size guard. When the result is marked `truncated`, issue narrower
+  follow-up queries to inspect nested values. Guidance is also returned in the
+  `messages` array so callers do not need to scrape console output.
 - Remote values are returned as `RemoteObjectSummary` with rendered text and preserved `objectId` handles for follow-up expansion.
 
 ## Next Steps
