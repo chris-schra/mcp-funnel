@@ -7,8 +7,9 @@ import { hasUriScheme } from './session-source-maps.js';
 
 /**
  * Normalizes a location reference (URL or path) to standard forms.
- * @param raw
- * @param targetWorkingDirectory
+ * @param raw - The raw location reference string
+ * @param targetWorkingDirectory - The target working directory for relative paths
+ * @returns Normalized script reference with path and URL information
  */
 export function normalizeLocationReference(
   raw: string,
@@ -50,7 +51,8 @@ export function normalizeLocationReference(
 
 /**
  * Builds lookup keys for a script reference.
- * @param reference
+ * @param reference - The normalized script reference
+ * @returns Array of lookup keys for the reference
  */
 export function buildReferenceKeys(
   reference: NormalizedScriptReference,
@@ -70,7 +72,8 @@ export function buildReferenceKeys(
 
 /**
  * Builds lookup keys for script metadata.
- * @param metadata
+ * @param metadata - The script metadata
+ * @returns Array of lookup keys for the metadata
  */
 export function buildMetadataKeys(metadata: ScriptMetadata): string[] {
   const keys = new Set<string>();
@@ -88,8 +91,9 @@ export function buildMetadataKeys(metadata: ScriptMetadata): string[] {
 
 /**
  * Resolves a source identifier from a source map given a reference.
- * @param sourceMap
- * @param reference
+ * @param sourceMap - The script source map
+ * @param reference - The normalized script reference
+ * @returns The source identifier or undefined if not found
  */
 export function resolveSourceIdentifier(
   sourceMap: ScriptSourceMap,

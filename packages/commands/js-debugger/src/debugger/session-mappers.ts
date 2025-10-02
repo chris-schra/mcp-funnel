@@ -22,7 +22,8 @@ import type {
 
 /**
  * Maps a CDP location to the public Location type.
- * @param location
+ * @param location - The CDP location to map
+ * @returns Mapped location object
  */
 export function mapLocation(location: CdpLocation): Location {
   return {
@@ -34,7 +35,8 @@ export function mapLocation(location: CdpLocation): Location {
 
 /**
  * Extracts a JSON-safe value from an unknown value.
- * @param value
+ * @param value - The value to convert to JSON-safe format
+ * @returns JSON-safe value, bigint, or undefined if not convertible
  */
 export function extractJsonValue(
   value: unknown,
@@ -63,7 +65,8 @@ export function extractJsonValue(
 
 /**
  * Renders a CDP remote object as a string for display.
- * @param remote
+ * @param remote - The CDP remote object to render
+ * @returns String representation of the remote object
  */
 export function renderRemoteObject(remote: CdpRemoteObject): string {
   if (remote.unserializableValue) {
@@ -93,7 +96,8 @@ export function renderRemoteObject(remote: CdpRemoteObject): string {
 
 /**
  * Converts a CDP remote object to a public RemoteObjectSummary.
- * @param remote
+ * @param remote - The CDP remote object to convert
+ * @returns RemoteObjectSummary representation
  */
 export function toRemoteObjectSummary(
   remote: CdpRemoteObject,
@@ -119,7 +123,8 @@ export function toRemoteObjectSummary(
 
 /**
  * Maps a CDP scope to the public Scope type.
- * @param scope
+ * @param scope - The CDP scope to map
+ * @returns Mapped scope object
  */
 export function mapScope(scope: CdpScope): Scope {
   return {
@@ -135,7 +140,8 @@ export function mapScope(scope: CdpScope): Scope {
 
 /**
  * Maps a CDP call frame to the public DebuggerCallFrame type.
- * @param frame
+ * @param frame - The CDP call frame to map
+ * @returns Mapped call frame object
  */
 export function mapCallFrame(frame: CdpCallFrame): DebuggerCallFrame {
   return {
@@ -157,7 +163,8 @@ export function mapCallFrame(frame: CdpCallFrame): DebuggerCallFrame {
 
 /**
  * Maps a CDP stack trace to the public StackTrace type.
- * @param trace
+ * @param trace - The CDP stack trace to map
+ * @returns Mapped stack trace object or undefined if input is falsy
  */
 export function mapStackTrace(trace?: CdpStackTrace): StackTrace | undefined {
   if (!trace) {
@@ -179,7 +186,8 @@ export function mapStackTrace(trace?: CdpStackTrace): StackTrace | undefined {
 
 /**
  * Maps CDP exception details to the public ExceptionDetails type.
- * @param details
+ * @param details - The CDP exception details to map
+ * @returns Mapped exception details object
  */
 export function mapException(details: CdpExceptionDetails): ExceptionDetails {
   return {
@@ -199,7 +207,8 @@ export function mapException(details: CdpExceptionDetails): ExceptionDetails {
 
 /**
  * Maps a console type string to the ConsoleLevel enum.
- * @param type
+ * @param type - The console type string to map
+ * @returns Corresponding ConsoleLevel enum value
  */
 export function mapConsoleLevel(type: string): ConsoleLevel {
   switch (type) {
@@ -220,7 +229,8 @@ export function mapConsoleLevel(type: string): ConsoleLevel {
 
 /**
  * Converts a CDP remote object to a console argument.
- * @param remote
+ * @param remote - The CDP remote object to convert
+ * @returns Console argument with both remote object and text representation
  */
 export function toConsoleArgument(remote: CdpRemoteObject): ConsoleArgument {
   const summary = toRemoteObjectSummary(remote);
@@ -232,11 +242,12 @@ export function toConsoleArgument(remote: CdpRemoteObject): ConsoleArgument {
 
 /**
  * Builds a console entry from CDP data.
- * @param level
- * @param origin
- * @param args
- * @param timestamp
- * @param stackTrace
+ * @param level - The console log level
+ * @param origin - The console entry origin (console-api, network, etc.)
+ * @param args - Array of CDP remote objects representing console arguments
+ * @param timestamp - The timestamp of the console entry
+ * @param stackTrace - Optional stack trace associated with the console entry
+ * @returns Complete console entry with processed arguments and metadata
  */
 export function buildConsoleEntry(
   level: ConsoleLevel,
@@ -259,8 +270,9 @@ export function buildConsoleEntry(
 
 /**
  * Creates an exception entry from CDP exception details.
- * @param details
- * @param timestamp
+ * @param details - The CDP exception details to convert
+ * @param timestamp - The timestamp of the exception
+ * @returns Exception entry with processed details and text
  */
 export function createExceptionEntry(
   details: CdpExceptionDetails,

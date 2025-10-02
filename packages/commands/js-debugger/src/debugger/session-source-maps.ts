@@ -12,9 +12,13 @@ import type { GeneratedLocation } from './session-types.js';
 
 /**
  * Creates a source map from a source map URL.
- * @param metadata
- * @param sourceMapUrl
- * @param targetWorkingDirectory
+ *
+ * @param metadata - Script metadata containing path information
+ * @param sourceMapUrl - URL pointing to the source map file
+ * @param targetWorkingDirectory - Working directory for resolving relative paths
+ * @returns Promise resolving to script source map or undefined if parsing fails
+ *
+ * @public
  */
 export async function createSourceMap(
   metadata: ScriptMetadata,
@@ -72,7 +76,11 @@ export async function createSourceMap(
 
 /**
  * Parses a source map from a URL.
- * @param url
+ *
+ * @param url - URL to fetch the source map from (supports data: URLs only)
+ * @returns Promise resolving to raw source map or undefined if unsupported URL
+ *
+ * @public
  */
 export async function parseSourceMap(
   url: string,
@@ -86,7 +94,12 @@ export async function parseSourceMap(
 
 /**
  * Decodes a data URL source map.
- * @param dataUrl
+ *
+ * @param dataUrl - Data URL containing base64 or URL-encoded source map
+ * @returns Raw source map or undefined if invalid format
+ * @throws Error When decoding fails or JSON is malformed
+ *
+ * @public
  */
 export function decodeDataUrlSourceMap(
   dataUrl: string,
@@ -112,9 +125,13 @@ export function decodeDataUrlSourceMap(
 
 /**
  * Resolves the source root directory.
- * @param sourceRoot
- * @param scriptDir
- * @param targetWorkingDirectory
+ *
+ * @param sourceRoot - Source root from source map (may be file:// URL or relative path)
+ * @param scriptDir - Directory containing the script file
+ * @param targetWorkingDirectory - Fallback directory for resolving relative paths
+ * @returns Resolved absolute path to source root or undefined
+ *
+ * @public
  */
 export function resolveSourceRoot(
   sourceRoot: string | undefined,
@@ -145,10 +162,14 @@ export function resolveSourceRoot(
 
 /**
  * Normalizes a source path to an absolute file system path.
- * @param source
- * @param sourceRoot
- * @param scriptDir
- * @param targetWorkingDirectory
+ *
+ * @param source - Source path from source map (may be relative, absolute, or file:// URL)
+ * @param sourceRoot - Resolved source root directory
+ * @param scriptDir - Directory containing the script file
+ * @param targetWorkingDirectory - Fallback directory for resolving relative paths
+ * @returns Normalized absolute path or undefined if path has unsupported URI scheme
+ *
+ * @public
  */
 export function normalizeSourcePath(
   source: string,
@@ -183,7 +204,11 @@ export function normalizeSourcePath(
 
 /**
  * Checks if a string has a URI scheme.
- * @param value
+ *
+ * @param value - String to check for URI scheme
+ * @returns True if string has a URI scheme (e.g., "http://", "file://")
+ *
+ * @public
  */
 export function hasUriScheme(value: string): boolean {
   return /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value);
@@ -191,7 +216,11 @@ export function hasUriScheme(value: string): boolean {
 
 /**
  * Converts a nullable position to a generated location.
- * @param position
+ *
+ * @param position - Nullable position from source map consumer
+ * @returns Generated location with 0-based line numbers or undefined if no line
+ *
+ * @public
  */
 export function toGeneratedLocation(
   position: NullablePosition,
@@ -207,10 +236,14 @@ export function toGeneratedLocation(
 
 /**
  * Looks up a generated position from a source map.
- * @param consumer
- * @param sourceId
- * @param originalLine
- * @param originalColumn
+ *
+ * @param consumer - Source map consumer for position lookup
+ * @param sourceId - Source file identifier in the source map
+ * @param originalLine - Original line number (1-based)
+ * @param originalColumn - Original column number (0-based)
+ * @returns Generated location or undefined if no mapping found
+ *
+ * @public
  */
 export function lookupGeneratedPosition(
   consumer: BasicSourceMapConsumer,
@@ -247,10 +280,14 @@ export function lookupGeneratedPosition(
 
 /**
  * Collects all generated position candidates for a source location.
- * @param consumer
- * @param sourceId
- * @param originalLine
- * @param originalColumn
+ *
+ * @param consumer - Source map consumer for position lookup
+ * @param sourceId - Source file identifier in the source map
+ * @param originalLine - Original line number (1-based)
+ * @param originalColumn - Original column number (0-based)
+ * @returns Array of all matching generated locations
+ *
+ * @public
  */
 export function collectGeneratedCandidates(
   consumer: BasicSourceMapConsumer,
@@ -280,10 +317,14 @@ export function collectGeneratedCandidates(
 
 /**
  * Gets the best generated location for a source position.
- * @param consumer
- * @param sourceId
- * @param originalLine
- * @param originalColumn
+ *
+ * @param consumer - Source map consumer for position lookup
+ * @param sourceId - Source file identifier in the source map
+ * @param originalLine - Original line number (1-based)
+ * @param originalColumn - Original column number (0-based)
+ * @returns Best matching generated location or undefined if no mapping found
+ *
+ * @public
  */
 export function getGeneratedLocation(
   consumer: BasicSourceMapConsumer,
