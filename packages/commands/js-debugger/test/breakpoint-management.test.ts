@@ -51,8 +51,8 @@ describe('Breakpoint Management', () => {
     await waitFor(
       async () => {
         try {
-          const snapshot = manager.getSnapshot(sid);
-          return snapshot.session.status === 'terminated' ? true : null;
+          const desc = manager.getDescriptor(sid);
+          return desc.status === 'terminated' ? desc : null;
         } catch (error) {
           if (error instanceof Error && error.message.includes('not found')) {
             return true;
