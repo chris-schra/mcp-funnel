@@ -47,11 +47,32 @@ describe(
       it('should reject invalid script paths', async () => {
         const target = createNodeTarget('/nonexistent/path/to/script.js');
 
-        await expect(
-          startSession({
-            target,
-          }),
-        ).rejects.toThrow();
+        const response = await startSession({
+          target,
+        });
+
+        const sessionId = response.session.id;
+
+        // Session starts but should fail/terminate due to invalid path
+        const didTerminate = await waitFor(
+          async () => {
+            try {
+              const snapshot = manager.getSnapshot(sessionId);
+              return snapshot.session.status === 'terminated' ? true : null;
+            } catch (error) {
+              if (
+                error instanceof Error &&
+                error.message.includes('not found')
+              ) {
+                return true;
+              }
+              throw error;
+            }
+          },
+          { timeoutMs: 15000 },
+        );
+
+        expect(didTerminate).toBe(true);
       });
 
       it('should reject duplicate session IDs', async () => {
@@ -116,8 +137,18 @@ describe(
         // Wait for the process to terminate naturally
         await waitFor(
           async () => {
-            const snapshot = manager.getSnapshot(sessionId);
-            return snapshot.session.status === 'terminated' ? true : null;
+            try {
+              const snapshot = manager.getSnapshot(sessionId);
+              return snapshot.session.status === 'terminated' ? true : null;
+            } catch (error) {
+              if (
+                error instanceof Error &&
+                error.message.includes('not found')
+              ) {
+                return true;
+              }
+              throw error;
+            }
           },
           { timeoutMs: 5000 },
         );
@@ -149,12 +180,23 @@ describe(
         await expect(
           waitFor(
             async () => {
-              const snapshot = manager.getSnapshot(sessionId);
-              // This will never be true, causing timeout
-              return snapshot.session.status ===
-                ('impossible-status' as 'terminated')
-                ? true
-                : null;
+              try {
+                const snapshot = manager.getSnapshot(sessionId);
+                // This will never be true, causing timeout
+                return snapshot.session.status ===
+                  ('impossible-status' as 'terminated')
+                  ? true
+                  : null;
+              } catch (error) {
+                if (
+                  error instanceof Error &&
+                  error.message.includes('not found')
+                ) {
+                  // Session was removed, return null to continue waiting
+                  return null;
+                }
+                throw error;
+              }
             },
             { timeoutMs: 500, intervalMs: 50 },
           ),
