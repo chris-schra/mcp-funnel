@@ -199,7 +199,8 @@ export class SessionProcessManager {
 
     await this.sendCommand('Runtime.enable', {});
     await this.sendCommand('Debugger.enable', {});
-    await this.trySendCommand('Log.enable', {});
+    // Maybe not necessary?
+    // await this.trySendCommand('Log.enable', {});
     await this.trySendCommand('Debugger.setAsyncCallStackDepth', {
       maxDepth: 32,
     });
