@@ -26,7 +26,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev:npm-lookup": "tsx packages/mcp/src/cli.ts run npm lookup \"vitest\"",
     "dev:mcp": "tsx packages/mcp/src/cli.ts",
-    "debug": "npx @modelcontextprotocol/inspector tsx packages/mcp/src/cli.ts"
+    "debug": "npx @modelcontextprotocol/inspector tsx packages/mcp/src/cli.ts",
+    "clean": "yarn workspaces foreach -Atp exec rimraf dist"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
@@ -46,6 +47,7 @@
     "eslint-plugin-tsdoc": "^0.4.0",
     "globby": "^14.1.0",
     "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.43.0",
