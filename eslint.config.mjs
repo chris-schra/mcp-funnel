@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import {jsdoc} from 'eslint-plugin-jsdoc';
 import tsdoc from "eslint-plugin-tsdoc";
+import noComplexInlineReturnType from './tools/eslint-rules/no-complex-inline-return-type.js';
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -24,7 +25,12 @@ export default tseslint.config(
   },
   {
     plugins : {
-      "tsdoc": tsdoc
+      "tsdoc": tsdoc,
+      "custom": {
+        rules: {
+          "no-complex-inline-return-type": noComplexInlineReturnType
+        }
+      }
     },
     files: ['**/*.{ts,tsx}'],
     extends: [importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript],
@@ -35,7 +41,19 @@ export default tseslint.config(
       'jsdoc/require-throws-type': 'off',
       'jsdoc/require-param': ['warn', { checkDestructured: false }],
       'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
-      '@typescript-eslint/explicit-member-accessibility': 'warn'
+      '@typescript-eslint/explicit-member-accessibility': 'warn',
+      "complexity": ["warn", { "max": 15 }],
+      "max-lines-per-function": ["warn", 50],
+      "@typescript-eslint/prefer-as-const": "error",
+      "@typescript-eslint/ban-ts-comment": [
+        "error",
+        {
+          "ts-expect-error": "allow-with-description",
+          "minimumDescriptionLength": 10
+        }
+      ],
+      "custom/no-complex-inline-return-type": ["error", { "maxProperties": 1 }]
+
     },
     "settings": {
       "import/resolver": {
@@ -58,6 +76,8 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/explicit-member-accessibility': 'off',
       'jsdoc/require-yields': 'off',
+      "complexity": 'off',
+      "max-lines-per-function": 'off'
     },
   },
   {
