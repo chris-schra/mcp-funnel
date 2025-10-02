@@ -80,11 +80,12 @@ export class OutputBuffer {
         continue;
       }
 
-      results.push(entry);
-      lastCursor = entry.cursor;
       if (results.length >= limit) {
         break;
       }
+
+      results.push(entry);
+      lastCursor = entry.cursor;
     }
 
     const hasMore = this.entries.some(
