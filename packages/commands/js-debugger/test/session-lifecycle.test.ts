@@ -60,10 +60,13 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
     fixture = await prepareNodeFixture(fixtureName);
     const target: NodeDebugTargetConfig = {
       type: 'node',
-      entry: fixture.tempPath,
       ...config.target,
+      // Always use fixture path as entry, don't let config override with empty string
+      entry: fixture.tempPath,
     };
-    return manager.startSession({ target, ...config });
+    // Exclude target from config to avoid overwriting our fixed target
+    const { target: _, ...restConfig } = config;
+    return manager.startSession({ target, ...restConfig });
   };
 
   describe('basic lifecycle', () => {
