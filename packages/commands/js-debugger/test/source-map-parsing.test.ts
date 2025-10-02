@@ -25,9 +25,21 @@ describe('Source Map Parsing', () => {
             sessionId,
             action: 'continue',
           });
+          // Wait for session auto-removal after termination
+          await waitFor(
+            async () => {
+              try {
+                manager.getDescriptor(sessionId!);
+                return null; // Still exists, keep waiting
+              } catch {
+                return true; // Session removed, done
+              }
+            },
+            { timeoutMs: 5000 },
+          );
         }
       } catch {
-        // Session may have already terminated
+        // Session may have already been auto-removed
       }
     }
     if (fixture) {
@@ -193,6 +205,7 @@ describe('Source Map Parsing', () => {
         { timeoutMs: 5000 },
       );
 
+      // Set breakpoint using absolute path
       const breakpointByPath = await addBreakpointDynamically(
         manager,
         sessionId,
@@ -200,6 +213,20 @@ describe('Source Map Parsing', () => {
         13,
       );
 
+      expect(breakpointByPath.length).toBeGreaterThan(0);
+      const pathScriptId = breakpointByPath[0]?.resolvedLocations[0]?.scriptId;
+      expect(pathScriptId).toBeDefined();
+
+      // Remove first breakpoint to set another at same location with different URL format
+      await manager.runCommand({
+        sessionId,
+        action: 'pause',
+        breakpoints: {
+          remove: [breakpointByPath[0]!.id],
+        },
+      });
+
+      // Set breakpoint using file:// URL
       const breakpointByUrl = await addBreakpointDynamically(
         manager,
         sessionId,
@@ -207,9 +234,12 @@ describe('Source Map Parsing', () => {
         13,
       );
 
-      expect(breakpointByPath[0].resolvedLocations[0].scriptId).toBe(
-        breakpointByUrl[0].resolvedLocations[0].scriptId,
-      );
+      expect(breakpointByUrl.length).toBeGreaterThan(0);
+      const urlScriptId = breakpointByUrl[0]?.resolvedLocations[0]?.scriptId;
+      expect(urlScriptId).toBeDefined();
+
+      // Both should resolve to the same script
+      expect(pathScriptId).toBe(urlScriptId);
     });
   });
 });

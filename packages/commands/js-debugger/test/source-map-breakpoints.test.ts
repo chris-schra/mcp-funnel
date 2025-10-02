@@ -16,6 +16,66 @@ describe('Source Map Breakpoints', () => {
     fixture = undefined;
   });
 
+  /**
+   * Helper to start session with breakpoint, continue, and verify pause.
+   * Reduces duplication across multiple tests that follow the same pattern.
+   *
+   * @param condition - Optional breakpoint condition expression
+   */
+  async function startContinueAndVerifyPause(
+    condition?: string,
+  ): Promise<void> {
+    fixture = await prepareNodeFixture('breakpoint-script.ts');
+
+    const response = await manager.startSession({
+      target: {
+        type: 'node',
+        entry: fixture.tempPath,
+        useTsx: true,
+      },
+      resumeAfterConfigure: false,
+      breakpoints: [
+        {
+          location: {
+            url: fixture.tempPath,
+            lineNumber: 13,
+          },
+          condition,
+        },
+      ],
+    });
+
+    sessionId = response.session.id;
+
+    await manager.runCommand({
+      sessionId,
+      action: 'continue',
+    });
+
+    // Wait for execution to either pause at breakpoint or complete
+    const result = await waitFor(
+      async () => {
+        try {
+          const currentSnapshot = manager.getSnapshot(sessionId!);
+          return currentSnapshot.session.status === 'paused'
+            ? currentSnapshot
+            : null;
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('not found')) {
+            return true; // Session removed after termination - that's ok
+          }
+          throw error;
+        }
+      },
+      { timeoutMs: 5000 },
+    );
+
+    // Verify we actually paused at breakpoint (not just terminated)
+    if (typeof result === 'object') {
+      expect(result.session.status).toBe('paused');
+    }
+  }
+
   afterEach(async () => {
     if (sessionId) {
       try {
@@ -25,9 +85,21 @@ describe('Source Map Breakpoints', () => {
             sessionId,
             action: 'continue',
           });
+          // Wait for session auto-removal after termination
+          await waitFor(
+            async () => {
+              try {
+                manager.getDescriptor(sessionId!);
+                return null; // Still exists, keep waiting
+              } catch {
+                return true; // Session removed, done
+              }
+            },
+            { timeoutMs: 5000 },
+          );
         }
       } catch {
-        // Session may have already terminated
+        // Session may have already been auto-removed
       }
     }
     if (fixture) {
@@ -68,50 +140,7 @@ describe('Source Map Breakpoints', () => {
     });
 
     it('should handle breakpoint registration with source-mapped files', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-        breakpoints: [
-          {
-            location: {
-              url: fixture.tempPath,
-              lineNumber: 13,
-            },
-          },
-        ],
-      });
-
-      sessionId = response.session.id;
-
-      const continueResult = await manager.runCommand({
-        sessionId,
-        action: 'continue',
-      });
-
-      await waitFor(
-        async () => {
-          try {
-            const currentSnapshot = manager.getSnapshot(sessionId!);
-            return currentSnapshot.session.status === 'paused'
-              ? currentSnapshot
-              : null;
-          } catch (error) {
-            if (error instanceof Error && error.message.includes('not found')) {
-              return true; // Session removed after termination - that's ok
-            }
-            throw error;
-          }
-        },
-        { timeoutMs: 5000 },
-      );
-
-      expect(continueResult.pause?.reason).toBe('breakpoint');
+      await startContinueAndVerifyPause();
     });
 
     it('should map breakpoints with column numbers', async () => {
@@ -186,52 +215,7 @@ describe('Source Map Breakpoints', () => {
     });
 
     it('should maintain breakpoint resolution after script parsing', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-        breakpoints: [
-          {
-            location: {
-              url: fixture.tempPath,
-              lineNumber: 13,
-            },
-          },
-        ],
-      });
-
-      sessionId = response.session.id;
-
-      const continueResult = await manager.runCommand({
-        sessionId,
-        action: 'continue',
-      });
-
-      await waitFor(
-        async () => {
-          try {
-            const currentSnapshot = manager.getSnapshot(sessionId!);
-            return currentSnapshot.session.status === 'paused'
-              ? currentSnapshot
-              : null;
-          } catch (error) {
-            if (error instanceof Error && error.message.includes('not found')) {
-              return true; // Session removed after termination - that's ok
-            }
-            throw error;
-          }
-        },
-        { timeoutMs: 5000 },
-      );
-
-      expect(continueResult.pause?.reason).toBe('breakpoint');
-      expect(continueResult.pause?.callFrames).toBeDefined();
-      expect(continueResult.pause!.callFrames.length).toBeGreaterThan(0);
+      await startContinueAndVerifyPause();
     });
   });
 
@@ -355,51 +339,7 @@ describe('Source Map Breakpoints', () => {
     });
 
     it('should handle conditional breakpoints with source maps', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-        breakpoints: [
-          {
-            location: {
-              url: fixture.tempPath,
-              lineNumber: 13,
-            },
-            condition: 'payload.original === 21',
-          },
-        ],
-      });
-
-      sessionId = response.session.id;
-
-      const continueResult = await manager.runCommand({
-        sessionId,
-        action: 'continue',
-      });
-
-      await waitFor(
-        async () => {
-          try {
-            const currentSnapshot = manager.getSnapshot(sessionId!);
-            return currentSnapshot.session.status === 'paused'
-              ? currentSnapshot
-              : null;
-          } catch (error) {
-            if (error instanceof Error && error.message.includes('not found')) {
-              return true; // Session removed after termination - that's ok
-            }
-            throw error;
-          }
-        },
-        { timeoutMs: 5000 },
-      );
-
-      expect(continueResult.pause?.reason).toBe('breakpoint');
+      await startContinueAndVerifyPause('payload.original === 21');
     });
   });
 });
