@@ -16,7 +16,7 @@ import { buildConsoleEntry } from './session-mappers.js';
 
 const INSPECTOR_URL_REGEX = /Debugger listening on (ws:\/\/[\w.:\-/]+)/;
 const STDIO_ENCODING: BufferEncoding = 'utf8';
-const COMMAND_TIMEOUT_MS = 10_000;
+const COMMAND_TIMEOUT_MS = 3_000;
 
 /**
  * Manages process lifecycle and CDP communication for a debugger session.
@@ -199,8 +199,6 @@ export class SessionProcessManager {
 
     await this.sendCommand('Runtime.enable', {});
     await this.sendCommand('Debugger.enable', {});
-    // Maybe not necessary?
-    // await this.trySendCommand('Log.enable', {});
     await this.trySendCommand('Debugger.setAsyncCallStackDepth', {
       maxDepth: 32,
     });
