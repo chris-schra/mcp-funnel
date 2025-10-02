@@ -45,7 +45,7 @@ describe('Source Map Parsing', () => {
     if (fixture) {
       await fixture.cleanup();
     }
-  });
+  }, 15000);
 
   describe('Source Map Parsing', () => {
     it('should parse inline data URL source maps from TypeScript files', async () => {
