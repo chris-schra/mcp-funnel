@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ConsentPageData } from './types.js';
+import type { ConsentPageData, ConsentPageValidationResult } from './types.js';
 import { ConsentTemplateUtils } from './utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -115,6 +115,91 @@ export function renderConsentPage(data: ConsentPageData): string {
 }
 
 /**
+ * Validates that a required field is present and not empty.
+ * @param value - The field value to validate
+ * @param fieldName - Name of the field for error messages
+ * @returns Error message if validation fails, null otherwise
+ */
+function validateRequiredField(
+  value: string | undefined,
+  fieldName: string,
+): string | null {
+  if (!value?.trim()) {
+    return `${fieldName} is required`;
+  }
+  return null;
+}
+
+/**
+ * Validates that a field is a valid URL.
+ * @param value - The URL string to validate
+ * @param fieldName - Name of the field for error messages
+ * @param allowRelative - Whether to allow relative URLs (default: false)
+ * @returns Error message if validation fails, null otherwise
+ */
+function validateUrlField(
+  value: string | undefined,
+  fieldName: string,
+  allowRelative = false,
+): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    if (allowRelative) {
+      new URL(value, 'https://example.com');
+    } else {
+      new URL(value);
+    }
+    return null;
+  } catch {
+    return `${fieldName} must be a valid URL`;
+  }
+}
+
+/**
+ * Validates all required fields in the consent page data.
+ * @param data - Partial consent page data to validate
+ * @returns Array of error messages for missing required fields
+ */
+function validateRequiredFields(data: Partial<ConsentPageData>): string[] {
+  const fields = [
+    { value: data.clientId, name: 'clientId' },
+    { value: data.clientName, name: 'clientName' },
+    { value: data.userEmail, name: 'userEmail' },
+    { value: data.redirectUri, name: 'redirectUri' },
+    { value: data.scopeString, name: 'scopeString' },
+    { value: data.actionUrl, name: 'actionUrl' },
+  ];
+
+  return fields
+    .map(({ value, name }) => validateRequiredField(value, name))
+    .filter((error): error is string => error !== null);
+}
+
+/**
+ * Validates URL format fields in the consent page data.
+ * @param data - Partial consent page data to validate
+ * @returns Array of error messages for invalid URL formats
+ */
+function validateUrlFields(data: Partial<ConsentPageData>): string[] {
+  const errors: string[] = [];
+
+  const redirectUriError = validateUrlField(data.redirectUri, 'redirectUri');
+  if (redirectUriError) {
+    errors.push(redirectUriError);
+  }
+
+  const actionUrlError = validateUrlField(data.actionUrl, 'actionUrl', true);
+  if (actionUrlError) {
+    errors.push(actionUrlError);
+  }
+
+  return errors;
+}
+
+/**
  * Validates consent page data to ensure all required fields are present.
  *
  * Performs comprehensive validation including presence checks for required fields
@@ -140,52 +225,10 @@ export function renderConsentPage(data: ConsentPageData): string {
  * @public
  * @see file:./types.ts:16 - ConsentPageData interface
  */
-export function validateConsentPageData(data: Partial<ConsentPageData>): {
-  valid: boolean;
-  errors: string[];
-} {
-  const errors: string[] = [];
-
-  if (!data.clientId?.trim()) {
-    errors.push('clientId is required');
-  }
-
-  if (!data.clientName?.trim()) {
-    errors.push('clientName is required');
-  }
-
-  if (!data.userEmail?.trim()) {
-    errors.push('userEmail is required');
-  }
-
-  if (!data.redirectUri?.trim()) {
-    errors.push('redirectUri is required');
-  }
-
-  if (!data.scopeString?.trim()) {
-    errors.push('scopeString is required');
-  }
-
-  if (!data.actionUrl?.trim()) {
-    errors.push('actionUrl is required');
-  }
-
-  // Validate URL formats
-  if (data.redirectUri) {
-    try {
-      new URL(data.redirectUri);
-    } catch {
-      errors.push('redirectUri must be a valid URL');
-    }
-  }
-
-  if (data.actionUrl) {
-    try {
-      new URL(data.actionUrl, 'https://example.com'); // Allow relative URLs
-    } catch {
-      errors.push('actionUrl must be a valid URL');
-    }
-  }
+export function validateConsentPageData(
+  data: Partial<ConsentPageData>,
+): ConsentPageValidationResult {
+  const errors = [...validateRequiredFields(data), ...validateUrlFields(data)];
 
   return {
     valid: errors.length === 0,
