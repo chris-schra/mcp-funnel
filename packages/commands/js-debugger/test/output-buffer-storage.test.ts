@@ -245,10 +245,8 @@ describe('OutputBuffer - Storage', () => {
 
       const result = buffer.query({ sessionId: testSessionId, limit: 0 });
 
-      // Implementation adds first entry before checking limit
-      // So limit=0 returns 1 entry then stops
-      expect(result.entries).toHaveLength(1);
-      expect(result.hasMore).toBe(false);
+      expect(result.entries).toHaveLength(0);
+      expect(result.hasMore).toBe(true);
     });
 
     it('should handle query with since equal to last cursor', () => {
