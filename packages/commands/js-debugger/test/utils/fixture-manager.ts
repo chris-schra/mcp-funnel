@@ -110,28 +110,39 @@ async function prepareFixture(relativePath: string): Promise<FixtureHandle> {
 }
 
 /**
- * Prepares a Node.js test fixture by copying it to a temporary directory.
+ * Prepares a Node.js test fixture for read-only debugging.
  *
- * Creates an isolated copy of a Node.js fixture (JavaScript or TypeScript file)
- * from the `test/fixtures/node` directory. Tests can modify the copied fixture
- * without affecting the original source.
+ * Returns the original fixture path without copying, since debugger tests
+ * are read-only and don't modify fixtures. This avoids module resolution
+ * issues that arise from running TypeScript in isolated temp directories.
  * @param fixtureName - Name of the fixture file (e.g., 'console-output.js', 'breakpoint-script.ts')
- * @returns Promise resolving to a handle for accessing and cleaning up the fixture
+ * @returns Promise resolving to a handle with the original fixture path
  * @throws When the fixture does not exist in the node fixtures directory
  * @example
  * ```typescript
  * const fixture = await prepareNodeFixture('console-output.js');
- * const session = await manager.debug(\{ platform: 'node', target: fixture.tempPath \});
- * // ... run tests ...
- * await fixture.cleanup();
+ * const session = await manager.debug(\{ platform: 'node', target: fixture.sourcePath \});
+ * // ... run tests (read-only) ...
+ * await fixture.cleanup(); // no-op for read-only fixtures
  * ```
  * @public
- * @see file:../../src/adapters/node-adapter.integration.test.ts:249 - Usage example
  */
 export async function prepareNodeFixture(
   fixtureName: string,
 ): Promise<FixtureHandle> {
-  return prepareFixture(path.join('node', fixtureName));
+  const sourcePath = path.join(FIXTURES_ROOT, 'node', fixtureName);
+  await ensureExists(sourcePath);
+
+  // For read-only debugger tests, return the original path without copying
+  // This preserves module resolution context (node_modules, tsconfig.json)
+  return {
+    tempPath: sourcePath, // No temp - use original
+    tempDir: path.dirname(sourcePath),
+    sourcePath,
+    cleanup: async () => {
+      // No-op: nothing to clean up for read-only fixtures
+    },
+  };
 }
 
 /**

@@ -13,6 +13,7 @@ import type {
 import type { CdpMessage, PendingCommand } from './session-types.js';
 import { OutputBuffer } from './output-buffer.js';
 import { buildConsoleEntry } from './session-mappers.js';
+import { findTsconfigDir } from '../util/tsconfig-finder.js';
 
 const INSPECTOR_URL_REGEX = /Debugger listening on (ws:\/\/[\w.:\-/]+)/;
 const STDIO_ENCODING: BufferEncoding = 'utf8';
@@ -81,10 +82,14 @@ export class SessionProcessManager {
     const id = ++this.messageId;
     const payload = JSON.stringify({ id, method, params });
 
+    // Log CDP commands for debugging
+    console.log(`CDP Command: ${JSON.stringify({ id, method, params })}`);
+
     return new Promise<T>((resolve, reject) => {
       this.pendingCommands.set(id, { resolve, reject });
       this.ws!.send(payload, (error) => {
         if (error) {
+          console.log(`CDP Send Error for ${method}: ${error}`);
           this.pendingCommands.delete(id);
           reject(error);
         }
@@ -121,6 +126,7 @@ export class SessionProcessManager {
   }
 
   public closeConnection(): void {
+    console.log(`Session ${this.sessionId}: Closing WebSocket connection`);
     this.ws?.close();
   }
 
@@ -138,7 +144,24 @@ export class SessionProcessManager {
   private async spawnTargetProcess(
     target: NodeDebugTargetConfig,
   ): Promise<void> {
-    const cwd = target.cwd ? path.resolve(target.cwd) : process.cwd();
+    // For TypeScript files, auto-discover project context by finding closest tsconfig.json
+    let cwd: string;
+    if (target.cwd) {
+      cwd = path.resolve(target.cwd);
+    } else if (target.useTsx) {
+      const entryAbsolute = path.isAbsolute(target.entry)
+        ? target.entry
+        : path.resolve(process.cwd(), target.entry);
+      const entryDir = path.dirname(entryAbsolute);
+      const tsconfigDir = await findTsconfigDir(entryDir);
+      cwd = tsconfigDir ?? process.cwd();
+      if (tsconfigDir) {
+        console.log(`Session ${this.sessionId}: Auto-discovered cwd from tsconfig: ${cwd}`);
+      }
+    } else {
+      cwd = process.cwd();
+    }
+
     const entry = path.isAbsolute(target.entry)
       ? target.entry
       : path.resolve(cwd, target.entry);
@@ -170,7 +193,16 @@ export class SessionProcessManager {
     this.child = child;
 
     child.on('exit', (code, signal) => {
+      console.log(`Session ${this.sessionId}: Child process exited with code ${code} and signal ${signal}`);
       this.onProcessExit(code, signal ?? undefined);
+    });
+
+    child.on('close', (code, signal) => {
+      console.log(`Session ${this.sessionId}: Child process closed with code ${code} and signal ${signal}`);
+    });
+
+    child.on('disconnect', () => {
+      console.log(`Session ${this.sessionId}: Child process disconnected`);
     });
 
     if (child.stdout) {
@@ -186,6 +218,7 @@ export class SessionProcessManager {
   }
 
   private async connectToInspector(url: string): Promise<void> {
+    console.log(`Connecting to inspector at: ${url}`);
     const ws = await new Promise<WebSocket>((resolve, reject) => {
       const socket = new WebSocket(url);
       socket.once('open', () => resolve(socket));
@@ -197,11 +230,14 @@ export class SessionProcessManager {
     ws.on('error', (error) => this.handleSocketError(error));
     ws.on('close', () => this.handleSocketClose());
 
+    console.log('Sending initial CDP commands...');
     await this.sendCommand('Runtime.enable', {});
     await this.sendCommand('Debugger.enable', {});
+    await this.sendCommand('Debugger.setBreakpointsActive', { active: true });
     await this.trySendCommand('Debugger.setAsyncCallStackDepth', {
       maxDepth: 32,
     });
+    console.log('Initial CDP commands sent');
   }
 
   private handleStdStream(stream: StreamName, chunk: Buffer): void {
@@ -249,11 +285,19 @@ export class SessionProcessManager {
   private handleSocketMessage(data: WebSocket.RawData): void {
     try {
       const message = JSON.parse(data.toString()) as CdpMessage;
+
+      // Log specific important messages
+      if (message.method === 'Debugger.resumed' ||
+          (message.id === 17 || message.id === 16)) { // IDs for our resume commands
+        console.log(`CDP Response: ${JSON.stringify(message)}`);
+      }
+
       if (typeof message.id === 'number') {
         const pending = this.pendingCommands.get(message.id);
         if (pending) {
           this.pendingCommands.delete(message.id);
           if (message.error) {
+            console.log(`CDP Error Response for id ${message.id}: ${JSON.stringify(message.error)}`);
             pending.reject(
               new Error(message.error.message ?? 'Unknown CDP error'),
             );
@@ -264,6 +308,7 @@ export class SessionProcessManager {
         return;
       }
       if (message.method) {
+        console.log(`CDP Event: ${message.method}`);
         this.onMessage(message.method, message.params);
       }
     } catch (error) {
@@ -296,7 +341,12 @@ export class SessionProcessManager {
   }
 
   private handleSocketClose(): void {
+    console.log(`Session ${this.sessionId}: WebSocket closed, process still running: ${this.child && !this.child.killed}`);
     this.ws = undefined;
+    // Log if the process is still alive after WebSocket closes
+    if (this.child && !this.child.killed) {
+      console.log(`Session ${this.sessionId}: Process PID ${this.child.pid} is still running after WebSocket close`);
+    }
   }
 
   private async withTimeout<T>(

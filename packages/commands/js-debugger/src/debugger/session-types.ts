@@ -31,6 +31,7 @@ export interface BreakpointRecord {
 export interface SessionEvents {
   paused: PauseDetails;
   resumed: undefined;
+  'execution-complete': undefined;
   terminated: { code: number | null; signal?: NodeJS.Signals | null };
 }
 

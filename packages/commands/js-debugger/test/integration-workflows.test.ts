@@ -48,13 +48,13 @@ describe(
         const fixture = await prepareNodeFixture('breakpoint-script.ts');
         fixtures.push(fixture);
 
-        const target = createNodeTarget(fixture.tempPath);
+        const target = createNodeTarget(fixture.sourcePath);
         const response = await startSession({
           target,
           breakpoints: [
             {
               location: {
-                url: fixture.tempPath,
+                url: fixture.sourcePath,
                 lineNumber: 13, // debugger statement line (0-indexed)
               },
             },
@@ -64,7 +64,7 @@ describe(
         // Verify session started and is paused
         expect(response.session.status).toBe('paused');
         expect(response.initialPause).toBeDefined();
-        expect(response.initialPause?.reason).toMatch(/pause|breakpoint/i);
+        expect(response.initialPause?.reason).toMatch('breakpoint');
 
         // Verify breakpoint was set
         expect(response.breakpoints).toBeDefined();
@@ -99,10 +99,19 @@ describe(
         expect(continueResult.resumed).toBe(true);
 
         // Wait for process to complete
+        // The session gets removed when terminated, so we check for that
         await waitFor(
           async () => {
-            const snapshot = manager.getSnapshot(sessionId);
-            return snapshot.session.status === 'terminated' ? true : null;
+            try {
+              const snapshot = manager.getSnapshot(sessionId);
+              return snapshot.session.status === 'terminated' ? true : null;
+            } catch (error) {
+              // Session was removed after termination - this is expected
+              if (error instanceof Error && error.message.includes('not found')) {
+                return true;
+              }
+              throw error;
+            }
           },
           { timeoutMs: 5000 },
         );
@@ -112,15 +121,15 @@ describe(
         const fixture = await prepareNodeFixture('breakpoint-script.ts');
         fixtures.push(fixture);
 
-        const target = createNodeTarget(fixture.tempPath);
+        const target = createNodeTarget(fixture.sourcePath);
         const response = await startSession({
           target,
           breakpoints: [
             {
-              location: { url: fixture.tempPath, lineNumber: 12 },
+              location: { url: fixture.sourcePath, lineNumber: 12 },
             },
             {
-              location: { url: fixture.tempPath, lineNumber: 13 },
+              location: { url: fixture.sourcePath, lineNumber: 13 },
             },
           ],
         });
@@ -146,12 +155,12 @@ describe(
         const fixture = await prepareNodeFixture('breakpoint-script.ts');
         fixtures.push(fixture);
 
-        const target = createNodeTarget(fixture.tempPath);
+        const target = createNodeTarget(fixture.sourcePath);
         const response = await startSession({
           target,
           breakpoints: [
             {
-              location: { url: fixture.tempPath, lineNumber: 13 },
+              location: { url: fixture.sourcePath, lineNumber: 13 },
             },
           ],
         });
@@ -195,12 +204,12 @@ describe(
         const fixture = await prepareNodeFixture('breakpoint-script.ts');
         fixtures.push(fixture);
 
-        const target = createNodeTarget(fixture.tempPath);
+        const target = createNodeTarget(fixture.sourcePath);
         const response = await startSession({
           target,
           breakpoints: [
             {
-              location: { url: fixture.tempPath, lineNumber: 12 },
+              location: { url: fixture.sourcePath, lineNumber: 12 },
             },
           ],
         });
@@ -212,7 +221,7 @@ describe(
         const result = await manager.runCommand({
           sessionId,
           action: 'continueToLocation',
-          location: { url: fixture.tempPath, lineNumber: 14 },
+          location: { url: fixture.sourcePath, lineNumber: 14 },
         });
 
         // Should either pause at target location or continue past it
@@ -225,7 +234,7 @@ describe(
         const fixture = await prepareNodeFixture('console-output.js');
         fixtures.push(fixture);
 
-        const target = createNodeTarget(fixture.tempPath);
+        const target = createNodeTarget(fixture.sourcePath);
         const response = await startSession({
           target,
           resumeAfterConfigure: true,
@@ -234,11 +243,14 @@ describe(
         expect(response.session.status).toBe('running');
         const sessionId = response.session.id;
 
-        // Wait for some output to accumulate
+        // Wait for console output from the script - specifically wait for all 3 initial messages
         await waitFor(
           async () => {
             const output = await manager.queryOutput({ sessionId });
-            return output.entries.length > 0 ? true : null;
+            const consoleCount = output.entries.filter(
+              (entry) => entry.kind === 'console' && entry.entry.level !== 'info'
+            ).length;
+            return consoleCount >= 3 ? true : null;
           },
           { timeoutMs: 5000 },
         );
@@ -326,7 +338,7 @@ describe(
         const fixture = await prepareNodeFixture('console-output.js');
         fixtures.push(fixture);
 
-        const target = createNodeTarget(fixture.tempPath);
+        const target = createNodeTarget(fixture.sourcePath);
         const response = await startSession({
           target,
           resumeAfterConfigure: true,
@@ -341,21 +353,26 @@ describe(
         // Wait for process to complete
         await waitFor(
           async () => {
-            const snapshot = manager.getSnapshot(sessionId);
-            return snapshot.session.status === 'terminated' ? true : null;
+            try {
+              const snapshot = manager.getSnapshot(sessionId);
+              return snapshot.session.status === 'terminated' ? true : null;
+            } catch (error) {
+              // Session was removed after termination - this is expected
+              if (error instanceof Error && error.message.includes('not found')) {
+                return true;
+              }
+              throw error;
+            }
           },
           { timeoutMs: 5000 },
         );
-
-        const finalSnapshot = manager.getSnapshot(sessionId);
-        expect(finalSnapshot.session.status).toBe('terminated');
       });
 
       it('should pause on entry when resumeAfterConfigure is false', async () => {
         const fixture = await prepareNodeFixture('console-output.js');
         fixtures.push(fixture);
 
-        const target = createNodeTarget(fixture.tempPath);
+        const target = createNodeTarget(fixture.sourcePath);
         const response = await startSession({
           target,
           resumeAfterConfigure: false,

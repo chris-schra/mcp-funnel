@@ -13,6 +13,7 @@ import type {
 } from './session-types.js';
 import { normalizeLocationReference } from './session-breakpoints.js';
 import { SessionBreakpointInternals } from './session-breakpoint-internals.js';
+import { getGeneratedLocation } from './session-source-maps.js';
 
 /**
  * Manages breakpoint operations for a debugger session.
@@ -181,37 +182,122 @@ export class SessionBreakpointManager {
     lineNumber: number;
     columnNumber?: number;
   }): CdpLocation {
+    let metadata: ScriptMetadata | undefined;
+    let scriptId: string;
+
     if (location.scriptId) {
+      scriptId = location.scriptId;
+      metadata = this.scripts.get(scriptId);
+    } else if (location.url) {
+      const reference = normalizeLocationReference(
+        location.url,
+        this.targetWorkingDirectory,
+      );
+      metadata = this.resolveScriptMetadata(reference);
+      if (!metadata) {
+        throw new Error(`No scriptId registered for url ${location.url}.`);
+      }
+      scriptId = metadata.scriptId;
+    } else {
+      throw new Error('Location must provide a scriptId or url.');
+    }
+
+    // If no source map, pass through as-is
+    if (!metadata?.sourceMap) {
       return {
-        scriptId: location.scriptId,
+        scriptId,
         lineNumber: location.lineNumber,
         columnNumber: location.columnNumber,
       };
     }
+
+    // Find the source ID in the source map
+    let sourceId: string | undefined;
     if (location.url) {
       const reference = normalizeLocationReference(
         location.url,
         this.targetWorkingDirectory,
       );
-      const metadata = this.resolveScriptMetadata(reference);
-      if (metadata) {
-        return {
-          scriptId: metadata.scriptId,
-          lineNumber: location.lineNumber,
-          columnNumber: location.columnNumber,
-        };
+      if (
+        reference.path &&
+        metadata.sourceMap.sourcesByPath.has(reference.path)
+      ) {
+        sourceId = metadata.sourceMap.sourcesByPath.get(reference.path);
+      } else if (
+        reference.fileUrl &&
+        metadata.sourceMap.sourcesByFileUrl?.has(reference.fileUrl)
+      ) {
+        sourceId = metadata.sourceMap.sourcesByFileUrl.get(reference.fileUrl);
       }
-      throw new Error(`No scriptId registered for url ${location.url}.`);
     }
-    throw new Error('Location must provide a scriptId or url.');
+
+    // If we can't find the source ID, fall back to as-is
+    if (!sourceId) {
+      return {
+        scriptId,
+        lineNumber: location.lineNumber,
+        columnNumber: location.columnNumber,
+      };
+    }
+
+    // Convert from TypeScript (original) to JavaScript (generated) coordinates
+    const generatedLocation = getGeneratedLocation(
+      metadata.sourceMap.consumer,
+      sourceId,
+      location.lineNumber + 1, // Convert to 1-based for source-map
+      location.columnNumber ?? 0,
+    );
+
+    if (!generatedLocation) {
+      // Fall back to original coordinates
+      return {
+        scriptId,
+        lineNumber: location.lineNumber,
+        columnNumber: location.columnNumber,
+      };
+    }
+
+    return {
+      scriptId,
+      lineNumber: generatedLocation.lineNumber,
+      columnNumber: generatedLocation.columnNumber,
+    };
   }
 
   public fromCdpLocation(location: CdpLocation): BreakpointLocation {
+    const metadata = this.scripts.get(location.scriptId);
+
+    // If no source map, return as-is
+    if (!metadata?.sourceMap) {
+      return {
+        scriptId: location.scriptId,
+        url: metadata?.url,
+        lineNumber: location.lineNumber,
+        columnNumber: location.columnNumber,
+      };
+    }
+
+    // Translate from JavaScript (generated) coordinates to TypeScript (original) coordinates
+    const originalPosition = metadata.sourceMap.consumer.originalPositionFor({
+      line: location.lineNumber + 1,
+      column: location.columnNumber ?? 0,
+    });
+
+    // If source map lookup fails, fall back to original coordinates
+    if (!originalPosition.line) {
+      return {
+        scriptId: location.scriptId,
+        url: metadata.url,
+        lineNumber: location.lineNumber,
+        columnNumber: location.columnNumber,
+      };
+    }
+
     return {
       scriptId: location.scriptId,
-      url: this.scripts.get(location.scriptId)?.url,
-      lineNumber: location.lineNumber,
-      columnNumber: location.columnNumber,
+      url: metadata.url,
+      lineNumber: originalPosition.line - 1, // Convert back to 0-based
+      columnNumber: originalPosition.column ?? 0,
     };
   }
 
@@ -222,5 +308,9 @@ export class SessionBreakpointManager {
       }
     }
     return undefined;
+  }
+
+  public getBreakpointRecord(id: string): BreakpointRecord | undefined {
+    return this.breakpointRecords.get(id);
   }
 }

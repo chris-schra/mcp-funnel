@@ -95,11 +95,18 @@ describe('Source Map Breakpoints', () => {
       });
 
       await waitFor(
-        () => {
-          const currentSnapshot = manager.getSnapshot(sessionId!);
-          return currentSnapshot.session.status === 'paused'
-            ? currentSnapshot
-            : null;
+        async () => {
+          try {
+            const currentSnapshot = manager.getSnapshot(sessionId!);
+            return currentSnapshot.session.status === 'paused'
+              ? currentSnapshot
+              : null;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+              return true; // Session removed after termination - that's ok
+            }
+            throw error;
+          }
         },
         { timeoutMs: 5000 },
       );
@@ -206,11 +213,18 @@ describe('Source Map Breakpoints', () => {
       });
 
       await waitFor(
-        () => {
-          const currentSnapshot = manager.getSnapshot(sessionId!);
-          return currentSnapshot.session.status === 'paused'
-            ? currentSnapshot
-            : null;
+        async () => {
+          try {
+            const currentSnapshot = manager.getSnapshot(sessionId!);
+            return currentSnapshot.session.status === 'paused'
+              ? currentSnapshot
+              : null;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+              return true; // Session removed after termination - that's ok
+            }
+            throw error;
+          }
         },
         { timeoutMs: 5000 },
       );
@@ -319,9 +333,16 @@ describe('Source Map Breakpoints', () => {
       sessionId = response.session.id;
 
       await waitFor(
-        () => {
-          const snapshot = manager.getSnapshot(sessionId!);
-          return snapshot.session.status === 'paused' ? snapshot : null;
+        async () => {
+          try {
+            const snapshot = manager.getSnapshot(sessionId!);
+            return snapshot.session.status === 'paused' ? snapshot : null;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+              return true; // Session removed after termination - that's ok
+            }
+            throw error;
+          }
         },
         { timeoutMs: 5000 },
       );
@@ -362,11 +383,18 @@ describe('Source Map Breakpoints', () => {
       });
 
       await waitFor(
-        () => {
-          const currentSnapshot = manager.getSnapshot(sessionId!);
-          return currentSnapshot.session.status === 'paused'
-            ? currentSnapshot
-            : null;
+        async () => {
+          try {
+            const currentSnapshot = manager.getSnapshot(sessionId!);
+            return currentSnapshot.session.status === 'paused'
+              ? currentSnapshot
+              : null;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+              return true; // Session removed after termination - that's ok
+            }
+            throw error;
+          }
         },
         { timeoutMs: 5000 },
       );

@@ -118,12 +118,111 @@ export class DebuggerSession {
     this.updatePidInDescriptor();
     this.updateStatus('awaiting-debugger');
 
+    // Listen for execution completion to disconnect debugger
+    // Runtime.executionContextDestroyed fires after all timers complete but before process.exit()
+    // Disconnecting allows the Node.js process to exit naturally
+    void this.events.once('execution-complete').then(() => {
+      console.log(`Session ${this.id}: Execution complete, disconnecting debugger to allow process exit`);
+      this.processManager.closeConnection();
+    });
+
+    // Set internal breakpoints at line 0, column 0 for all target files to ensure source maps are loaded
+    const targetFiles = new Set<string>();
+    if (this.config.breakpoints && this.config.breakpoints.length > 0) {
+      for (const bp of this.config.breakpoints) {
+        if (bp.location.url) {
+          targetFiles.add(bp.location.url);
+        }
+      }
+    }
+
+    // Always set a line 0 breakpoint for the main entry file to ensure script parsing
+    // Use the original path, not the temp path, because that's what Node.js actually executes
+    targetFiles.add(nodeTarget.entry);
+
+    const internalBreakpoints: string[] = [];
+    for (const file of targetFiles) {
+      try {
+        // Try multiple approaches for internal breakpoints
+        let result;
+
+        // 1. Try the specific file path regex (from your WebSocket log)
+        const escapedPath = file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const urlRegex = `${escapedPath}|file://${escapedPath}`;
+
+        try {
+          result = await this.processManager.sendCommand(
+            'Debugger.setBreakpointByUrl',
+            {
+              lineNumber: 0,
+              columnNumber: 0,
+              urlRegex,
+              condition: '',
+            },
+          );
+          console.log(`Session ${this.id}: Set specific file regex internal breakpoint`);
+        } catch (error) {
+          // 2. If that fails, try a general breakpoint at line 0 of any script
+          console.log(`Session ${this.id}: Specific regex failed, trying general line 0 breakpoint`);
+          result = await this.processManager.sendCommand(
+            'Debugger.setBreakpointByUrl',
+            {
+              lineNumber: 0,
+              columnNumber: 0,
+              url: '', // Empty URL to match any script
+              condition: '',
+            },
+          );
+        }
+        const breakpointResult = result as {
+          breakpointId: string;
+          locations?: Array<{
+            scriptId: string;
+            lineNumber: number;
+            columnNumber: number;
+          }>;
+        };
+        console.log(
+          `Session ${this.id}: Internal breakpoint set result - ID: ${breakpointResult.breakpointId}, locations: ${JSON.stringify(breakpointResult.locations || [])}`,
+        );
+        internalBreakpoints.push(breakpointResult.breakpointId);
+      } catch (error) {
+        console.warn(
+          `Session ${this.id}: Failed to set internal breakpoint for ${file}:`,
+          error,
+        );
+      }
+    }
+
+    // Follow your exact WebSocket sequence
+    // 1. Runtime.enable (already done in connectToInspector)
+    // 2. Debugger.enable (already done in connectToInspector)
+    // 3. Internal breakpoints already set above
+    // 4. Debugger.pause
+    await this.processManager.sendCommand('Debugger.pause');
+    // 5. Runtime.runIfWaitingForDebugger
+    await this.tryRunIfWaitingForDebugger();
+
+    // Wait for the initial --inspect-brk pause, then resume to trigger internal breakpoints
+    console.log(`Session ${this.id}: Waiting for initial --inspect-brk pause...`);
     let initialPause: PauseDetails | undefined;
     try {
       initialPause = await this.waitForPause(
-        'Initial pause after attach',
-        true,
+        'Initial --inspect-brk pause',
+        false,
       );
+      console.log(`Session ${this.id}: Received initial --inspect-brk pause, resuming to trigger internal breakpoints`);
+
+      // Resume to let the script execute and hit our internal line 0 breakpoints
+      await this.processManager.sendCommand('Debugger.resume');
+      console.log(`Session ${this.id}: Resumed execution, waiting for internal line 0 breakpoint hit...`);
+
+      // Now wait for the internal line 0 breakpoint to be hit (with hitBreakpoints)
+      initialPause = await this.waitForPause(
+        'Internal line 0 breakpoint hit',
+        false,
+      );
+      console.log(`Session ${this.id}: Internal line 0 breakpoint hit with hitBreakpoints`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(
@@ -131,14 +230,114 @@ export class DebuggerSession {
       );
     }
 
+    // Now set the actual user-requested breakpoints while paused
     let createdBreakpoints: BreakpointSummary[] | undefined;
     if (this.config.breakpoints && this.config.breakpoints.length > 0) {
+      console.log(
+        `Session ${this.id}: Setting ${this.config.breakpoints.length} user breakpoints`,
+      );
+      for (const bp of this.config.breakpoints) {
+        console.log(
+          `Session ${this.id}: User breakpoint - url: ${bp.location.url}, line: ${bp.location.lineNumber}, column: ${bp.location.columnNumber}`,
+        );
+      }
+
       const { set } = await this.breakpointManager.applyBreakpointMutation({
         set: this.config.breakpoints,
       });
       if (set.length > 0) {
         createdBreakpoints = set;
+        console.log(`Session ${this.id}: Created ${set.length} breakpoints:`);
+        for (const bp of set) {
+          console.log(
+            `Session ${this.id}: Created breakpoint - ID: ${bp.id}, requested: ${JSON.stringify(bp.requested.location)}, resolved: ${JSON.stringify(bp.resolvedLocations)}`,
+          );
+        }
       }
+    }
+
+    // Clear internal breakpoints AFTER setting user breakpoints
+    // This ensures we maintain the pause state and proper breakpoint mapping
+    const clearInternalBreakpoints = async () => {
+      for (const breakpointId of internalBreakpoints) {
+        try {
+          await this.processManager.sendCommand('Debugger.removeBreakpoint', {
+            breakpointId,
+          });
+          console.log(`Session ${this.id}: Cleared internal breakpoint ${breakpointId}`);
+        } catch (error) {
+          console.warn(
+            `Session ${this.id}: Failed to clear internal breakpoint ${breakpointId}:`,
+            error,
+          );
+        }
+      }
+    };
+
+    // If we have user breakpoints and we're paused at the internal line 0 breakpoint,
+    // we need to wait for scripts to be fully parsed, then resume to hit user breakpoints
+    let actualInitialPause = initialPause;
+    if (createdBreakpoints && createdBreakpoints.length > 0 && initialPause) {
+      console.log(`Session ${this.id}: Have user breakpoints and paused at internal breakpoint`);
+
+      // Wait for breakpoint resolution by checking periodically
+      // The script parsing and source map loading happens asynchronously
+      let waitAttempts = 0;
+      const maxAttempts = 20; // 2 seconds total
+      let hasResolvedBreakpoints = false;
+
+      while (waitAttempts < maxAttempts && !hasResolvedBreakpoints) {
+        await delay(100);
+        waitAttempts++;
+
+        // Re-fetch breakpoint status to see if they've been resolved
+        for (const bp of createdBreakpoints) {
+          const record = this.breakpointManager.getBreakpointRecord(bp.id);
+          if (record && record.resolved && record.resolved.length > 0) {
+            hasResolvedBreakpoints = true;
+            console.log(`Session ${this.id}: Breakpoint ${bp.id} resolved to ${record.resolved.length} location(s) after ${waitAttempts * 100}ms`);
+            // Update the createdBreakpoints array with resolved locations
+            bp.resolvedLocations = record.resolved;
+          }
+        }
+      }
+
+      console.log(`Session ${this.id}: Waited ${waitAttempts * 100}ms for breakpoint resolution`);
+
+      // Clear internal breakpoints since we don't need them anymore
+      await clearInternalBreakpoints();
+
+      if (hasResolvedBreakpoints) {
+        // Resume from the internal breakpoint to hit the actual user breakpoint
+        await this.processManager.sendCommand('Debugger.resume');
+        console.log(`Session ${this.id}: Resumed from internal breakpoint, waiting for user breakpoint hit`);
+
+        // Wait for the actual user breakpoint to be hit
+        try {
+          actualInitialPause = await this.waitForPause(
+            'User breakpoint hit',
+            false,
+          );
+          console.log(`Session ${this.id}: Hit user breakpoint`);
+        } catch (error) {
+          console.warn(
+            `Session ${this.id}: Failed to hit user breakpoint after resuming from internal breakpoint: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          // If we don't hit a user breakpoint, that's okay - execution might have completed
+          actualInitialPause = undefined;
+        }
+      } else {
+        console.log(`Session ${this.id}: No resolved breakpoints found after waiting, continuing with internal pause`);
+      }
+    } else if (this.config.resumeAfterConfigure) {
+      // Clear internal breakpoints immediately before resuming if we're not waiting for user breakpoints
+      console.log(`Session ${this.id}: No user breakpoints and resumeAfterConfigure=true, clearing internal breakpoints before resume`);
+      await clearInternalBreakpoints();
+    } else {
+      // Clear internal breakpoints after a delay if we're paused and not resuming
+      setTimeout(() => {
+        void clearInternalBreakpoints();
+      }, 1000);
     }
 
     if (this.config.resumeAfterConfigure) {
@@ -158,7 +357,7 @@ export class DebuggerSession {
     return {
       session: this.getDescriptor(),
       breakpoints: createdBreakpoints,
-      initialPause,
+      initialPause: actualInitialPause,
     };
   }
 
@@ -172,13 +371,24 @@ export class DebuggerSession {
     let resumed = false;
     switch (command.action) {
       case 'continue':
+        console.log(`Session ${this.id}: runCommand 'continue' called, current status: ${this.status}`);
         await this.tryRunIfWaitingForDebugger();
         if (this.status === 'paused') {
+          console.log(`Session ${this.id}: Sending Debugger.resume from runCommand`);
           await this.processManager.sendCommand('Debugger.resume');
           await this.waitForResumed('resume');
+          console.log(`Session ${this.id}: Resumed successfully from runCommand`);
         }
         this.updateStatus('running');
-        resumed = true;
+        // Wait for next pause or termination
+        pauseDetails = await this.waitForPauseOrTermination('continue');
+        if (pauseDetails) {
+          console.log(`Session ${this.id}: Paused after continue at breakpoint`);
+        } else {
+          console.log(`Session ${this.id}: Session terminated after continue`);
+          resumed = false; // Session terminated, not resumed
+        }
+        console.log(`Session ${this.id}: runCommand 'continue' completed, status now: ${this.status}`);
         break;
       case 'pause':
         if (this.status === 'paused' && this.eventProcessor.getLastPause()) {
@@ -258,6 +468,21 @@ export class DebuggerSession {
     return this.events.on('terminated', handler);
   }
 
+  public terminate(): void {
+    if (this.terminated) {
+      return;
+    }
+    // Close the WebSocket connection, which should cause the Node.js process to exit
+    this.processManager.closeConnection();
+    // Give it a moment to exit gracefully
+    setTimeout(() => {
+      // If it hasn't exited after a brief delay, force termination
+      if (!this.terminated) {
+        this.handleProcessExit(null, 'SIGTERM');
+      }
+    }, 100);
+  }
+
   private createInitialDescriptor(): DebugSessionDescriptor {
     const createdAt = Date.now();
     const nodeTarget = this.getNodeTargetConfig(this.config.target);
@@ -306,8 +531,10 @@ export class DebuggerSession {
   private async resumeExecution(): Promise<void> {
     await this.tryRunIfWaitingForDebugger();
     if (this.status === 'paused') {
+      console.log(`Session ${this.id}: Sending Debugger.resume command`);
       await this.processManager.sendCommand('Debugger.resume');
       await this.waitForResumed('resume');
+      console.log(`Session ${this.id}: Successfully resumed execution`);
     }
   }
   private async tryRunIfWaitingForDebugger(): Promise<void> {
@@ -338,8 +565,19 @@ export class DebuggerSession {
     );
   }
 
+  private async waitForPauseOrTermination(
+    reason: string,
+  ): Promise<PauseDetails | null> {
+    return Promise.race([
+      this.events.once('paused'),
+      this.events.once('terminated').then(() => null),
+    ]);
+  }
+
   private async waitForResumed(reason: string): Promise<void> {
+    console.log(`Session ${this.id}: waitForResumed called, current status: ${this.status}`);
     if (this.status === 'running' || this.status === 'awaiting-debugger') {
+      console.log(`Session ${this.id}: Already running/awaiting-debugger, returning immediately`);
       return;
     }
     await this.withTimeout(

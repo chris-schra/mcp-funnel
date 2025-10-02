@@ -93,6 +93,9 @@ export class SessionBreakpointInternals {
       if (sourceId) {
         const originalLine = spec.location.lineNumber + 1;
         const originalColumn = spec.location.columnNumber ?? 0;
+        console.log(
+          `Session ${this.sessionId}: Initial mapping attempt for ${spec.location.url}:${spec.location.lineNumber} (0-indexed) -> source ${sourceId}:${originalLine}:${originalColumn} (1-indexed)`,
+        );
         const generated = getGeneratedLocation(
           sourceMap.consumer,
           sourceId,
@@ -100,6 +103,9 @@ export class SessionBreakpointInternals {
           originalColumn,
         );
         if (generated) {
+          console.log(
+            `Session ${this.sessionId}: Source map returned generated ${generated.lineNumber}:${generated.columnNumber ?? 0} (0-indexed)`,
+          );
           const snapped = await this.snapToValidBreakpoint(
             metadata.scriptId,
             generated,
@@ -113,7 +119,15 @@ export class SessionBreakpointInternals {
               snapped,
               spec,
             );
+          } else {
+            console.warn(
+              `Session ${this.sessionId}: Could not snap to valid breakpoint at ${metadata.scriptId}:${generated.lineNumber}:${generated.columnNumber ?? 0}`,
+            );
           }
+        } else {
+          console.warn(
+            `Session ${this.sessionId}: No source map mapping found for ${sourceId}:${originalLine}:${originalColumn}`,
+          );
         }
       }
     }
@@ -320,6 +334,9 @@ export class SessionBreakpointInternals {
     }
     const originalLine = record.spec.location.lineNumber + 1;
     const originalColumn = record.spec.location.columnNumber ?? 0;
+    console.log(
+      `Session ${this.sessionId}: Mapping breakpoint from source ${sourceId}:${originalLine}:${originalColumn} (1-indexed)`,
+    );
     const generated = getGeneratedLocation(
       metadata.sourceMap.consumer,
       sourceId,
@@ -327,15 +344,27 @@ export class SessionBreakpointInternals {
       originalColumn,
     );
     if (!generated) {
+      console.warn(
+        `Session ${this.sessionId}: No source map mapping found for ${sourceId}:${originalLine}:${originalColumn}`,
+      );
       return;
     }
+    console.log(
+      `Session ${this.sessionId}: Source map returned generated location ${generated.lineNumber}:${generated.columnNumber ?? 0} (0-indexed)`,
+    );
     const snapped = await this.snapToValidBreakpoint(
       metadata.scriptId,
       generated,
     );
     if (!snapped) {
+      console.warn(
+        `Session ${this.sessionId}: Could not snap to valid breakpoint at ${metadata.scriptId}:${generated.lineNumber}:${generated.columnNumber ?? 0}`,
+      );
       return;
     }
+    console.log(
+      `Session ${this.sessionId}: Snapped to valid breakpoint at ${metadata.scriptId}:${snapped.lineNumber}:${snapped.columnNumber ?? 0} (0-indexed)`,
+    );
     const oldCdpId = record.cdpId;
     const result = (await this.sendCommand('Debugger.setBreakpoint', {
       location: {

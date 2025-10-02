@@ -21,15 +21,47 @@ import type {
 } from './session-types.js';
 
 /**
- * Maps a CDP location to the public Location type.
+ * Maps a CDP location to the public Location type, applying source map translation if available.
+ * Translates from JavaScript (generated) coordinates to TypeScript (original) coordinates.
  * @param location - The CDP location to map
- * @returns Mapped location object
+ * @param scripts - Map of script metadata for source map lookup
+ * @returns Mapped location object with source-mapped coordinates
  */
-export function mapLocation(location: CdpLocation): Location {
+export function mapLocation(
+  location: CdpLocation,
+  scripts: Map<string, import('../types/index.js').ScriptMetadata>,
+): Location {
+  const metadata = scripts.get(location.scriptId);
+
+  // If no source map, return as-is (already in correct coordinates)
+  if (!metadata?.sourceMap) {
+    return {
+      scriptId: location.scriptId,
+      lineNumber: location.lineNumber,
+      columnNumber: location.columnNumber,
+    };
+  }
+
+  // Translate from JavaScript (generated) coordinates to TypeScript (original) coordinates
+  // CDP uses 0-based line numbers, source-map uses 1-based
+  const originalPosition = metadata.sourceMap.consumer.originalPositionFor({
+    line: location.lineNumber + 1,
+    column: location.columnNumber ?? 0,
+  });
+
+  // If source map lookup fails, fall back to original coordinates
+  if (!originalPosition.line) {
+    return {
+      scriptId: location.scriptId,
+      lineNumber: location.lineNumber,
+      columnNumber: location.columnNumber,
+    };
+  }
+
   return {
     scriptId: location.scriptId,
-    lineNumber: location.lineNumber,
-    columnNumber: location.columnNumber,
+    lineNumber: originalPosition.line - 1, // Convert back to 0-based
+    columnNumber: originalPosition.column ?? 0,
   };
 }
 
@@ -124,35 +156,45 @@ export function toRemoteObjectSummary(
 /**
  * Maps a CDP scope to the public Scope type.
  * @param scope - The CDP scope to map
+ * @param scripts - Map of script metadata for source map lookup
  * @returns Mapped scope object
  */
-export function mapScope(scope: CdpScope): Scope {
+export function mapScope(
+  scope: CdpScope,
+  scripts: Map<string, import('../types/index.js').ScriptMetadata>,
+): Scope {
   return {
     type: scope.type,
     object: toRemoteObjectSummary(scope.object),
     name: scope.name,
     startLocation: scope.startLocation
-      ? mapLocation(scope.startLocation)
+      ? mapLocation(scope.startLocation, scripts)
       : undefined,
-    endLocation: scope.endLocation ? mapLocation(scope.endLocation) : undefined,
+    endLocation: scope.endLocation
+      ? mapLocation(scope.endLocation, scripts)
+      : undefined,
   };
 }
 
 /**
  * Maps a CDP call frame to the public DebuggerCallFrame type.
  * @param frame - The CDP call frame to map
+ * @param scripts - Map of script metadata for source map lookup
  * @returns Mapped call frame object
  */
-export function mapCallFrame(frame: CdpCallFrame): DebuggerCallFrame {
+export function mapCallFrame(
+  frame: CdpCallFrame,
+  scripts: Map<string, import('../types/index.js').ScriptMetadata>,
+): DebuggerCallFrame {
   return {
     callFrameId: frame.callFrameId,
     functionName: frame.functionName,
     functionLocation: frame.functionLocation
-      ? mapLocation(frame.functionLocation)
+      ? mapLocation(frame.functionLocation, scripts)
       : undefined,
-    location: mapLocation(frame.location),
+    location: mapLocation(frame.location, scripts),
     url: frame.url,
-    scopeChain: frame.scopeChain.map(mapScope),
+    scopeChain: frame.scopeChain.map((scope) => mapScope(scope, scripts)),
     this: toRemoteObjectSummary(frame.this),
     returnValue: frame.returnValue
       ? toRemoteObjectSummary(frame.returnValue)
