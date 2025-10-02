@@ -218,7 +218,7 @@ The multi-tool pattern allows:
 - **Logical grouping**: Related operations under one command umbrella
 - **Shared resources**: Common caching, configuration, error handling
 - **Flexible control**: Enable/disable individual tools via configuration
-- **Consistent prefixing**: All tools get the same `cmd__commandname__` prefix
+- **Compact naming**: Single-tool commands use `commandName`, multi-tool commands use `commandName_toolName` (e.g., npm_lookup, npm_search)
 
 ### Implementation
 
@@ -350,63 +350,6 @@ Examples:
 }
 ```
 
-### MCP Tool Registration
-
-Dev commands expose tools with compact names:
-
-```typescript
-// For a command named 'npm' with tools 'lookup' and 'search'
-// Tools are exposed as:
-// - npm_lookup
-// - npm_search
-
-// For a single-tool command named 'ts-validate'
-// Tool is exposed as:
-// - ts-validate
-```
-
-### Configuration
-
-Control which tools are exposed:
-
-```json
-{
-  "commands": {
-    "enabled": true,
-    "list": ["npm"]
-  },
-  "exposeTools": [
-    "commands__npm_lookup", // Include specific tools
-    "commands__npm_search"
-  ],
-  "hideTools": [
-    "commands__npm_search" // Or hide specific tools
-  ]
-}
-```
-
-### Example: NPM Command
-
-The NPM command demonstrates the multi-tool pattern:
-
-```bash
-# CLI usage
-npx mcp-funnel run npm lookup express
-npx mcp-funnel run npm search "test framework"
-npx mcp-funnel run npm --help
-
-# MCP tools exposed
-npm_lookup    # Package lookup
-npm_search    # Package search
-```
-
-**Benefits:**
-
-- Shared NPM client and caching between tools
-- Consistent error handling across operations
-- Related functionality grouped logically
-- Individual tool filtering capability
-
 ### When to Use Multi-Tool Pattern
 
 Consider multi-tool commands for:
@@ -434,11 +377,10 @@ Consider multi-tool commands for:
 
 When creating new commands:
 
-1. Follow the naming convention `@mcp-funnel/command-*`
-2. Implement both MCP and CLI interfaces
-3. Include comprehensive input validation
-4. Add proper error handling
-5. Document your command's parameters in the schema
+1. Implement both MCP and CLI interfaces
+2. Include comprehensive input validation
+3. Add proper error handling
+4. Document your command's parameters in the schema
 
 ## License
 

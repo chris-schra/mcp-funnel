@@ -22,7 +22,7 @@ MCP Funnel implements comprehensive OAuth2 authentication support and (in additi
     - Memory storage (development/testing)
     - OS Keychain integration (macOS via `security`, Windows via `cmdkey` + PowerShell)
     - Secure file storage for Linux (permission-restricted, not encrypted)
-- Automatic refresh scheduling with configurable buffer time
+- Automatic refresh scheduling
 - Secure token handling with comprehensive sanitization
 
 ### Security Features
@@ -75,7 +75,6 @@ MCP Funnel implements comprehensive OAuth2 authentication support and (in additi
 
 ## Testing
 - **Comprehensive test coverage**:
-    - 157 OAuth-specific tests passing
     - Unit tests with mocked dependencies
     - Integration tests with real servers
     - Security tests for token exposure prevention

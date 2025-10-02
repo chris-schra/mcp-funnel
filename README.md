@@ -164,38 +164,32 @@ Or to "speak" with chat:
 
 MCP Funnel supports dynamically installing additional commands from npm packages. You can install commands globally to your user directory (~/.mcp-funnel/packages) where they'll be available across all your projects.
 
-#### Using the Command Manager
+#### Using the `manage_commands` tool
 
-The built-in `command-manager` command provides tools for managing your installed commands:
+`manage_commands` is a built-in MCP Funnel tool that installs, updates, and removes command packages without requiring a separate CLI wrapper. The tool is exposed by default as long as `exposeCoreTools` is unset (or explicitly includes `manage_commands`).
 
-```bash
-# List installed commands
-npx mcp-funnel run command-manager list
+Example install request through `bridge_tool_request` (Claude, Codex CLI, etc.):
 
-# Install a new command from npm
-npx mcp-funnel run command-manager install @awesome-org/mcp-command
-
-# Install a specific version
-npx mcp-funnel run command-manager install @awesome-org/mcp-command --version=1.2.3
-
-# Update a command to the latest version
-npx mcp-funnel run command-manager update my-command
-
-# Uninstall a command
-npx mcp-funnel run command-manager uninstall my-command
-
-# Uninstall and remove command data
-npx mcp-funnel run command-manager uninstall my-command --remove-data
+```json
+{
+  "name": "manage_commands",
+  "arguments": {
+    "action": "install",
+    "package": "@awesome-org/mcp-command",
+    "version": "1.2.3"
+  }
+}
 ```
 
-#### Via MCP Protocol
+Supported payload fields:
 
-When using Claude or another MCP client, you can manage commands through the exposed tools:
+- `action`: `install`, `update`, or `uninstall` (required).
+- `package`: npm package spec or previously installed command name (required).
+- `version`: optional version (install only) — e.g., `"1.2.3"`.
+- `force`: boolean flag to reinstall even if already present (install only).
+- `removeData`: boolean flag to delete cached data (uninstall only).
 
-- `command-manager_install` - Install a new command package
-- `command-manager_uninstall` - Remove an installed command
-- `command-manager_list` - List all installed commands
-- `command-manager_update` - Update a command to the latest version
+Responses include structured details about the command, any discovered tools, and whether a hot reload succeeded. When running inside an MCP client you can call the tool directly; no additional CLI plumbing is necessary.
 
 #### Command Discovery
 
@@ -309,7 +303,7 @@ That's it! The `secretProviders` automatically loads your token from `.env`, kee
 
 - Use **exposeTools** alone when you want a tool visible at startup. No duplication in alwaysVisibleTools is needed for server-backed tools.
 - Use **alwaysVisibleTools** when you want a server tool to bypass all gating (expose/hide, future pattern changes). It wins over hideTools. You do not need to repeat it in exposeTools.
-- **Commands are special**: listing them requires exposeTools using commands\_\_…; alwaysVisibleTools does not apply to dev-command listing.
+- **Commands**: Command tools are exposed using their tool names directly (e.g., `npm_lookup`, `ts-validate`) or with wildcards (e.g., `npm_*`) in exposeTools/hideTools patterns.
 
 ### Filtering Patterns
 

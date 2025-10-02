@@ -3,24 +3,10 @@
 ## 🚀 Development Scripts
 
 ```bash
-yarn dev            # Run the development server with hot reload
 yarn build          # Build the TypeScript code
-yarn test           # Run all tests
+yarn test           # Run "fast" tests
 yarn test:e2e       # Run end-to-end tests with mock servers
-yarn validate       # Run comprehensive code quality checks (lint, typecheck, format)
-yarn lint           # Run ESLint
-yarn typecheck      # Run TypeScript type checking
-yarn format         # Auto-format code with Prettier
-```
-
-## 🧪 Testing
-
-Run the test suite:
-
-```bash
-yarn test           # Run all tests
-yarn test:e2e       # Run end-to-end tests
-yarn validate       # Run linting, type checking, and formatting checks
+yarn validate       # Run comprehensive code quality checks (lint, typecheck, prettier)
 ```
 
 The project includes comprehensive e2e tests simulating Claude SDK conversations with mock MCP servers.
@@ -39,24 +25,6 @@ When adding new features:
 3. Create E2E tests for critical user flows
 4. Ensure all tests pass before submitting PR
 
-## 📦 Project Structure
-
-```
-mcp-funnel/
-├── src/
-│   ├── config/          # Configuration management
-│   ├── proxy/           # MCP proxy implementation
-│   ├── secrets/         # Secret provider system
-│   ├── services/        # Core services
-│   ├── types/           # TypeScript type definitions
-│   └── utils/           # Utility functions
-├── tests/
-│   ├── unit/           # Unit tests
-│   ├── integration/    # Integration tests
-│   └── e2e/            # End-to-end tests
-└── docs/               # Documentation
-```
-
 ## 🔧 Local Development Setup
 
 1. Clone the repository:
@@ -72,12 +40,13 @@ yarn install
 
 3. Set up your configuration:
 ```bash
-cp config/mcp-config.example.json config/mcp-config.json
-# Edit config/mcp-config.json with your server configurations
+cp .mcp-funnel.example.json .mcp-funnel.json
+# Edit .mcp-funnel.json with the servers you want to proxy
 ```
 
 4. Run development server:
 ```bash
+cd packages/server
 yarn dev
 ```
 
@@ -85,10 +54,13 @@ yarn dev
 
 ### Enable Debug Logging
 
-Set the `DEBUG` environment variable:
+Enable structured logging with:
+
 ```bash
-DEBUG=mcp:* yarn dev
+MCP_FUNNEL_LOG=1 MCP_FUNNEL_LOG_LEVEL=debug yarn dev
 ```
+
+`MCP_FUNNEL_LOG` toggles log emission; `MCP_FUNNEL_LOG_LEVEL` accepts `error`, `warn`, `info`, `debug`, or `trace`.
 
 ### Common Issues
 

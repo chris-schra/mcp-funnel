@@ -39,41 +39,11 @@ npx mcp-funnel run validate --help
 yarn validate:new packages/commands
 ```
 
-### Try it via MCP (with Claude)
+### Usage in Claude Code, Codex CLI, Gemini CLI
 
-1. **Configure MCP Funnel** to expose the command:
-
-Create or update `.mcp-funnel.json`:
-
-```json
-{
-  "servers": [
-    // ... your other servers
-  ],
-  "commands": {
-    "enabled": true,
-    "list": ["ts-validate"]
-  }
-}
+Prompt:
 ```
-
-2. **Add to Claude Desktop** config:
-
-```json
-{
-  "mcpServers": {
-    "mcp-funnel": {
-      "command": "npx",
-      "args": ["mcp-funnel", "/path/to/.mcp-funnel.json"]
-    }
-  }
-}
-```
-
-3. **Use in Claude**:
-
-```
-Claude, please run TypeScript validation on the packages/mcp directory and fix any issues.
+run tool ts-validate on the packages/mcp directory and fix any issues.
 ```
 
 Claude will see the tool as `ts-validate` and can call it with:
