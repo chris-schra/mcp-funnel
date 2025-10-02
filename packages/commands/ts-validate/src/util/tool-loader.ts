@@ -1,5 +1,9 @@
 import { satisfies } from 'semver';
-import { resolveLocalModule, extractESLintCtor, isPrettierNS } from './module-resolver.js';
+import {
+  resolveLocalModule,
+  extractESLintCtor,
+  isPrettierNS,
+} from './module-resolver.js';
 
 const COMPAT = {
   prettier: '>=3.0.0 <4.0.0',
@@ -12,6 +16,59 @@ export interface LoadedTools {
   eslintCtor?: typeof import('eslint').ESLint;
   prettierLocal: { modulePath: string; version: string } | null;
   eslintLocal: { modulePath: string; version: string } | null;
+}
+
+/**
+ * Extracts Prettier namespace from an imported module.
+ * Handles both direct exports and default exports.
+ *
+ * @param mod - The imported module to extract Prettier from
+ * @returns Prettier namespace if found, undefined otherwise
+ */
+function extractPrettierNamespace(
+  mod: unknown,
+): typeof import('prettier') | undefined {
+  const direct = isPrettierNS(mod) ? mod : undefined;
+  if (direct) return direct;
+
+  const defaultExport =
+    mod && typeof (mod as { default?: unknown }).default !== 'undefined'
+      ? (mod as { default?: unknown }).default
+      : undefined;
+
+  return isPrettierNS(defaultExport) ? defaultExport : undefined;
+}
+
+/**
+ * Attempts to import and extract Prettier from a module path.
+ *
+ * @param modulePath - Path to the Prettier module to import
+ * @returns Promise resolving to Prettier namespace if found, undefined otherwise
+ */
+async function tryImportPrettier(
+  modulePath: string,
+): Promise<typeof import('prettier') | undefined> {
+  try {
+    const mod: unknown = await import(modulePath);
+    return extractPrettierNamespace(mod);
+  } catch (_e) {
+    return undefined;
+  }
+}
+
+/**
+ * Attempts to load local Prettier if version is compatible.
+ *
+ * @param localInfo - Local module information with path and version
+ * @returns Promise resolving to Prettier namespace if compatible, undefined otherwise
+ */
+async function tryLoadLocalPrettier(
+  localInfo: { modulePath: string; version: string } | null,
+): Promise<typeof import('prettier') | undefined> {
+  if (!localInfo || !satisfies(localInfo.version, COMPAT.prettier)) {
+    return undefined;
+  }
+  return tryImportPrettier(localInfo.modulePath);
 }
 
 /**
@@ -43,38 +100,14 @@ export async function loadPrettier(baseDirs: string[]): Promise<{
 
   try {
     prettierLocal = await resolveLocalModule('prettier', baseDirs);
-    if (prettierLocal && satisfies(prettierLocal.version, COMPAT.prettier)) {
-      try {
-        const mod: unknown = await import(prettierLocal.modulePath);
-        const direct = isPrettierNS(mod) ? mod : undefined;
-        const fallbackDefault =
-          !direct && mod && typeof (mod as { default?: unknown }).default !== 'undefined'
-            ? (mod as { default?: unknown }).default
-            : undefined;
-        const chosen = direct || (isPrettierNS(fallbackDefault) ? fallbackDefault : undefined);
-        prettierMod = chosen;
-      } catch (_e) {
-        prettierMod = undefined;
-      }
-    }
+    prettierMod = await tryLoadLocalPrettier(prettierLocal);
   } catch (_e) {
     const _ignored = _e as unknown;
     void _ignored;
   }
 
   if (!prettierMod) {
-    try {
-      const mod: unknown = await import('prettier');
-      const direct = isPrettierNS(mod) ? mod : undefined;
-      const fallbackDefault =
-        !direct && mod && typeof (mod as { default?: unknown }).default !== 'undefined'
-          ? (mod as { default?: unknown }).default
-          : undefined;
-      const chosen = direct || (isPrettierNS(fallbackDefault) ? fallbackDefault : undefined);
-      prettierMod = chosen;
-    } catch (_e) {
-      prettierMod = undefined;
-    }
+    prettierMod = await tryImportPrettier('prettier');
   }
 
   return { mod: prettierMod, local: prettierLocal };
@@ -160,7 +193,9 @@ export async function loadTypeScript(
 
   if (localTs && satisfies(localTs.version, COMPAT.typescript)) {
     try {
-      return (await import(localTs.modulePath)) as unknown as typeof import('typescript');
+      return (await import(
+        localTs.modulePath
+      )) as unknown as typeof import('typescript');
     } catch (e) {
       const _e = e as Error;
       console.debug(

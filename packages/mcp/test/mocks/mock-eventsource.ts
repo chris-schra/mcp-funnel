@@ -27,6 +27,13 @@ export interface MockErrorEvent {
   error?: Error;
 }
 
+export interface ConnectionStats {
+  attempts: number;
+  readyState: 0 | 1 | 2;
+  url: string;
+  withCredentials: boolean;
+}
+
 /**
  * Mock EventSource class that simulates SSE connection behavior
  * Implements the same interface as the real EventSource for drop-in replacement in tests
@@ -184,12 +191,7 @@ export class MockEventSource extends EventEmitter {
    * Get connection statistics for testing
    * @returns Object containing connection state and statistics
    */
-  getConnectionStats(): {
-    attempts: number;
-    readyState: 0 | 1 | 2;
-    url: string;
-    withCredentials: boolean;
-  } {
+  getConnectionStats(): ConnectionStats {
     return {
       attempts: this.connectionAttempts,
       readyState: this.readyState,

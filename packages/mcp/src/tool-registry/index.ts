@@ -1,7 +1,12 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ICommand } from '@mcp-funnel/commands-core';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
-import type { RegisterToolParams, RegistryStats, ToolState } from './types.js';
+import type {
+  RegisterToolParams,
+  RegistryStats,
+  ToolState,
+  VisibilityResult,
+} from './types.js';
 import { ToolRegistryUtils } from './utils.js';
 export type { ToolState } from './types.js';
 
@@ -147,13 +152,7 @@ export class ToolRegistry {
     tool.exposureReason = result.reason;
   }
 
-  private computeVisibility(
-    name: string,
-    tool: ToolState,
-  ): {
-    exposed: boolean;
-    reason?: 'always' | 'enabled' | 'allowlist' | 'default' | 'core';
-  } {
+  private computeVisibility(name: string, tool: ToolState): VisibilityResult {
     return ToolRegistryUtils.computeVisibility(this.config, name, tool);
   }
 

@@ -43,7 +43,11 @@ export default tseslint.config(
       'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
       '@typescript-eslint/explicit-member-accessibility': 'warn',
       "complexity": ["warn", { "max": 15 }],
-      "max-lines-per-function": ["warn", 50],
+      "max-lines-per-function": ["warn", {
+        max: 80,
+        skipBlankLines: true,
+        skipComments: true
+      }],
       "@typescript-eslint/prefer-as-const": "error",
       "@typescript-eslint/ban-ts-comment": [
         "error",

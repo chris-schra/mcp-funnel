@@ -12,6 +12,11 @@ export interface MockTimerInfo {
   delay: number;
 }
 
+export interface OriginalTimers {
+  originalSetTimeout: typeof setTimeout;
+  originalClearTimeout: typeof clearTimeout;
+}
+
 /**
  * Helper to create test token data for unit tests.
  *
@@ -32,10 +37,7 @@ export function createTestToken(expiresInMs: number = 3600000): TokenData {
  *
  * @returns Object containing original timer functions for restoration
  */
-export function setupMockTimers(): {
-  originalSetTimeout: typeof setTimeout;
-  originalClearTimeout: typeof clearTimeout;
-} {
+export function setupMockTimers(): OriginalTimers {
   const originalSetTimeout = global.setTimeout;
   const originalClearTimeout = global.clearTimeout;
 

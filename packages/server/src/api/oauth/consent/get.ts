@@ -1,9 +1,71 @@
-import type { Handler } from 'hono';
-import { createConsentPageData, OAuthUtils, renderConsentPage } from '@mcp-funnel/auth';
+import type { Context, Handler } from 'hono';
+import {
+  createConsentPageData,
+  OAuthUtils,
+  renderConsentPage,
+} from '@mcp-funnel/auth';
+
+/**
+ * Validates client_id parameter and retrieves the client
+ *
+ * @param c - Hono context object for the current request
+ * @param clientId - OAuth client identifier to validate
+ * @returns Tuple of [client, error] - one will be null
+ */
+async function validateClient(c: Context, clientId: string | undefined) {
+  if (!clientId) {
+    const errorBody = {
+      error: 'invalid_request',
+      error_description: 'Missing required parameter: client_id',
+    };
+    const error = OAuthUtils.prefersJsonResponse(c)
+      ? c.json(errorBody, 400)
+      : c.text('Missing client_id', 400);
+    return [null, error] as const;
+  }
+
+  const storage = c.get('storage');
+  const client = await storage.getClient(clientId);
+
+  if (!client) {
+    const errorBody = {
+      error: 'invalid_client',
+      error_description: 'Unknown client',
+    };
+    const error = OAuthUtils.prefersJsonResponse(c)
+      ? c.json(errorBody, 400)
+      : c.text('Unknown client', 400);
+    return [null, error] as const;
+  }
+
+  return [client, null] as const;
+}
+
+/**
+ * Validates user authentication
+ *
+ * @param c - Hono context object for the current request
+ * @returns Tuple of [userId, error] - one will be null
+ */
+function validateUser(c: Context) {
+  const userId = OAuthUtils.getCurrentUserId(c);
+
+  if (!userId) {
+    const errorBody = {
+      error: 'unauthorized',
+      error_description: 'User authentication required',
+    };
+    const error = OAuthUtils.prefersJsonResponse(c)
+      ? c.json(errorBody, 401)
+      : c.text('User authentication required', 401);
+    return [null, error] as const;
+  }
+
+  return [userId, null] as const;
+}
 
 export const GetConsentHandler: Handler = async (c) => {
   try {
-    const storage = c.get('storage');
     const consentService = c.get('consentService');
     const oauthConfig = c.get('oauthConfig');
 
@@ -14,47 +76,26 @@ export const GetConsentHandler: Handler = async (c) => {
     const codeChallenge = c.req.query('code_challenge');
     const codeChallengeMethod = c.req.query('code_challenge_method');
 
-    if (!clientId) {
-      const errorBody = {
-        error: 'invalid_request',
-        error_description: 'Missing required parameter: client_id',
-      } as const;
-      return OAuthUtils.prefersJsonResponse(c)
-        ? c.json(errorBody, 400)
-        : c.text('Missing client_id', 400);
-    }
+    const [client, clientError] = await validateClient(c, clientId);
+    if (clientError) return clientError;
 
-    const client = await storage.getClient(clientId);
-    if (!client) {
-      const errorBody = {
-        error: 'invalid_client',
-        error_description: 'Unknown client',
-      } as const;
-      return OAuthUtils.prefersJsonResponse(c)
-        ? c.json(errorBody, 400)
-        : c.text('Unknown client', 400);
-    }
-
-    const userId = OAuthUtils.getCurrentUserId(c);
-    if (!userId) {
-      const errorBody = {
-        error: 'unauthorized',
-        error_description: 'User authentication required',
-      } as const;
-      return OAuthUtils.prefersJsonResponse(c)
-        ? c.json(errorBody, 401)
-        : c.text('User authentication required', 401);
-    }
+    const [userId, userError] = validateUser(c);
+    if (userError) return userError;
 
     const requestedScopes = OAuthUtils.parseScopes(scopeParam);
     const validScopes = requestedScopes.filter((requestedScope) =>
       oauthConfig.supportedScopes.includes(requestedScope),
     );
 
-    const hasConsented = await consentService.hasUserConsented(userId, clientId, validScopes);
+    const hasConsented = await consentService.hasUserConsented(
+      userId,
+      client.client_id,
+      validScopes,
+    );
 
     const redirectUri =
-      redirectUriParam && OAuthUtils.validateRedirectUri(client, redirectUriParam)
+      redirectUriParam &&
+      OAuthUtils.validateRedirectUri(client, redirectUriParam)
         ? redirectUriParam
         : client.redirect_uris[0];
 

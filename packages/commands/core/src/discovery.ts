@@ -57,7 +57,9 @@ export async function discoverCommandsFromDefault(): Promise<CommandRegistry> {
  * @public
  * @see file:./registry.ts:11 - CommandRegistry class
  */
-export async function discoverCommands(searchPath: string): Promise<CommandRegistry> {
+export async function discoverCommands(
+  searchPath: string,
+): Promise<CommandRegistry> {
   const registry = new CommandRegistry();
 
   try {
@@ -128,14 +130,26 @@ export async function discoverAllCommands(
         }
       }
     } catch (error) {
-      console.warn(`Failed to discover project commands from ${projectPath}:`, error);
+      console.warn(
+        `Failed to discover project commands from ${projectPath}:`,
+        error,
+      );
     }
   }
 
   // 2. Load user-installed commands from ~/.mcp-funnel using the manifest
   if (includeUserCommands) {
-    const manifestPath = join(homedir(), '.mcp-funnel', 'commands-manifest.json');
-    const userPackagesPath = join(homedir(), '.mcp-funnel', 'packages', 'node_modules');
+    const manifestPath = join(
+      homedir(),
+      '.mcp-funnel',
+      'commands-manifest.json',
+    );
+    const userPackagesPath = join(
+      homedir(),
+      '.mcp-funnel',
+      'packages',
+      'node_modules',
+    );
 
     try {
       // Read the manifest to know what commands are actually installed
@@ -202,74 +216,92 @@ export async function discoverAllCommands(
  */
 async function loadCommand(commandPath: string): Promise<ICommand | null> {
   try {
-    // Read and parse package.json
-    const packageJsonPath = join(commandPath, 'package.json');
-    const packageJsonContent = await fs.readFile(packageJsonPath, 'utf-8').catch((error) => {
-      console.warn(`Failed to load command from ${commandPath}:`, error);
-      return null;
-    });
+    const packageJson = await readPackageJson(commandPath);
+    if (!packageJson) return null;
 
-    if (!packageJsonContent) return null;
-
-    const packageJson = JSON.parse(packageJsonContent);
-
-    // Get the main/module entry point from package.json
     const entryPoint = packageJson.module || packageJson.main;
     if (!entryPoint) {
-      console.warn(`No main/module entry point found in package.json at ${commandPath}`);
+      console.warn(
+        `No main/module entry point found in package.json at ${commandPath}`,
+      );
       return null;
     }
 
-    // Prefer src in development or when explicitly requested via env flag
-    const preferSrc =
-      process.env.NODE_ENV !== 'production' || process.env.MCP_FUNNEL_PREFER_SRC === '1';
+    const pathsToTry = getModulePathsToTry(commandPath, entryPoint);
 
-    if (preferSrc) {
-      const srcIndexPath = join(commandPath, 'src', 'index.ts');
-      try {
-        await fs.access(srcIndexPath);
-        const module = await import(srcIndexPath);
-        const command = module.default || module.command || findCommandInModule(module as unknown);
-
-        if (isValidCommand(command)) {
-          return command as ICommand;
-        }
-        // fall through to dist if src did not export a valid command
-      } catch {
-        // fall through to dist if src path not accessible
-      }
+    for (const modulePath of pathsToTry) {
+      const command = await tryLoadCommandFromPath(modulePath);
+      if (command) return command;
     }
 
-    // Try to import from the specified entry point
-    const modulePath = join(commandPath, entryPoint);
-
-    try {
-      await fs.access(modulePath);
-      const module = await import(modulePath);
-
-      // Look for default export or named exports that implement ICommand
-      const command = module.default || module.command || findCommandInModule(module);
-
-      if (isValidCommand(command)) {
-        return command as ICommand;
-      }
-    } catch (_importError) {
-      // Try fallback to src/index.ts for development
-      const srcIndexPath = join(commandPath, 'src', 'index.ts');
-      try {
-        await fs.access(srcIndexPath);
-        const module = await import(srcIndexPath);
-        const command = module.default || module.command || findCommandInModule(module);
-
-        if (isValidCommand(command)) {
-          return command as ICommand;
-        }
-      } catch (srcError) {
-        console.warn(`Could not import command from ${commandPath}:`, srcError);
-      }
-    }
+    console.warn(`Could not import command from ${commandPath}`);
   } catch (error) {
     console.warn(`Invalid command package at ${commandPath}:`, error);
+  }
+
+  return null;
+}
+
+/**
+ * Reads and parses package.json from a command directory.
+ * @param commandPath - Path to command package directory
+ * @returns Parsed package.json object or null if failed
+ * @internal
+ */
+async function readPackageJson(
+  commandPath: string,
+): Promise<{ module?: string; main?: string } | null> {
+  const packageJsonPath = join(commandPath, 'package.json');
+  const content = await fs.readFile(packageJsonPath, 'utf-8').catch((error) => {
+    console.warn(`Failed to load command from ${commandPath}:`, error);
+    return null;
+  });
+
+  if (!content) return null;
+  return JSON.parse(content);
+}
+
+/**
+ * Determines the ordered list of module paths to attempt loading.
+ * @param commandPath - Path to command package directory
+ * @param entryPoint - Entry point from package.json
+ * @returns Array of absolute paths to try in order
+ * @internal
+ */
+function getModulePathsToTry(
+  commandPath: string,
+  entryPoint: string,
+): string[] {
+  const preferSrc =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.MCP_FUNNEL_PREFER_SRC === '1';
+
+  const srcPath = join(commandPath, 'src', 'index.ts');
+  const distPath = join(commandPath, entryPoint);
+
+  return preferSrc ? [srcPath, distPath] : [distPath, srcPath];
+}
+
+/**
+ * Attempts to load and extract a command from a module path.
+ * @param modulePath - Absolute path to module file
+ * @returns ICommand if found and valid, null otherwise
+ * @internal
+ */
+async function tryLoadCommandFromPath(
+  modulePath: string,
+): Promise<ICommand | null> {
+  try {
+    await fs.access(modulePath);
+    const module = await import(modulePath);
+    const command =
+      module.default || module.command || findCommandInModule(module);
+
+    if (isValidCommand(command)) {
+      return command as ICommand;
+    }
+  } catch {
+    // Failed to load from this path, caller will try next
   }
 
   return null;

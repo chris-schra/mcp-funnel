@@ -52,7 +52,9 @@ export function filterTsFilesByRootConfig(tsFiles: string[]): string[] {
   }
 
   try {
-    const rootConfig = JSON.parse(fssync.readFileSync(rootTsConfigPath, 'utf-8'));
+    const rootConfig = JSON.parse(
+      fssync.readFileSync(rootTsConfigPath, 'utf-8'),
+    );
     const rootExcludePatterns: string[] = rootConfig.exclude || [];
 
     // Pre-compile minimatch matchers outside the filter loop for performance
@@ -76,6 +78,70 @@ export function filterTsFilesByRootConfig(tsFiles: string[]): string[] {
   } catch {
     // Ignore errors reading root config
     return tsFiles;
+  }
+}
+
+/**
+ * Groups files by their nearest tsconfig.json.
+ *
+ * @param tsFiles - TypeScript files to group (absolute paths)
+ * @returns Map of tsconfig path to files using that config
+ *
+ * @internal
+ */
+function groupFilesByNearestConfig(tsFiles: string[]): Map<string, string[]> {
+  const filesByConfig = new Map<string, string[]>();
+  for (const file of tsFiles) {
+    const configPath = findNearestTsConfig(file);
+    if (!configPath) continue;
+    const list = filesByConfig.get(configPath) ?? [];
+    list.push(file);
+    filesByConfig.set(configPath, list);
+  }
+  return filesByConfig;
+}
+
+/**
+ * Processes TypeScript diagnostics and adds them to the validator context.
+ *
+ * @param diagnostics - All diagnostics from TypeScript
+ * @param filesToValidate - Set of files we want to validate
+ * @param ts - TypeScript namespace
+ * @param ctx - Validator context for storing results
+ *
+ * @internal
+ */
+function processDiagnostics(
+  diagnostics: readonly import('typescript').Diagnostic[],
+  filesToValidate: Set<string>,
+  ts: typeof import('typescript'),
+  ctx: ValidatorContext,
+): void {
+  for (const diagnostic of diagnostics) {
+    if (!diagnostic.file) continue;
+    const file = diagnostic.file.fileName;
+    if (!filesToValidate.has(file)) continue;
+    const start = diagnostic.start || 0;
+    const { line, character } = ts.getLineAndCharacterOfPosition(
+      diagnostic.file,
+      start,
+    );
+    const message = ts.flattenDiagnosticMessageText(
+      diagnostic.messageText,
+      '\n',
+    );
+    const suggestedFix = getTypeScriptFix(diagnostic);
+    const isError = diagnostic.category === ts.DiagnosticCategory.Error;
+    ctx.addResult(file, {
+      tool: 'typescript',
+      message,
+      severity: isError ? 'error' : 'warning',
+      line: line + 1,
+      column: character + 1,
+      ruleId: `TS${diagnostic.code}`,
+      fixable: Boolean(suggestedFix),
+      suggestedFix,
+    });
   }
 }
 
@@ -110,7 +176,11 @@ export async function validateTypeScriptWithConfig(
 
   const ts = await loadTypeScript(tsConfigFile, tsNs);
   const { config } = ts.readConfigFile(tsConfigFile, ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, path.dirname(tsConfigFile));
+  const parsed = ts.parseJsonConfigFileContent(
+    config,
+    ts.sys,
+    path.dirname(tsConfigFile),
+  );
 
   if (parsed.errors.length === 0) {
     const program = ts.createProgram({
@@ -124,27 +194,40 @@ export async function validateTypeScriptWithConfig(
       ...program.getSemanticDiagnostics(),
       ...program.getSyntacticDiagnostics(),
     ];
-    for (const diagnostic of allDiagnostics) {
-      if (!diagnostic.file) continue;
-      const file = diagnostic.file.fileName;
-      if (!filesToValidate.has(file)) continue;
-      const start = diagnostic.start || 0;
-      const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, start);
-      const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-      const suggestedFix = getTypeScriptFix(diagnostic);
-      const isError = diagnostic.category === ts.DiagnosticCategory.Error;
-      ctx.addResult(file, {
-        tool: 'typescript',
-        message,
-        severity: isError ? 'error' : 'warning',
-        line: line + 1,
-        column: character + 1,
-        ruleId: `TS${diagnostic.code}`,
-        fixable: Boolean(suggestedFix),
-        suggestedFix,
-      });
-    }
+    processDiagnostics(allDiagnostics, filesToValidate, ts, ctx);
   }
+}
+
+/**
+ * Parses tsconfig and logs errors if any occur.
+ *
+ * @param configPath - Path to tsconfig.json
+ * @param ts - TypeScript namespace
+ * @returns Parsed config or null if errors occurred
+ *
+ * @internal
+ */
+function parseConfigWithErrorLogging(
+  configPath: string,
+  ts: typeof import('typescript'),
+): import('typescript').ParsedCommandLine | null {
+  const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
+  const parsed = ts.parseJsonConfigFileContent(
+    config,
+    ts.sys,
+    path.dirname(configPath),
+  );
+
+  if (parsed.errors.length > 0) {
+    console.error(chalk.red(`Error parsing ${configPath}:`));
+    parsed.errors.forEach((error) => {
+      const message = ts.flattenDiagnosticMessageText(error.messageText, '\n');
+      console.error(`  ${message}`);
+    });
+    return null;
+  }
+
+  return parsed;
 }
 
 /**
@@ -174,53 +257,26 @@ export async function validateTypeScriptByDiscovery(
     return;
   }
 
-  // Group files by their nearest tsconfig.json
-  const filesByConfig = new Map<string, string[]>();
+  const filesByConfig = groupFilesByNearestConfig(tsFiles);
 
-  for (const file of tsFiles) {
-    const configPath = findNearestTsConfig(file);
-    if (!configPath) {
-      // No tsconfig found for this file; skip to avoid misconfiguration
-      continue;
-    }
-    const list = filesByConfig.get(configPath) ?? [];
-    list.push(file);
-    filesByConfig.set(configPath, list);
-  }
-
-  // Validate each group using the TypeScript programmatic API so tsconfig paths/baseUrl apply
   let ts = tsNs;
   for (const [configPath, configFiles] of filesByConfig.entries()) {
-    // Load TS namespace resolved from the tsconfig directory if compatible
     ts = await loadTypeScript(configPath, ts);
-
     if (!ts) throw new Error('Could not load TypeScript');
 
-    const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
+    const parsed = parseConfigWithErrorLogging(configPath, ts);
+    if (!parsed) continue;
 
-    // Parse the config for this project
-    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, path.dirname(configPath));
-
-    if (parsed.errors.length > 0) {
-      console.error(chalk.red(`Error parsing ${configPath}:`));
-      parsed.errors.forEach((error) => {
-        const message = ts!.flattenDiagnosticMessageText(error.messageText, '\n');
-        console.error(`  ${message}`);
-      });
-      continue;
-    }
-
-    // Create a program for the entire project, but collect diagnostics only for files we care about
     const program = ts.createProgram({
       rootNames: parsed.fileNames,
       options: { ...parsed.options, noEmit: true },
     });
 
-    // Only validate files that are both requested AND not excluded by tsconfig
     const parsedFileSet = new Set(parsed.fileNames.map((f) => path.resolve(f)));
     const filesToValidate = new Set(
       configFiles.filter((file) => parsedFileSet.has(path.resolve(file))),
     );
+
     const allDiagnostics = [
       ...program.getOptionsDiagnostics(),
       ...program.getGlobalDiagnostics(),
@@ -228,29 +284,6 @@ export async function validateTypeScriptByDiscovery(
       ...program.getSyntacticDiagnostics(),
     ];
 
-    for (const diagnostic of allDiagnostics) {
-      if (!diagnostic.file) continue;
-      const file = diagnostic.file.fileName;
-      if (!filesToValidate.has(file)) continue;
-
-      const start = diagnostic.start || 0;
-      const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, start);
-
-      const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-
-      const suggestedFix = getTypeScriptFix(diagnostic);
-      const isError = diagnostic.category === ts.DiagnosticCategory.Error;
-
-      ctx.addResult(file, {
-        tool: 'typescript',
-        message,
-        severity: isError ? 'error' : 'warning',
-        line: line + 1,
-        column: character + 1,
-        ruleId: `TS${diagnostic.code}`,
-        fixable: Boolean(suggestedFix),
-        suggestedFix,
-      });
-    }
+    processDiagnostics(allDiagnostics, filesToValidate, ts, ctx);
   }
 }

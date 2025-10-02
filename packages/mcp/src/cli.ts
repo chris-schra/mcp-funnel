@@ -1,4 +1,8 @@
-import { MCPProxy, getUserBasePath, resolveMergedProxyConfig } from './index.js';
+import {
+  MCPProxy,
+  getUserBasePath,
+  resolveMergedProxyConfig,
+} from './index.js';
 import { mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -28,6 +32,104 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 /**
+ * Initializes the MCP Funnel run ID for request correlation.
+ */
+function initializeRunId(): void {
+  if (!process.env.MCP_FUNNEL_RUN_ID) {
+    process.env.MCP_FUNNEL_RUN_ID = `${Date.now()}-${process.pid}`;
+  }
+}
+
+/**
+ * Handles the 'run' command routing.
+ * @returns Promise that resolves when command completes
+ */
+async function handleRunCommand(): Promise<void> {
+  const { runCommand } = await import('./commands/run.js');
+  const commandName = process.argv[3];
+
+  if (!commandName) {
+    console.error('Usage: npx mcp-funnel run <command> [...args]');
+    console.error('Example: npx mcp-funnel run validate --fix');
+    process.exit(1);
+  }
+
+  const commandArgs = process.argv.slice(4);
+  await runCommand(commandName, commandArgs);
+}
+
+/**
+ * Displays usage information and example configuration, then exits.
+ */
+function displayUsageAndExit(): never {
+  console.error('\nUsage:');
+  console.error(
+    '  npx mcp-funnel                    # Uses .mcp-funnel.json from current directory',
+  );
+  console.error(
+    '  npx mcp-funnel path/to/config.json # Uses specified config file',
+  );
+  console.error('\nExample config (.mcp-funnel.json):');
+  console.error(
+    JSON.stringify(
+      {
+        servers: [
+          {
+            name: 'github',
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-github'],
+            env: {
+              GITHUB_TOKEN: 'your-token-here',
+            },
+          },
+          {
+            name: 'memory',
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-memory'],
+          },
+        ],
+        hideTools: [
+          'github__list_workflow_runs',
+          'github__get_workflow_run_logs',
+          'memory__debug_*',
+          'memory__dashboard_*',
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+  process.exit(1);
+}
+
+/**
+ * Result of loading and merging proxy configuration.
+ */
+interface LoadedConfiguration {
+  config: ProxyConfig;
+  actualConfigPath: string;
+}
+
+/**
+ * Loads and merges proxy configuration from project and user paths.
+ * @param configPath - Path to the project configuration file
+ * @returns Loaded configuration and actual config path
+ */
+function loadConfiguration(configPath: string): LoadedConfiguration {
+  try {
+    const merged = resolveMergedProxyConfig(configPath);
+    return {
+      config: merged.config,
+      actualConfigPath: merged.paths.projectConfigPath,
+    };
+  } catch (error) {
+    console.error('Failed to load configuration:', error);
+    logError('config-load', error, { path: configPath });
+    process.exit(1);
+  }
+}
+
+/**
  * Main entry point for the MCP Funnel CLI.
  *
  * Handles command routing and proxy initialization:
@@ -35,7 +137,7 @@ process.on('unhandledRejection', (reason, promise) => {
  * - Otherwise loads configuration and starts the MCP proxy server
  * - Merges user-level (~/.mcp-funnel/.mcp-funnel.json) and project-level config
  * - Project config takes precedence over user config
- * @returns Promise that resolves to MCPProxy instance when proxy starts, or void for command execution
+ * @returns Promise that resolves to an MCPProxy instance when started in proxy mode, or void when running commands
  * @throws \{Error\} When configuration loading fails
  * @throws \{Error\} When proxy initialization fails
  * @internal
@@ -43,28 +145,13 @@ process.on('unhandledRejection', (reason, promise) => {
  * @see {@link resolveMergedProxyConfig} - Configuration merging logic
  */
 async function main(): Promise<MCPProxy | void> {
-  // Establish a run id early for correlation
-  if (!process.env.MCP_FUNNEL_RUN_ID) {
-    process.env.MCP_FUNNEL_RUN_ID = `${Date.now()}-${process.pid}`;
-  }
+  initializeRunId();
   logEvent('info', 'cli:start', { argv: process.argv, cwd: process.cwd() });
-  // Config resolution:
-  // 1. Explicit: npx mcp-funnel path/to/config.json
-  // 2. Implicit: npx mcp-funnel (uses .mcp-funnel.json from cwd)
+
   // Check for 'run' command
   if (process.argv[2] === 'run') {
-    const { runCommand } = await import('./commands/run.js');
-    const commandName = process.argv[3];
-
-    if (!commandName) {
-      console.error('Usage: npx mcp-funnel run <command> [...args]');
-      console.error('Example: npx mcp-funnel run validate --fix');
-      process.exit(1);
-    }
-
-    const commandArgs = process.argv.slice(4);
-    await runCommand(commandName, commandArgs);
-    return; // Exit after running tool
+    await handleRunCommand();
+    return;
   }
 
   const configPath = process.argv[2] || '.mcp-funnel.json';
@@ -75,58 +162,10 @@ async function main(): Promise<MCPProxy | void> {
   const userBaseExists = existsSync(userBasePath);
 
   if (!projectExists && !userBaseExists) {
-    // Preserve existing UX when nothing is configured
-    console.error('\nUsage:');
-    console.error(
-      '  npx mcp-funnel                    # Uses .mcp-funnel.json from current directory',
-    );
-    console.error('  npx mcp-funnel path/to/config.json # Uses specified config file');
-    console.error('\nExample config (.mcp-funnel.json):');
-    console.error(
-      JSON.stringify(
-        {
-          servers: [
-            {
-              name: 'github',
-              command: 'npx',
-              args: ['-y', '@modelcontextprotocol/server-github'],
-              env: {
-                GITHUB_TOKEN: 'your-token-here',
-              },
-            },
-            {
-              name: 'memory',
-              command: 'npx',
-              args: ['-y', '@modelcontextprotocol/server-memory'],
-            },
-          ],
-          hideTools: [
-            'github__list_workflow_runs',
-            'github__get_workflow_run_logs',
-            'memory__debug_*',
-            'memory__dashboard_*',
-          ],
-        },
-        null,
-        2,
-      ),
-    );
-    process.exit(1);
+    displayUsageAndExit();
   }
 
-  let config: ProxyConfig;
-  let actualConfigPath: string;
-  try {
-    // Merge user base and project config; project overrides user
-    const merged = resolveMergedProxyConfig(resolvedPath);
-    config = merged.config;
-    // Use the actual project config path that was resolved
-    actualConfigPath = merged.paths.projectConfigPath;
-  } catch (error) {
-    console.error('Failed to load configuration:', error);
-    logError('config-load', error, { path: resolvedPath });
-    process.exit(1);
-  }
+  const { config, actualConfigPath } = loadConfiguration(resolvedPath);
 
   const normalizedServers = normalizeServers(config.servers);
   logEvent('info', 'cli:config_loaded', {
@@ -148,11 +187,12 @@ async function main(): Promise<MCPProxy | void> {
 // Setup shutdown handlers
 let isShuttingDown = false;
 /**
- * Handles graceful shutdown of the MCP proxy when receiving termination signals.
+ * Handles graceful shutdown of the MCP proxy server.
  *
- * @param signal - Signal name (e.g., SIGINT, SIGTERM) that triggered shutdown
- * @param proxy - Optional MCPProxy instance to shutdown gracefully
- * @returns Promise that resolves when shutdown is complete
+ * Ensures the server shuts down cleanly when receiving termination signals.
+ * Prevents duplicate shutdown attempts and logs the shutdown event.
+ * @param signal - The OS signal that triggered the shutdown (e.g., 'SIGINT', 'SIGTERM')
+ * @param proxy - Optional MCPProxy instance to shut down; if provided, calls proxy.shutdown() before exiting
  */
 async function handleShutdown(signal: string, proxy?: MCPProxy) {
   if (isShuttingDown) return;

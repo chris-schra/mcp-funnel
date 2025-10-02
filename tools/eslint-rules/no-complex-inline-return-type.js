@@ -39,7 +39,14 @@ export default {
 
     /**
      * Check if a node has a return type annotation that is an inline object type
-     * @param {import('estree').Node} node
+     * @param {import('estree').Node} node - The function node to check for inline return type
+     * @example
+     * // Bad (when maxProperties is 2):
+     * function foo(): { a: string; b: number; c: boolean } { return { a: '', b: 1, c: true }; }
+     *
+     * // Good:
+     * type FooResult = { a: string; b: number; c: boolean };
+     * function foo(): FooResult { return { a: '', b: 1, c: true }; }
      */
     function checkFunctionReturnType(node) {
       // TypeScript AST nodes

@@ -10,6 +10,8 @@ export {
   getUserBasePath,
   getDefaultProjectConfigPath,
   resolveMergedProxyConfig,
+  type ConfigPaths,
+  type MergedProxyConfigResult,
 } from './config-loader.js';
 
 // Default export for backward compatibility

@@ -6,6 +6,17 @@ import {
 } from '@mcp-funnel/models';
 
 /**
+ * Result of authorization request validation.
+ * @public
+ */
+export type AuthorizationRequestValidationResult = {
+  /** Whether the authorization request is valid */
+  valid: boolean;
+  /** Error details if validation failed */
+  error?: OAuthError;
+};
+
+/**
  * Validates OAuth 2.0 authorization request parameters according to RFC 6749.
  *
  * Performs comprehensive validation including:
@@ -29,10 +40,9 @@ import {
  * @see file:./validateTokenRequest.ts - Related token request validation
  * @public
  */
-export function validateAuthorizationRequest(params: Partial<AuthorizationRequest>): {
-  valid: boolean;
-  error?: OAuthError;
-} {
+export function validateAuthorizationRequest(
+  params: Partial<AuthorizationRequest>,
+): AuthorizationRequestValidationResult {
   // Check required parameters
   if (!params.response_type) {
     return {
@@ -95,7 +105,8 @@ export function validateAuthorizationRequest(params: Partial<AuthorizationReques
         valid: false,
         error: {
           error: OAuthErrorCodes.INVALID_REQUEST,
-          error_description: 'code_challenge_method is required when code_challenge is present',
+          error_description:
+            'code_challenge_method is required when code_challenge is present',
         },
       };
     }

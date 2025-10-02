@@ -80,104 +80,222 @@ export class BridgeToolRequest extends BaseCoreTool {
     }
 
     const toolArguments = args.arguments as Record<string, unknown> | undefined;
+    const resolutionResult = await this.resolveAndPrepareTool(
+      args.tool,
+      context,
+    );
 
-    // Try to get tool from registry first
-    let toolState = context.toolRegistry.getToolForExecution(args.tool);
-    let resolvedToolName = args.tool;
-
-    // If not found directly, try short name resolution if enabled
-    if (!toolState && context.config.allowShortToolNames && context.toolMapping) {
-      const resolution = resolveToolName(args.tool, context.toolMapping, context.config);
-
-      if (!resolution.resolved) {
-        const message = resolution.error?.message || `Tool not found or not exposed: ${args.tool}`;
-        const fullMessage = resolution.error?.isAmbiguous
-          ? message
-          : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: fullMessage,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      resolvedToolName = resolution.toolName!;
-      toolState = context.toolRegistry.getToolForExecution(resolvedToolName);
+    if ('error' in resolutionResult) {
+      return resolutionResult.error;
     }
+
+    return this.executeTool(
+      resolutionResult.toolState,
+      resolutionResult.resolvedName,
+      toolArguments,
+    );
+  }
+
+  /**
+   * Resolves tool name and prepares tool state for execution.
+   * Handles short name resolution and auto-enabling of discovered tools.
+   *
+   * @param requestedTool - The tool name requested by the user
+   * @param context - The core tool context containing registry and configuration
+   * @returns Tool state and resolved name, or an error result
+   */
+  private async resolveAndPrepareTool(
+    requestedTool: string,
+    context: CoreToolContext,
+  ): Promise<
+    | {
+        toolState: NonNullable<
+          ReturnType<typeof context.toolRegistry.getToolForExecution>
+        >;
+        resolvedName: string;
+      }
+    | { error: CallToolResult }
+  > {
+    const resolution = this.resolveToolName(requestedTool, context);
+    if ('error' in resolution) {
+      return { error: resolution.error };
+    }
+
+    let toolState = context.toolRegistry.getToolForExecution(
+      resolution.resolvedName,
+    );
 
     if (!toolState) {
-      // Check if the tool exists but is not exposed (discovered but not enabled)
-      const discoveredTool = context.toolRegistry.getToolState(resolvedToolName);
-      if (discoveredTool && !discoveredTool.exposed) {
-        // Auto-enable the tool since it was explicitly requested
-        context.toolRegistry.enableTools([resolvedToolName], 'discovery');
-        await context.sendNotification?.('tools/list_changed');
+      const enableResult = await this.tryAutoEnableTool(
+        resolution.resolvedName,
+        requestedTool,
+        context,
+      );
+      if ('error' in enableResult) {
+        return { error: enableResult.error };
+      }
+      toolState = enableResult.toolState;
+    }
 
-        // Get the tool again after enabling
-        toolState = context.toolRegistry.getToolForExecution(resolvedToolName);
+    return { toolState, resolvedName: resolution.resolvedName };
+  }
 
-        if (!toolState) {
-          // This shouldn't happen, but handle it gracefully
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Failed to auto-enable tool: ${args.tool}. Please try discover_tools_by_words to enable it manually.`,
-              },
-            ],
-            isError: true,
-          };
-        }
+  /**
+   * Resolves the tool name, handling short name resolution if enabled.
+   *
+   * @param requestedTool - The tool name requested by the user
+   * @param context - The core tool context containing configuration and mapping
+   * @returns Resolved tool name or an error result
+   */
+  private resolveToolName(
+    requestedTool: string,
+    context: CoreToolContext,
+  ): { resolvedName: string } | { error: CallToolResult } {
+    const toolState = context.toolRegistry.getToolForExecution(requestedTool);
 
-        // Log that we auto-enabled the tool
-        console.info(`[bridge-tool-request] Auto-enabled tool: ${resolvedToolName}`);
-      } else {
-        // Tool doesn't exist at all in the registry
-        return {
+    if (toolState) {
+      return { resolvedName: requestedTool };
+    }
+
+    if (!context.config.allowShortToolNames || !context.toolMapping) {
+      return { resolvedName: requestedTool };
+    }
+
+    const resolution = resolveToolName(
+      requestedTool,
+      context.toolMapping,
+      context.config,
+    );
+
+    if (!resolution.resolved) {
+      return { error: this.createResolutionError(requestedTool, resolution) };
+    }
+
+    return { resolvedName: resolution.toolName! };
+  }
+
+  /**
+   * Creates an error response for failed tool resolution.
+   *
+   * @param requestedTool - The tool name that failed to resolve
+   * @param resolution - The resolution result containing error details
+   * @returns Error result with descriptive message
+   */
+  private createResolutionError(
+    requestedTool: string,
+    resolution: ReturnType<typeof resolveToolName>,
+  ): CallToolResult {
+    const message =
+      resolution.error?.message ||
+      `Tool not found or not exposed: ${requestedTool}`;
+    const fullMessage = resolution.error?.isAmbiguous
+      ? message
+      : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
+
+    return {
+      content: [{ type: 'text', text: fullMessage }],
+      isError: true,
+    };
+  }
+
+  /**
+   * Attempts to auto-enable a discovered but not exposed tool.
+   *
+   * @param resolvedName - The resolved full tool name
+   * @param requestedTool - The original tool name from the user request
+   * @param context - The core tool context containing registry
+   * @returns Tool state after enabling, or an error result
+   */
+  private async tryAutoEnableTool(
+    resolvedName: string,
+    requestedTool: string,
+    context: CoreToolContext,
+  ): Promise<
+    | {
+        toolState: NonNullable<
+          ReturnType<typeof context.toolRegistry.getToolForExecution>
+        >;
+      }
+    | { error: CallToolResult }
+  > {
+    const discoveredTool = context.toolRegistry.getToolState(resolvedName);
+
+    if (!discoveredTool || discoveredTool.exposed) {
+      return {
+        error: {
           content: [
             {
               type: 'text',
-              text: `Tool not found or not exposed: ${args.tool}. Use discover_tools_by_words to find available tools.`,
+              text: `Tool not found or not exposed: ${requestedTool}. Use discover_tools_by_words to find available tools.`,
             },
           ],
           isError: true,
-        };
-      }
+        },
+      };
     }
 
+    context.toolRegistry.enableTools([resolvedName], 'discovery');
+    await context.sendNotification?.('tools/list_changed');
+
+    const toolState = context.toolRegistry.getToolForExecution(resolvedName);
+
+    if (!toolState) {
+      return {
+        error: {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to auto-enable tool: ${requestedTool}. Please try discover_tools_by_words to enable it manually.`,
+            },
+          ],
+          isError: true,
+        },
+      };
+    }
+
+    console.info(`[bridge-tool-request] Auto-enabled tool: ${resolvedName}`);
+    return { toolState };
+  }
+
+  /**
+   * Executes the tool via command or server client.
+   *
+   * @param toolState - The tool state containing executor information
+   * @param resolvedName - The resolved tool name for error messages
+   * @param toolArguments - Optional arguments to pass to the tool
+   * @returns The tool execution result or an error result
+   */
+  private async executeTool(
+    toolState: NonNullable<
+      ReturnType<CoreToolContext['toolRegistry']['getToolForExecution']>
+    >,
+    resolvedName: string,
+    toolArguments: Record<string, unknown> | undefined,
+  ): Promise<CallToolResult> {
     try {
-      // Command path: execute via command interface when present
       if (toolState.command) {
-        const result = await toolState.command.executeToolViaMCP(
+        return (await toolState.command.executeToolViaMCP(
           toolState.originalName,
           toolArguments || {},
-        );
-        return result as CallToolResult;
+        )) as CallToolResult;
       }
 
-      // Server bridge path
       if (toolState.client) {
-        const result = await toolState.client.callTool({
+        return (await toolState.client.callTool({
           name: toolState.originalName,
           arguments: toolArguments,
-        });
-        return result as CallToolResult;
+        })) as CallToolResult;
       }
 
-      // Neither server client nor command is available
-      throw new Error(`Tool ${resolvedToolName} has no executor`);
+      throw new Error(`Tool ${resolvedName} has no executor`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       return {
         content: [
           {
             type: 'text',
-            text: `Failed to execute tool ${resolvedToolName}: ${errorMessage}`,
+            text: `Failed to execute tool ${resolvedName}: ${errorMessage}`,
           },
         ],
         isError: true,

@@ -50,3 +50,13 @@ export interface RegistryStats {
   byServer: Record<string, number>;
   byExposureReason: Record<string, number>;
 }
+
+/**
+ * Result of computing tool visibility based on configuration rules.
+ * @see {@link ToolState.exposed} - The computed exposure state
+ * @see {@link ToolState.exposureReason} - The reason for the exposure state
+ */
+export interface VisibilityResult {
+  exposed: boolean;
+  reason?: 'always' | 'enabled' | 'allowlist' | 'default' | 'core';
+}

@@ -159,8 +159,9 @@ export class MonorepoValidator {
    * @param options - Validation options
    * @returns Promise resolving to validation summary with results and stats
    */
-  public async validate(options: ValidateOptions = {}): Promise<ValidationSummary> {
-    // Resolve files to validate
+  public async validate(
+    options: ValidateOptions = {},
+  ): Promise<ValidationSummary> {
     const files = await resolveFiles(options);
 
     if (files.length === 0) {
@@ -168,29 +169,70 @@ export class MonorepoValidator {
       return createSummary(this.fileResults, [], 0);
     }
 
-    // Initialize context
     this.ctx = new ValidatorContext(this.fileResults);
 
     const toolStatuses: ToolRunStatus[] = [];
+    const toolchains = await this.loadToolchains();
+    const tsConfig = this.detectTsConfig(files, options.tsConfigFile);
 
-    // Resolve toolchains (prettier/eslint) with local-first strategy
+    const tasks: Promise<void>[] = [];
+
+    tasks.push(
+      this.runPrettierValidation(
+        files,
+        toolchains.prettierLocal,
+        toolStatuses,
+        options.fix,
+      ),
+    );
+
+    tasks.push(
+      this.runESLintValidation(
+        files,
+        toolchains.eslintLocal,
+        toolStatuses,
+        options.fix,
+      ),
+    );
+
+    this.runTypeScriptValidation(files, tsConfig, toolStatuses, tasks);
+
+    await Promise.allSettled(tasks);
+
+    const summary = createSummary(this.fileResults, toolStatuses, files.length);
+    summary.processedFiles = files;
+    return summary;
+  }
+
+  private async loadToolchains() {
     const cwd = process.cwd();
     const baseDirs = [cwd];
 
     const prettierResult = await loadPrettier(baseDirs);
     this.prettierMod = prettierResult.mod;
-    const prettierLocal = prettierResult.local;
 
     const eslintResult = await loadESLint(baseDirs);
     this.eslintCtor = eslintResult.ctor;
-    const eslintLocal = eslintResult.local;
 
-    // Prepare TS config detection for skip decision
-    const tsFiles = files.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
-    const overrideTsConfig = options.tsConfigFile
-      ? path.resolve(process.cwd(), options.tsConfigFile)
+    return {
+      prettierLocal: prettierResult.local,
+      eslintLocal: eslintResult.local,
+    };
+  }
+
+  private detectTsConfig(files: string[], tsConfigFile?: string) {
+    const tsFiles = files.filter(
+      (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
+    );
+
+    const overrideTsConfig = tsConfigFile
+      ? path.resolve(process.cwd(), tsConfigFile)
       : undefined;
-    const overrideExists = overrideTsConfig ? fssync.existsSync(overrideTsConfig) : false;
+
+    const overrideExists = overrideTsConfig
+      ? fssync.existsSync(overrideTsConfig)
+      : false;
+
     const tsConfigPaths = new Set<string>();
     if (!overrideExists && tsFiles.length > 0) {
       for (const f of tsFiles) {
@@ -199,125 +241,143 @@ export class MonorepoValidator {
       }
     }
 
-    // Run validators concurrently but isolate failures
-    const tasks: Promise<void>[] = [];
+    return { tsFiles, overrideTsConfig, overrideExists, tsConfigPaths };
+  }
 
-    // Prettier runner
-    tasks.push(
-      (async () => {
-        try {
-          const pr = await validatePrettier(files, this.prettierMod!, this.ctx, options.fix);
-          const origin: 'local' | 'bundled' =
-            prettierLocal && satisfies(prettierLocal.version, COMPAT.prettier)
-              ? 'local'
-              : 'bundled';
-          toolStatuses.push({
-            tool: 'prettier',
-            status: 'ok',
-            origin,
-            version: origin === 'local' ? prettierLocal?.version : undefined,
-            reason: pr.configFound ? undefined : 'prettier-defaults',
-          });
-        } catch (e) {
-          toolStatuses.push({
-            tool: 'prettier',
-            status: 'failed',
-            error: e instanceof Error ? e.message : String(e),
-          });
-        }
-      })(),
-    );
+  private async runPrettierValidation(
+    files: string[],
+    prettierLocal: { version: string } | null,
+    toolStatuses: ToolRunStatus[],
+    fix?: boolean,
+  ) {
+    try {
+      const pr = await validatePrettier(
+        files,
+        this.prettierMod!,
+        this.ctx,
+        fix,
+      );
+      const origin: 'local' | 'bundled' =
+        prettierLocal && satisfies(prettierLocal.version, COMPAT.prettier)
+          ? 'local'
+          : 'bundled';
+      toolStatuses.push({
+        tool: 'prettier',
+        status: 'ok',
+        origin,
+        version: origin === 'local' ? prettierLocal?.version : undefined,
+        reason: pr.configFound ? undefined : 'prettier-defaults',
+      });
+    } catch (e) {
+      toolStatuses.push({
+        tool: 'prettier',
+        status: 'failed',
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
 
-    // ESLint runner
-    tasks.push(
-      (async () => {
-        try {
-          await validateESLint(files, this.eslintCtor!, this.ctx, options.fix);
-          const origin: 'local' | 'bundled' =
-            eslintLocal && satisfies(eslintLocal.version, COMPAT.eslint) ? 'local' : 'bundled';
-          toolStatuses.push({
-            tool: 'eslint',
-            status: 'ok',
-            origin,
-            version: origin === 'local' ? eslintLocal?.version : undefined,
-          });
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          const isNoConfig = /no eslint configuration|couldn['']t find a configuration/i.test(msg);
-          toolStatuses.push(
-            isNoConfig
-              ? {
-                  tool: 'eslint',
-                  status: 'skipped',
-                  reason: 'no-eslint-config',
-                }
-              : { tool: 'eslint', status: 'failed', error: msg },
-          );
-        }
-      })(),
-    );
+  private async runESLintValidation(
+    files: string[],
+    eslintLocal: { version: string } | null,
+    toolStatuses: ToolRunStatus[],
+    fix?: boolean,
+  ) {
+    try {
+      await validateESLint(files, this.eslintCtor!, this.ctx, fix);
+      const origin: 'local' | 'bundled' =
+        eslintLocal && satisfies(eslintLocal.version, COMPAT.eslint)
+          ? 'local'
+          : 'bundled';
+      toolStatuses.push({
+        tool: 'eslint',
+        status: 'ok',
+        origin,
+        version: origin === 'local' ? eslintLocal?.version : undefined,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const isNoConfig =
+        /no eslint configuration|couldn['']t find a configuration/i.test(msg);
+      toolStatuses.push(
+        isNoConfig
+          ? { tool: 'eslint', status: 'skipped', reason: 'no-eslint-config' }
+          : { tool: 'eslint', status: 'failed', error: msg },
+      );
+    }
+  }
 
-    // TypeScript runner (skip if no tsconfig or no ts files)
-    if (tsFiles.length === 0) {
+  private runTypeScriptValidation(
+    files: string[],
+    tsConfig: {
+      tsFiles: string[];
+      overrideTsConfig?: string;
+      overrideExists: boolean;
+      tsConfigPaths: Set<string>;
+    },
+    toolStatuses: ToolRunStatus[],
+    tasks: Promise<void>[],
+  ) {
+    if (tsConfig.tsFiles.length === 0) {
       toolStatuses.push({
         tool: 'typescript',
         status: 'skipped',
         reason: 'no-ts-files',
       });
-    } else if (overrideTsConfig) {
-      if (!overrideExists) {
-        toolStatuses.push({
-          tool: 'typescript',
-          status: 'skipped',
-          reason: 'no-tsconfig',
-        });
-      } else {
-        tasks.push(
-          (async () => {
-            try {
-              await validateTypeScriptWithConfig(files, overrideTsConfig!, this.ctx, this.tsNs);
-              toolStatuses.push({ tool: 'typescript', status: 'ok' });
-            } catch (e) {
-              toolStatuses.push({
-                tool: 'typescript',
-                status: 'failed',
-                error: e instanceof Error ? e.message : String(e),
-              });
-            }
-          })(),
-        );
-      }
-    } else {
-      if (tsConfigPaths.size === 0) {
-        toolStatuses.push({
-          tool: 'typescript',
-          status: 'skipped',
-          reason: 'no-tsconfig',
-        });
-      } else {
-        tasks.push(
-          (async () => {
-            try {
-              await validateTypeScriptByDiscovery(files, this.ctx, this.tsNs);
-              toolStatuses.push({ tool: 'typescript', status: 'ok' });
-            } catch (e) {
-              toolStatuses.push({
-                tool: 'typescript',
-                status: 'failed',
-                error: e instanceof Error ? e.message : String(e),
-              });
-            }
-          })(),
-        );
-      }
+      return;
     }
 
-    await Promise.allSettled(tasks);
+    if (tsConfig.overrideTsConfig) {
+      if (!tsConfig.overrideExists) {
+        toolStatuses.push({
+          tool: 'typescript',
+          status: 'skipped',
+          reason: 'no-tsconfig',
+        });
+      } else {
+        tasks.push(
+          this.validateTypeScriptTask(
+            files,
+            toolStatuses,
+            tsConfig.overrideTsConfig,
+          ),
+        );
+      }
+    } else if (tsConfig.tsConfigPaths.size === 0) {
+      toolStatuses.push({
+        tool: 'typescript',
+        status: 'skipped',
+        reason: 'no-tsconfig',
+      });
+    } else {
+      tasks.push(this.validateTypeScriptTask(files, toolStatuses));
+    }
+  }
 
-    const summary = createSummary(this.fileResults, toolStatuses, files.length);
-    // Attach processed files for optional expansion in the caller (not part of public API)
-    summary.processedFiles = files;
-    return summary;
+  private async validateTypeScriptTask(
+    files: string[],
+    toolStatuses: ToolRunStatus[],
+    configPath?: string,
+  ) {
+    try {
+      if (configPath) {
+        await validateTypeScriptWithConfig(
+          files,
+          configPath,
+          this.ctx,
+          this.tsNs,
+        );
+      } else {
+        await validateTypeScriptByDiscovery(files, this.ctx, this.tsNs);
+      }
+      toolStatuses.push({ tool: 'typescript', status: 'ok' });
+    } catch (e) {
+      toolStatuses.push({
+        tool: 'typescript',
+        status: 'failed',
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
   /**

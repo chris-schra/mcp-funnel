@@ -29,6 +29,14 @@ const {
 } = OAuthUtils;
 
 /**
+ * Metadata for a generated client secret.
+ */
+type ClientSecretMetadata = {
+  client_secret: string;
+  client_secret_expires_at: number;
+};
+
+/**
  * OAuth 2.0 Authorization Server providing RFC 6749 compliant authorization flows.
  *
  * Implements the core OAuth 2.0 server functionality including client registration,
@@ -68,10 +76,7 @@ export class OAuthProvider {
     this.tokenUtils = new TokenUtils(this.config, this.storage);
   }
 
-  private generateClientSecretMetadata(): {
-    client_secret: string;
-    client_secret_expires_at: number;
-  } {
+  private generateClientSecretMetadata(): ClientSecretMetadata {
     const issuedAt = getCurrentTimestamp();
     const expiresIn = this.config.defaultClientSecretExpiry ?? 31536000;
     return {

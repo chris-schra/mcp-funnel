@@ -13,6 +13,53 @@ import { ConfigUtils } from '../ConfigUtils.js';
 import { LegacyConfig } from './LegacyConfig.js';
 
 /**
+ * Validates the auth provider if present in dependencies.
+ * @param authProvider - The auth provider to validate
+ * @throws TransportError if auth provider is invalid or validation fails
+ */
+async function validateAuthProvider(
+  authProvider: TransportFactoryDependencies['authProvider'],
+): Promise<void> {
+  if (!authProvider) {
+    return;
+  }
+
+  try {
+    const isValid = await authProvider.isValid();
+    if (!isValid) {
+      throw new Error('Auth provider configuration is not valid');
+    }
+  } catch (error) {
+    throw TransportError.authenticationFailed(
+      error instanceof Error ? error.message : 'Unknown error',
+      error instanceof Error ? error : undefined,
+    );
+  }
+}
+
+/**
+ * Validates the token storage if present in dependencies.
+ * @param tokenStorage - The token storage to validate
+ * @throws TransportError if token storage initialization fails
+ */
+async function validateTokenStorage(
+  tokenStorage: TransportFactoryDependencies['tokenStorage'],
+): Promise<void> {
+  if (!tokenStorage) {
+    return;
+  }
+
+  try {
+    await tokenStorage.retrieve();
+  } catch (error) {
+    throw TransportError.serverError(
+      `Failed to initialize token storage: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error instanceof Error ? error : undefined,
+    );
+  }
+}
+
+/**
  * Creates a transport instance based on configuration with caching and validation.
  *
  * Factory function that creates and caches transport instances for MCP communication.
@@ -61,30 +108,8 @@ export async function createTransport(
     }
 
     // Validate dependencies if auth provider or token storage is provided
-    if (dependencies?.authProvider) {
-      try {
-        const isValid = await dependencies.authProvider.isValid();
-        if (!isValid) {
-          throw new Error('Auth provider configuration is not valid');
-        }
-      } catch (error) {
-        throw TransportError.authenticationFailed(
-          error instanceof Error ? error.message : 'Unknown error',
-          error instanceof Error ? error : undefined,
-        );
-      }
-    }
-
-    if (dependencies?.tokenStorage) {
-      try {
-        await dependencies.tokenStorage.retrieve();
-      } catch (error) {
-        throw TransportError.serverError(
-          `Failed to initialize token storage: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          error instanceof Error ? error : undefined,
-        );
-      }
-    }
+    await validateAuthProvider(dependencies?.authProvider);
+    await validateTokenStorage(dependencies?.tokenStorage);
 
     // Create appropriate transport based on type
     const transport = await createTransportImplementation(configWithDefaults, dependencies);

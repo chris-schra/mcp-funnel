@@ -2,10 +2,12 @@ import { generateRefreshTokenRecord } from './generateRefreshTokenRecord.js';
 import { OAuthUtils } from '../../utils/index.js';
 import {
   type AccessToken,
+  type ClientRegistration,
   type IOAuthProviderStorage,
   type OAuthError,
   OAuthErrorCodes,
   type OAuthProviderConfig,
+  type RefreshToken,
   type TokenRequest,
   type TokenResponse,
 } from '@mcp-funnel/models';
@@ -19,22 +21,29 @@ const {
   validateClientCredentials,
 } = OAuthUtils;
 
-export const handleRefreshTokenGrant = async (
-  config: OAuthProviderConfig,
-  storage: IOAuthProviderStorage,
-  params: TokenRequest,
-): Promise<{
-  success: boolean;
-  tokenResponse?: TokenResponse;
+type ClientValidationResult = {
+  client?: ClientRegistration;
   error?: OAuthError;
-}> => {
-  const { refresh_token, client_id, client_secret, scope } = params;
+};
 
-  // Get client
-  const client = await storage.getClient(client_id);
+type RefreshTokenValidationResult = {
+  refreshTokenData?: RefreshToken;
+  error?: OAuthError;
+};
+
+type ScopeValidationResult = {
+  scopes?: string[];
+  error?: OAuthError;
+};
+
+const validateClient = async (
+  storage: IOAuthProviderStorage,
+  clientId: string,
+  clientSecret?: string,
+): Promise<ClientValidationResult> => {
+  const client = await storage.getClient(clientId);
   if (!client) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_CLIENT,
         error_description: 'Invalid client_id',
@@ -42,10 +51,8 @@ export const handleRefreshTokenGrant = async (
     };
   }
 
-  // Validate client credentials
-  if (!validateClientCredentials(client, client_secret)) {
+  if (!validateClientCredentials(client, clientSecret)) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_CLIENT,
         error_description: 'Invalid client credentials',
@@ -53,11 +60,17 @@ export const handleRefreshTokenGrant = async (
     };
   }
 
-  // Get refresh token
-  const refreshTokenData = await storage.getRefreshToken(refresh_token!);
+  return { client };
+};
+
+const validateRefreshToken = async (
+  storage: IOAuthProviderStorage,
+  refreshToken: string,
+  clientId: string,
+): Promise<RefreshTokenValidationResult> => {
+  const refreshTokenData = await storage.getRefreshToken(refreshToken);
   if (!refreshTokenData) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_GRANT,
         error_description: 'Invalid refresh token',
@@ -65,11 +78,12 @@ export const handleRefreshTokenGrant = async (
     };
   }
 
-  // Check if refresh token is expired
-  if (refreshTokenData.expires_at > 0 && isExpired(refreshTokenData.expires_at)) {
-    await storage.deleteRefreshToken(refresh_token!);
+  if (
+    refreshTokenData.expires_at > 0 &&
+    isExpired(refreshTokenData.expires_at)
+  ) {
+    await storage.deleteRefreshToken(refreshToken);
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_GRANT,
         error_description: 'Refresh token expired',
@@ -77,10 +91,8 @@ export const handleRefreshTokenGrant = async (
     };
   }
 
-  // Validate client matches
-  if (refreshTokenData.client_id !== client_id) {
+  if (refreshTokenData.client_id !== clientId) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_GRANT,
         error_description: 'Refresh token was not issued to this client',
@@ -88,29 +100,43 @@ export const handleRefreshTokenGrant = async (
     };
   }
 
-  // Handle scope parameter
-  let grantedScopes = refreshTokenData.scopes;
-  if (scope) {
-    const requestedScopes = parseScopes(scope);
-    // Requested scopes must be a subset of original scopes
-    if (!requestedScopes.every((s) => refreshTokenData.scopes.includes(s))) {
-      return {
-        success: false,
-        error: {
-          error: OAuthErrorCodes.INVALID_SCOPE,
-          error_description: 'Requested scope exceeds original grant',
-        },
-      };
-    }
-    grantedScopes = requestedScopes;
+  return { refreshTokenData };
+};
+
+const validateScopes = (
+  requestedScope: string | undefined,
+  originalScopes: string[],
+): ScopeValidationResult => {
+  if (!requestedScope) {
+    return { scopes: originalScopes };
   }
 
-  // Generate new access token
+  const requestedScopes = parseScopes(requestedScope);
+  if (!requestedScopes.every((s) => originalScopes.includes(s))) {
+    return {
+      error: {
+        error: OAuthErrorCodes.INVALID_SCOPE,
+        error_description: 'Requested scope exceeds original grant',
+      },
+    };
+  }
+
+  return { scopes: requestedScopes };
+};
+
+const createTokenResponse = async (
+  config: OAuthProviderConfig,
+  storage: IOAuthProviderStorage,
+  clientId: string,
+  userId: string,
+  scopes: string[],
+  refreshToken?: string,
+): Promise<TokenResponse> => {
   const accessToken: AccessToken = {
     token: generateAccessToken(),
-    client_id,
-    user_id: refreshTokenData.user_id,
-    scopes: grantedScopes,
+    client_id: clientId,
+    user_id: userId,
+    scopes,
     expires_at: getCurrentTimestamp() + config.defaultTokenExpiry,
     created_at: getCurrentTimestamp(),
     token_type: 'Bearer',
@@ -122,20 +148,69 @@ export const handleRefreshTokenGrant = async (
     access_token: accessToken.token,
     token_type: 'Bearer',
     expires_in: config.defaultTokenExpiry,
-    scope: formatScopes(grantedScopes),
+    scope: formatScopes(scopes),
   };
 
-  if (config.requireTokenRotation && config.issueRefreshTokens) {
+  if (
+    config.requireTokenRotation &&
+    config.issueRefreshTokens &&
+    refreshToken
+  ) {
     const rotatedRefreshToken = generateRefreshTokenRecord(
-      client_id,
-      refreshTokenData.user_id,
-      grantedScopes,
+      clientId,
+      userId,
+      scopes,
       config.defaultRefreshTokenExpiry,
     );
     await storage.saveRefreshToken(rotatedRefreshToken);
-    await storage.deleteRefreshToken(refresh_token!);
+    await storage.deleteRefreshToken(refreshToken);
     tokenResponse.refresh_token = rotatedRefreshToken.token;
   }
+
+  return tokenResponse;
+};
+
+export const handleRefreshTokenGrant = async (
+  config: OAuthProviderConfig,
+  storage: IOAuthProviderStorage,
+  params: TokenRequest,
+): Promise<{
+  success: boolean;
+  tokenResponse?: TokenResponse;
+  error?: OAuthError;
+}> => {
+  const { refresh_token, client_id, client_secret, scope } = params;
+
+  const clientResult = await validateClient(storage, client_id, client_secret);
+  if (clientResult.error) {
+    return { success: false, error: clientResult.error };
+  }
+
+  const tokenResult = await validateRefreshToken(
+    storage,
+    refresh_token!,
+    client_id,
+  );
+  if (tokenResult.error) {
+    return { success: false, error: tokenResult.error };
+  }
+
+  const scopeResult = validateScopes(
+    scope,
+    tokenResult.refreshTokenData!.scopes,
+  );
+  if (scopeResult.error) {
+    return { success: false, error: scopeResult.error };
+  }
+
+  const tokenResponse = await createTokenResponse(
+    config,
+    storage,
+    client_id,
+    tokenResult.refreshTokenData!.user_id,
+    scopeResult.scopes!,
+    refresh_token,
+  );
 
   return { success: true, tokenResponse };
 };

@@ -6,31 +6,39 @@ import { tmpdir } from 'node:os';
 // We need to test the loadConfig function from dev.ts
 // Since it's not exported, we'll create a test version that mirrors the logic
 // The actual dev.ts checks for Array.isArray but we need to support both formats
+
+/**
+ * Server configuration with command and optional arguments/environment
+ */
+type ServerConfig = {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+};
+
+/**
+ * Server configuration entry in array format (legacy)
+ */
+type ServerArrayEntry = ServerConfig & {
+  name: string;
+};
+
+/**
+ * Configuration object with servers and optional tool filters
+ */
+type McpFunnelConfig = {
+  servers: Array<ServerArrayEntry> | Record<string, ServerConfig>;
+  hideTools?: string[];
+  exposeTools?: string[];
+  exposeCoreTools?: string[];
+};
+
 /**
  * Test version of loadConfig that mirrors the logic from dev.ts.
  * @param configPath - Path to the configuration file
  * @returns Configuration object with servers and optional tool filters
  */
-function loadConfigTest(configPath: string): {
-  servers:
-    | Array<{
-        name: string;
-        command: string;
-        args?: string[];
-        env?: Record<string, string>;
-      }>
-    | Record<
-        string,
-        {
-          command: string;
-          args?: string[];
-          env?: Record<string, string>;
-        }
-      >;
-  hideTools?: string[];
-  exposeTools?: string[];
-  exposeCoreTools?: string[];
-} {
+function loadConfigTest(configPath: string): McpFunnelConfig {
   if (existsSync(configPath)) {
     const txt = readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(txt) as unknown;

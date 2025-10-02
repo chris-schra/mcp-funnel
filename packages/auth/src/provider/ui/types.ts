@@ -37,3 +37,13 @@ export interface ConsentPageData {
   /** Form action URL for consent submission */
   actionUrl: string;
 }
+
+/**
+ * Result of consent page data validation
+ */
+export interface ConsentPageValidationResult {
+  /** Whether the validation passed */
+  valid: boolean;
+  /** Array of validation error messages */
+  errors: string[];
+}
