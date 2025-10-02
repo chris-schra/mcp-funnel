@@ -96,7 +96,9 @@ describe(
           action: 'continue',
         });
 
-        expect(continueResult.resumed).toBe(true);
+        // After continue, execution either pauses at another breakpoint or completes
+        // In this test, there's only one breakpoint, so execution should complete without pausing
+        expect(continueResult.pause).toBeUndefined();
 
         // Wait for process to complete
         // The session gets removed when terminated, so we check for that
@@ -107,7 +109,10 @@ describe(
               return snapshot.session.status === 'terminated' ? true : null;
             } catch (error) {
               // Session was removed after termination - this is expected
-              if (error instanceof Error && error.message.includes('not found')) {
+              if (
+                error instanceof Error &&
+                error.message.includes('not found')
+              ) {
                 return true;
               }
               throw error;
@@ -248,7 +253,8 @@ describe(
           async () => {
             const output = await manager.queryOutput({ sessionId });
             const consoleCount = output.entries.filter(
-              (entry) => entry.kind === 'console' && entry.entry.level !== 'info'
+              (entry) =>
+                entry.kind === 'console' && entry.entry.level !== 'info',
             ).length;
             return consoleCount >= 3 ? true : null;
           },
@@ -358,7 +364,10 @@ describe(
               return snapshot.session.status === 'terminated' ? true : null;
             } catch (error) {
               // Session was removed after termination - this is expected
-              if (error instanceof Error && error.message.includes('not found')) {
+              if (
+                error instanceof Error &&
+                error.message.includes('not found')
+              ) {
                 return true;
               }
               throw error;
