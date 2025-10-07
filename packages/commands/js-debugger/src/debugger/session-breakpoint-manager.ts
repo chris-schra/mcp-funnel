@@ -202,14 +202,24 @@ export class SessionBreakpointManager {
       };
     }
 
+    return this.applySourceMapToLocation(metadata, scriptId, location);
+  }
+
+  private applySourceMapToLocation(
+    metadata: ScriptMetadata,
+    scriptId: string,
+    location: { url?: string; lineNumber: number; columnNumber?: number },
+  ): CdpLocation {
+    const sourceMap = metadata.sourceMap!; // Safe: caller verified sourceMap exists
+
     // Find the source ID in the source map
     let sourceId: string | undefined;
     if (location.url) {
       const reference = normalizeLocationReference(location.url, this.targetWorkingDirectory);
-      if (reference.path && metadata.sourceMap.sourcesByPath.has(reference.path)) {
-        sourceId = metadata.sourceMap.sourcesByPath.get(reference.path);
-      } else if (reference.fileUrl && metadata.sourceMap.sourcesByFileUrl?.has(reference.fileUrl)) {
-        sourceId = metadata.sourceMap.sourcesByFileUrl.get(reference.fileUrl);
+      if (reference.path && sourceMap.sourcesByPath.has(reference.path)) {
+        sourceId = sourceMap.sourcesByPath.get(reference.path);
+      } else if (reference.fileUrl && sourceMap.sourcesByFileUrl?.has(reference.fileUrl)) {
+        sourceId = sourceMap.sourcesByFileUrl.get(reference.fileUrl);
       }
     }
 
@@ -224,7 +234,7 @@ export class SessionBreakpointManager {
 
     // Convert from TypeScript (original) to JavaScript (generated) coordinates
     const generatedLocation = getGeneratedLocation(
-      metadata.sourceMap.consumer,
+      sourceMap.consumer,
       sourceId,
       location.lineNumber + 1, // Convert to 1-based for source-map
       location.columnNumber ?? 0,

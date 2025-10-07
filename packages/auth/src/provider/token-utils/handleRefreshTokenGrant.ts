@@ -11,6 +11,7 @@ import {
   type TokenRequest,
   type TokenResponse,
 } from '@mcp-funnel/models';
+import { type Result, err, ok } from './result.js';
 
 const {
   formatScopes,
@@ -21,104 +22,77 @@ const {
   validateClientCredentials,
 } = OAuthUtils;
 
-type ClientValidationResult = {
-  client?: ClientRegistration;
-  error?: OAuthError;
-};
-
-type RefreshTokenValidationResult = {
-  refreshTokenData?: RefreshToken;
-  error?: OAuthError;
-};
-
-type ScopeValidationResult = {
-  scopes?: string[];
-  error?: OAuthError;
-};
-
 const validateClient = async (
   storage: IOAuthProviderStorage,
   clientId: string,
   clientSecret?: string,
-): Promise<ClientValidationResult> => {
+): Promise<Result<ClientRegistration, OAuthError>> => {
   const client = await storage.getClient(clientId);
   if (!client) {
-    return {
-      error: {
-        error: OAuthErrorCodes.INVALID_CLIENT,
-        error_description: 'Invalid client_id',
-      },
-    };
+    return err({
+      error: OAuthErrorCodes.INVALID_CLIENT,
+      error_description: 'Invalid client_id',
+    });
   }
 
   if (!validateClientCredentials(client, clientSecret)) {
-    return {
-      error: {
-        error: OAuthErrorCodes.INVALID_CLIENT,
-        error_description: 'Invalid client credentials',
-      },
-    };
+    return err({
+      error: OAuthErrorCodes.INVALID_CLIENT,
+      error_description: 'Invalid client credentials',
+    });
   }
 
-  return { client };
+  return ok(client);
 };
 
 const validateRefreshToken = async (
   storage: IOAuthProviderStorage,
   refreshToken: string,
   clientId: string,
-): Promise<RefreshTokenValidationResult> => {
+): Promise<Result<RefreshToken, OAuthError>> => {
   const refreshTokenData = await storage.getRefreshToken(refreshToken);
   if (!refreshTokenData) {
-    return {
-      error: {
-        error: OAuthErrorCodes.INVALID_GRANT,
-        error_description: 'Invalid refresh token',
-      },
-    };
+    return err({
+      error: OAuthErrorCodes.INVALID_GRANT,
+      error_description: 'Invalid refresh token',
+    });
   }
 
   if (refreshTokenData.expires_at > 0 && isExpired(refreshTokenData.expires_at)) {
     await storage.deleteRefreshToken(refreshToken);
-    return {
-      error: {
-        error: OAuthErrorCodes.INVALID_GRANT,
-        error_description: 'Refresh token expired',
-      },
-    };
+    return err({
+      error: OAuthErrorCodes.INVALID_GRANT,
+      error_description: 'Refresh token expired',
+    });
   }
 
   if (refreshTokenData.client_id !== clientId) {
-    return {
-      error: {
-        error: OAuthErrorCodes.INVALID_GRANT,
-        error_description: 'Refresh token was not issued to this client',
-      },
-    };
+    return err({
+      error: OAuthErrorCodes.INVALID_GRANT,
+      error_description: 'Refresh token was not issued to this client',
+    });
   }
 
-  return { refreshTokenData };
+  return ok(refreshTokenData);
 };
 
 const validateScopes = (
   requestedScope: string | undefined,
   originalScopes: string[],
-): ScopeValidationResult => {
+): Result<string[], OAuthError> => {
   if (!requestedScope) {
-    return { scopes: originalScopes };
+    return ok(originalScopes);
   }
 
   const requestedScopes = parseScopes(requestedScope);
   if (!requestedScopes.every((s) => originalScopes.includes(s))) {
-    return {
-      error: {
-        error: OAuthErrorCodes.INVALID_SCOPE,
-        error_description: 'Requested scope exceeds original grant',
-      },
-    };
+    return err({
+      error: OAuthErrorCodes.INVALID_SCOPE,
+      error_description: 'Requested scope exceeds original grant',
+    });
   }
 
-  return { scopes: requestedScopes };
+  return ok(requestedScopes);
 };
 
 const createTokenResponse = async (
@@ -174,27 +148,42 @@ export const handleRefreshTokenGrant = async (
 }> => {
   const { refresh_token, client_id, client_secret, scope } = params;
 
+  // Validate required refresh_token parameter
+  if (!refresh_token) {
+    return {
+      success: false,
+      error: {
+        error: OAuthErrorCodes.INVALID_REQUEST,
+        error_description: 'refresh_token is required',
+      },
+    };
+  }
+
+  // Validate client credentials
   const clientResult = await validateClient(storage, client_id, client_secret);
-  if (clientResult.error) {
+  if (!clientResult.ok) {
     return { success: false, error: clientResult.error };
   }
 
-  const tokenResult = await validateRefreshToken(storage, refresh_token!, client_id);
-  if (tokenResult.error) {
+  // Validate refresh token
+  const tokenResult = await validateRefreshToken(storage, refresh_token, client_id);
+  if (!tokenResult.ok) {
     return { success: false, error: tokenResult.error };
   }
 
-  const scopeResult = validateScopes(scope, tokenResult.refreshTokenData!.scopes);
-  if (scopeResult.error) {
+  // Validate requested scopes
+  const scopeResult = validateScopes(scope, tokenResult.value.scopes);
+  if (!scopeResult.ok) {
     return { success: false, error: scopeResult.error };
   }
 
+  // Create token response
   const tokenResponse = await createTokenResponse(
     config,
     storage,
     client_id,
-    tokenResult.refreshTokenData!.user_id,
-    scopeResult.scopes!,
+    tokenResult.value.user_id,
+    scopeResult.value,
     refresh_token,
   );
 

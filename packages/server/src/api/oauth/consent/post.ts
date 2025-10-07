@@ -292,7 +292,7 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
         params,
         approvedScopes,
         redirectUri,
-        params.ttlSecondsRaw || undefined,
+        params.ttlSecondsRaw,
         consentService,
       );
     }

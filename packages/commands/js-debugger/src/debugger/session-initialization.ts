@@ -200,6 +200,129 @@ function collectTargetFiles(
 }
 
 /**
+ * Handles the initial pause sequence: wait for --inspect-brk pause, then resume to hit internal breakpoints.
+ * @param context - Initialization context
+ * @returns Initial pause details, or undefined if pause did not occur
+ */
+async function handleInitialPauseSequence(
+  context: InitializationContext,
+): Promise<PauseDetails | undefined> {
+  let initialPause: PauseDetails | undefined;
+  try {
+    initialPause = await waitForPause(
+      context.events,
+      context.getLastPause(),
+      'Initial --inspect-brk pause',
+      false,
+    );
+
+    // Resume to let the script execute and hit our internal line 0 breakpoints
+    await context.processManager.sendCommand('Debugger.resume');
+    // Now wait for the internal line 0 breakpoint to be hit (with hitBreakpoints)
+    initialPause = await waitForPause(
+      context.events,
+      context.getLastPause(),
+      'Internal line 0 breakpoint hit',
+      false,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Session ${context.sessionId}: did not receive initial pause (${message}).`);
+  }
+  return initialPause;
+}
+
+/**
+ * Handles waiting for user breakpoint resolution and resuming to hit them.
+ * @param createdBreakpoints - User breakpoints that were set
+ * @param initialPause - The initial pause details
+ * @param internalBreakpoints - Internal breakpoint IDs to clean up
+ * @param context - Initialization context
+ * @returns Actual pause details after hitting user breakpoint, or undefined
+ */
+async function handleUserBreakpointHit(
+  createdBreakpoints: BreakpointSummary[],
+  initialPause: PauseDetails,
+  internalBreakpoints: string[],
+  context: InitializationContext,
+): Promise<PauseDetails | undefined> {
+  // Wait for breakpoint resolution
+  const hasResolvedBreakpoints = await waitForBreakpointResolution(
+    createdBreakpoints,
+    context.breakpointManager,
+  );
+
+  // Clear internal breakpoints since we don't need them anymore
+  await clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
+
+  if (!hasResolvedBreakpoints) {
+    return initialPause;
+  }
+
+  // Resume from the internal breakpoint to hit the actual user breakpoint
+  await context.processManager.sendCommand('Debugger.resume');
+
+  // Wait for the actual user breakpoint to be hit
+  try {
+    return await waitForPause(context.events, context.getLastPause(), 'User breakpoint hit', false);
+  } catch (error) {
+    console.warn(
+      `Session ${context.sessionId}: Failed to hit user breakpoint after resuming from internal breakpoint: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    // If we don't hit a user breakpoint, that's okay - execution might have completed
+    return undefined;
+  }
+}
+
+/**
+ * Finalizes initialization by cleaning up internal breakpoints and emitting instructions.
+ * @param createdBreakpoints - User breakpoints that were created
+ * @param internalBreakpoints - Internal breakpoint IDs to clean up
+ * @param context - Initialization context
+ */
+async function finalizeInitialization(
+  createdBreakpoints: BreakpointSummary[] | undefined,
+  internalBreakpoints: string[],
+  context: InitializationContext,
+): Promise<void> {
+  // Cleanup logic: if we didn't handle user breakpoints, clean up internal breakpoints
+  const hasUserBreakpoints = createdBreakpoints && createdBreakpoints.length > 0;
+
+  if (!hasUserBreakpoints) {
+    if (context.config.resumeAfterConfigure) {
+      // Clear internal breakpoints immediately before resuming
+      await clearInternalBreakpoints(
+        internalBreakpoints,
+        context.processManager,
+        context.sessionId,
+      );
+    } else {
+      // Clear internal breakpoints after a delay if we're paused and not resuming
+      setTimeout(() => {
+        void clearInternalBreakpoints(
+          internalBreakpoints,
+          context.processManager,
+          context.sessionId,
+        );
+      }, BREAKPOINT_CLEAR_DELAY_MS);
+    }
+  }
+
+  // Emit instructions based on configuration
+  if (context.config.resumeAfterConfigure) {
+    emitInstructions(
+      context.outputBuffer,
+      'Session ready. Execution resumed automatically. Use js-debugger_debuggerCommand for actions like "pause" or "stepOver". Line and column numbers follow CDP zero-based coordinates.',
+    );
+  } else {
+    emitInstructions(
+      context.outputBuffer,
+      'Session ready. Use js-debugger_debuggerCommand with actions like "continue", "pause", or "stepOver". Include breakpoints.set/remove to adjust breakpoints. Line and column numbers follow CDP zero-based coordinates.',
+    );
+  }
+}
+
+/**
  * Performs the complete session initialization sequence.
  * @param context - Initialization context with session configuration and managers
  * @returns Result containing created breakpoints and initial pause details
@@ -208,7 +331,6 @@ export async function performInitialization(
   context: InitializationContext,
 ): Promise<InitializationResult> {
   // Determine working directory for path resolution
-  // Use the target's cwd if specified, otherwise use process.cwd()
   const targetWorkingDirectory = context.nodeTarget.cwd || process.cwd();
 
   // Set internal breakpoints at line 0 for all target files
@@ -236,28 +358,7 @@ export async function performInitialization(
   );
 
   // Wait for the initial --inspect-brk pause, then resume to trigger internal breakpoints
-  let initialPause: PauseDetails | undefined;
-  try {
-    initialPause = await waitForPause(
-      context.events,
-      context.getLastPause(),
-      'Initial --inspect-brk pause',
-      false,
-    );
-
-    // Resume to let the script execute and hit our internal line 0 breakpoints
-    await context.processManager.sendCommand('Debugger.resume');
-    // Now wait for the internal line 0 breakpoint to be hit (with hitBreakpoints)
-    initialPause = await waitForPause(
-      context.events,
-      context.getLastPause(),
-      'Internal line 0 breakpoint hit',
-      false,
-    );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`Session ${context.sessionId}: did not receive initial pause (${message}).`);
-  }
+  const initialPause = await handleInitialPauseSequence(context);
 
   // Now set the actual user-requested breakpoints while paused
   let createdBreakpoints: BreakpointSummary[] | undefined;
@@ -273,56 +374,14 @@ export async function performInitialization(
   // Handle different initialization paths based on user breakpoints and resume config
   let actualInitialPause = initialPause;
   if (createdBreakpoints && createdBreakpoints.length > 0 && initialPause) {
-    // Wait for breakpoint resolution
-    const hasResolvedBreakpoints = await waitForBreakpointResolution(
+    actualInitialPause = await handleUserBreakpointHit(
       createdBreakpoints,
-      context.breakpointManager,
-    );
-
-    // Clear internal breakpoints since we don't need them anymore
-    await clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
-
-    if (hasResolvedBreakpoints) {
-      // Resume from the internal breakpoint to hit the actual user breakpoint
-      await context.processManager.sendCommand('Debugger.resume');
-
-      // Wait for the actual user breakpoint to be hit
-      try {
-        actualInitialPause = await waitForPause(
-          context.events,
-          context.getLastPause(),
-          'User breakpoint hit',
-          false,
-        );
-      } catch (error) {
-        console.warn(
-          `Session ${context.sessionId}: Failed to hit user breakpoint after resuming from internal breakpoint: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        // If we don't hit a user breakpoint, that's okay - execution might have completed
-        actualInitialPause = undefined;
-      }
-    }
-  } else if (context.config.resumeAfterConfigure) {
-    // Clear internal breakpoints immediately before resuming if we're not waiting for user breakpoints
-    await clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
-  } else {
-    // Clear internal breakpoints after a delay if we're paused and not resuming
-    setTimeout(() => {
-      void clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
-    }, BREAKPOINT_CLEAR_DELAY_MS);
-  }
-
-  // Emit instructions based on configuration
-  if (context.config.resumeAfterConfigure) {
-    emitInstructions(
-      context.outputBuffer,
-      'Session ready. Execution resumed automatically. Use js-debugger_debuggerCommand for actions like "pause" or "stepOver". Line and column numbers follow CDP zero-based coordinates.',
+      initialPause,
+      internalBreakpoints,
+      context,
     );
   } else {
-    emitInstructions(
-      context.outputBuffer,
-      'Session ready. Use js-debugger_debuggerCommand with actions like "continue", "pause", or "stepOver". Include breakpoints.set/remove to adjust breakpoints. Line and column numbers follow CDP zero-based coordinates.',
-    );
+    await finalizeInitialization(createdBreakpoints, internalBreakpoints, context);
   }
 
   return {
