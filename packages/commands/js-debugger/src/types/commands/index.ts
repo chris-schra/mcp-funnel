@@ -3,6 +3,7 @@ export type { BreakpointLocation } from './breakpoint-location';
 export type { BreakpointMutation } from './breakpoint-mutation';
 export type { BreakpointSpec } from './breakpoint-spec';
 export type { BreakpointSummary } from './breakpoint-summary';
+export type { CommandAcknowledgment } from './command-acknowledgment';
 export type {
   ContinueCommand,
   ContinueToLocationCommand,

@@ -82,9 +82,6 @@ export class SessionProcessManager {
     const id = ++this.messageId;
     const payload = JSON.stringify({ id, method, params });
 
-    // Log CDP commands for debugging
-    console.debug(`CDP Command: ${JSON.stringify({ id, method, params })}`);
-
     return new Promise<T>((resolve, reject) => {
       this.pendingCommands.set(id, { resolve, reject });
       this.ws!.send(payload, (error) => {
@@ -126,7 +123,6 @@ export class SessionProcessManager {
   }
 
   public closeConnection(): void {
-    console.info(`Session ${this.sessionId}: Closing WebSocket connection`);
     this.ws?.close();
   }
 
@@ -199,16 +195,7 @@ export class SessionProcessManager {
       ),
     );
     child.on('exit', (code, signal) => {
-      console.info(
-        `Session ${this.sessionId}: Child process exited with code ${code} and signal ${signal}`,
-      );
       this.onProcessExit(code, signal ?? undefined);
-    });
-
-    child.on('close', (code, signal) => {
-      console.info(
-        `Session ${this.sessionId}: Child process closed with code ${code} and signal ${signal}`,
-      );
     });
 
     child.on('disconnect', () => {
@@ -240,14 +227,12 @@ export class SessionProcessManager {
     ws.on('error', (error) => this.handleSocketError(error));
     ws.on('close', () => this.handleSocketClose());
 
-    console.info('Sending initial CDP commands...');
     await this.sendCommand('Runtime.enable', {});
     await this.sendCommand('Debugger.enable', {});
     await this.sendCommand('Debugger.setBreakpointsActive', { active: true });
     await this.trySendCommand('Debugger.setAsyncCallStackDepth', {
       maxDepth: 32,
     });
-    console.info('Initial CDP commands sent');
   }
 
   private handleStdStream(stream: StreamName, chunk: Buffer): void {
@@ -296,16 +281,6 @@ export class SessionProcessManager {
     try {
       const message = JSON.parse(data.toString()) as CdpMessage;
 
-      // Log specific important messages
-      if (
-        message.method === 'Debugger.resumed' ||
-        message.id === 17 ||
-        message.id === 16
-      ) {
-        // IDs for our resume commands
-        console.debug(`CDP Response: ${JSON.stringify(message)}`);
-      }
-
       if (typeof message.id === 'number') {
         const pending = this.pendingCommands.get(message.id);
         if (pending) {
@@ -324,7 +299,6 @@ export class SessionProcessManager {
         return;
       }
       if (message.method) {
-        console.debug(`CDP Event: ${message.method}`);
         this.onMessage(message.method, message.params);
       }
     } catch (error) {

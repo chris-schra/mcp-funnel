@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
 import type {
   DebugSessionConfig,
-  NodeDebugTargetConfig,
   StartDebugSessionResponse,
 } from '../src/types/index.js';
 import { waitFor } from './utils/async-helpers.js';
@@ -10,6 +9,10 @@ import {
   prepareNodeFixture,
   type FixtureHandle,
 } from './utils/fixture-manager.js';
+import {
+  createNodeTarget,
+  waitForSessionTermination,
+} from './utils/session-helpers.js';
 
 describe(
   'DebuggerSessionManager Integration Tests - Workflows',
@@ -25,16 +28,6 @@ describe(
       // Clean up all fixtures
       await Promise.all(fixtures.map((fixture) => fixture.cleanup()));
       fixtures.length = 0;
-    });
-
-    const createNodeTarget = (
-      fixturePath: string,
-      options?: Partial<NodeDebugTargetConfig>,
-    ): NodeDebugTargetConfig => ({
-      type: 'node',
-      entry: fixturePath,
-      useTsx: fixturePath.endsWith('.ts'),
-      ...options,
     });
 
     const startSession = async (
@@ -62,7 +55,7 @@ describe(
         });
 
         // Verify session started and is paused
-        expect(response.session.status).toBe('paused');
+        expect(response.session.state.status).toBe('paused');
         expect(response.initialPause).toBeDefined();
         expect(response.initialPause?.reason).toMatch('breakpoint');
 
@@ -71,7 +64,13 @@ describe(
         expect(response.breakpoints?.length).toBeGreaterThan(0);
 
         const sessionId = response.session.id;
-        const pauseDetails = response.initialPause!;
+
+        // Get fresh pause details to ensure scope info is fully populated
+        const pauseResult = await manager.runCommand({
+          sessionId,
+          action: 'pause',
+        });
+        const pauseDetails = pauseResult.pause!;
         const callFrame = pauseDetails.callFrames[0];
 
         // Inspect variables in the top scope
@@ -101,25 +100,7 @@ describe(
         expect(continueResult.pause).toBeUndefined();
 
         // Wait for process to complete
-        // The session gets removed when terminated, so we check for that
-        await waitFor(
-          async () => {
-            try {
-              const snapshot = manager.getSnapshot(sessionId);
-              return snapshot.session.status === 'terminated' ? true : null;
-            } catch (error) {
-              // Session was removed after termination - this is expected
-              if (
-                error instanceof Error &&
-                error.message.includes('not found')
-              ) {
-                return true;
-              }
-              throw error;
-            }
-          },
-          { timeoutMs: 5000 },
-        );
+        await waitForSessionTermination(manager, sessionId);
       });
 
       it('should handle multiple breakpoints in sequence', async () => {
@@ -139,7 +120,7 @@ describe(
           ],
         });
 
-        expect(response.session.status).toBe('paused');
+        expect(response.session.state.status).toBe('paused');
         expect(response.breakpoints?.length).toBe(2);
 
         const sessionId = response.session.id;
@@ -147,10 +128,10 @@ describe(
         // Continue past first breakpoint
         await manager.runCommand({ sessionId, action: 'continue' });
 
-        // Should hit second breakpoint or complete
+        // Should hit second breakpoint, be transitioning, running, or complete
         const snapshot = manager.getSnapshot(sessionId);
-        expect(['paused', 'running', 'terminated']).toContain(
-          snapshot.session.status,
+        expect(['paused', 'running', 'terminated', 'transitioning']).toContain(
+          snapshot.session.state.status,
         );
       });
     });
@@ -170,7 +151,7 @@ describe(
           ],
         });
 
-        expect(response.session.status).toBe('paused');
+        expect(response.session.state.status).toBe('paused');
         const sessionId = response.session.id;
 
         // Step over
@@ -219,7 +200,7 @@ describe(
           ],
         });
 
-        expect(response.session.status).toBe('paused');
+        expect(response.session.state.status).toBe('paused');
         const sessionId = response.session.id;
 
         // Continue to a specific location
@@ -245,7 +226,7 @@ describe(
           resumeAfterConfigure: true,
         });
 
-        expect(response.session.status).toBe('running');
+        expect(response.session.state.status).toBe('running');
         const sessionId = response.session.id;
 
         // Wait for console output from the script - specifically wait for all 3 initial messages
@@ -351,30 +332,13 @@ describe(
         });
 
         // Should start in running state
-        expect(response.session.status).toBe('running');
+        expect(response.session.state.status).toBe('running');
         expect(response.initialPause).toBeUndefined();
 
         const sessionId = response.session.id;
 
         // Wait for process to complete
-        await waitFor(
-          async () => {
-            try {
-              const snapshot = manager.getSnapshot(sessionId);
-              return snapshot.session.status === 'terminated' ? true : null;
-            } catch (error) {
-              // Session was removed after termination - this is expected
-              if (
-                error instanceof Error &&
-                error.message.includes('not found')
-              ) {
-                return true;
-              }
-              throw error;
-            }
-          },
-          { timeoutMs: 5000 },
-        );
+        await waitForSessionTermination(manager, sessionId);
       });
 
       it('should pause on entry when resumeAfterConfigure is false', async () => {
@@ -388,7 +352,7 @@ describe(
         });
 
         // Should start paused
-        expect(response.session.status).toBe('paused');
+        expect(response.session.state.status).toBe('paused');
         expect(response.initialPause).toBeDefined();
       });
     });

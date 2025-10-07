@@ -4,6 +4,7 @@ import { waitFor } from './utils/async-helpers.js';
 import { prepareNodeFixture } from './utils/fixture-manager.js';
 import type { DebugSessionId } from '../src/types/index.js';
 import type { FixtureHandle } from './utils/fixture-manager.js';
+import { sessionCleanup } from './utils.js';
 
 describe('Source Map Breakpoints', () => {
   let manager: DebuggerSessionManager;
@@ -57,7 +58,7 @@ describe('Source Map Breakpoints', () => {
       async () => {
         try {
           const currentSnapshot = manager.getSnapshot(sessionId!);
-          return currentSnapshot.session.status === 'paused'
+          return currentSnapshot.session.state.status === 'paused'
             ? currentSnapshot
             : null;
         } catch (error) {
@@ -72,40 +73,11 @@ describe('Source Map Breakpoints', () => {
 
     // Verify we actually paused at breakpoint (not just terminated)
     if (typeof result === 'object') {
-      expect(result.session.status).toBe('paused');
+      expect(result.session.state.status).toBe('paused');
     }
   }
 
-  afterEach(async () => {
-    if (sessionId) {
-      try {
-        const descriptor = manager.getDescriptor(sessionId);
-        if (descriptor.status !== 'terminated') {
-          await manager.runCommand({
-            sessionId,
-            action: 'continue',
-          });
-          // Wait for session auto-removal after termination
-          await waitFor(
-            async () => {
-              try {
-                manager.getDescriptor(sessionId!);
-                return null; // Still exists, keep waiting
-              } catch {
-                return true; // Session removed, done
-              }
-            },
-            { timeoutMs: 5000 },
-          );
-        }
-      } catch {
-        // Session may have already been auto-removed
-      }
-    }
-    if (fixture) {
-      await fixture.cleanup();
-    }
-  });
+  afterEach(async () => sessionCleanup(manager, sessionId, fixture));
 
   describe('Breakpoint Mapping', () => {
     it('should map original TypeScript location to generated JavaScript location', async () => {
@@ -320,7 +292,7 @@ describe('Source Map Breakpoints', () => {
         async () => {
           try {
             const snapshot = manager.getSnapshot(sessionId!);
-            return snapshot.session.status === 'paused' ? snapshot : null;
+            return snapshot.session.state.status === 'paused' ? snapshot : null;
           } catch (error) {
             if (error instanceof Error && error.message.includes('not found')) {
               return true; // Session removed after termination - that's ok

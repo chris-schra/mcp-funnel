@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
 import type { DebuggerSession } from '../src/debugger/session.js';
-import type {
-  DebugSessionConfig,
-  DebugSessionDescriptor,
-  DebugSessionSnapshot,
-  StartDebugSessionResponse,
-} from '../src/types/index.js';
+import type { DebugSessionConfig } from '../src/types/index.js';
+import {
+  createMockConfig,
+  createMockDescriptor,
+  createMockSnapshot,
+  createMockStartResponse,
+} from './utils/mock-helpers.js';
 
 // Mock DebuggerSession to avoid spawning real processes
 vi.mock('../src/debugger/session.js', () => {
@@ -43,42 +44,6 @@ vi.mock('../src/debugger/session.js', () => {
 describe('DebuggerSessionManager - Lifecycle', () => {
   let manager: DebuggerSessionManager;
   let mockSessionInstance: DebuggerSession;
-
-  const createMockConfig = (id?: string): DebugSessionConfig => ({
-    id,
-    target: {
-      type: 'node',
-      entry: '/test/entry.js',
-      cwd: '/test',
-    },
-  });
-
-  const createMockDescriptor = (sessionId: string): DebugSessionDescriptor => ({
-    id: sessionId,
-    target: {
-      type: 'node',
-      entry: '/test/entry.js',
-      cwd: '/test',
-    },
-    status: 'running',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
-
-  const createMockSnapshot = (sessionId: string): DebugSessionSnapshot => ({
-    session: createMockDescriptor(sessionId),
-    output: {
-      stdio: [],
-      console: [],
-      exceptions: [],
-    },
-  });
-
-  const createMockStartResponse = (
-    sessionId: string,
-  ): StartDebugSessionResponse => ({
-    session: createMockDescriptor(sessionId),
-  });
 
   beforeEach(async () => {
     manager = new DebuggerSessionManager();

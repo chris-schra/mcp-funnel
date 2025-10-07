@@ -40,13 +40,10 @@ export class SessionBreakpointManager {
   ) {
     this.internals = new SessionBreakpointInternals(
       sessionId,
-      scripts,
-      targetWorkingDirectory,
       sendCommand,
       this.breakpointRecords,
       this.pendingBreakpointUpgrades,
       this.pendingBreakpointKeys,
-      this.toCdpLocation.bind(this),
       this.fromCdpLocation.bind(this),
     );
   }

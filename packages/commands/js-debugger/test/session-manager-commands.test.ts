@@ -5,13 +5,16 @@ import type {
   DebugSessionConfig,
   DebuggerCommand,
   DebuggerCommandResult,
-  DebugSessionDescriptor,
   OutputQuery,
   OutputQueryResult,
   ScopeQuery,
   ScopeQueryResult,
-  StartDebugSessionResponse,
 } from '../src/types/index.js';
+import {
+  createMockConfig,
+  createMockDescriptor,
+  createMockStartResponse,
+} from './utils/mock-helpers.js';
 
 // Mock DebuggerSession to avoid spawning real processes
 vi.mock('../src/debugger/session.js', () => {
@@ -49,33 +52,6 @@ describe('DebuggerSessionManager - Commands', () => {
   let manager: DebuggerSessionManager;
   let mockSessionInstance: DebuggerSession;
 
-  const createMockConfig = (id?: string): DebugSessionConfig => ({
-    id,
-    target: {
-      type: 'node',
-      entry: '/test/entry.js',
-      cwd: '/test',
-    },
-  });
-
-  const createMockDescriptor = (sessionId: string): DebugSessionDescriptor => ({
-    id: sessionId,
-    target: {
-      type: 'node',
-      entry: '/test/entry.js',
-      cwd: '/test',
-    },
-    status: 'running',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
-
-  const createMockStartResponse = (
-    sessionId: string,
-  ): StartDebugSessionResponse => ({
-    session: createMockDescriptor(sessionId),
-  });
-
   beforeEach(async () => {
     manager = new DebuggerSessionManager();
 
@@ -105,6 +81,7 @@ describe('DebuggerSessionManager - Commands', () => {
       };
       const commandResult: DebuggerCommandResult = {
         session: createMockDescriptor(sessionId),
+        commandAck: { command: 'continue', sent: true },
         resumed: true,
       };
 
@@ -132,6 +109,7 @@ describe('DebuggerSessionManager - Commands', () => {
       };
       const commandResult: DebuggerCommandResult = {
         session: createMockDescriptor(sessionId),
+        commandAck: { command: 'pause', sent: true },
         pause: {
           reason: 'user',
           callFrames: [],
@@ -172,6 +150,7 @@ describe('DebuggerSessionManager - Commands', () => {
         const command: DebuggerCommand = { sessionId, action };
         const commandResult: DebuggerCommandResult = {
           session: createMockDescriptor(sessionId),
+          commandAck: { command: action, sent: true },
           pause: { reason: action, callFrames: [] },
         };
 

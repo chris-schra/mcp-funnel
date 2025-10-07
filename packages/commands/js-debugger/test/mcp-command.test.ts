@@ -23,7 +23,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
   const mockSession = (): StartDebugSessionResponse => ({
     session: {
       id: 'test-id',
-      status: 'running',
+      state: { status: 'running' },
       createdAt: Date.now(),
       updatedAt: Date.now(),
       target: { type: 'node', entry: './test.js' },
@@ -34,11 +34,15 @@ describe('JsDebuggerCommand - MCP Interface', () => {
   const mockCommand = (): DebuggerCommandResult => ({
     session: {
       id: 'test-id',
-      status: 'paused',
+      state: {
+        status: 'paused',
+        pause: { reason: 'debugCommand', callFrames: [] },
+      },
       createdAt: Date.now(),
       updatedAt: Date.now(),
       target: { type: 'node', entry: './test.js' },
     },
+    commandAck: { command: 'pause', sent: true },
     pause: {
       reason: 'debugCommand',
       callFrames: [

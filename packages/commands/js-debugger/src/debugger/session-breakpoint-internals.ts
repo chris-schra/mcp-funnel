@@ -25,8 +25,6 @@ import {
 export class SessionBreakpointInternals {
   public constructor(
     private readonly sessionId: string,
-    private readonly scripts: Map<string, ScriptMetadata>,
-    private readonly targetWorkingDirectory: string,
     private readonly sendCommand: <T = unknown>(
       method: string,
       params?: Record<string, unknown>,
@@ -37,12 +35,6 @@ export class SessionBreakpointInternals {
       PendingBreakpointUpgrade
     >,
     private readonly pendingBreakpointKeys: Map<string, Set<string>>,
-    private readonly toCdpLocation: (location: {
-      scriptId?: string;
-      url?: string;
-      lineNumber: number;
-      columnNumber?: number;
-    }) => CdpLocation,
     private readonly fromCdpLocation: (
       location: CdpLocation,
     ) => BreakpointLocation,
@@ -93,9 +85,6 @@ export class SessionBreakpointInternals {
       if (sourceId) {
         const originalLine = spec.location.lineNumber + 1;
         const originalColumn = spec.location.columnNumber ?? 0;
-        console.log(
-          `Session ${this.sessionId}: Initial mapping attempt for ${spec.location.url}:${spec.location.lineNumber} (0-indexed) -> source ${sourceId}:${originalLine}:${originalColumn} (1-indexed)`,
-        );
         const generated = getGeneratedLocation(
           sourceMap.consumer,
           sourceId,
@@ -103,17 +92,11 @@ export class SessionBreakpointInternals {
           originalColumn,
         );
         if (generated) {
-          console.log(
-            `Session ${this.sessionId}: Source map returned generated ${generated.lineNumber}:${generated.columnNumber ?? 0} (0-indexed)`,
-          );
           const snapped = await this.snapToValidBreakpoint(
             metadata.scriptId,
             generated,
           );
           if (snapped) {
-            console.info(
-              `Session ${this.sessionId}: Resolved breakpoint for ${spec.location.url}:${spec.location.lineNumber} to generated ${metadata.scriptId}:${snapped.lineNumber}:${snapped.columnNumber ?? 0}.`,
-            );
             return this.setBreakpointAtGeneratedLocation(
               metadata.scriptId,
               snapped,
@@ -334,9 +317,7 @@ export class SessionBreakpointInternals {
     }
     const originalLine = record.spec.location.lineNumber + 1;
     const originalColumn = record.spec.location.columnNumber ?? 0;
-    console.log(
-      `Session ${this.sessionId}: Mapping breakpoint from source ${sourceId}:${originalLine}:${originalColumn} (1-indexed)`,
-    );
+
     const generated = getGeneratedLocation(
       metadata.sourceMap.consumer,
       sourceId,
@@ -349,9 +330,7 @@ export class SessionBreakpointInternals {
       );
       return;
     }
-    console.log(
-      `Session ${this.sessionId}: Source map returned generated location ${generated.lineNumber}:${generated.columnNumber ?? 0} (0-indexed)`,
-    );
+
     const snapped = await this.snapToValidBreakpoint(
       metadata.scriptId,
       generated,
@@ -362,9 +341,7 @@ export class SessionBreakpointInternals {
       );
       return;
     }
-    console.log(
-      `Session ${this.sessionId}: Snapped to valid breakpoint at ${metadata.scriptId}:${snapped.lineNumber}:${snapped.columnNumber ?? 0} (0-indexed)`,
-    );
+
     const oldCdpId = record.cdpId;
     const result = (await this.sendCommand('Debugger.setBreakpoint', {
       location: {

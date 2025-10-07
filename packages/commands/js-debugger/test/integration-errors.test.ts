@@ -58,7 +58,9 @@ describe(
           async () => {
             try {
               const snapshot = manager.getSnapshot(sessionId);
-              return snapshot.session.status === 'terminated' ? true : null;
+              return snapshot.session.state.status === 'terminated'
+                ? true
+                : null;
             } catch (error) {
               if (
                 error instanceof Error &&
@@ -139,7 +141,9 @@ describe(
           async () => {
             try {
               const snapshot = manager.getSnapshot(sessionId);
-              return snapshot.session.status === 'terminated' ? true : null;
+              return snapshot.session.state.status === 'terminated'
+                ? true
+                : null;
             } catch (error) {
               if (
                 error instanceof Error &&
@@ -183,7 +187,7 @@ describe(
               try {
                 const snapshot = manager.getSnapshot(sessionId);
                 // This will never be true, causing timeout
-                return snapshot.session.status ===
+                return snapshot.session.state.status ===
                   ('impossible-status' as 'terminated')
                   ? true
                   : null;

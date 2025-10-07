@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { OutputBuffer } from '../src/debugger/output-buffer.js';
-import type {
-  ConsoleEntry,
-  ExceptionEntry,
-  StdioEntry,
-} from '../src/types/index.js';
+import {
+  createConsoleEntry,
+  createExceptionEntry,
+  createStdioEntry,
+} from './utils/entry-factories.js';
 
 describe('OutputBuffer - Storage', () => {
   let buffer: OutputBuffer;
@@ -12,44 +12,6 @@ describe('OutputBuffer - Storage', () => {
 
   beforeEach(() => {
     buffer = new OutputBuffer();
-  });
-
-  // Helper factories to follow DRY principle
-  const createStdioEntry = (
-    stream: 'stdout' | 'stderr',
-    text: string,
-  ): StdioEntry => ({
-    stream,
-    text,
-    timestamp: Date.now(),
-    offset: 0,
-  });
-
-  const createConsoleEntry = (
-    level: 'log' | 'error' | 'warn' | 'info' | 'debug',
-    text: string,
-  ): ConsoleEntry => ({
-    level,
-    origin: 'console',
-    text,
-    arguments: [
-      {
-        remote: { type: 'string', value: text },
-        text,
-      },
-    ],
-    timestamp: Date.now(),
-  });
-
-  const createExceptionEntry = (text: string): ExceptionEntry => ({
-    text,
-    timestamp: Date.now(),
-    details: {
-      exceptionId: 1,
-      text,
-      lineNumber: 0,
-      columnNumber: 0,
-    },
   });
 
   describe('addStdio', () => {

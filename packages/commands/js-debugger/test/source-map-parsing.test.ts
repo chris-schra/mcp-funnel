@@ -1,101 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
-import { waitFor } from './utils/async-helpers.js';
-import { prepareNodeFixture } from './utils/fixture-manager.js';
 import type { DebugSessionId, BreakpointSpec } from '../src/types/index.js';
-import type { FixtureHandle } from './utils/fixture-manager.js';
+import { createFixture } from './utils.js';
 
 describe('Source Map Parsing', () => {
-  let manager: DebuggerSessionManager;
-  let sessionId: DebugSessionId | undefined;
-  let fixture: FixtureHandle | undefined;
-
-  beforeEach(() => {
-    manager = new DebuggerSessionManager();
-    sessionId = undefined;
-    fixture = undefined;
-  });
-
-  afterEach(async () => {
-    if (sessionId) {
-      try {
-        const descriptor = manager.getDescriptor(sessionId);
-        if (descriptor.status !== 'terminated') {
-          await manager.runCommand({
-            sessionId,
-            action: 'continue',
-          });
-          // Wait for session auto-removal after termination
-          await waitFor(
-            async () => {
-              try {
-                manager.getDescriptor(sessionId!);
-                return null; // Still exists, keep waiting
-              } catch {
-                return true; // Session removed, done
-              }
-            },
-            { timeoutMs: 5000 },
-          );
-        }
-      } catch {
-        // Session may have already been auto-removed
-      }
-    }
-    if (fixture) {
-      await fixture.cleanup();
-    }
-  }, 15000);
-
   describe('Source Map Parsing', () => {
     it('should parse inline data URL source maps from TypeScript files', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-      });
-
-      sessionId = response.session.id;
-
-      await waitFor(
-        () => {
-          const snapshot = manager.getSnapshot(sessionId!);
-          return snapshot.session.status === 'paused' ? snapshot : null;
-        },
-        { timeoutMs: 5000 },
+      const { manager, sessionId, response, cleanup } = await createFixture(
+        'breakpoint-script.ts',
       );
 
       const snapshot = manager.getSnapshot(sessionId);
-      expect(snapshot.session.status).toBe('paused');
+      expect(snapshot.session.state.status).toBe('paused');
       expect(response.initialPause).toBeDefined();
+
+      await cleanup();
     });
 
     it('should handle sourceRoot resolution in source maps', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-      });
-
-      sessionId = response.session.id;
-
-      await waitFor(
-        () => {
-          const snapshot = manager.getSnapshot(sessionId!);
-          return snapshot.session.status === 'paused' ? snapshot : null;
-        },
-        { timeoutMs: 5000 },
-      );
+      const { response, cleanup } = await createFixture('breakpoint-script.ts');
 
       expect(response.initialPause?.callFrames).toBeDefined();
 
@@ -107,30 +30,15 @@ describe('Source Map Parsing', () => {
       expect(topFrame).toBeDefined();
       expect(topFrame.functionName).toBeDefined();
       expect(topFrame.location).toBeDefined();
+
+      await cleanup();
     });
   });
 
   describe('Script Metadata Indexing', () => {
     it('should index script metadata by absolute path', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-      });
-
-      sessionId = response.session.id;
-
-      await waitFor(
-        () => {
-          const snapshot = manager.getSnapshot(sessionId!);
-          return snapshot.session.status === 'paused' ? snapshot : null;
-        },
-        { timeoutMs: 5000 },
+      const { manager, sessionId, fixture, cleanup } = await createFixture(
+        'breakpoint-script.ts',
       );
 
       const breakpointResult = await addBreakpointDynamically(
@@ -143,31 +51,15 @@ describe('Source Map Parsing', () => {
       expect(breakpointResult).toBeDefined();
       expect(breakpointResult.length).toBeGreaterThan(0);
       expect(breakpointResult[0].resolvedLocations).toBeDefined();
+
+      await cleanup();
     });
 
     it('should index script metadata by file URL', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const fileUrl = `file://${fixture.tempPath}`;
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-      });
-
-      sessionId = response.session.id;
-
-      await waitFor(
-        () => {
-          const snapshot = manager.getSnapshot(sessionId!);
-          return snapshot.session.status === 'paused' ? snapshot : null;
-        },
-        { timeoutMs: 5000 },
+      const { manager, sessionId, fixture, cleanup } = await createFixture(
+        'breakpoint-script.ts',
       );
+      const fileUrl = `file://${fixture.tempPath}`;
 
       const breakpointResult = await addBreakpointDynamically(
         manager,
@@ -179,31 +71,15 @@ describe('Source Map Parsing', () => {
       expect(breakpointResult).toBeDefined();
       expect(breakpointResult.length).toBeGreaterThan(0);
       expect(breakpointResult[0].resolvedLocations).toBeDefined();
+
+      await cleanup();
     });
 
     it('should support both path and fileUrl lookups for same script', async () => {
-      fixture = await prepareNodeFixture('breakpoint-script.ts');
-
-      const fileUrl = `file://${fixture.tempPath}`;
-
-      const response = await manager.startSession({
-        target: {
-          type: 'node',
-          entry: fixture.tempPath,
-          useTsx: true,
-        },
-        resumeAfterConfigure: false,
-      });
-
-      sessionId = response.session.id;
-
-      await waitFor(
-        () => {
-          const snapshot = manager.getSnapshot(sessionId!);
-          return snapshot.session.status === 'paused' ? snapshot : null;
-        },
-        { timeoutMs: 5000 },
+      const { manager, sessionId, fixture, cleanup } = await createFixture(
+        'breakpoint-script.ts',
       );
+      const fileUrl = `file://${fixture.tempPath}`;
 
       // Set breakpoint using absolute path
       const breakpointByPath = await addBreakpointDynamically(
@@ -240,6 +116,8 @@ describe('Source Map Parsing', () => {
 
       // Both should resolve to the same script
       expect(pathScriptId).toBe(urlScriptId);
+
+      await cleanup();
     });
   });
 });

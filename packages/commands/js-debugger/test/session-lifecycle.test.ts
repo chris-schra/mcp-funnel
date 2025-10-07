@@ -3,13 +3,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
 import type {
   DebugSessionConfig,
-  DebugSessionStatus,
   NodeDebugTargetConfig,
   OutputEntry,
 } from '../src/types/index.js';
-import { waitFor } from './utils/async-helpers.js';
+import { waitFor, sleep } from './utils/async-helpers.js';
 import type { FixtureHandle } from './utils/fixture-manager.js';
 import { prepareNodeFixture } from './utils/fixture-manager.js';
+import type { SessionStateStatus } from '../src/types/session/session-state.js';
+import { waitForSessionTermination } from './utils/session-helpers.js';
 
 describe('DebuggerSessionManager - Session Lifecycle', () => {
   let manager: DebuggerSessionManager;
@@ -27,31 +28,14 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
   });
 
   const expectStatusIn = (
-    actual: DebugSessionStatus,
-    expected: DebugSessionStatus[],
+    actual: SessionStateStatus,
+    expected: SessionStateStatus[],
   ): void => {
     expect(expected).toContain(actual);
   };
 
   const hasOutputContent = (entries: OutputEntry[], text: string): boolean =>
     entries.some((entry) => entry.entry.text.includes(text));
-
-  const waitForTermination = async (sessionId: string): Promise<void> => {
-    await waitFor(
-      () => {
-        try {
-          const descriptor = manager.getDescriptor(sessionId);
-          return descriptor.status === 'terminated' ? descriptor : null;
-        } catch (error) {
-          if (error instanceof Error && error.message.includes('not found')) {
-            return true;
-          }
-          throw error;
-        }
-      },
-      { timeoutMs: 3000 },
-    );
-  };
 
   const createNodeSession = async (
     fixtureName: string,
@@ -77,25 +61,46 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
 
       expect(response.session).toBeDefined();
       expect(response.initialPause).toBeDefined();
-      expectStatusIn(response.session.status, ['awaiting-debugger', 'paused']);
+      expectStatusIn(response.session.state.status, [
+        'awaiting-debugger',
+        'paused',
+      ]);
 
       const sessionId = response.session.id;
       const descriptor = manager.getDescriptor(sessionId);
-      expectStatusIn(descriptor.status, ['paused']);
+      expectStatusIn(descriptor.state.status, ['paused']);
 
       const continueResult = await manager.runCommand({
         sessionId,
         action: 'continue',
       });
 
-      expectStatusIn(continueResult.session.status, ['running', 'paused']);
+      expect(continueResult.resumed).toBe(true);
+      // After sending continue command (fire-and-forget), give event time to process
+      await sleep(150);
+      const afterContinue = manager.getDescriptor(sessionId);
+      expectStatusIn(afterContinue.state.status, ['running', 'paused']);
 
-      // If still paused (hit a breakpoint), continue again
-      if (continueResult.session.status === 'paused') {
-        await manager.runCommand({ sessionId, action: 'continue' });
-      }
-
-      await waitForTermination(sessionId);
+      // Continue past any internal pauses until termination
+      await waitFor(
+        async () => {
+          try {
+            const snapshot = manager.getSnapshot(sessionId);
+            if (snapshot.session.state.status === 'paused') {
+              await manager.runCommand({ sessionId, action: 'continue' });
+              await sleep(100);
+              return null;
+            }
+            return snapshot.session.state.status === 'terminated' ? true : null;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+              return true;
+            }
+            throw error;
+          }
+        },
+        { timeoutMs: 5000 },
+      );
     });
   });
 
@@ -106,22 +111,42 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
       });
 
       expect(response.initialPause).toBeDefined();
-      expectStatusIn(response.session.status, ['paused']);
+      expectStatusIn(response.session.state.status, ['paused']);
 
       const continueResult = await manager.runCommand({
         sessionId: response.session.id,
         action: 'continue',
       });
 
-      // If still paused (hit a breakpoint), continue again
-      if (continueResult.session.status === 'paused') {
-        await manager.runCommand({
-          sessionId: response.session.id,
-          action: 'continue',
-        });
-      }
+      expect(continueResult.resumed).toBe(true);
+      // After sending continue command (fire-and-forget), give event time to process
+      await sleep(150);
+      const afterContinue = manager.getDescriptor(response.session.id);
+      expectStatusIn(afterContinue.state.status, ['running', 'paused']);
 
-      await waitForTermination(response.session.id);
+      // Continue past any internal pauses until termination
+      await waitFor(
+        async () => {
+          try {
+            const snapshot = manager.getSnapshot(response.session.id);
+            if (snapshot.session.state.status === 'paused') {
+              await manager.runCommand({
+                sessionId: response.session.id,
+                action: 'continue',
+              });
+              await sleep(100);
+              return null;
+            }
+            return snapshot.session.state.status === 'terminated' ? true : null;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+              return true;
+            }
+            throw error;
+          }
+        },
+        { timeoutMs: 5000 },
+      );
     });
 
     it('should auto-resume when resumeAfterConfigure is true', async () => {
@@ -130,9 +155,9 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
       });
 
       expect(response.initialPause).toBeUndefined();
-      expectStatusIn(response.session.status, ['running', 'paused']);
+      expectStatusIn(response.session.state.status, ['running', 'paused']);
 
-      await waitForTermination(response.session.id);
+      await waitForSessionTermination(manager, response.session.id);
     });
   });
 
@@ -147,7 +172,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
         () => {
           try {
             const descriptor = manager.getDescriptor(sessionId);
-            return descriptor.status === 'running' ? descriptor : null;
+            return descriptor.state.status === 'running' ? descriptor : null;
           } catch (error) {
             if (error instanceof Error && error.message.includes('not found')) {
               return true;
@@ -165,14 +190,14 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
 
       expect(pauseResult.pause).toBeDefined();
       expect(pauseResult.pause?.callFrames.length).toBeGreaterThan(0);
-      expectStatusIn(pauseResult.session.status, ['paused']);
+      expectStatusIn(pauseResult.session.state.status, ['paused']);
 
       const snapshot = manager.getSnapshot(sessionId);
-      expect(snapshot.session.status).toBe('paused');
+      expect(snapshot.session.state.status).toBe('paused');
       expect(snapshot.output).toBeDefined();
 
       await manager.runCommand({ sessionId, action: 'continue' });
-      await waitForTermination(sessionId);
+      await waitForSessionTermination(manager, sessionId);
     });
 
     it('should inspect TypeScript breakpoints with output', async () => {
@@ -186,7 +211,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
         async () => {
           try {
             const snapshot = manager.getSnapshot(sessionId);
-            if (snapshot.session.status === 'paused') {
+            if (snapshot.session.state.status === 'paused') {
               const output = await manager.queryOutput({ sessionId });
               if (hasOutputContent(output.entries, 'Before TS breakpoint')) {
                 return snapshot;
@@ -204,7 +229,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
       );
 
       if (pauseDetails !== true) {
-        expect(pauseDetails.session.status).toBe('paused');
+        expect(pauseDetails.session.state.status).toBe('paused');
 
         const output = await manager.queryOutput({ sessionId });
         expect(hasOutputContent(output.entries, 'Before TS breakpoint')).toBe(
@@ -214,7 +239,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
         await manager.runCommand({ sessionId, action: 'continue' });
       }
 
-      await waitForTermination(sessionId);
+      await waitForSessionTermination(manager, sessionId);
     });
   });
 
@@ -225,7 +250,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
       });
       const sessionId = response.session.id;
 
-      await waitForTermination(sessionId);
+      await waitForSessionTermination(manager, sessionId);
 
       // Session may already be removed after termination
       expect(() => manager.getDescriptor(sessionId)).toThrow(
@@ -256,7 +281,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
         () => {
           try {
             const descriptor = manager.getDescriptor(sessionId);
-            return descriptor.status === 'terminated' ? descriptor : null;
+            return descriptor.state.status === 'terminated' ? descriptor : null;
           } catch {
             return true;
           }
@@ -273,37 +298,55 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
       });
       const sessionId = response.session.id;
 
-      const statusHistory: DebugSessionStatus[] = [response.session.status];
+      const statusHistory: SessionStateStatus[] = [
+        response.session.state.status,
+      ];
 
       const pausedDescriptor = manager.getDescriptor(sessionId);
-      statusHistory.push(pausedDescriptor.status);
-      expect(pausedDescriptor.status).toBe('paused');
+      statusHistory.push(pausedDescriptor.state.status);
+      expect(pausedDescriptor.state.status).toBe('paused');
 
       const continueResult = await manager.runCommand({
         sessionId,
         action: 'continue',
       });
-      statusHistory.push(continueResult.session.status);
+      expect(continueResult.resumed).toBe(true);
+      statusHistory.push(continueResult.session.state.status);
 
-      // If still paused (hit a breakpoint), continue again
-      if (continueResult.session.status === 'paused') {
-        const secondContinue = await manager.runCommand({
-          sessionId,
-          action: 'continue',
-        });
-        statusHistory.push(secondContinue.session.status);
-      }
-
-      await waitForTermination(sessionId);
+      // Continue past any internal pauses until termination
+      await waitFor(
+        async () => {
+          try {
+            const snapshot = manager.getSnapshot(sessionId);
+            if (snapshot.session.state.status === 'paused') {
+              const secondContinue = await manager.runCommand({
+                sessionId,
+                action: 'continue',
+              });
+              statusHistory.push(secondContinue.session.state.status);
+              await sleep(100);
+              return null;
+            }
+            return snapshot.session.state.status === 'terminated' ? true : null;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+              return true;
+            }
+            throw error;
+          }
+        },
+        { timeoutMs: 5000 },
+      );
 
       // Session may have been removed after termination, but we know it reached terminated state
       statusHistory.push('terminated');
 
-      const validStatuses: DebugSessionStatus[] = [
+      const validStatuses: SessionStateStatus[] = [
         'starting',
         'awaiting-debugger',
         'paused',
         'running',
+        'transitioning',
         'terminated',
       ];
       statusHistory.forEach((status) => {

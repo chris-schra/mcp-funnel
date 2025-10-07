@@ -1,8 +1,8 @@
 import Emittery from 'emittery';
 import type {
-  DebugSessionStatus,
   PauseDetails,
   ScriptMetadata,
+  SessionState,
 } from '../types/index.js';
 import type {
   CdpCallFrame,
@@ -38,7 +38,7 @@ export class SessionEventProcessor {
     private readonly targetWorkingDirectory: string,
     private readonly outputBuffer: OutputBuffer,
     private readonly events: Emittery<SessionEvents>,
-    private readonly updateStatus: (status: DebugSessionStatus) => void,
+    private readonly updateStatus: (status: SessionState) => void,
     private readonly breakpointManager: SessionBreakpointManager,
   ) {}
 
@@ -46,14 +46,7 @@ export class SessionEventProcessor {
     return this.lastPause;
   }
 
-  public clearLastPause(): void {
-    this.lastPause = undefined;
-  }
-
   public handleEvent(method: string, params: unknown): void {
-    if (method === 'Debugger.resumed') {
-      console.log(`Session ${this.sessionId}: handleEvent received 'Debugger.resumed', calling onResumed()`);
-    }
     switch (method) {
       case 'Debugger.paused':
         this.onPaused(
@@ -105,8 +98,6 @@ export class SessionEventProcessor {
       return;
     }
 
-    console.log(`Session ${this.sessionId}: Script parsed - ID: ${event.scriptId}, URL: ${event.url}, sourceMapURL: ${event.sourceMapURL}, lines: ${event.startLine}-${event.endLine}`);
-
     const metadata: ScriptMetadata = {
       scriptId: event.scriptId,
       url: event.url,
@@ -145,9 +136,7 @@ export class SessionEventProcessor {
       }
     }
 
-    console.log(`Session ${this.sessionId}: Upgrading pending breakpoints for script ${event.scriptId} (${event.url})`);
     await this.breakpointManager.upgradePendingBreakpoints(metadata);
-    console.log(`Session ${this.sessionId}: Finished upgrading pending breakpoints for script ${event.scriptId}`);
   }
 
   private onPaused(payload: {
@@ -159,26 +148,18 @@ export class SessionEventProcessor {
   }): void {
     // Normalize pause reason for better test compatibility and API consistency
     let normalizedReason = payload.reason;
-    console.log(`Session ${this.sessionId}: Pause event - reason: '${payload.reason}', hitBreakpoints: ${JSON.stringify(payload.hitBreakpoints)}`);
 
-    if (payload.reason === 'other' && payload.hitBreakpoints && payload.hitBreakpoints.length > 0) {
+    if (
+      payload.reason === 'other' &&
+      payload.hitBreakpoints &&
+      payload.hitBreakpoints.length > 0
+    ) {
       normalizedReason = 'breakpoint';
-      console.log(`Session ${this.sessionId}: Mapped 'other' -> 'breakpoint' (has hitBreakpoints)`);
     } else if (payload.reason === 'other') {
       // For test compatibility, map 'other' to 'breakpoint' when user breakpoints are likely set
       normalizedReason = 'breakpoint';
-      console.log(`Session ${this.sessionId}: Mapped 'other' -> 'breakpoint' (no hitBreakpoints)`);
     } else if (payload.reason === 'Break on start') {
       normalizedReason = 'breakpoint'; // Map break on start to breakpoint for test compatibility
-      console.log(`Session ${this.sessionId}: Mapped 'Break on start' -> 'breakpoint'`);
-    } else {
-      console.log(`Session ${this.sessionId}: Keeping reason: '${normalizedReason}'`);
-    }
-
-    // Log the actual pause location for debugging
-    if (payload.callFrames.length > 0) {
-      const frame = payload.callFrames[0];
-      console.log(`Session ${this.sessionId}: Pause location - scriptId: ${frame.scriptId}, url: ${frame.url}, line: ${frame.location.lineNumber}, column: ${frame.location.columnNumber}, function: ${frame.functionName}`);
     }
 
     const pause: PauseDetails = {
@@ -206,17 +187,14 @@ export class SessionEventProcessor {
         : undefined,
     };
     this.lastPause = pause;
-    this.updateStatus('paused');
+    this.updateStatus({ status: 'paused', pause });
     void this.events.emit('paused', pause);
   }
 
   private onResumed(): void {
-    console.log(`Session ${this.sessionId}: Debugger.resumed event received, changing status to running`);
     this.lastPause = undefined;
-    this.updateStatus('running');
-    console.log(`Session ${this.sessionId}: Emitting 'resumed' event`);
+    this.updateStatus({ status: 'running' });
     void this.events.emit('resumed');
-    console.log(`Session ${this.sessionId}: 'resumed' event emitted`);
   }
 
   private onConsoleAPICalled(event: ConsoleAPICalledEvent): void {
@@ -277,13 +255,13 @@ export class SessionEventProcessor {
     }
   }
 
-  private onExecutionContextDestroyed(event: { executionContextId: number }): void {
-    console.log(`Session ${this.sessionId}: Execution context ${event.executionContextId} destroyed`);
+  private onExecutionContextDestroyed(event: {
+    executionContextId: number;
+  }): void {
     // Context ID 1 is the main execution context
     // When destroyed, all synchronous code and timers have completed
     // Disconnect the debugger to allow process.exit() to proceed
     if (event.executionContextId === 1) {
-      console.log(`Session ${this.sessionId}: Main execution context destroyed, disconnecting to allow process exit`);
       void this.events.emit('execution-complete');
     }
   }

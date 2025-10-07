@@ -33,7 +33,7 @@ describe('Output Collection', () => {
     });
 
     sessionId = response.session.id;
-  });
+  }, 20000); // Increase timeout for parallel test execution
 
   afterEach(async () => {
     await fixture.cleanup();
