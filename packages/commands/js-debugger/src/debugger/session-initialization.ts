@@ -18,6 +18,7 @@ import {
 } from './session-utils.js';
 import type Emittery from 'emittery';
 import type { SessionEvents } from './session-types.js';
+import { normalizeLocationReference } from './session-breakpoints.js';
 
 export interface InitializationContext {
   sessionId: string;
@@ -38,13 +39,15 @@ export interface InitializationResult {
 /**
  * Sets up internal breakpoints at line 0 for target files to ensure source maps are loaded.
  * Returns the list of internal breakpoint IDs that need to be cleaned up later.
- * @param targetFiles - Set of file paths to set breakpoints in
+ * @param targetFiles - Set of file paths/URLs to set breakpoints in
+ * @param targetWorkingDirectory - Working directory for resolving relative paths
  * @param processManager - Process manager to send CDP commands
  * @param sessionId - Debug session identifier for logging
  * @returns Array of internal breakpoint IDs for cleanup
  */
 async function setupInternalBreakpoints(
   targetFiles: Set<string>,
+  targetWorkingDirectory: string,
   processManager: SessionProcessManager,
   sessionId: string,
 ): Promise<string[]> {
@@ -52,13 +55,34 @@ async function setupInternalBreakpoints(
 
   for (const file of targetFiles) {
     try {
-      // Try multiple approaches for internal breakpoints
+      // Normalize the file path to absolute path and file:// URL
+      const normalized = normalizeLocationReference(
+        file,
+        targetWorkingDirectory,
+      );
+
+      // Build regex that matches both the absolute path and file:// URL
+      // CDP uses file:// URLs, so we need to match that format
+      const patterns: string[] = [];
+      if (normalized.fileUrl) {
+        patterns.push(
+          normalized.fileUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        );
+      }
+      if (normalized.path) {
+        patterns.push(normalized.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      }
+
+      if (patterns.length === 0) {
+        console.warn(
+          `Session ${sessionId}: Could not normalize path for ${file}`,
+        );
+        continue;
+      }
+
+      const urlRegex = patterns.join('|');
+
       let result;
-
-      // 1. Try the specific file path regex (from your WebSocket log)
-      const escapedPath = file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const urlRegex = `${escapedPath}|file://${escapedPath}`;
-
       try {
         result = await processManager.sendCommand(
           'Debugger.setBreakpointByUrl',
@@ -71,7 +95,7 @@ async function setupInternalBreakpoints(
         );
       } catch (error) {
         console.error('Unable to set specific file regex breakpoint:', error);
-        // 2. If that fails, try a general breakpoint at line 0 of any script
+        // If that fails, try a general breakpoint at line 0 of any script
         result = await processManager.sendCommand(
           'Debugger.setBreakpointByUrl',
           {
@@ -163,26 +187,44 @@ async function waitForBreakpointResolution(
 
 /**
  * Collects target files from breakpoint specs and entry file.
+ * Normalizes all paths to file:// URLs for consistent matching with CDP.
  * @param breakpoints - Optional array of breakpoint specifications
- * @param entryFile - Main entry file path
- * @returns Set of file paths to set internal breakpoints in
+ * @param entryFile - Main entry file path (may be relative or absolute)
+ * @param targetWorkingDirectory - Working directory for resolving relative paths
+ * @returns Set of normalized file URLs to set internal breakpoints in
  */
 function collectTargetFiles(
   breakpoints: BreakpointSpec[] | undefined,
   entryFile: string,
+  targetWorkingDirectory: string,
 ): Set<string> {
   const targetFiles = new Set<string>();
 
   if (breakpoints && breakpoints.length > 0) {
     for (const bp of breakpoints) {
       if (bp.location.url) {
-        targetFiles.add(bp.location.url);
+        // Normalize breakpoint URLs to ensure they match CDP's format
+        const normalized = normalizeLocationReference(
+          bp.location.url,
+          targetWorkingDirectory,
+        );
+        // Prefer file:// URL if available, fall back to path, then original
+        const key =
+          normalized.fileUrl || normalized.path || normalized.original;
+        targetFiles.add(key);
       }
     }
   }
 
   // Always set a line 0 breakpoint for the main entry file to ensure script parsing
-  targetFiles.add(entryFile);
+  // Normalize the entry file to an absolute path/URL
+  const normalizedEntry = normalizeLocationReference(
+    entryFile,
+    targetWorkingDirectory,
+  );
+  const entryKey =
+    normalizedEntry.fileUrl || normalizedEntry.path || normalizedEntry.original;
+  targetFiles.add(entryKey);
 
   return targetFiles;
 }
@@ -195,13 +237,19 @@ function collectTargetFiles(
 export async function performInitialization(
   context: InitializationContext,
 ): Promise<InitializationResult> {
+  // Determine working directory for path resolution
+  // Use the target's cwd if specified, otherwise use process.cwd()
+  const targetWorkingDirectory = context.nodeTarget.cwd || process.cwd();
+
   // Set internal breakpoints at line 0 for all target files
   const targetFiles = collectTargetFiles(
     context.config.breakpoints,
     context.nodeTarget.entry,
+    targetWorkingDirectory,
   );
   const internalBreakpoints = await setupInternalBreakpoints(
     targetFiles,
+    targetWorkingDirectory,
     context.processManager,
     context.sessionId,
   );

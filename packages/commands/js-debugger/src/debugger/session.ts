@@ -25,10 +25,7 @@ import { SessionBreakpointManager } from './session-breakpoint-manager.js';
 import { SessionScopeInspector } from './session-scope-inspector.js';
 import { SessionEventProcessor } from './session-event-processor.js';
 import { SessionProcessManager } from './session-process-manager.js';
-import {
-  performInitialization,
-  type InitializationContext,
-} from './session-initialization.js';
+import { performInitialization } from './session-initialization.js';
 import {
   executeDebuggerAction,
   buildCommandAcknowledgment,
@@ -54,6 +51,8 @@ export class DebuggerSession {
   private readonly scripts = new Map<string, ScriptMetadata>();
   private readonly scriptIdsByPath = new Map<string, string>();
   private readonly scriptIdsByFileUrl = new Map<string, string>();
+  private readonly maxScriptCacheSize: number;
+  private readonly scriptAccessOrder = new Map<string, void>();
   private readonly targetWorkingDirectory: string;
   private readonly processManager: SessionProcessManager;
   private readonly breakpointManager: SessionBreakpointManager;
@@ -64,6 +63,7 @@ export class DebuggerSession {
   public constructor(id: DebugSessionId, config: DebugSessionConfig) {
     this.id = id;
     this.config = config;
+    this.maxScriptCacheSize = config.maxScriptCacheSize ?? 1000;
     const nodeTarget = this.getNodeTargetConfig(config.target);
     this.targetWorkingDirectory = nodeTarget.cwd
       ? path.resolve(nodeTarget.cwd)
@@ -85,6 +85,7 @@ export class DebuggerSession {
       this.scriptIdsByFileUrl,
       this.targetWorkingDirectory,
       (method, params) => this.processManager.sendCommand(method, params),
+      (scriptId: string) => this.trackScriptAccess(scriptId),
     );
 
     this.scopeInspector = new SessionScopeInspector(
@@ -113,19 +114,17 @@ export class DebuggerSession {
       this.events,
       this.updateStatus.bind(this),
       this.breakpointManager,
+      this.maxScriptCacheSize,
+      this.scriptAccessOrder,
+      () => this.evictOldestScript(),
+      (scriptId: string) => this.trackScriptAccess(scriptId),
     );
 
-    // Set up event listeners to clear commandIntent when events arrive
     this.events.on('resumed', () => {
-      if (this.commandIntent === 'resume') {
-        this.commandIntent = null;
-      }
+      if (this.commandIntent === 'resume') this.commandIntent = null;
     });
-
     this.events.on('paused', () => {
-      if (this.commandIntent === 'pause') {
-        this.commandIntent = null;
-      } else if (this.commandIntent === 'resume') {
+      if (this.commandIntent === 'pause' || this.commandIntent === 'resume') {
         this.commandIntent = null;
       }
     });
@@ -143,20 +142,13 @@ export class DebuggerSession {
   }
 
   private buildSessionState(): SessionState {
-    // If we have a command intent, we're transitioning
     if (this.commandIntent) {
       const from =
         this.status.status === 'paused' || this.status.status === 'running'
           ? this.status.status
-          : 'running'; // Default to running for other states
-      return {
-        status: 'transitioning',
-        from,
-        intent: this.commandIntent,
-      };
+          : 'running';
+      return { status: 'transitioning', from, intent: this.commandIntent };
     }
-
-    // Otherwise, return the current status as-is
     return this.status;
   }
 
@@ -173,21 +165,17 @@ export class DebuggerSession {
     this.updatePidInDescriptor();
     this.updateStatus({ status: 'awaiting-debugger' });
 
-    // Listen for execution completion to disconnect debugger
     void this.events
       .once('execution-complete')
-      .then(() => {
-        this.processManager.closeConnection();
-      })
-      .catch((err) => {
+      .then(() => this.processManager.closeConnection())
+      .catch((err) =>
         console.error(
-          `Session ${this.id}: Error while disconnecting debugger after execution complete:`,
+          `Session ${this.id}: Error disconnecting after execution complete:`,
           err,
-        );
-      });
+        ),
+      );
 
-    // Perform the initialization sequence
-    const context: InitializationContext = {
+    const { breakpoints, initialPause } = await performInitialization({
       sessionId: this.id,
       config: this.config,
       nodeTarget,
@@ -196,23 +184,14 @@ export class DebuggerSession {
       breakpointManager: this.breakpointManager,
       outputBuffer: this.outputBuffer,
       getLastPause: () => this.eventProcessor.getLastPause(),
-    };
-
-    const { breakpoints, initialPause } = await performInitialization(context);
+    });
 
     if (this.config.resumeAfterConfigure) {
       await this.resumeExecution();
-      return {
-        session: this.getDescriptor(),
-        breakpoints,
-      };
+      return { session: this.getDescriptor(), breakpoints };
     }
 
-    return {
-      session: this.getDescriptor(),
-      breakpoints,
-      initialPause,
-    };
+    return { session: this.getDescriptor(), breakpoints, initialPause };
   }
 
   public async runCommand(
@@ -235,29 +214,20 @@ export class DebuggerSession {
       getLastPause: () => this.eventProcessor.getLastPause(),
     };
 
-    const { pauseDetails, resumed } = await executeDebuggerAction(
+    const { pauseDetails, resumed: _resumed } = await executeDebuggerAction(
       command,
       executionContext,
     );
 
-    const commandAck = buildCommandAcknowledgment(command);
-
     const response: DebuggerCommandResult = {
       session: this.getDescriptor(),
-      commandAck,
+      commandAck: buildCommandAcknowledgment(command),
     };
-    if (mutationResult.set.length > 0) {
+    if (mutationResult.set.length > 0)
       response.setBreakpoints = mutationResult.set;
-    }
-    if (mutationResult.removed.length > 0) {
+    if (mutationResult.removed.length > 0)
       response.removedBreakpoints = mutationResult.removed;
-    }
-    if (pauseDetails) {
-      response.pause = pauseDetails;
-    }
-    if (resumed) {
-      response.resumed = true;
-    }
+    if (pauseDetails) response.pause = pauseDetails;
     return response;
   }
 
@@ -304,6 +274,44 @@ export class DebuggerSession {
     }, GRACEFUL_EXIT_DELAY_MS);
   }
 
+  public forceKill(): void {
+    this.processManager.closeConnection();
+    this.processManager.forceKillProcess();
+  }
+
+  public isProcessRunning(): boolean {
+    return this.processManager.isProcessRunning();
+  }
+
+  private evictOldestScript(): void {
+    const oldestScriptId = this.scriptAccessOrder.keys().next().value;
+    if (!oldestScriptId) return;
+
+    const metadata = this.scripts.get(oldestScriptId);
+    if (!metadata) {
+      this.scriptAccessOrder.delete(oldestScriptId);
+      return;
+    }
+
+    this.scripts.delete(oldestScriptId);
+    this.scriptUrls.delete(oldestScriptId);
+    this.scriptAccessOrder.delete(oldestScriptId);
+    if (metadata.normalizedPath) {
+      this.scriptIdsByPath.delete(metadata.normalizedPath);
+    }
+    if (metadata.fileUrl) {
+      this.scriptIdsByFileUrl.delete(metadata.fileUrl);
+    }
+    console.debug(
+      `Session ${this.id}: Evicted script ${oldestScriptId} (${metadata.url ?? 'unknown'})`,
+    );
+  }
+
+  private trackScriptAccess(scriptId: string): void {
+    this.scriptAccessOrder.delete(scriptId);
+    this.scriptAccessOrder.set(scriptId, undefined);
+  }
+
   private createInitialDescriptor(): DebugSessionDescriptor {
     const createdAt = Date.now();
     const nodeTarget = this.getNodeTargetConfig(this.config.target);
@@ -343,10 +351,9 @@ export class DebuggerSession {
 
   private updatePidInDescriptor(): void {
     const pid = this.processManager.getProcessId();
-    if (pid) {
-      this.descriptor.pid = pid;
-      this.descriptor.updatedAt = Date.now();
-    }
+    if (!pid) return;
+    this.descriptor.pid = pid;
+    this.descriptor.updatedAt = Date.now();
   }
 
   private async resumeExecution(): Promise<void> {
@@ -363,9 +370,7 @@ export class DebuggerSession {
     code: number | null,
     signal?: NodeJS.Signals,
   ): void {
-    if (this.terminated) {
-      return;
-    }
+    if (this.terminated) return;
     this.terminated = true;
     this.updateStatus({
       status: 'terminated',
@@ -377,8 +382,10 @@ export class DebuggerSession {
     this.processManager.clearPendingCommands();
     this.processManager.handleTermination(this.scripts);
     this.scripts.clear();
+    this.scriptUrls.clear();
     this.scriptIdsByPath.clear();
     this.scriptIdsByFileUrl.clear();
+    this.scriptAccessOrder.clear();
     void this.events.emit('terminated', { code, signal: signal ?? null });
   }
 

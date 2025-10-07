@@ -28,12 +28,4 @@ export interface DebuggerCommandResult {
    * confirmed by CDP. For async operations, check the session state instead.
    */
   pause?: PauseDetails;
-  /**
-   * Indicates that execution resumed and is currently running.
-   *
-   * @deprecated Use `commandAck.sent` instead. This field will be removed
-   * in a future version as it conflates command acknowledgment with actual
-   * state changes.
-   */
-  resumed?: boolean;
 }

@@ -69,6 +69,10 @@ export class DebuggerSessionManager {
     ]);
   }
 
+  public getSession(sessionId: DebugSessionId): DebuggerSession | undefined {
+    return this.sessions.get(sessionId);
+  }
+
   public getDescriptor(sessionId: DebugSessionId): DebugSessionDescriptor {
     return this.requireSession(sessionId).getDescriptor();
   }

@@ -27,37 +27,77 @@ export async function sessionCleanup(
 
 /**
  * Creates a test fixture with a debugger session.
+ * Ensures resources are tracked and cleaned up even if initialization fails.
  * @param filename - The fixture filename to load
  * @returns A promise that resolves to the fixture handle with session details
  */
 export async function createFixture(filename: string) {
   const manager = new DebuggerSessionManager();
-  const fixture = await prepareNodeFixture(filename);
+  let fixture: FixtureHandle | undefined;
+  let sessionId: DebugSessionId | undefined;
+  let cleanupCalled = false;
 
-  const response = await manager.startSession({
-    target: {
-      type: 'node',
-      entry: fixture.tempPath,
-      useTsx: true,
-    },
-    resumeAfterConfigure: false,
-  });
+  const cleanup = async () => {
+    if (cleanupCalled) return;
+    cleanupCalled = true;
 
-  const sessionId = response.session.id;
-
-  await waitFor(
-    () => {
-      const snapshot = manager.getSnapshot(sessionId);
-      return snapshot.session.state.status === 'paused' ? true : null;
-    },
-    { timeoutMs: 5000 },
-  );
-
-  return {
-    fixture,
-    sessionId,
-    response,
-    manager,
-    cleanup: async () => sessionCleanup(manager, sessionId, fixture),
+    try {
+      await sessionCleanup(manager, sessionId, fixture);
+    } catch (error) {
+      console.warn('Cleanup error in createFixture:', error);
+      // Force cleanup on error
+      if (sessionId) {
+        try {
+          const session = manager.getSession(sessionId);
+          if (session) {
+            session.forceKill();
+          }
+        } catch {
+          // Ignore errors during force cleanup
+        }
+      }
+      if (fixture) {
+        try {
+          await fixture.cleanup();
+        } catch {
+          // Ignore errors during fixture cleanup
+        }
+      }
+    }
   };
+
+  try {
+    fixture = await prepareNodeFixture(filename);
+
+    const response = await manager.startSession({
+      target: {
+        type: 'node',
+        entry: fixture.tempPath,
+        useTsx: true,
+      },
+      resumeAfterConfigure: false,
+    });
+
+    sessionId = response.session.id;
+
+    await waitFor(
+      () => {
+        const snapshot = manager.getSnapshot(sessionId!);
+        return snapshot.session.state.status === 'paused' ? true : null;
+      },
+      { timeoutMs: 5000 },
+    );
+
+    return {
+      fixture,
+      sessionId,
+      response,
+      manager,
+      cleanup,
+    };
+  } catch (error) {
+    // Ensure cleanup on initialization failure
+    await cleanup();
+    throw error;
+  }
 }

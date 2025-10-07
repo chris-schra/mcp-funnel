@@ -16,12 +16,28 @@ describe(
   () => {
     let manager: DebuggerSessionManager;
     const fixtures: FixtureHandle[] = [];
+    const sessionIds: string[] = [];
 
     beforeEach(() => {
       manager = new DebuggerSessionManager();
     });
 
     afterEach(async () => {
+      // Force cleanup all sessions first
+      await Promise.all(
+        sessionIds.map(async (sessionId) => {
+          try {
+            const session = manager.getSession(sessionId);
+            if (session && session.isProcessRunning()) {
+              session.forceKill();
+            }
+          } catch {
+            // Ignore errors, session may already be terminated
+          }
+        }),
+      );
+      sessionIds.length = 0;
+
       // Clean up all fixtures
       await Promise.all(fixtures.map((fixture) => fixture.cleanup()));
       fixtures.length = 0;
@@ -40,7 +56,9 @@ describe(
     const startSession = async (
       config: DebugSessionConfig,
     ): Promise<StartDebugSessionResponse> => {
-      return manager.startSession(config);
+      const response = await manager.startSession(config);
+      sessionIds.push(response.session.id);
+      return response;
     };
 
     describe('Error Scenarios', () => {

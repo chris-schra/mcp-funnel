@@ -37,6 +37,7 @@ export class SessionBreakpointManager {
       method: string,
       params?: Record<string, unknown>,
     ) => Promise<T>,
+    private readonly trackScriptAccess: (scriptId: string) => void,
   ) {
     this.internals = new SessionBreakpointInternals(
       sessionId,
@@ -150,17 +151,26 @@ export class SessionBreakpointManager {
     if (reference.path) {
       const scriptId = this.scriptIdsByPath.get(reference.path);
       if (scriptId) {
-        return this.scripts.get(scriptId);
+        const metadata = this.scripts.get(scriptId);
+        if (metadata) {
+          this.trackScriptAccess(scriptId);
+        }
+        return metadata;
       }
     }
     if (reference.fileUrl) {
       const scriptId = this.scriptIdsByFileUrl.get(reference.fileUrl);
       if (scriptId) {
-        return this.scripts.get(scriptId);
+        const metadata = this.scripts.get(scriptId);
+        if (metadata) {
+          this.trackScriptAccess(scriptId);
+        }
+        return metadata;
       }
     }
     for (const metadata of this.scripts.values()) {
       if (metadata.url === reference.original) {
+        this.trackScriptAccess(metadata.scriptId);
         return metadata;
       }
     }
@@ -185,6 +195,9 @@ export class SessionBreakpointManager {
     if (location.scriptId) {
       scriptId = location.scriptId;
       metadata = this.scripts.get(scriptId);
+      if (metadata) {
+        this.trackScriptAccess(scriptId);
+      }
     } else if (location.url) {
       const reference = normalizeLocationReference(
         location.url,
@@ -263,6 +276,9 @@ export class SessionBreakpointManager {
 
   public fromCdpLocation(location: CdpLocation): BreakpointLocation {
     const metadata = this.scripts.get(location.scriptId);
+    if (metadata) {
+      this.trackScriptAccess(location.scriptId);
+    }
 
     // If no source map, return as-is
     if (!metadata?.sourceMap) {

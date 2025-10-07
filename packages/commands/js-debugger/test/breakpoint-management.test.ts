@@ -131,7 +131,7 @@ describe.concurrent('Breakpoint Management', () => {
             ],
           },
         });
-        expect(result.resumed).toBe(true);
+        expect(result.commandAck.sent).toBe(true);
         await waitForPause(manager, sessionId);
       } finally {
         await cleanup();
@@ -211,7 +211,7 @@ describe.concurrent('Breakpoint Management', () => {
             set: [{ location: { url: fixture.tempPath, lineNumber: 13 } }],
           },
         });
-        expect(result.resumed).toBe(true);
+        expect(result.commandAck.sent).toBe(true);
         expect(result.setBreakpoints).toBeDefined();
         await waitForPause(manager, sessionId);
       } finally {

@@ -40,6 +40,10 @@ export class SessionEventProcessor {
     private readonly events: Emittery<SessionEvents>,
     private readonly updateStatus: (status: SessionState) => void,
     private readonly breakpointManager: SessionBreakpointManager,
+    private readonly maxScriptCacheSize: number,
+    private readonly scriptAccessOrder: Map<string, void>,
+    private readonly evictOldestScript: () => void,
+    private readonly trackScriptAccess: (scriptId: string) => void,
   ) {}
 
   public getLastPause(): PauseDetails | undefined {
@@ -98,6 +102,14 @@ export class SessionEventProcessor {
       return;
     }
 
+    // Check if we're at capacity and need to evict before adding new script
+    if (
+      this.scriptAccessOrder.size >= this.maxScriptCacheSize &&
+      !this.scripts.has(event.scriptId)
+    ) {
+      this.evictOldestScript();
+    }
+
     const metadata: ScriptMetadata = {
       scriptId: event.scriptId,
       url: event.url,
@@ -116,6 +128,7 @@ export class SessionEventProcessor {
     this.scriptUrls.set(event.scriptId, event.url ?? '');
     this.scripts.set(event.scriptId, metadata);
     this.indexScriptMetadata(metadata);
+    this.trackScriptAccess(event.scriptId);
 
     if (event.sourceMapURL) {
       try {

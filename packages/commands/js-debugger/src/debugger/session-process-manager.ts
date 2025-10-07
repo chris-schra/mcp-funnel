@@ -137,6 +137,22 @@ export class SessionProcessManager {
     this.terminated = true;
   }
 
+  public isProcessRunning(): boolean {
+    return !!this.child && !this.child.killed;
+  }
+
+  public forceKillProcess(): void {
+    if (this.child && !this.child.killed) {
+      try {
+        this.child.kill('SIGKILL');
+      } catch (error) {
+        console.warn(
+          `Session ${this.sessionId}: Failed to force kill process: ${error}`,
+        );
+      }
+    }
+  }
+
   private async spawnTargetProcess(
     target: NodeDebugTargetConfig,
   ): Promise<void> {

@@ -8,6 +8,12 @@ import type {
 } from 'source-map';
 
 import type { ScriptMetadata, ScriptSourceMap } from '../types/index.js';
+import {
+  loadFilePathSourceMap,
+  loadFileSourceMap,
+  loadHttpSourceMap,
+  sourceMapCache,
+} from './session-source-map-loaders.js';
 import type { GeneratedLocation } from './session-types.js';
 
 /**
@@ -25,16 +31,16 @@ export async function createSourceMap(
   sourceMapUrl: string,
   targetWorkingDirectory: string,
 ): Promise<ScriptSourceMap | undefined> {
-  const raw = await parseSourceMap(sourceMapUrl);
+  const scriptDir = metadata.normalizedPath
+    ? path.dirname(metadata.normalizedPath)
+    : undefined;
+  const raw = await parseSourceMap(sourceMapUrl, scriptDir);
   if (!raw) {
     return undefined;
   }
   const consumer = (await new SourceMapConsumer(raw)) as BasicSourceMapConsumer;
   const sourcesByPath = new Map<string, string>();
   const sourcesByFileUrl = new Map<string, string>();
-  const scriptDir = metadata.normalizedPath
-    ? path.dirname(metadata.normalizedPath)
-    : undefined;
   const sourceRoot = resolveSourceRoot(
     raw.sourceRoot,
     scriptDir,
@@ -77,19 +83,40 @@ export async function createSourceMap(
 /**
  * Parses a source map from a URL.
  *
- * @param url - URL to fetch the source map from (supports data: URLs only)
- * @returns Promise resolving to raw source map or undefined if unsupported URL
+ * @param url - URL to fetch the source map from (supports data:, file://, http://, https://, and file paths)
+ * @param scriptDir - Optional directory to resolve relative paths against
+ * @returns Promise resolving to raw source map or undefined if loading fails
  *
  * @public
  */
 export async function parseSourceMap(
   url: string,
+  scriptDir?: string,
 ): Promise<RawSourceMap | undefined> {
-  if (url.startsWith('data:')) {
-    return decodeDataUrlSourceMap(url);
+  if (sourceMapCache.has(url)) {
+    return sourceMapCache.get(url);
   }
-  console.warn(`External source map URLs are not supported yet (${url}).`);
-  return undefined;
+
+  let rawSourceMap: RawSourceMap | undefined;
+
+  if (url.startsWith('data:')) {
+    rawSourceMap = decodeDataUrlSourceMap(url);
+  } else if (url.startsWith('file://')) {
+    rawSourceMap = await loadFileSourceMap(url);
+  } else if (url.startsWith('http://') || url.startsWith('https://')) {
+    rawSourceMap = await loadHttpSourceMap(url);
+  } else if (!hasUriScheme(url)) {
+    rawSourceMap = await loadFilePathSourceMap(url, scriptDir);
+  } else {
+    console.warn(`Unsupported source map URL scheme (${url})`);
+    return undefined;
+  }
+
+  if (rawSourceMap) {
+    sourceMapCache.set(url, rawSourceMap);
+  }
+
+  return rawSourceMap;
 }
 
 /**

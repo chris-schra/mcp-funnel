@@ -16,4 +16,9 @@ export interface DebugSessionConfig {
    * keep the target paused on entry.
    */
   resumeAfterConfigure?: boolean;
+  /**
+   * Maximum number of script metadata entries to cache. When this limit is
+   * reached, least recently used scripts are evicted. Defaults to 1000.
+   */
+  maxScriptCacheSize?: number;
 }

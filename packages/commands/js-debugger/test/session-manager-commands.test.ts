@@ -82,7 +82,6 @@ describe('DebuggerSessionManager - Commands', () => {
       const commandResult: DebuggerCommandResult = {
         session: createMockDescriptor(sessionId),
         commandAck: { command: 'continue', sent: true },
-        resumed: true,
       };
 
       vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(

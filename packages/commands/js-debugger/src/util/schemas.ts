@@ -201,13 +201,18 @@ export function createDebuggerCommandSchema(
  */
 export function createScopeQuerySchema(): Tool['inputSchema'] {
   const scopePathSegmentSchema = {
-    type: ['string', 'object'],
-    properties: {
-      index: { type: NUMBER },
-      property: { type: STRING },
-    },
-    additionalProperties: false,
-  } as unknown as Tool['inputSchema'];
+    oneOf: [
+      { type: STRING },
+      {
+        type: 'object',
+        properties: {
+          index: { type: NUMBER },
+          property: { type: STRING },
+        },
+        additionalProperties: false,
+      },
+    ],
+  };
 
   return {
     type: 'object',

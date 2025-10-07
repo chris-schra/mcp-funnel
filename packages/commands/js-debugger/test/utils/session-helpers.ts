@@ -143,20 +143,58 @@ export const continueUntilTerminated = async (
  * Handles sessions that may have already terminated or been removed.
  * @param manager - The session manager instance
  * @param sessionId - ID of the session to clean up
+ * @param options - Cleanup options
+ * @param options.forceKill - If false, skip force kill on timeout (default: true)
+ * @param options.timeoutMs - Graceful termination timeout in ms (default: 3000)
  * @internal
  */
 export const cleanupSession = async (
   manager: DebuggerSessionManager,
   sessionId: DebugSessionId | undefined,
+  options: { forceKill?: boolean; timeoutMs?: number } = {},
 ): Promise<void> => {
   if (!sessionId) return;
+
+  const { forceKill = true, timeoutMs = 3000 } = options;
+
   try {
     const descriptor = manager.getDescriptor(sessionId);
-    if (descriptor.state.status !== 'terminated') {
-      await manager.runCommand({ sessionId, action: 'continue' });
-      await waitForSessionTermination(manager, sessionId);
+    if (descriptor.state.status === 'terminated') {
+      return;
     }
-  } catch {
-    // Session may have already been auto-removed
+
+    // Try graceful termination with timeout
+    try {
+      await Promise.race([
+        (async () => {
+          await manager.runCommand({ sessionId, action: 'continue' });
+          await waitForSessionTermination(manager, sessionId, {
+            timeoutMs,
+          });
+        })(),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('Cleanup timeout')), timeoutMs),
+        ),
+      ]);
+    } catch (error) {
+      // Graceful cleanup failed or timed out
+      if (forceKill) {
+        const session = manager.getSession(sessionId);
+        if (session) {
+          session.forceKill();
+          // Give it a moment to process the kill signal
+          await sleep(100);
+        }
+      }
+    }
+  } catch (error) {
+    // Session may have already been removed or errored
+    if (
+      error instanceof Error &&
+      !error.message.includes('not found') &&
+      !error.message.includes('Cleanup timeout')
+    ) {
+      console.warn(`Cleanup warning for session ${sessionId}:`, error);
+    }
   }
 };
