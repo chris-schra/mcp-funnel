@@ -1,8 +1,4 @@
-import {
-  MCPProxy,
-  getUserBasePath,
-  resolveMergedProxyConfig,
-} from './index.js';
+import { MCPProxy, getUserBasePath, resolveMergedProxyConfig } from './index.js';
 import { mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -66,9 +62,7 @@ function displayUsageAndExit(): never {
   console.error(
     '  npx mcp-funnel                    # Uses .mcp-funnel.json from current directory',
   );
-  console.error(
-    '  npx mcp-funnel path/to/config.json # Uses specified config file',
-  );
+  console.error('  npx mcp-funnel path/to/config.json # Uses specified config file');
   console.error('\nExample config (.mcp-funnel.json):');
   console.error(
     JSON.stringify(

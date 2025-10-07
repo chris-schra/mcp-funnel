@@ -98,10 +98,7 @@ const validateAuthCode = async (
   return { authCode };
 };
 
-const validatePkce = (
-  authCode: AuthorizationCode,
-  code_verifier?: string,
-): ValidationResult => {
+const validatePkce = (authCode: AuthorizationCode, code_verifier?: string): ValidationResult => {
   if (!authCode.code_challenge) {
     return {};
   }
@@ -194,24 +191,14 @@ export const handleAuthorizationCodeGrant = async (
   tokenResponse?: TokenResponse;
   error?: OAuthError;
 }> => {
-  const { code, redirect_uri, client_id, client_secret, code_verifier } =
-    params;
+  const { code, redirect_uri, client_id, client_secret, code_verifier } = params;
 
-  const clientValidation = await validateClient(
-    storage,
-    client_id,
-    client_secret,
-  );
+  const clientValidation = await validateClient(storage, client_id, client_secret);
   if (clientValidation.error) {
     return { success: false, error: clientValidation.error };
   }
 
-  const authCodeValidation = await validateAuthCode(
-    storage,
-    code!,
-    client_id,
-    redirect_uri!,
-  );
+  const authCodeValidation = await validateAuthCode(storage, code!, client_id, redirect_uri!);
   if (authCodeValidation.error) {
     return { success: false, error: authCodeValidation.error };
   }
@@ -225,19 +212,9 @@ export const handleAuthorizationCodeGrant = async (
 
   await storage.deleteAuthorizationCode(code!);
 
-  const { accessToken, refreshToken } = await generateTokens(
-    storage,
-    config,
-    authCode,
-    client_id,
-  );
+  const { accessToken, refreshToken } = await generateTokens(storage, config, authCode, client_id);
 
-  const tokenResponse = buildTokenResponse(
-    accessToken,
-    config,
-    authCode,
-    refreshToken,
-  );
+  const tokenResponse = buildTokenResponse(accessToken, config, authCode, refreshToken);
 
   return { success: true, tokenResponse };
 };

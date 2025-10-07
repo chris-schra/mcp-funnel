@@ -1,12 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ICommand } from '@mcp-funnel/commands-core';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
-import type {
-  RegisterToolParams,
-  RegistryStats,
-  ToolState,
-  VisibilityResult,
-} from './types.js';
+import type { RegisterToolParams, RegistryStats, ToolState, VisibilityResult } from './types.js';
 import { ToolRegistryUtils } from './utils.js';
 export type { ToolState } from './types.js';
 

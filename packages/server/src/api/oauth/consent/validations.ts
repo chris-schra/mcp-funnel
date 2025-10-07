@@ -1,9 +1,6 @@
 import type { Context } from 'hono';
 import { OAuthUtils } from '@mcp-funnel/auth';
-import type {
-  IOAuthProviderStorage,
-  ClientRegistration,
-} from '@mcp-funnel/models';
+import type { IOAuthProviderStorage, ClientRegistration } from '@mcp-funnel/models';
 
 /**
  * Responds with an error message in either JSON or plain text format
@@ -56,11 +53,7 @@ export function validateRequiredParams(
  * @param wantsJson - Whether the client prefers JSON response format
  * @returns Error response if validation fails, null if valid
  */
-export function validateDecision(
-  decision: string,
-  c: Context,
-  wantsJson: boolean,
-) {
+export function validateDecision(decision: string, c: Context, wantsJson: boolean) {
   if (decision !== 'approve' && decision !== 'deny') {
     return respondWithError(
       c,
@@ -89,10 +82,7 @@ export async function validateClient(
 ) {
   const client = await storage.getClient(clientId);
   if (!client) {
-    return [
-      null,
-      respondWithError(c, wantsJson, 'invalid_client', 'Unknown client'),
-    ] as const;
+    return [null, respondWithError(c, wantsJson, 'invalid_client', 'Unknown client')] as const;
   }
   return [client, null] as const;
 }
@@ -105,11 +95,7 @@ export async function validateClient(
  * @param wantsJson - Whether the client prefers JSON response format
  * @returns Error response if validation fails, null if valid
  */
-export function validateTtl(
-  ttlSecondsRaw: number | undefined,
-  c: Context,
-  wantsJson: boolean,
-) {
+export function validateTtl(ttlSecondsRaw: number | undefined, c: Context, wantsJson: boolean) {
   if (ttlSecondsRaw !== undefined && ttlSecondsRaw < 0) {
     return respondWithError(
       c,
@@ -151,8 +137,7 @@ export function validateAndDetermineRedirectUri(
     return [redirectUriRaw, null] as const;
   }
 
-  const redirectUri =
-    client.redirect_uris.length > 0 ? client.redirect_uris[0] : undefined;
+  const redirectUri = client.redirect_uris.length > 0 ? client.redirect_uris[0] : undefined;
   return [redirectUri, null] as const;
 }
 

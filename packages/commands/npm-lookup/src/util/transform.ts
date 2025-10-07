@@ -25,9 +25,7 @@ import { truncateText } from './text.js';
  * @returns Author name string or undefined if not present
  * @internal
  */
-function normalizeAuthor(
-  author: string | { name?: string } | undefined,
-): string | undefined {
+function normalizeAuthor(author: string | { name?: string } | undefined): string | undefined {
   if (typeof author === 'string') {
     return author;
   }
@@ -46,9 +44,7 @@ function normalizeAuthor(
  * @returns License type string or undefined if not present
  * @internal
  */
-function normalizeLicense(
-  license: string | { type?: string } | undefined,
-): string | undefined {
+function normalizeLicense(license: string | { type?: string } | undefined): string | undefined {
   if (typeof license === 'string') {
     return license;
   }
@@ -89,10 +85,7 @@ function processReadme(readme: string | undefined): string | undefined {
  * @returns Truncated description
  * @internal
  */
-function resolveDescription(
-  data: NPMPackageResponse,
-  versionInfo: NPMVersionInfo,
-): string {
+function resolveDescription(data: NPMPackageResponse, versionInfo: NPMVersionInfo): string {
   const rawDescription = data.description || versionInfo?.description || '';
   return truncateText(rawDescription, 500);
 }
@@ -134,9 +127,7 @@ function resolveHomepage(
  * @public
  * @see file:../../npm-client.ts:92 - Used after fetching package data
  */
-export function transformPackageResponse(
-  data: NPMPackageResponse,
-): PackageInfo {
+export function transformPackageResponse(data: NPMPackageResponse): PackageInfo {
   const latestVersion = data['dist-tags'].latest;
   const versionInfo: NPMVersionInfo = data.versions[latestVersion];
 
@@ -173,9 +164,7 @@ export function transformPackageResponse(
  * @public
  * @see file:../../npm-client.ts:148 - Used after searching packages
  */
-export function transformSearchResponse(
-  data: NPMSearchResponse,
-): SearchResults {
+export function transformSearchResponse(data: NPMSearchResponse): SearchResults {
   const results: SearchResultItem[] = data.objects.map((obj) => ({
     name: obj.package.name,
     version: obj.package.version,

@@ -23,15 +23,11 @@ type CommandArgsResult = {
  * @returns Object containing generated lines and flag indicating if env vars follow
  * @internal
  */
-function generateCommandArgsLines(
-  pkg: Package,
-  defaults: PackageDefaults,
-): CommandArgsResult {
+function generateCommandArgsLines(pkg: Package, defaults: PackageDefaults): CommandArgsResult {
   const { command, args } = buildPackageCommand(pkg, defaults);
 
   const hasEnvVars = Boolean(
-    pkg.environment_variables &&
-      pkg.environment_variables.some((env) => env.value !== undefined),
+    pkg.environment_variables && pkg.environment_variables.some((env) => env.value !== undefined),
   );
 
   return {
@@ -50,12 +46,7 @@ function generateCommandArgsLines(
  * @internal
  */
 function generateHeaderSection(server: RegistryServer): string[] {
-  return [
-    `# Installation Instructions for ${server.name}`,
-    '',
-    server.description,
-    '',
-  ];
+  return [`# Installation Instructions for ${server.name}`, '', server.description, ''];
 }
 
 /**
@@ -108,9 +99,7 @@ function generateEnvVarsLines(pkg: Package): string[] {
     return lines;
   }
 
-  const varsWithValues = pkg.environment_variables.filter(
-    (env) => env.value !== undefined,
-  );
+  const varsWithValues = pkg.environment_variables.filter((env) => env.value !== undefined);
 
   if (varsWithValues.length === 0) {
     return lines;
@@ -120,9 +109,7 @@ function generateEnvVarsLines(pkg: Package): string[] {
   varsWithValues.forEach((envVar, index, arr) => {
     const comma = index < arr.length - 1 ? ',' : '';
     const value = envVar.value;
-    lines.push(
-      `    ${JSON.stringify(envVar.name)}: ${JSON.stringify(value)}${comma}`,
-    );
+    lines.push(`    ${JSON.stringify(envVar.name)}: ${JSON.stringify(value)}${comma}`);
   });
   lines.push('  }');
 
@@ -142,9 +129,7 @@ function generateRequiredEnvVarsSection(pkg: Package): string[] {
     return lines;
   }
 
-  const requiredVars = pkg.environment_variables.filter(
-    (env) => env.is_required,
-  );
+  const requiredVars = pkg.environment_variables.filter((env) => env.is_required);
 
   if (requiredVars.length === 0) {
     return lines;
@@ -152,9 +137,7 @@ function generateRequiredEnvVarsSection(pkg: Package): string[] {
 
   lines.push('');
   const title =
-    requiredVars.length === 1
-      ? 'Required environment variable'
-      : 'Required Environment Variables';
+    requiredVars.length === 1 ? 'Required environment variable' : 'Required Environment Variables';
   lines.push(`## ${title}`);
   lines.push('');
 
@@ -174,10 +157,7 @@ function generateRequiredEnvVarsSection(pkg: Package): string[] {
  * @returns Array of formatted configuration lines
  * @internal
  */
-function generatePackageConfigSection(
-  serverName: string,
-  pkg: Package,
-): string[] {
+function generatePackageConfigSection(serverName: string, pkg: Package): string[] {
   const lines: string[] = [
     '## Configuration',
     'Add the following to your MCP client configuration:',
@@ -191,9 +171,7 @@ function generatePackageConfigSection(
     const result = generateCommandArgsLines(pkg, defaults);
     lines.push(...result.lines);
   } else {
-    lines.push(
-      `  // Configuration depends on package type for ${pkg.identifier}`,
-    );
+    lines.push(`  // Configuration depends on package type for ${pkg.identifier}`);
   }
 
   lines.push(...generateEnvVarsLines(pkg));

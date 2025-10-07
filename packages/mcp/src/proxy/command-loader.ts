@@ -7,11 +7,7 @@
 import { Dirent } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import {
-  discoverCommands,
-  discoverAllCommands,
-  type ICommand,
-} from '@mcp-funnel/commands-core';
+import { discoverCommands, discoverAllCommands, type ICommand } from '@mcp-funnel/commands-core';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 import type { ToolRegistry } from '../tool-registry/index.js';
 
@@ -39,24 +35,17 @@ function isValidCommand(obj: unknown): obj is ICommand {
  * @param toolRegistry - Tool registry for registering discovered tools
  * @internal
  */
-function registerCommandTools(
-  command: ICommand,
-  toolRegistry: ToolRegistry,
-): void {
+function registerCommandTools(command: ICommand, toolRegistry: ToolRegistry): void {
   const mcpDefs = command.getMCPDefinitions();
   const isSingle = mcpDefs.length === 1;
   const singleMatchesCommand = isSingle && mcpDefs[0]?.name === command.name;
 
   for (const mcpDef of mcpDefs) {
     const useCompact = singleMatchesCommand && mcpDef.name === command.name;
-    const displayName = useCompact
-      ? `${command.name}`
-      : `${command.name}_${mcpDef.name}`;
+    const displayName = useCompact ? `${command.name}` : `${command.name}_${mcpDef.name}`;
 
     if (!mcpDef.description) {
-      throw new Error(
-        `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
-      );
+      throw new Error(`Tool ${mcpDef.name} from command ${command.name} is missing a description`);
     }
 
     toolRegistry.registerDiscoveredTool({
@@ -76,10 +65,7 @@ function registerCommandTools(
  * @returns True if command should be enabled
  * @internal
  */
-function shouldEnableCommand(
-  command: ICommand,
-  enabledCommands: string[],
-): boolean {
+function shouldEnableCommand(command: ICommand, enabledCommands: string[]): boolean {
   return enabledCommands.length === 0 || enabledCommands.includes(command.name);
 }
 
@@ -121,11 +107,7 @@ async function loadBundledCommands(
     const { existsSync } = await import('fs');
     if (existsSync(commandsPath)) {
       const bundledRegistry = await discoverCommands(commandsPath);
-      await registerFromRegistry(
-        bundledRegistry,
-        enabledCommands,
-        toolRegistry,
-      );
+      await registerFromRegistry(bundledRegistry, enabledCommands, toolRegistry);
     }
   } catch {
     // Ignore - bundled commands directory may not exist

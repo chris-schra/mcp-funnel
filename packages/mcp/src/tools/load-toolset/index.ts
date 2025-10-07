@@ -147,9 +147,7 @@ function loadPatternsByName(
  * @returns Patterns array or error result
  * @internal
  */
-function loadPatternsByTools(
-  tools: unknown,
-): { patterns: string[] } | { error: CallToolResult } {
+function loadPatternsByTools(tools: unknown): { patterns: string[] } | { error: CallToolResult } {
   if (!tools || !Array.isArray(tools)) {
     return {
       error: {

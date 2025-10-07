@@ -32,8 +32,7 @@ rootLogger.level = process.env.LOG_LEVEL || 'info';*/
 
 export class TsValidateCommand implements ICommand {
   public readonly name = 'ts-validate';
-  public readonly description =
-    'Run prettier, eslint, and TypeScript validation';
+  public readonly description = 'Run prettier, eslint, and TypeScript validation';
 
   public async executeToolViaMCP(
     toolName: string,
@@ -43,9 +42,7 @@ export class TsValidateCommand implements ICommand {
     return this.executeViaMCP(args);
   }
 
-  public async executeViaMCP(
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> {
+  public async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
     const validator = new MonorepoValidator();
     const mcpFiles = ((): string[] | undefined => {
       if (Array.isArray(args.files)) return args.files as string[];
@@ -64,17 +61,15 @@ export class TsValidateCommand implements ICommand {
             : Boolean(args.fix)
           : Boolean(args.autoFix),
       cache: args.cache === true, // Default to false for safety
-      tsConfigFile:
-        typeof args.tsConfigFile === 'string'
-          ? String(args.tsConfigFile)
-          : undefined,
+      tsConfigFile: typeof args.tsConfigFile === 'string' ? String(args.tsConfigFile) : undefined,
     };
     const compact = args.compact === undefined ? true : Boolean(args.compact);
     const result = await validator.validate(options);
 
     // Compact fileResults by default: include only files with results
-    let out: ValidationSummary & { processedFiles?: string[] } =
-      result as ValidationSummary & { processedFiles?: string[] };
+    let out: ValidationSummary & { processedFiles?: string[] } = result as ValidationSummary & {
+      processedFiles?: string[];
+    };
     if (compact) {
       const compacted: FileValidationResults = {};
       for (const [file, list] of Object.entries(result.fileResults)) {
@@ -86,8 +81,7 @@ export class TsValidateCommand implements ICommand {
       // Expand to include clean files with empty arrays
       const expanded: FileValidationResults = { ...result.fileResults };
       const allFiles: string[] =
-        (result as ValidationSummary & { processedFiles?: string[] })
-          .processedFiles || [];
+        (result as ValidationSummary & { processedFiles?: string[] }).processedFiles || [];
       for (const f of allFiles) {
         if (!Object.prototype.hasOwnProperty.call(expanded, f)) {
           expanded[f] = [];
@@ -120,8 +114,7 @@ export class TsValidateCommand implements ICommand {
 
     const hasMultipleFiles = positional.length > 1;
     const files = hasMultipleFiles ? positional : undefined;
-    const globPattern =
-      !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
+    const globPattern = !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
 
     return {
       flags: {
@@ -167,8 +160,7 @@ ${chalk.bold('Examples:')}
 
     const lines: string[] = [chalk.blue.bold('\n🛠 Tool Status:')];
     for (const s of [...failed, ...skipped]) {
-      const label =
-        s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
+      const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
       const reason = s.reason ? ` (${s.reason})` : '';
       const err = s.error ? `: ${s.error}` : '';
       lines.push(`  - ${s.tool}: ${label}${reason}${err}`);
@@ -184,34 +176,20 @@ ${chalk.bold('Examples:')}
     lines.push(chalk.yellow(`\n${relativePath}:`));
 
     for (const result of results) {
-      const icon =
-        result.severity === 'error'
-          ? '❌'
-          : result.severity === 'warning'
-            ? '⚠️'
-            : 'ℹ️';
+      const icon = result.severity === 'error' ? '❌' : result.severity === 'warning' ? '⚠️' : 'ℹ️';
       const location = result.line ? `:${result.line}:${result.column}` : '';
       const ruleInfo = result.ruleId ? ` (${result.ruleId})` : '';
 
-      lines.push(
-        `  ${icon} [${result.tool}${location}] ${result.message}${ruleInfo}`,
-      );
+      lines.push(`  ${icon} [${result.tool}${location}] ${result.message}${ruleInfo}`);
 
       if (result.fixable && !result.fixedAutomatically) {
-        lines.push(
-          chalk.green(
-            `     💡 Fixable: ${result.suggestedFix || 'auto-fix available'}`,
-          ),
-        );
+        lines.push(chalk.green(`     💡 Fixable: ${result.suggestedFix || 'auto-fix available'}`));
       }
     }
     return lines.join('\n');
   }
 
-  private formatSummary(
-    summary: ValidationSummary,
-    showActions: boolean,
-  ): string {
+  private formatSummary(summary: ValidationSummary, showActions: boolean): string {
     const lines: string[] = [
       chalk.blue.bold('\n📊 Summary:'),
       `  Total files checked: ${summary.totalFiles}`,
@@ -219,15 +197,11 @@ ${chalk.bold('Examples:')}
     ];
 
     if (summary.fixableFiles.length > 0) {
-      lines.push(
-        chalk.yellow(`  Auto-fixable files: ${summary.fixableFiles.length}`),
-      );
+      lines.push(chalk.yellow(`  Auto-fixable files: ${summary.fixableFiles.length}`));
     }
 
     if (summary.unfixableFiles.length > 0) {
-      lines.push(
-        chalk.red(`  Manual fixes needed: ${summary.unfixableFiles.length}`),
-      );
+      lines.push(chalk.red(`  Manual fixes needed: ${summary.unfixableFiles.length}`));
     }
 
     if (showActions && summary.suggestedActions.length > 0) {
@@ -241,10 +215,7 @@ ${chalk.bold('Examples:')}
     return lines.join('\n');
   }
 
-  private formatNoIssuesOutput(
-    summary: ValidationSummary,
-    isEmpty: boolean,
-  ): string {
+  private formatNoIssuesOutput(summary: ValidationSummary, isEmpty: boolean): string {
     const message = isEmpty
       ? chalk.green('✨ No issues found')
       : chalk.green('✅ All files passed validation!');
@@ -253,10 +224,7 @@ ${chalk.bold('Examples:')}
     return toolStatus ? `${message}${toolStatus}` : message;
   }
 
-  private formatIssuesOutput(
-    summary: ValidationSummary,
-    showActions: boolean,
-  ): string {
+  private formatIssuesOutput(summary: ValidationSummary, showActions: boolean): string {
     const lines: string[] = [chalk.blue.bold('\nValidation Results:\n')];
 
     for (const [file, results] of Object.entries(summary.fileResults)) {
@@ -293,12 +261,8 @@ ${chalk.bold('Examples:')}
       }
 
       const isEmpty = Object.keys(summary.fileResults).length === 0;
-      const hasIssues = Object.values(summary.fileResults).some(
-        (r) => r.length > 0,
-      );
-      const anyFailed = summary.toolStatuses?.some(
-        (s) => s.status === 'failed',
-      );
+      const hasIssues = Object.values(summary.fileResults).some((r) => r.length > 0);
+      const anyFailed = summary.toolStatuses?.some((s) => s.status === 'failed');
 
       if (isEmpty || !hasIssues) {
         const output = this.formatNoIssuesOutput(summary, isEmpty);
@@ -342,8 +306,7 @@ ${chalk.bold('Examples:')}
             },
             dir: {
               type: 'string',
-              description:
-                'Single directory to validate (equivalent to passing it in files)',
+              description: 'Single directory to validate (equivalent to passing it in files)',
             },
             glob: {
               type: 'string',
@@ -360,8 +323,7 @@ ${chalk.bold('Examples:')}
             },
             cache: {
               type: 'boolean',
-              description:
-                'Use caching for faster subsequent runs (default: true)',
+              description: 'Use caching for faster subsequent runs (default: true)',
             },
             tsConfigFile: {
               type: 'string',
@@ -370,8 +332,7 @@ ${chalk.bold('Examples:')}
             },
             compact: {
               type: 'boolean',
-              description:
-                'When true (default), omit files with no results from fileResults',
+              description: 'When true (default), omit files with no results from fileResults',
             },
           },
         },

@@ -78,10 +78,7 @@ const validateRefreshToken = async (
     };
   }
 
-  if (
-    refreshTokenData.expires_at > 0 &&
-    isExpired(refreshTokenData.expires_at)
-  ) {
+  if (refreshTokenData.expires_at > 0 && isExpired(refreshTokenData.expires_at)) {
     await storage.deleteRefreshToken(refreshToken);
     return {
       error: {
@@ -151,11 +148,7 @@ const createTokenResponse = async (
     scope: formatScopes(scopes),
   };
 
-  if (
-    config.requireTokenRotation &&
-    config.issueRefreshTokens &&
-    refreshToken
-  ) {
+  if (config.requireTokenRotation && config.issueRefreshTokens && refreshToken) {
     const rotatedRefreshToken = generateRefreshTokenRecord(
       clientId,
       userId,
@@ -186,19 +179,12 @@ export const handleRefreshTokenGrant = async (
     return { success: false, error: clientResult.error };
   }
 
-  const tokenResult = await validateRefreshToken(
-    storage,
-    refresh_token!,
-    client_id,
-  );
+  const tokenResult = await validateRefreshToken(storage, refresh_token!, client_id);
   if (tokenResult.error) {
     return { success: false, error: tokenResult.error };
   }
 
-  const scopeResult = validateScopes(
-    scope,
-    tokenResult.refreshTokenData!.scopes,
-  );
+  const scopeResult = validateScopes(scope, tokenResult.refreshTokenData!.scopes);
   if (scopeResult.error) {
     return { success: false, error: scopeResult.error };
   }

@@ -105,8 +105,7 @@ export function validateAuthorizationRequest(
         valid: false,
         error: {
           error: OAuthErrorCodes.INVALID_REQUEST,
-          error_description:
-            'code_challenge_method is required when code_challenge is present',
+          error_description: 'code_challenge_method is required when code_challenge is present',
         },
       };
     }

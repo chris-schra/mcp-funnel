@@ -33,9 +33,7 @@ interface ConfigGenerationResult {
  * @param envVars - Environment variables to convert
  * @returns Record mapping variable names to values
  */
-function buildEnvRecord(
-  envVars: EnvironmentVariable[] | undefined,
-): Record<string, string> {
+function buildEnvRecord(envVars: EnvironmentVariable[] | undefined): Record<string, string> {
   if (!envVars) return {};
   return envVars.reduce(
     (acc: Record<string, string>, env: EnvironmentVariable) => {
@@ -54,9 +52,7 @@ function buildEnvRecord(
  */
 function buildRequiredVarsInstructions(pkg: Package): string {
   const requiredVars =
-    pkg.environment_variables?.filter(
-      (env: EnvironmentVariable) => env.is_required,
-    ) || [];
+    pkg.environment_variables?.filter((env: EnvironmentVariable) => env.is_required) || [];
 
   if (requiredVars.length === 0) return '';
 
@@ -70,10 +66,7 @@ function buildRequiredVarsInstructions(pkg: Package): string {
  * @param pkg - Package to generate config for
  * @returns Config and instructions
  */
-function generateNpmConfig(
-  serverName: string,
-  pkg: Package,
-): ConfigGenerationResult {
+function generateNpmConfig(serverName: string, pkg: Package): ConfigGenerationResult {
   const config: ServerConfig = {
     name: serverName,
     command: 'npx',
@@ -93,10 +86,7 @@ function generateNpmConfig(
  * @param pkg - Package to generate config for
  * @returns Config and instructions
  */
-function generatePypiConfig(
-  serverName: string,
-  pkg: Package,
-): ConfigGenerationResult {
+function generatePypiConfig(serverName: string, pkg: Package): ConfigGenerationResult {
   const config: ServerConfig = {
     name: serverName,
     command: 'uvx',
@@ -116,20 +106,11 @@ function generatePypiConfig(
  * @param pkg - Package to generate config for
  * @returns Config and instructions
  */
-function generateOciConfig(
-  serverName: string,
-  pkg: Package,
-): ConfigGenerationResult {
+function generateOciConfig(serverName: string, pkg: Package): ConfigGenerationResult {
   const config: ServerConfig = {
     name: serverName,
     command: 'docker',
-    args: [
-      'run',
-      '-i',
-      '--rm',
-      pkg.identifier,
-      ...(pkg.package_arguments || []),
-    ],
+    args: ['run', '-i', '--rm', pkg.identifier, ...(pkg.package_arguments || [])],
     env: buildEnvRecord(pkg.environment_variables),
   };
 
@@ -145,10 +126,7 @@ function generateOciConfig(
  * @param pkg - Package to generate config for
  * @returns Config and instructions
  */
-function generatePackageConfig(
-  server: RegistryServer,
-  pkg: Package,
-): ConfigGenerationResult {
+function generatePackageConfig(server: RegistryServer, pkg: Package): ConfigGenerationResult {
   let result: ConfigGenerationResult;
 
   switch (pkg.registry_type) {
@@ -174,8 +152,7 @@ function generatePackageConfig(
 
   return {
     config: result.config,
-    instructions:
-      baseInstructions + result.instructions + requiredVarsInstructions,
+    instructions: baseInstructions + result.instructions + requiredVarsInstructions,
   };
 }
 
@@ -186,10 +163,7 @@ function generatePackageConfig(
  * @param remote - Remote connection information
  * @returns Config and instructions
  */
-function generateRemoteConfig(
-  server: RegistryServer,
-  remote: Remote,
-): ConfigGenerationResult {
+function generateRemoteConfig(server: RegistryServer, remote: Remote): ConfigGenerationResult {
   const headers =
     remote.headers?.reduce(
       (acc: Record<string, string>, header: KeyValueInput) => {
@@ -233,15 +207,11 @@ export class RegistryContext {
     RegistryContext.instance = null;
   }
 
-  public async getServerDetails(
-    registryId: string,
-  ): Promise<RegistryServer | null> {
+  public async getServerDetails(registryId: string): Promise<RegistryServer | null> {
     return this.serverDetailsMock(registryId);
   }
 
-  public async generateInstallInfo(
-    server: RegistryServer,
-  ): Promise<RegistryInstallInfo> {
+  public async generateInstallInfo(server: RegistryServer): Promise<RegistryInstallInfo> {
     // Default mock implementation that generates a basic install info
     if (this.generateInstallInfoMock.getMockImplementation()) {
       return this.generateInstallInfoMock(server);

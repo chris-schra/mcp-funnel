@@ -33,9 +33,7 @@ import {
  * ```
  * @public
  */
-export function generateConfigSnippet(
-  server: RegistryServer,
-): RegistryConfigEntry {
+export function generateConfigSnippet(server: RegistryServer): RegistryConfigEntry {
   const entry: RegistryConfigEntry = {
     name: server.name,
   };

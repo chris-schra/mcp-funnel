@@ -57,9 +57,7 @@ export async function discoverCommandsFromDefault(): Promise<CommandRegistry> {
  * @public
  * @see file:./registry.ts:11 - CommandRegistry class
  */
-export async function discoverCommands(
-  searchPath: string,
-): Promise<CommandRegistry> {
+export async function discoverCommands(searchPath: string): Promise<CommandRegistry> {
   const registry = new CommandRegistry();
 
   try {
@@ -130,26 +128,14 @@ export async function discoverAllCommands(
         }
       }
     } catch (error) {
-      console.warn(
-        `Failed to discover project commands from ${projectPath}:`,
-        error,
-      );
+      console.warn(`Failed to discover project commands from ${projectPath}:`, error);
     }
   }
 
   // 2. Load user-installed commands from ~/.mcp-funnel using the manifest
   if (includeUserCommands) {
-    const manifestPath = join(
-      homedir(),
-      '.mcp-funnel',
-      'commands-manifest.json',
-    );
-    const userPackagesPath = join(
-      homedir(),
-      '.mcp-funnel',
-      'packages',
-      'node_modules',
-    );
+    const manifestPath = join(homedir(), '.mcp-funnel', 'commands-manifest.json');
+    const userPackagesPath = join(homedir(), '.mcp-funnel', 'packages', 'node_modules');
 
     try {
       // Read the manifest to know what commands are actually installed
@@ -221,9 +207,7 @@ async function loadCommand(commandPath: string): Promise<ICommand | null> {
 
     const entryPoint = packageJson.module || packageJson.main;
     if (!entryPoint) {
-      console.warn(
-        `No main/module entry point found in package.json at ${commandPath}`,
-      );
+      console.warn(`No main/module entry point found in package.json at ${commandPath}`);
       return null;
     }
 
@@ -268,13 +252,9 @@ async function readPackageJson(
  * @returns Array of absolute paths to try in order
  * @internal
  */
-function getModulePathsToTry(
-  commandPath: string,
-  entryPoint: string,
-): string[] {
+function getModulePathsToTry(commandPath: string, entryPoint: string): string[] {
   const preferSrc =
-    process.env.NODE_ENV !== 'production' ||
-    process.env.MCP_FUNNEL_PREFER_SRC === '1';
+    process.env.NODE_ENV !== 'production' || process.env.MCP_FUNNEL_PREFER_SRC === '1';
 
   const srcPath = join(commandPath, 'src', 'index.ts');
   const distPath = join(commandPath, entryPoint);
@@ -288,14 +268,11 @@ function getModulePathsToTry(
  * @returns ICommand if found and valid, null otherwise
  * @internal
  */
-async function tryLoadCommandFromPath(
-  modulePath: string,
-): Promise<ICommand | null> {
+async function tryLoadCommandFromPath(modulePath: string): Promise<ICommand | null> {
   try {
     await fs.access(modulePath);
     const module = await import(modulePath);
-    const command =
-      module.default || module.command || findCommandInModule(module);
+    const command = module.default || module.command || findCommandInModule(module);
 
     if (isValidCommand(command)) {
       return command as ICommand;

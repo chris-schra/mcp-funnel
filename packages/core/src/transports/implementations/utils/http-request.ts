@@ -5,10 +5,7 @@
  * @internal
  */
 
-import type {
-  JSONRPCMessage,
-  JSONRPCRequest,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCMessage, JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 import { TransportError } from '../../errors/transport-error.js';
 import type { IAuthProvider } from '../../../auth/index.js';
 import { logEvent } from '../../../logger.js';
@@ -19,9 +16,7 @@ import { logEvent } from '../../../logger.js';
  * @returns Promise resolving to headers object with Content-Type and auth headers
  * @internal
  */
-async function getRequestHeaders(
-  authProvider?: IAuthProvider,
-): Promise<Record<string, string>> {
+async function getRequestHeaders(authProvider?: IAuthProvider): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -68,10 +63,7 @@ async function attemptTokenRefreshAndRetry(
     });
 
     if (!retryResponse.ok) {
-      throw TransportError.fromHttpStatus(
-        retryResponse.status,
-        retryResponse.statusText,
-      );
+      throw TransportError.fromHttpStatus(retryResponse.status, retryResponse.statusText);
     }
   } catch (refreshError) {
     logEvent('error', `${logPrefix}:token-refresh-failed`, {
@@ -98,17 +90,11 @@ function handleNetworkError(error: unknown, timeout: number): never {
       throw TransportError.requestTimeout(timeout, error);
     }
     if (error.message.includes('fetch')) {
-      throw TransportError.connectionFailed(
-        `Network error: ${error.message}`,
-        error,
-      );
+      throw TransportError.connectionFailed(`Network error: ${error.message}`, error);
     }
   }
 
-  throw TransportError.connectionFailed(
-    `HTTP request failed: ${error}`,
-    error as Error,
-  );
+  throw TransportError.connectionFailed(`HTTP request failed: ${error}`, error as Error);
 }
 
 /**
@@ -151,17 +137,10 @@ export async function executeHttpRequest(
     });
 
     if (!response.ok) {
-      const shouldRetryWith401 =
-        response.status === 401 && authProvider?.refresh && isRequest;
+      const shouldRetryWith401 = response.status === 401 && authProvider?.refresh && isRequest;
 
       if (shouldRetryWith401) {
-        await attemptTokenRefreshAndRetry(
-          url,
-          message,
-          signal,
-          authProvider,
-          logPrefix,
-        );
+        await attemptTokenRefreshAndRetry(url, message, signal, authProvider, logPrefix);
         return;
       }
 

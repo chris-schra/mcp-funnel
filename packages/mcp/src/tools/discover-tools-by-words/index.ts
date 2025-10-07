@@ -139,9 +139,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
         keywords = words.or.map((k) => k.toLowerCase());
         searchMode = 'or';
       } else {
-        throw new Error(
-          'Invalid words format - use string, {and: [...]}, or {or: [...]}',
-        );
+        throw new Error('Invalid words format - use string, {and: [...]}, or {or: [...]}');
       }
     } else {
       throw new Error('Missing or invalid "words" parameter');
@@ -159,16 +157,14 @@ export class DiscoverToolsByWords extends BaseCoreTool {
   private formatToolWithArgs(match: ToolMatch): string {
     const inputSchema = match.definition?.inputSchema;
 
-    const args = Object.entries(inputSchema?.properties || {}).map(
-      ([argName, prop]) => {
-        const def = prop as { type: string; description?: string };
-        let retVal = `${argName}: ${def.type}`;
-        if (match.definition?.inputSchema?.required?.includes(argName)) {
-          retVal += ' [required]';
-        }
-        return retVal;
-      },
-    );
+    const args = Object.entries(inputSchema?.properties || {}).map(([argName, prop]) => {
+      const def = prop as { type: string; description?: string };
+      let retVal = `${argName}: ${def.type}`;
+      if (match.definition?.inputSchema?.required?.includes(argName)) {
+        retVal += ' [required]';
+      }
+      return retVal;
+    });
 
     let retVal = `- ${match.fullName}: ${match.description}`;
     if (args.length) {
@@ -195,9 +191,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     context.toolRegistry.enableTools(toolNames, 'discovery');
     await context.sendNotification?.('tools/list_changed');
 
-    const enabledList = matches
-      .map((m) => this.formatToolWithArgs(m))
-      .join('\n');
+    const enabledList = matches.map((m) => this.formatToolWithArgs(m)).join('\n');
 
     return {
       content: [
@@ -216,10 +210,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
    * @returns Call tool result
    * @internal
    */
-  private handleNoMatches(
-    keywords: string[],
-    context: CoreToolContext,
-  ): CallToolResult {
+  private handleNoMatches(keywords: string[], context: CoreToolContext): CallToolResult {
     const registryContext = RegistryContext.getInstance(context.config, {
       configPath: context.configPath || './.mcp-funnel.json',
     });

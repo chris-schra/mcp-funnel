@@ -68,15 +68,9 @@ type Variables = {
  */
 function setupAuthentication(inboundAuth: InboundAuthConfig | undefined) {
   if (!inboundAuth) {
-    console.error(
-      '❌ SECURITY ERROR: No authentication configuration provided!',
-    );
-    console.error(
-      '❌ Server cannot start without authentication for security.',
-    );
-    console.error(
-      '💡 Use DISABLE_INBOUND_AUTH=true environment variable to disable (DEV ONLY).',
-    );
+    console.error('❌ SECURITY ERROR: No authentication configuration provided!');
+    console.error('❌ Server cannot start without authentication for security.');
+    console.error('💡 Use DISABLE_INBOUND_AUTH=true environment variable to disable (DEV ONLY).');
     throw new Error(
       'Inbound authentication is mandatory. Provide auth config or set DISABLE_INBOUND_AUTH=true.',
     );
@@ -88,9 +82,7 @@ function setupAuthentication(inboundAuth: InboundAuthConfig | undefined) {
     const authMiddleware = createAuthMiddleware(authValidator);
 
     if (inboundAuth.type === 'none') {
-      console.warn(
-        '🚨 WARNING: Authentication is DISABLED - this is insecure!',
-      );
+      console.warn('🚨 WARNING: Authentication is DISABLED - this is insecure!');
       console.warn('🚨 WARNING: Only use for development/testing purposes.');
     } else {
       console.info(`✅ Inbound authentication enabled: ${inboundAuth.type}`);
@@ -208,9 +200,7 @@ async function handleWebSocketAuth(
           '\r\n' +
           JSON.stringify({
             error: 'Unauthorized',
-            message:
-              authResult.error ||
-              'Authentication required for WebSocket connection',
+            message: authResult.error || 'Authentication required for WebSocket connection',
             timestamp: new Date().toISOString(),
           }),
       );
@@ -263,10 +253,7 @@ async function handleWebSocketAuth(
  * ```
  * @public
  */
-export async function startWebServer(
-  mcpProxy: MCPProxy,
-  options: ServerOptions = {},
-) {
+export async function startWebServer(mcpProxy: MCPProxy, options: ServerOptions = {}) {
   const { port = 3456, host = '0.0.0.0', staticPath, inboundAuth } = options;
 
   // Setup authentication
@@ -285,9 +272,7 @@ export async function startWebServer(
         createServer,
       },
       (serverInfo) => {
-        console.info(
-          `🚀 Web UI server running at http://${host}:${serverInfo?.port || port}`,
-        );
+        console.info(`🚀 Web UI server running at http://${host}:${serverInfo?.port || port}`);
         resolve(server);
       },
     );
@@ -307,11 +292,7 @@ export async function startWebServer(
 
     server.on('upgrade', async (request, socket, head) => {
       if (request.url === '/ws') {
-        const isAuthenticated = await handleWebSocketAuth(
-          request,
-          socket,
-          authValidator,
-        );
+        const isAuthenticated = await handleWebSocketAuth(request, socket, authValidator);
         if (!isAuthenticated) return;
 
         // Proceed with WebSocket upgrade

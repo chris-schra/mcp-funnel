@@ -156,16 +156,10 @@ export const handleAuthorizationRequest = async (
   const clientOrError = await validateClient(storage, validParams.client_id);
   if ('success' in clientOrError) return clientOrError;
 
-  const redirectError = validateRedirectUriOrError(
-    clientOrError,
-    validParams.redirect_uri,
-  );
+  const redirectError = validateRedirectUriOrError(clientOrError, validParams.redirect_uri);
   if (redirectError) return redirectError;
 
-  const scopesOrError = validateScopesOrError(
-    validParams.scope,
-    config.supportedScopes,
-  );
+  const scopesOrError = validateScopesOrError(validParams.scope, config.supportedScopes);
   if ('success' in scopesOrError) return scopesOrError;
 
   const pkceError = validatePkceOrError(

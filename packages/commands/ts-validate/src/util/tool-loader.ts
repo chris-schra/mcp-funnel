@@ -1,9 +1,5 @@
 import { satisfies } from 'semver';
-import {
-  resolveLocalModule,
-  extractESLintCtor,
-  isPrettierNS,
-} from './module-resolver.js';
+import { resolveLocalModule, extractESLintCtor, isPrettierNS } from './module-resolver.js';
 
 const COMPAT = {
   prettier: '>=3.0.0 <4.0.0',
@@ -25,9 +21,7 @@ export interface LoadedTools {
  * @param mod - The imported module to extract Prettier from
  * @returns Prettier namespace if found, undefined otherwise
  */
-function extractPrettierNamespace(
-  mod: unknown,
-): typeof import('prettier') | undefined {
+function extractPrettierNamespace(mod: unknown): typeof import('prettier') | undefined {
   const direct = isPrettierNS(mod) ? mod : undefined;
   if (direct) return direct;
 
@@ -193,9 +187,7 @@ export async function loadTypeScript(
 
   if (localTs && satisfies(localTs.version, COMPAT.typescript)) {
     try {
-      return (await import(
-        localTs.modulePath
-      )) as unknown as typeof import('typescript');
+      return (await import(localTs.modulePath)) as unknown as typeof import('typescript');
     } catch (e) {
       const _e = e as Error;
       console.debug(

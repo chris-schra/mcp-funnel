@@ -83,11 +83,7 @@ function processEscape(char: string, state: QuoteParsingState): boolean {
  * @param state - Current parsing state
  * @internal
  */
-function processEqualsSign(
-  char: string,
-  i: number,
-  state: QuoteParsingState,
-): void {
+function processEqualsSign(char: string, i: number, state: QuoteParsingState): void {
   if (char === '=' && state.equalsIndex === -1 && !state.inQuotes) {
     state.equalsIndex = i;
   }
@@ -100,11 +96,7 @@ function processEqualsSign(
  * @param state - Current parsing state
  * @internal
  */
-function trackValueStartPosition(
-  char: string,
-  i: number,
-  state: QuoteParsingState,
-): void {
+function trackValueStartPosition(char: string, i: number, state: QuoteParsingState): void {
   if (state.equalsIndex !== -1 && state.valueStart === -1) {
     if (char !== ' ' && char !== '\t') {
       state.valueStart = i;

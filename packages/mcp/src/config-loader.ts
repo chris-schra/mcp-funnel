@@ -91,9 +91,7 @@ export function getDefaultProjectConfigPath(cwd = process.cwd()): string {
  * @public
  * @see {@link ProxyConfigSchema} - Configuration schema definition
  */
-export function resolveMergedProxyConfig(
-  projectConfigPath?: string,
-): MergedProxyConfigResult {
+export function resolveMergedProxyConfig(projectConfigPath?: string): MergedProxyConfigResult {
   const userBasePath = getUserBasePath();
   const projectPath = projectConfigPath ?? getDefaultProjectConfigPath();
 

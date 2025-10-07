@@ -28,9 +28,7 @@ export type PackageCommandConfig = {
  * @returns Default configuration or null if registry type is unknown
  * @public
  */
-export function getPackageDefaults(
-  registryType: string,
-): PackageDefaults | null {
+export function getPackageDefaults(registryType: string): PackageDefaults | null {
   switch (registryType) {
     case 'npm':
       return { command: 'npx', prefixArgs: ['-y'] };
@@ -66,32 +64,21 @@ export function getPackageIdentifier(pkg: Package): string {
  * @returns Command and arguments array for execution
  * @public
  */
-export function buildPackageCommand(
-  pkg: Package,
-  defaults: PackageDefaults,
-): PackageCommandConfig {
+export function buildPackageCommand(pkg: Package, defaults: PackageDefaults): PackageCommandConfig {
   const identifier = getPackageIdentifier(pkg);
 
   if (pkg.runtime_hint) {
     // Publisher has full control when hint is provided
     return {
       command: pkg.runtime_hint,
-      args: [
-        ...(pkg.runtime_arguments || []),
-        identifier,
-        ...(pkg.package_arguments || []),
-      ],
+      args: [...(pkg.runtime_arguments || []), identifier, ...(pkg.package_arguments || [])],
     };
   }
 
   // Default behavior when no hint provided
   return {
     command: defaults.command,
-    args: [
-      ...defaults.prefixArgs,
-      identifier,
-      ...(pkg.package_arguments || []),
-    ],
+    args: [...defaults.prefixArgs, identifier, ...(pkg.package_arguments || [])],
   };
 }
 
@@ -102,9 +89,7 @@ export function buildPackageCommand(
  * @returns Environment variables object or undefined if none with values
  * @public
  */
-export function convertEnvironmentVariables(
-  pkg: Package,
-): Record<string, string> | undefined {
+export function convertEnvironmentVariables(pkg: Package): Record<string, string> | undefined {
   if (!pkg.environment_variables || pkg.environment_variables.length === 0) {
     return undefined;
   }

@@ -120,10 +120,7 @@ export function renderConsentPage(data: ConsentPageData): string {
  * @param fieldName - Name of the field for error messages
  * @returns Error message if validation fails, null otherwise
  */
-function validateRequiredField(
-  value: string | undefined,
-  fieldName: string,
-): string | null {
+function validateRequiredField(value: string | undefined, fieldName: string): string | null {
   if (!value?.trim()) {
     return `${fieldName} is required`;
   }

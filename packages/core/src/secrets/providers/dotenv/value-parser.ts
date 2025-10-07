@@ -35,10 +35,7 @@ interface EscapeSequenceResult {
  * @param index - Current position (at the backslash character)
  * @returns Object with the processed character and new index, or null if invalid
  */
-function processUnicodeEscape(
-  str: string,
-  index: number,
-): EscapeSequenceResult | null {
+function processUnicodeEscape(str: string, index: number): EscapeSequenceResult | null {
   if (index + 5 >= str.length) {
     return null;
   }
@@ -61,10 +58,7 @@ function processUnicodeEscape(
  * @param index - Current position (at the backslash character)
  * @returns Object with the processed character(s) and new index
  */
-function processEscapeSequence(
-  str: string,
-  index: number,
-): EscapeSequenceResult {
+function processEscapeSequence(str: string, index: number): EscapeSequenceResult {
   const nextChar = str[index + 1];
 
   switch (nextChar) {
@@ -100,8 +94,7 @@ function processEscapeSequence(
  */
 function handleUnclosedQuote(result: string): string {
   const newlineIndex = result.indexOf('\n');
-  const truncated =
-    newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
+  const truncated = newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
   return `"${truncated}`;
 }
 
@@ -181,8 +174,7 @@ export function parseSingleQuotedValue(value: string): string {
 
   if (!closed) {
     const newlineIndex = result.indexOf('\n');
-    const truncated =
-      newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
+    const truncated = newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
     return `'${truncated}`;
   }
 

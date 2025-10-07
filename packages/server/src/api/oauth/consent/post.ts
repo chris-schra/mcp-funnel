@@ -56,15 +56,12 @@ function parseConsentRequestBody(
 ): ParsedConsentParams {
   const clientId = OAuthUtils.coerceToString(body.client_id);
   const decision =
-    OAuthUtils.coerceToString(body.decision) ??
-    OAuthUtils.coerceToString(body.action);
-  const userId =
-    OAuthUtils.coerceToString(body.user_id) ?? OAuthUtils.getCurrentUserId(c);
+    OAuthUtils.coerceToString(body.decision) ?? OAuthUtils.coerceToString(body.action);
+  const userId = OAuthUtils.coerceToString(body.user_id) ?? OAuthUtils.getCurrentUserId(c);
 
   const requestedScopesInput = OAuthUtils.normalizeScopeInput(body.scopes);
   const fallbackScopes = OAuthUtils.normalizeScopeInput(body.scope);
-  const requestedScopes =
-    requestedScopesInput.length > 0 ? requestedScopesInput : fallbackScopes;
+  const requestedScopes = requestedScopesInput.length > 0 ? requestedScopesInput : fallbackScopes;
 
   const validRequestedScopes = Array.from(
     new Set(requestedScopes.filter((scope) => supportedScopes.includes(scope))),
@@ -98,16 +95,11 @@ function processApprovedScopes(
   requestedScopes: string[],
   supportedScopes: string[],
 ): string[] {
-  const approvedScopes =
-    approvedScopeInput.length > 0 ? approvedScopeInput : requestedScopes;
-  const supportedApprovedScopes = approvedScopes.filter((scope) =>
-    supportedScopes.includes(scope),
-  );
+  const approvedScopes = approvedScopeInput.length > 0 ? approvedScopeInput : requestedScopes;
+  const supportedApprovedScopes = approvedScopes.filter((scope) => supportedScopes.includes(scope));
   const filteredApprovedScopes =
     requestedScopes.length > 0
-      ? supportedApprovedScopes.filter((scope) =>
-          requestedScopes.includes(scope),
-        )
+      ? supportedApprovedScopes.filter((scope) => requestedScopes.includes(scope))
       : supportedApprovedScopes;
   return Array.from(new Set(filteredApprovedScopes));
 }
@@ -147,8 +139,7 @@ function buildAuthorizeParams(
 
   if (state) params.set('state', state);
   if (codeChallenge) params.set('code_challenge', codeChallenge);
-  if (codeChallengeMethod)
-    params.set('code_challenge_method', codeChallengeMethod);
+  if (codeChallengeMethod) params.set('code_challenge_method', codeChallengeMethod);
 
   return params;
 }
@@ -175,12 +166,10 @@ async function handleApproval(
   consentService: IUserConsentService,
 ) {
   if (approvedScopes.length > 0) {
-    await consentService.recordUserConsent(
-      params.userId,
-      params.clientId,
-      approvedScopes,
-      { remember: params.rememberDecision, ttlSeconds },
-    );
+    await consentService.recordUserConsent(params.userId, params.clientId, approvedScopes, {
+      remember: params.rememberDecision,
+      ttlSeconds,
+    });
   }
 
   if (wantsJson) {
@@ -237,10 +226,7 @@ function handleDenial(
   if (redirectUri) {
     const errorRedirect = new URL(redirectUri);
     errorRedirect.searchParams.set('error', 'access_denied');
-    errorRedirect.searchParams.set(
-      'error_description',
-      'The resource owner denied the request',
-    );
+    errorRedirect.searchParams.set('error_description', 'The resource owner denied the request');
     if (params.state) errorRedirect.searchParams.set('state', params.state);
     return c.redirect(errorRedirect.toString());
   }
@@ -251,9 +237,7 @@ function handleDenial(
 export const PostConsentHandler: OAuthHandler = async (c) => {
   try {
     const contentType = c.req.header('content-type') || '';
-    const wantsJson =
-      contentType.includes('application/json') ||
-      OAuthUtils.prefersJsonResponse(c);
+    const wantsJson = contentType.includes('application/json') || OAuthUtils.prefersJsonResponse(c);
     const rawBody: unknown = contentType.includes('application/json')
       ? await c.req.json()
       : await c.req.parseBody();
@@ -273,12 +257,7 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
     const decisionError = validateDecision(params.decision, c, wantsJson);
     if (decisionError) return decisionError;
 
-    const [client, clientError] = await validateClient(
-      params.clientId,
-      storage,
-      c,
-      wantsJson,
-    );
+    const [client, clientError] = await validateClient(params.clientId, storage, c, wantsJson);
     if (clientError) return clientError;
 
     const ttlError = validateTtl(params.ttlSecondsRaw, c, wantsJson);
@@ -321,9 +300,6 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
     return handleDenial(c, wantsJson, params, redirectUri);
   } catch (error) {
     console.error('Consent processing error:', error);
-    return c.json(
-      { error: 'server_error', error_description: 'Internal server error' },
-      500,
-    );
+    return c.json({ error: 'server_error', error_description: 'Internal server error' }, 500);
   }
 };

@@ -52,9 +52,7 @@ export function filterTsFilesByRootConfig(tsFiles: string[]): string[] {
   }
 
   try {
-    const rootConfig = JSON.parse(
-      fssync.readFileSync(rootTsConfigPath, 'utf-8'),
-    );
+    const rootConfig = JSON.parse(fssync.readFileSync(rootTsConfigPath, 'utf-8'));
     const rootExcludePatterns: string[] = rootConfig.exclude || [];
 
     // Pre-compile minimatch matchers outside the filter loop for performance
@@ -122,14 +120,8 @@ function processDiagnostics(
     const file = diagnostic.file.fileName;
     if (!filesToValidate.has(file)) continue;
     const start = diagnostic.start || 0;
-    const { line, character } = ts.getLineAndCharacterOfPosition(
-      diagnostic.file,
-      start,
-    );
-    const message = ts.flattenDiagnosticMessageText(
-      diagnostic.messageText,
-      '\n',
-    );
+    const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, start);
+    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
     const suggestedFix = getTypeScriptFix(diagnostic);
     const isError = diagnostic.category === ts.DiagnosticCategory.Error;
     ctx.addResult(file, {
@@ -176,11 +168,7 @@ export async function validateTypeScriptWithConfig(
 
   const ts = await loadTypeScript(tsConfigFile, tsNs);
   const { config } = ts.readConfigFile(tsConfigFile, ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(
-    config,
-    ts.sys,
-    path.dirname(tsConfigFile),
-  );
+  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, path.dirname(tsConfigFile));
 
   if (parsed.errors.length === 0) {
     const program = ts.createProgram({
@@ -212,11 +200,7 @@ function parseConfigWithErrorLogging(
   ts: typeof import('typescript'),
 ): import('typescript').ParsedCommandLine | null {
   const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(
-    config,
-    ts.sys,
-    path.dirname(configPath),
-  );
+  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, path.dirname(configPath));
 
   if (parsed.errors.length > 0) {
     console.error(chalk.red(`Error parsing ${configPath}:`));

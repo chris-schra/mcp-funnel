@@ -159,9 +159,7 @@ export class MonorepoValidator {
    * @param options - Validation options
    * @returns Promise resolving to validation summary with results and stats
    */
-  public async validate(
-    options: ValidateOptions = {},
-  ): Promise<ValidationSummary> {
+  public async validate(options: ValidateOptions = {}): Promise<ValidationSummary> {
     const files = await resolveFiles(options);
 
     if (files.length === 0) {
@@ -178,22 +176,10 @@ export class MonorepoValidator {
     const tasks: Promise<void>[] = [];
 
     tasks.push(
-      this.runPrettierValidation(
-        files,
-        toolchains.prettierLocal,
-        toolStatuses,
-        options.fix,
-      ),
+      this.runPrettierValidation(files, toolchains.prettierLocal, toolStatuses, options.fix),
     );
 
-    tasks.push(
-      this.runESLintValidation(
-        files,
-        toolchains.eslintLocal,
-        toolStatuses,
-        options.fix,
-      ),
-    );
+    tasks.push(this.runESLintValidation(files, toolchains.eslintLocal, toolStatuses, options.fix));
 
     this.runTypeScriptValidation(files, tsConfig, toolStatuses, tasks);
 
@@ -221,17 +207,11 @@ export class MonorepoValidator {
   }
 
   private detectTsConfig(files: string[], tsConfigFile?: string) {
-    const tsFiles = files.filter(
-      (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
-    );
+    const tsFiles = files.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
 
-    const overrideTsConfig = tsConfigFile
-      ? path.resolve(process.cwd(), tsConfigFile)
-      : undefined;
+    const overrideTsConfig = tsConfigFile ? path.resolve(process.cwd(), tsConfigFile) : undefined;
 
-    const overrideExists = overrideTsConfig
-      ? fssync.existsSync(overrideTsConfig)
-      : false;
+    const overrideExists = overrideTsConfig ? fssync.existsSync(overrideTsConfig) : false;
 
     const tsConfigPaths = new Set<string>();
     if (!overrideExists && tsFiles.length > 0) {
@@ -251,16 +231,9 @@ export class MonorepoValidator {
     fix?: boolean,
   ) {
     try {
-      const pr = await validatePrettier(
-        files,
-        this.prettierMod!,
-        this.ctx,
-        fix,
-      );
+      const pr = await validatePrettier(files, this.prettierMod!, this.ctx, fix);
       const origin: 'local' | 'bundled' =
-        prettierLocal && satisfies(prettierLocal.version, COMPAT.prettier)
-          ? 'local'
-          : 'bundled';
+        prettierLocal && satisfies(prettierLocal.version, COMPAT.prettier) ? 'local' : 'bundled';
       toolStatuses.push({
         tool: 'prettier',
         status: 'ok',
@@ -286,9 +259,7 @@ export class MonorepoValidator {
     try {
       await validateESLint(files, this.eslintCtor!, this.ctx, fix);
       const origin: 'local' | 'bundled' =
-        eslintLocal && satisfies(eslintLocal.version, COMPAT.eslint)
-          ? 'local'
-          : 'bundled';
+        eslintLocal && satisfies(eslintLocal.version, COMPAT.eslint) ? 'local' : 'bundled';
       toolStatuses.push({
         tool: 'eslint',
         status: 'ok',
@@ -297,8 +268,7 @@ export class MonorepoValidator {
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      const isNoConfig =
-        /no eslint configuration|couldn['']t find a configuration/i.test(msg);
+      const isNoConfig = /no eslint configuration|couldn['']t find a configuration/i.test(msg);
       toolStatuses.push(
         isNoConfig
           ? { tool: 'eslint', status: 'skipped', reason: 'no-eslint-config' }
@@ -335,13 +305,7 @@ export class MonorepoValidator {
           reason: 'no-tsconfig',
         });
       } else {
-        tasks.push(
-          this.validateTypeScriptTask(
-            files,
-            toolStatuses,
-            tsConfig.overrideTsConfig,
-          ),
-        );
+        tasks.push(this.validateTypeScriptTask(files, toolStatuses, tsConfig.overrideTsConfig));
       }
     } else if (tsConfig.tsConfigPaths.size === 0) {
       toolStatuses.push({
@@ -361,12 +325,7 @@ export class MonorepoValidator {
   ) {
     try {
       if (configPath) {
-        await validateTypeScriptWithConfig(
-          files,
-          configPath,
-          this.ctx,
-          this.tsNs,
-        );
+        await validateTypeScriptWithConfig(files, configPath, this.ctx, this.tsNs);
       } else {
         await validateTypeScriptByDiscovery(files, this.ctx, this.tsNs);
       }

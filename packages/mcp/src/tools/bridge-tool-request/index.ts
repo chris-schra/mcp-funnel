@@ -80,10 +80,7 @@ export class BridgeToolRequest extends BaseCoreTool {
     }
 
     const toolArguments = args.arguments as Record<string, unknown> | undefined;
-    const resolutionResult = await this.resolveAndPrepareTool(
-      args.tool,
-      context,
-    );
+    const resolutionResult = await this.resolveAndPrepareTool(args.tool, context);
 
     if ('error' in resolutionResult) {
       return resolutionResult.error;
@@ -109,9 +106,7 @@ export class BridgeToolRequest extends BaseCoreTool {
     context: CoreToolContext,
   ): Promise<
     | {
-        toolState: NonNullable<
-          ReturnType<typeof context.toolRegistry.getToolForExecution>
-        >;
+        toolState: NonNullable<ReturnType<typeof context.toolRegistry.getToolForExecution>>;
         resolvedName: string;
       }
     | { error: CallToolResult }
@@ -121,9 +116,7 @@ export class BridgeToolRequest extends BaseCoreTool {
       return { error: resolution.error };
     }
 
-    let toolState = context.toolRegistry.getToolForExecution(
-      resolution.resolvedName,
-    );
+    let toolState = context.toolRegistry.getToolForExecution(resolution.resolvedName);
 
     if (!toolState) {
       const enableResult = await this.tryAutoEnableTool(
@@ -161,11 +154,7 @@ export class BridgeToolRequest extends BaseCoreTool {
       return { resolvedName: requestedTool };
     }
 
-    const resolution = resolveToolName(
-      requestedTool,
-      context.toolMapping,
-      context.config,
-    );
+    const resolution = resolveToolName(requestedTool, context.toolMapping, context.config);
 
     if (!resolution.resolved) {
       return { error: this.createResolutionError(requestedTool, resolution) };
@@ -185,9 +174,7 @@ export class BridgeToolRequest extends BaseCoreTool {
     requestedTool: string,
     resolution: ReturnType<typeof resolveToolName>,
   ): CallToolResult {
-    const message =
-      resolution.error?.message ||
-      `Tool not found or not exposed: ${requestedTool}`;
+    const message = resolution.error?.message || `Tool not found or not exposed: ${requestedTool}`;
     const fullMessage = resolution.error?.isAmbiguous
       ? message
       : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
@@ -212,9 +199,7 @@ export class BridgeToolRequest extends BaseCoreTool {
     context: CoreToolContext,
   ): Promise<
     | {
-        toolState: NonNullable<
-          ReturnType<typeof context.toolRegistry.getToolForExecution>
-        >;
+        toolState: NonNullable<ReturnType<typeof context.toolRegistry.getToolForExecution>>;
       }
     | { error: CallToolResult }
   > {
@@ -266,9 +251,7 @@ export class BridgeToolRequest extends BaseCoreTool {
    * @returns The tool execution result or an error result
    */
   private async executeTool(
-    toolState: NonNullable<
-      ReturnType<CoreToolContext['toolRegistry']['getToolForExecution']>
-    >,
+    toolState: NonNullable<ReturnType<CoreToolContext['toolRegistry']['getToolForExecution']>>,
     resolvedName: string,
     toolArguments: Record<string, unknown> | undefined,
   ): Promise<CallToolResult> {
@@ -289,8 +272,7 @@ export class BridgeToolRequest extends BaseCoreTool {
 
       throw new Error(`Tool ${resolvedName} has no executor`);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         content: [
           {

@@ -20,8 +20,7 @@ export class GetToolSchema extends BaseCoreTool {
         properties: {
           tool: {
             type: 'string',
-            description:
-              'Full tool name including server prefix (e.g., "github__create_issue")',
+            description: 'Full tool name including server prefix (e.g., "github__create_issue")',
           },
         },
         required: ['tool'],
@@ -58,11 +57,7 @@ export class GetToolSchema extends BaseCoreTool {
       return null;
     }
 
-    const resolution = resolveToolName(
-      toolName,
-      context.toolMapping,
-      context.config,
-    );
+    const resolution = resolveToolName(toolName, context.toolMapping, context.config);
 
     if (!resolution.resolved) {
       return this.createTextResponse(
@@ -71,9 +66,7 @@ export class GetToolSchema extends BaseCoreTool {
       );
     }
 
-    const resolvedTool = context.toolRegistry.getToolState(
-      resolution.toolName!,
-    );
+    const resolvedTool = context.toolRegistry.getToolState(resolution.toolName!);
 
     if (!resolvedTool || !resolvedTool.definition) {
       return this.createTextResponse(

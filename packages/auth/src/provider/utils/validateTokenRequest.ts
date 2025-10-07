@@ -46,9 +46,7 @@ export type TokenRequestValidationResult = {
  * @see file:../oauth-provider.ts:206 - Usage in token endpoint
  * @public
  */
-export function validateTokenRequest(
-  params: Partial<TokenRequest>,
-): TokenRequestValidationResult {
+export function validateTokenRequest(params: Partial<TokenRequest>): TokenRequestValidationResult {
   // Check required parameters
   if (!params.grant_type) {
     return {

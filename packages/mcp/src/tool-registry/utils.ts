@@ -122,11 +122,7 @@ function matchesPatterns(name: string, patterns?: string[]): boolean {
  *
  * @internal
  */
-function computeVisibility(
-  config: ProxyConfig,
-  name: string,
-  tool: ToolState,
-): VisibilityResult {
+function computeVisibility(config: ProxyConfig, name: string, tool: ToolState): VisibilityResult {
   // 1. Core tools - only controlled by their own registration, not by exposeTools
   if (tool.isCoreTool) {
     return { exposed: true, reason: 'core' };
