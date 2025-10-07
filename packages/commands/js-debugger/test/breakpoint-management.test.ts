@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { describe, it, expect } from 'vitest';
 import { sleep } from './utils/async-helpers.js';
 import {

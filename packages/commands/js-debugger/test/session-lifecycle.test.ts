@@ -34,9 +34,10 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
 
   /**
    * Helper to run a test with automatic cleanup of manager, fixture, and session
-   * @param fixtureName
-   * @param config
-   * @param testFn
+   * @param fixtureName - Name of the fixture file to load for testing
+   * @param config - Partial configuration for the debug session
+   * @param testFn - Test function to execute with the session resources
+   * @returns Promise resolving to the test function's return value
    */
   const withSession = async <T>(
     fixtureName: string,

@@ -35,6 +35,7 @@ process.on('unhandledRejection', (reason, promise) => {
  * - Otherwise loads configuration and starts the MCP proxy server
  * - Merges user-level (~/.mcp-funnel/.mcp-funnel.json) and project-level config
  * - Project config takes precedence over user config
+ * @returns Promise that resolves to MCPProxy instance when proxy starts, or void for command execution
  * @throws \{Error\} When configuration loading fails
  * @throws \{Error\} When proxy initialization fails
  * @internal
@@ -147,9 +148,11 @@ async function main(): Promise<MCPProxy | void> {
 // Setup shutdown handlers
 let isShuttingDown = false;
 /**
+ * Handles graceful shutdown of the MCP proxy when receiving termination signals.
  *
- * @param signal
- * @param proxy
+ * @param signal - Signal name (e.g., SIGINT, SIGTERM) that triggered shutdown
+ * @param proxy - Optional MCPProxy instance to shutdown gracefully
+ * @returns Promise that resolves when shutdown is complete
  */
 async function handleShutdown(signal: string, proxy?: MCPProxy) {
   if (isShuttingDown) return;

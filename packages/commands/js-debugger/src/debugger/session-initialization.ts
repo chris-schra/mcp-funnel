@@ -85,13 +85,7 @@ async function setupInternalBreakpoints(
         });
       } catch (error) {
         console.error('Unable to set specific file regex breakpoint:', error);
-        // If that fails, try a general breakpoint at line 0 of any script
-        result = await processManager.sendCommand('Debugger.setBreakpointByUrl', {
-          lineNumber: 0,
-          columnNumber: 0,
-          url: '', // Empty URL to match any script
-          condition: '',
-        });
+        throw new Error('Unable to set specific file regex breakpoint');
       }
       const breakpointResult = result as {
         breakpointId: string;

@@ -136,9 +136,7 @@ export const continueUntilTerminated = async (
  * Handles sessions that may have already terminated or been removed.
  * @param manager - The session manager instance
  * @param sessionId - ID of the session to clean up
- * @param options - Cleanup options
- * @param options.forceKill - If false, skip force kill on timeout (default: true)
- * @param options.timeoutMs - Graceful termination timeout in ms (default: 3000)
+ * @param options - Cleanup options with forceKill (default: true) to control force kill on timeout, and timeoutMs (default: 3000) for graceful termination timeout in ms
  * @internal
  */
 export const cleanupSession = async (
