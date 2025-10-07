@@ -37,9 +37,7 @@ export class DelayedProvider extends BaseSecretProvider {
  * @param values - Key-value pairs of secrets to provide
  * @returns Configured inline provider instance
  */
-export function createInlineProvider(
-  values: Record<string, string>,
-): InlineProvider {
+export function createInlineProvider(values: Record<string, string>): InlineProvider {
   return new InlineProvider({
     type: 'inline',
     config: { values },
@@ -54,11 +52,7 @@ export function createInlineProvider(
  * @param content - Array of lines to write to the file
  * @returns Absolute path to the created file
  */
-export function writeEnvFile(
-  baseDir: string,
-  filename: string,
-  content: string[],
-): string {
+export function writeEnvFile(baseDir: string, filename: string, content: string[]): string {
   const filePath = join(baseDir, filename);
   writeFileSync(filePath, content.join('\n'), 'utf-8');
   return filePath;

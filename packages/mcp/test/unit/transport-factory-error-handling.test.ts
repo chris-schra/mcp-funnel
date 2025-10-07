@@ -40,9 +40,7 @@ describe('TransportFactory - Error Handling', () => {
       // missing url
     };
 
-    await expect(createTransport(config)).rejects.toThrow(
-      'URL is required for SSE transport',
-    );
+    await expect(createTransport(config)).rejects.toThrow('URL is required for SSE transport');
   });
 
   it('should throw for invalid sse url format', async () => {
@@ -51,9 +49,7 @@ describe('TransportFactory - Error Handling', () => {
       url: 'not-a-valid-url',
     };
 
-    await expect(createTransport(config)).rejects.toThrow(
-      'Invalid URL: not-a-valid-url',
-    );
+    await expect(createTransport(config)).rejects.toThrow('Invalid URL: not-a-valid-url');
   });
 
   it('should validate reconnect configuration for SSE', async () => {
@@ -65,16 +61,12 @@ describe('TransportFactory - Error Handling', () => {
       },
     };
 
-    await expect(createTransport(config)).rejects.toThrow(
-      'maxAttempts must be a positive number',
-    );
+    await expect(createTransport(config)).rejects.toThrow('maxAttempts must be a positive number');
   });
 
   it('should handle auth provider initialization failure', async () => {
     const failingAuthProvider = {
-      getHeaders: vi
-        .fn()
-        .mockResolvedValue({ Authorization: 'Bearer test-token' }),
+      getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer test-token' }),
       isValid: vi.fn().mockRejectedValue(new Error('Auth failure')),
       refresh: vi.fn().mockResolvedValue(undefined),
     };
@@ -84,9 +76,9 @@ describe('TransportFactory - Error Handling', () => {
       url: 'https://api.example.com/events',
     };
 
-    await expect(
-      createTransport(config, { authProvider: failingAuthProvider }),
-    ).rejects.toThrow('Authentication failed: Auth failure');
+    await expect(createTransport(config, { authProvider: failingAuthProvider })).rejects.toThrow(
+      'Authentication failed: Auth failure',
+    );
   });
 
   it('should handle token storage initialization failure', async () => {
@@ -103,8 +95,8 @@ describe('TransportFactory - Error Handling', () => {
       url: 'https://api.example.com/events',
     };
 
-    await expect(
-      createTransport(config, { tokenStorage: failingTokenStorage }),
-    ).rejects.toThrow('Failed to initialize token storage: Storage failure');
+    await expect(createTransport(config, { tokenStorage: failingTokenStorage })).rejects.toThrow(
+      'Failed to initialize token storage: Storage failure',
+    );
   });
 });

@@ -96,9 +96,7 @@ describe.skipIf(!runIntegrationTests)('NPM Registry Integration Tests', () => {
       it('should handle non-existent packages gracefully', async () => {
         const nonExistentPackage = `test-package-that-definitely-does-not-exist-${Date.now()}`;
 
-        await expect(client.getPackage(nonExistentPackage)).rejects.toThrow(
-          PackageNotFoundError,
-        );
+        await expect(client.getPackage(nonExistentPackage)).rejects.toThrow(PackageNotFoundError);
 
         await expect(client.getPackage(nonExistentPackage)).rejects.toThrow(
           `Package "${nonExistentPackage}" not found on NPM registry`,
@@ -171,8 +169,7 @@ describe.skipIf(!runIntegrationTests)('NPM Registry Integration Tests', () => {
         const hasTypescriptMatch = results.results.some(
           (pkg) =>
             pkg.name.toLowerCase().includes('typescript') ||
-            (pkg.description &&
-              pkg.description.toLowerCase().includes('typescript')),
+            (pkg.description && pkg.description.toLowerCase().includes('typescript')),
         );
         expect(hasTypescriptMatch).toBe(true);
       }, 10000);
@@ -346,9 +343,7 @@ describe.skipIf(!runIntegrationTests)('NPM Registry Integration Tests', () => {
       const client = new NPMClient();
       const testPackages = ['lodash', 'express', 'react'];
 
-      const results = await Promise.all(
-        testPackages.map((pkg) => client.getPackage(pkg)),
-      );
+      const results = await Promise.all(testPackages.map((pkg) => client.getPackage(pkg)));
 
       // Verify all results have consistent required fields
       for (const result of results) {

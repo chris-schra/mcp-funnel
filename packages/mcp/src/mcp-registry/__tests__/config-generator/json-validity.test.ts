@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  generateInstallInstructions,
-  type RegistryServer,
-} from './test-utils.js';
+import { generateInstallInstructions, type RegistryServer } from './test-utils.js';
 
 describe('Config Generation', () => {
   describe('generateInstallInstructions - JSON Validity', () => {
@@ -77,11 +74,7 @@ describe('Config Generation', () => {
         const parsed = JSON.parse(wrappedJson);
         const serverConfig = parsed['Quoted Args Server'];
         expect(serverConfig.command).toBe('npx');
-        expect(serverConfig.args).toEqual([
-          '-y',
-          '@quote/server',
-          '--flag="value"',
-        ]);
+        expect(serverConfig.args).toEqual(['-y', '@quote/server', '--flag="value"']);
       }
     });
 
@@ -116,9 +109,7 @@ describe('Config Generation', () => {
         expect(serverConfig.transport).toBe('sse');
         expect(serverConfig.url).toBe('https://remote.example.com/mcp');
         expect(serverConfig.headers.Authorization).toBe('Bearer "token"');
-        expect(serverConfig.headers['X-Custom-Header']).toBe(
-          'Value with "quotes"',
-        );
+        expect(serverConfig.headers['X-Custom-Header']).toBe('Value with "quotes"');
       }
     });
   });

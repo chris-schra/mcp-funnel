@@ -32,10 +32,7 @@ function parseLimitFlag(args: string[]): {
   }
 
   const limit = Math.min(Math.max(1, limitValue), MAX_SEARCH_RESULTS);
-  const remainingArgs = [
-    ...args.slice(0, limitIndex),
-    ...args.slice(limitIndex + 2),
-  ];
+  const remainingArgs = [...args.slice(0, limitIndex), ...args.slice(limitIndex + 2)];
 
   return { limit, remainingArgs };
 }

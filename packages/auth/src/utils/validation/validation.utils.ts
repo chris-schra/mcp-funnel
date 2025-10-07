@@ -14,17 +14,11 @@ export class OAuthValidationUtils {
   public static validateAuthorizationRequest = validateAuthorizationRequest;
   public static validateTokenRequest = validateTokenRequest;
 
-  public static validateRedirectUri(
-    client: ClientRegistration,
-    redirectUri: string,
-  ): boolean {
+  public static validateRedirectUri(client: ClientRegistration, redirectUri: string): boolean {
     return client.redirect_uris.includes(redirectUri);
   }
 
-  public static validateScopes(
-    requestedScopes: string[],
-    supportedScopes: string[],
-  ): boolean {
+  public static validateScopes(requestedScopes: string[], supportedScopes: string[]): boolean {
     return requestedScopes.every((scope) => supportedScopes.includes(scope));
   }
 }

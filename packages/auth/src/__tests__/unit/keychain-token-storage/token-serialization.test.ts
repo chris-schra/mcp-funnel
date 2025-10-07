@@ -19,25 +19,20 @@ describe('KeychainTokenStorage', () => {
       let storedData: string = '';
 
       // Mock both store and retrieve operations
-      mockExecFileAsync.mockImplementation(
-        async (...commandArgs: unknown[]) => {
-          const command = commandArgs[0] as string;
-          const args = commandArgs[1] as string[];
+      mockExecFileAsync.mockImplementation(async (...commandArgs: unknown[]) => {
+        const command = commandArgs[0] as string;
+        const args = commandArgs[1] as string[];
 
-          if (command === 'security' && args[0] === 'add-generic-password') {
-            // Store operation - capture the token data from args[6] (-w value)
-            storedData = args[6];
-            return { stdout: '', stderr: '' };
-          } else if (
-            command === 'security' &&
-            args[0] === 'find-generic-password'
-          ) {
-            // Retrieve operation - return the stored data
-            return { stdout: storedData + '\n', stderr: '' };
-          }
+        if (command === 'security' && args[0] === 'add-generic-password') {
+          // Store operation - capture the token data from args[6] (-w value)
+          storedData = args[6];
           return { stdout: '', stderr: '' };
-        },
-      );
+        } else if (command === 'security' && args[0] === 'find-generic-password') {
+          // Retrieve operation - return the stored data
+          return { stdout: storedData + '\n', stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      });
 
       // Store token
       await storage.store(mockToken);

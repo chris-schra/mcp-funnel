@@ -20,11 +20,7 @@ try {
  * @internal
  */
 export class DefaultLogger implements ILogger {
-  public error(
-    message: string,
-    error?: unknown,
-    context?: Record<string, unknown>,
-  ): void {
+  public error(message: string, error?: unknown, context?: Record<string, unknown>): void {
     console.error(message, error);
     if (error && context) {
       const serverName = context.serverName as string | undefined;
@@ -62,11 +58,7 @@ export class DefaultLogger implements ILogger {
    * @param serverName - Optional server name for log file naming
    * @internal
    */
-  private legacyErrorLog(
-    error: unknown,
-    context: string = 'general',
-    serverName?: string,
-  ): void {
+  private legacyErrorLog(error: unknown, context: string = 'general', serverName?: string): void {
     const timestamp = new Date().toISOString();
     const prefix = serverName ? `${serverName}-` : '';
     const logFile = resolve(

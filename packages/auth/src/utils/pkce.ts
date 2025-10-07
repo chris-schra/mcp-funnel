@@ -16,11 +16,7 @@ import { randomBytes, createHash } from 'crypto';
  * @see file:./pkce.ts:30 - Used by generateCodeChallenge
  */
 export function base64URLEncode(buffer: Buffer): string {
-  return buffer
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 /**

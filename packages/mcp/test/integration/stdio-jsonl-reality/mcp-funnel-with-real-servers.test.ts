@@ -18,20 +18,12 @@ describe('MCP Funnel with Real Servers', () => {
         {
           name: 'server1',
           command: 'tsx',
-          args: [
-            path.join(__dirname, '../../fixtures/mock-mcp-server.ts'),
-            'server1',
-            'alpha',
-          ],
+          args: [path.join(__dirname, '../../fixtures/mock-mcp-server.ts'), 'server1', 'alpha'],
         },
         {
           name: 'server2',
           command: 'tsx',
-          args: [
-            path.join(__dirname, '../../fixtures/mock-mcp-server.ts'),
-            'server2',
-            'beta',
-          ],
+          args: [path.join(__dirname, '../../fixtures/mock-mcp-server.ts'), 'server2', 'beta'],
         },
       ],
       hideTools: ['*_error'], // Hide error tools
@@ -175,11 +167,7 @@ describe('MCP Funnel with Real Servers', () => {
         {
           name: 'github',
           command: 'tsx',
-          args: [
-            path.join(__dirname, '../../fixtures/mock-mcp-server.ts'),
-            'github-mock',
-            'gh',
-          ],
+          args: [path.join(__dirname, '../../fixtures/mock-mcp-server.ts'), 'github-mock', 'gh'],
         },
       ],
     };
@@ -191,15 +179,11 @@ describe('MCP Funnel with Real Servers', () => {
     console.error = originalError;
 
     // Check that stderr was prefixed
-    const githubLogs = stderrOutput.filter((line) =>
-      line.startsWith('[github]'),
-    );
+    const githubLogs = stderrOutput.filter((line) => line.startsWith('[github]'));
 
     expect(githubLogs.length).toBeGreaterThan(0);
     expect(githubLogs.some((log) => log.includes('starting up'))).toBe(true);
-    expect(githubLogs.some((log) => log.includes('connected and ready'))).toBe(
-      true,
-    );
+    expect(githubLogs.some((log) => log.includes('connected and ready'))).toBe(true);
 
     // Close clients
     // Close clients by accessing the private _transport property

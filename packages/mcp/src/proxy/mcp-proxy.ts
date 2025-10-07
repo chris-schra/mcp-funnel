@@ -1,10 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { EventEmitter } from 'events';
 
 import { ICoreTool } from '../tools/core-tool.interface.js';
@@ -23,11 +20,7 @@ import type { ServerStatus } from '@mcp-funnel/models';
 import { normalizeServers } from '../utils/normalizeServers.js';
 import { ServerConnectionManager } from './util/server-connection-manager.js';
 import { createToolContext } from './util/tool-context-factory.js';
-import {
-  getServerStatus,
-  isServerConnected,
-  getTargetServers,
-} from './util/server-status.js';
+import { getServerStatus, isServerConnected, getTargetServers } from './util/server-status.js';
 import { OAuth2AuthCodeProvider } from '@mcp-funnel/auth';
 
 declare global {
@@ -82,9 +75,7 @@ export class MCPProxy extends EventEmitter {
     );
 
     // Initialize disconnected servers list
-    this.connectionManager.initializeDisconnectedServers(
-      this._normalizedServers,
-    );
+    this.connectionManager.initializeDisconnectedServers(this._normalizedServers);
 
     this._server = new Server(
       {
@@ -136,12 +127,7 @@ export class MCPProxy extends EventEmitter {
         });
         if (tool.onInit) {
           tool.onInit(
-            createToolContext(
-              this.toolRegistry,
-              this._config,
-              this._configPath,
-              this._server,
-            ),
+            createToolContext(this.toolRegistry, this._config, this._configPath, this._server),
           );
         }
         console.error(`[proxy] Registered core tool: ${tool.name}`);
@@ -179,10 +165,7 @@ export class MCPProxy extends EventEmitter {
    * @public
    */
   public isServerConnected(name: string): boolean {
-    return isServerConnected(
-      name,
-      this.connectionManager.getConnectedServers(),
-    );
+    return isServerConnected(name, this.connectionManager.getConnectedServers());
   }
 
   /**
@@ -222,12 +205,7 @@ export class MCPProxy extends EventEmitter {
       if (coreTool) {
         return coreTool.handle(
           toolArgs || {},
-          createToolContext(
-            this.toolRegistry,
-            this._config,
-            this._configPath,
-            this._server,
-          ),
+          createToolContext(this.toolRegistry, this._config, this._configPath, this._server),
         );
       }
 
@@ -242,10 +220,7 @@ export class MCPProxy extends EventEmitter {
 
       // Execute based on type
       if (tool.command) {
-        return tool.command.executeToolViaMCP(
-          tool.originalName,
-          toolArgs || {},
-        );
+        return tool.command.executeToolViaMCP(tool.originalName, toolArgs || {});
       }
 
       if (tool.client) {
@@ -347,12 +322,7 @@ export class MCPProxy extends EventEmitter {
   }
 
   private createToolContext() {
-    return createToolContext(
-      this.toolRegistry,
-      this._config,
-      this._configPath,
-      this._server,
-    );
+    return createToolContext(this.toolRegistry, this._config, this._configPath, this._server);
   }
 
   /**
@@ -377,10 +347,7 @@ export class MCPProxy extends EventEmitter {
       // Attempt to reconnect servers if any are disconnected
       // This handles the case where auth completion enables connection
       setTimeout(
-        () =>
-          this.connectionManager.connectToTargetServers(
-            this._normalizedServers,
-          ),
+        () => this.connectionManager.connectToTargetServers(this._normalizedServers),
         1000,
       );
     } catch (error) {

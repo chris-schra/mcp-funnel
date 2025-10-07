@@ -17,10 +17,7 @@ describe('OAuthProvider - Token Request (Refresh Token Grant)', () => {
       redirect_uris: ['http://localhost:8080/callback'],
     });
 
-    await consentService.recordUserConsent('user123', testClient.client_id, [
-      'read',
-      'write',
-    ]);
+    await consentService.recordUserConsent('user123', testClient.client_id, ['read', 'write']);
 
     const authResult = await oauthProvider.handleAuthorizationRequest(
       {
@@ -126,11 +123,7 @@ describe('OAuthProvider - Token Request (Refresh Token Grant)', () => {
       redirect_uris: ['http://localhost:8080/callback'],
     });
 
-    await consentService.recordUserConsent(
-      'user123',
-      rotatingClient.client_id,
-      ['read', 'write'],
-    );
+    await consentService.recordUserConsent('user123', rotatingClient.client_id, ['read', 'write']);
 
     const authResult = await oauthProvider.handleAuthorizationRequest(
       {
@@ -153,8 +146,7 @@ describe('OAuthProvider - Token Request (Refresh Token Grant)', () => {
       code_verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
     });
 
-    const originalRefreshToken =
-      initialTokenResult.tokenResponse!.refresh_token!;
+    const originalRefreshToken = initialTokenResult.tokenResponse!.refresh_token!;
 
     const rotationResult = await oauthProvider.handleTokenRequest({
       grant_type: 'refresh_token',
@@ -165,9 +157,7 @@ describe('OAuthProvider - Token Request (Refresh Token Grant)', () => {
 
     expect(rotationResult.success).toBe(true);
     expect(rotationResult.tokenResponse?.refresh_token).toBeDefined();
-    expect(rotationResult.tokenResponse?.refresh_token).not.toBe(
-      originalRefreshToken,
-    );
+    expect(rotationResult.tokenResponse?.refresh_token).not.toBe(originalRefreshToken);
 
     const storedOriginal = await storage.getRefreshToken(originalRefreshToken);
     expect(storedOriginal).toBeNull();

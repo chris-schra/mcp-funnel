@@ -41,9 +41,7 @@ export interface RegistryConfigEntry extends Omit<ServerConfig, 'headers'> {
    * HTTP headers for remote server authentication and configuration.
    * Can be either a Record (final format) or KeyValueInput[] (registry format).
    */
-  headers?:
-    | Record<string, string>
-    | import('./registry.types.js').KeyValueInput[];
+  headers?: Record<string, string> | import('./registry.types.js').KeyValueInput[];
 }
 
 /**

@@ -2,10 +2,7 @@
  * Shared test utilities for config-generator tests
  */
 
-export {
-  generateConfigSnippet,
-  generateInstallInstructions,
-} from '../../config-generator.js';
+export { generateConfigSnippet, generateInstallInstructions } from '../../config-generator.js';
 
 export type {
   RegistryServer,

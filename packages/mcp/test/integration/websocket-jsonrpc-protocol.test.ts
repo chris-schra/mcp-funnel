@@ -30,100 +30,96 @@ import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
 
-describe.skipIf(!runIntegrationTests)(
-  'WebSocket JSON-RPC Protocol Integration',
-  () => {
-    let _oauthServer: TestOAuthServer;
-    let wsServer: TestWebSocketServer;
-    let oauthTokenEndpoint: string;
-    let wsEndpoint: string;
+describe.skipIf(!runIntegrationTests)('WebSocket JSON-RPC Protocol Integration', () => {
+  let _oauthServer: TestOAuthServer;
+  let wsServer: TestWebSocketServer;
+  let oauthTokenEndpoint: string;
+  let wsEndpoint: string;
 
-    beforeAll(async () => {
-      const { oauthServerInfo, wsServerInfo } =
-        await setupOAuthAndWebSocketServers({
+  beforeAll(async () => {
+    const { oauthServerInfo, wsServerInfo } = await setupOAuthAndWebSocketServers({
+      clientId: 'ws-test-client',
+      clientSecret: 'ws-test-secret',
+      tokenLifetime: 3600,
+      requireAuth: true,
+    });
+
+    _oauthServer = oauthServerInfo.server;
+    oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
+    wsServer = wsServerInfo.server;
+    wsEndpoint = wsServerInfo.wsEndpoint;
+  }, 30000);
+
+  beforeEach(() => {
+    // Clear message history between tests
+    wsServer.clearMessageHistory();
+  });
+
+  describe('High-Level Protocol Integration', () => {
+    it('should handle JSON-RPC over WebSocket correctly', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
           clientId: 'ws-test-client',
           clientSecret: 'ws-test-secret',
-          tokenLifetime: 3600,
-          requireAuth: true,
-        });
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
 
-      _oauthServer = oauthServerInfo.server;
-      oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
-      wsServer = wsServerInfo.server;
-      wsEndpoint = wsServerInfo.wsEndpoint;
-    }, 30000);
+      const headers = await authProvider.getHeaders();
+      const token = extractBearerToken(headers.Authorization)!;
+      wsServer.setValidToken(token);
 
-    beforeEach(() => {
-      // Clear message history between tests
-      wsServer.clearMessageHistory();
-    });
+      const transport = new WebSocketClientTransport({
+        url: wsEndpoint,
+        authProvider,
+      });
 
-    describe('High-Level Protocol Integration', () => {
-      it('should handle JSON-RPC over WebSocket correctly', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'ws-test-client',
-            clientSecret: 'ws-test-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
+      const receivedMessages: JSONRPCMessage[] = [];
+      transport.onmessage = (message: JSONRPCMessage) => {
+        receivedMessages.push(message);
+      };
 
-        const headers = await authProvider.getHeaders();
-        const token = extractBearerToken(headers.Authorization)!;
-        wsServer.setValidToken(token);
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        const transport = new WebSocketClientTransport({
-          url: wsEndpoint,
-          authProvider,
-        });
+      // Send complex JSON-RPC request
+      const complexRequest: JSONRPCRequest = {
+        jsonrpc: '2.0',
+        id: 'complex-test',
+        method: 'tools/list',
+        params: {
+          filters: ['github/*', 'file/*'],
+          maxResults: 100,
+        },
+      };
 
-        const receivedMessages: JSONRPCMessage[] = [];
-        transport.onmessage = (message: JSONRPCMessage) => {
-          receivedMessages.push(message);
-        };
+      await transport.send(complexRequest);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Verify complex message handling
+      const echoResponse = receivedMessages.find(
+        (msg) => 'id' in msg && msg.id === 'complex-test',
+      ) as JSONRPCResponse;
+      expect(echoResponse).toBeDefined();
+      expect(
+        (
+          echoResponse.result as {
+            echo: { method: string; params: { filters: string[] } };
+          }
+        ).echo.method,
+      ).toBe('tools/list');
+      expect(
+        (
+          echoResponse.result as {
+            echo: { method: string; params: { filters: string[] } };
+          }
+        ).echo.params.filters,
+      ).toEqual(['github/*', 'file/*']);
 
-        // Send complex JSON-RPC request
-        const complexRequest: JSONRPCRequest = {
-          jsonrpc: '2.0',
-          id: 'complex-test',
-          method: 'tools/list',
-          params: {
-            filters: ['github/*', 'file/*'],
-            maxResults: 100,
-          },
-        };
-
-        await transport.send(complexRequest);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Verify complex message handling
-        const echoResponse = receivedMessages.find(
-          (msg) => 'id' in msg && msg.id === 'complex-test',
-        ) as JSONRPCResponse;
-        expect(echoResponse).toBeDefined();
-        expect(
-          (
-            echoResponse.result as {
-              echo: { method: string; params: { filters: string[] } };
-            }
-          ).echo.method,
-        ).toBe('tools/list');
-        expect(
-          (
-            echoResponse.result as {
-              echo: { method: string; params: { filters: string[] } };
-            }
-          ).echo.params.filters,
-        ).toEqual(['github/*', 'file/*']);
-
-        await transport.close();
-      }, 15000);
-    });
-  },
-);
+      await transport.close();
+    }, 15000);
+  });
+});

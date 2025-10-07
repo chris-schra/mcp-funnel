@@ -40,7 +40,4 @@ export type ExceptionOutputEntry = {
 /**
  * Tagged union describing the origin of a returned output record.
  */
-export type OutputEntry =
-  | StdioOutputEntry
-  | ConsoleOutputEntry
-  | ExceptionOutputEntry;
+export type OutputEntry = StdioOutputEntry | ConsoleOutputEntry | ExceptionOutputEntry;

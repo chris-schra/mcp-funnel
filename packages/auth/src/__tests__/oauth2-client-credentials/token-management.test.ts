@@ -33,10 +33,7 @@ describe('Token Management', () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValue(validToken);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(false);
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     const headers = await provider.getHeaders();
 
     // Should not make new token request
@@ -59,10 +56,7 @@ describe('Token Management', () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValue(expiredToken);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     await provider.getHeaders();
 
     // Should make new token request
@@ -88,10 +82,7 @@ describe('Token Management', () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValue(tokenExpiringIn4Minutes);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true); // Should consider as expired due to buffer
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     await provider.getHeaders();
 
     // Should refresh token even though it's not technically expired
@@ -104,17 +95,13 @@ describe('Token Management', () => {
 
     const beforeRequest = Date.now();
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     await provider.getHeaders();
 
     const afterRequest = Date.now();
 
     // Verify stored token has correct expiry calculation
-    const storedTokenCall = vi.mocked(mockStorage.store).mock
-      .calls[0]?.[0] as TokenData;
+    const storedTokenCall = vi.mocked(mockStorage.store).mock.calls[0]?.[0] as TokenData;
     const expiryTime = storedTokenCall.expiresAt.getTime();
 
     // Should be approximately now + 3600 seconds (allowing for test execution time)
@@ -137,15 +124,11 @@ describe('Token Management', () => {
         }),
     });
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     await provider.getHeaders();
 
     // Should use default expiry (e.g., 1 hour)
-    const storedTokenCall = vi.mocked(mockStorage.store).mock
-      .calls[0]?.[0] as TokenData;
+    const storedTokenCall = vi.mocked(mockStorage.store).mock.calls[0]?.[0] as TokenData;
     expect(storedTokenCall.expiresAt).toBeInstanceOf(Date);
   });
 });

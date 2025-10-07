@@ -5,10 +5,7 @@
  * The token is provided during construction and used for all requests.
  */
 
-import {
-  AuthenticationError,
-  AuthErrorCode,
-} from '../errors/authentication-error.js';
+import { AuthenticationError, AuthErrorCode } from '../errors/authentication-error.js';
 import { type IAuthProvider, logEvent } from '@mcp-funnel/core';
 
 /**

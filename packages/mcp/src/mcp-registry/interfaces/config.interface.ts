@@ -63,8 +63,5 @@ export interface IConfigManager {
    * @throws if server does not exist
    * @throws if updates would create invalid configuration
    */
-  updateServer(
-    serverName: string,
-    updates: Partial<ServerConfig>,
-  ): Promise<void>;
+  updateServer(serverName: string, updates: Partial<ServerConfig>): Promise<void>;
 }

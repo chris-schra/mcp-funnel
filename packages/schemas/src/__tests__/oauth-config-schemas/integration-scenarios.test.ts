@@ -77,9 +77,7 @@ describe('Integration scenarios', () => {
           name: `test-${authType}-${transportType}`,
           transport: {
             type: transportType,
-            ...(transportType === 'stdio'
-              ? { command: 'test' }
-              : { url: 'https://example.com' }),
+            ...(transportType === 'stdio' ? { command: 'test' } : { url: 'https://example.com' }),
           },
           auth: {
             type: authType,

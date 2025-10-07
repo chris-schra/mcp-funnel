@@ -52,9 +52,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
           location: { scriptId: 'script-1', lineNumber: 10, columnNumber: 5 },
           url: 'file:///test.js',
           this: { type: 'object', preview: 'Object' },
-          scopeChain: [
-            { type: 'local', object: { type: 'object', objectId: 'scope-1' } },
-          ],
+          scopeChain: [{ type: 'local', object: { type: 'object', objectId: 'scope-1' } }],
         },
       ],
     },
@@ -63,9 +61,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
   const mockScope = (): ScopeQueryResult => ({
     path: [],
     truncated: false,
-    variables: [
-      { name: 'x', value: { type: 'number', value: 42, preview: '42' } },
-    ],
+    variables: [{ name: 'x', value: { type: 'number', value: 42, preview: '42' } }],
   });
 
   const mockOutput = (): OutputQueryResult => ({
@@ -94,8 +90,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
       getScopeVariables: vi.fn(),
       queryOutput: vi.fn(),
     };
-    (command as unknown as { manager: typeof mockManager }).manager =
-      mockManager;
+    (command as unknown as { manager: typeof mockManager }).manager = mockManager;
   });
 
   describe('getMCPDefinitions', () => {
@@ -120,20 +115,16 @@ describe('JsDebuggerCommand - MCP Interface', () => {
       const defs = command.getMCPDefinitions();
 
       expect(
-        defs.find((d) => d.name === 'js-debugger_startDebugSession')
-          ?.inputSchema.properties,
+        defs.find((d) => d.name === 'js-debugger_startDebugSession')?.inputSchema.properties,
       ).toHaveProperty('target');
       expect(
-        defs.find((d) => d.name === 'js-debugger_debuggerCommand')?.inputSchema
-          .properties,
+        defs.find((d) => d.name === 'js-debugger_debuggerCommand')?.inputSchema.properties,
       ).toHaveProperty('action');
       expect(
-        defs.find((d) => d.name === 'js-debugger_getScopeVariables')
-          ?.inputSchema.properties,
+        defs.find((d) => d.name === 'js-debugger_getScopeVariables')?.inputSchema.properties,
       ).toHaveProperty('callFrameId');
       expect(
-        defs.find((d) => d.name === 'js-debugger_queryOutput')?.inputSchema
-          .properties,
+        defs.find((d) => d.name === 'js-debugger_queryOutput')?.inputSchema.properties,
       ).toHaveProperty('sessionId');
     });
   });
@@ -146,10 +137,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
     it('handles prefixed and unprefixed tool names', async () => {
       mockManager.startSession.mockResolvedValue(mockSession());
 
-      const r1 = await command.executeToolViaMCP(
-        'js-debugger_startDebugSession',
-        cfg,
-      );
+      const r1 = await command.executeToolViaMCP('js-debugger_startDebugSession', cfg);
       expect(r1.isError).toBeFalsy();
 
       vi.clearAllMocks();
@@ -166,8 +154,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
       const result = await command.executeToolViaMCP('startDebugSession', cfg);
 
       expect(result.content[0].text).toBe(JSON.stringify(mock, null, 2));
-      const passed = mockManager.startSession.mock
-        .calls[0][0] as DebugSessionConfig;
+      const passed = mockManager.startSession.mock.calls[0][0] as DebugSessionConfig;
       expect(passed.target.entry).toBe('./test.js');
     });
 
@@ -195,10 +182,9 @@ describe('JsDebuggerCommand - MCP Interface', () => {
         });
 
         expect(r.isError).toBeFalsy();
-        expect(
-          (mockManager.runCommand.mock.calls[0][0] as DebuggerCommandType)
-            .action,
-        ).toBe(action);
+        expect((mockManager.runCommand.mock.calls[0][0] as DebuggerCommandType).action).toBe(
+          action,
+        );
       }
     });
 
@@ -252,8 +238,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
         path: [{ property: 'obj' }],
       });
 
-      const passed = mockManager.getScopeVariables.mock
-        .calls[0][0] as ScopeQuery;
+      const passed = mockManager.getScopeVariables.mock.calls[0][0] as ScopeQuery;
       expect(passed.depth).toBe(2);
       expect(passed.maxProperties).toBe(50);
       expect(passed.path).toHaveLength(1);
@@ -266,9 +251,7 @@ describe('JsDebuggerCommand - MCP Interface', () => {
       const r1 = await command.executeToolViaMCP('getScopeVariables', query);
       expect(r1.content[0].text).toBe(JSON.stringify(mock, null, 2));
 
-      mockManager.getScopeVariables.mockRejectedValue(
-        new Error('Invalid frame'),
-      );
+      mockManager.getScopeVariables.mockRejectedValue(new Error('Invalid frame'));
 
       const r2 = await command.executeToolViaMCP('getScopeVariables', query);
       expect(r2.isError).toBe(true);
@@ -345,12 +328,10 @@ describe('JsDebuggerCommand - MCP Interface', () => {
 
   describe('Type safety', () => {
     it('enforces TypeScript types', async () => {
-      mockManager.startSession.mockImplementation(
-        async (cfg: DebugSessionConfig) => {
-          expect(cfg.target.type).toBe('node');
-          return mockSession();
-        },
-      );
+      mockManager.startSession.mockImplementation(async (cfg: DebugSessionConfig) => {
+        expect(cfg.target.type).toBe('node');
+        return mockSession();
+      });
 
       const r = await command.executeToolViaMCP('startDebugSession', {
         target: { type: 'node', entry: './test.js' },

@@ -20,19 +20,14 @@ export const AuthorizeHandler: OAuthHandler = async (c) => {
       code_challenge_method: c.req.query('code_challenge_method'),
     };
 
-    const result = await c
-      .get('oauthProvider')
-      .handleAuthorizationRequest(params, userId);
+    const result = await c.get('oauthProvider').handleAuthorizationRequest(params, userId);
 
     if (!result.success) {
       // Build error redirect URI
       const redirectUri = new URL(params.redirect_uri || 'about:blank');
       redirectUri.searchParams.set('error', result.error!.error);
       if (result.error!.error_description) {
-        redirectUri.searchParams.set(
-          'error_description',
-          result.error!.error_description,
-        );
+        redirectUri.searchParams.set('error_description', result.error!.error_description);
       }
       if (params.state) {
         redirectUri.searchParams.set('state', params.state);
@@ -54,10 +49,7 @@ export const AuthorizeHandler: OAuthHandler = async (c) => {
     if (redirectUri) {
       const errorRedirect = new URL(redirectUri);
       errorRedirect.searchParams.set('error', 'server_error');
-      errorRedirect.searchParams.set(
-        'error_description',
-        'Internal server error',
-      );
+      errorRedirect.searchParams.set('error_description', 'Internal server error');
       if (c.req.query('state')) {
         errorRedirect.searchParams.set('state', c.req.query('state')!);
       }

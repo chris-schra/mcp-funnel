@@ -7,10 +7,7 @@ import type {
   OutputQuery,
   ScopeQuery,
 } from '../src/types/index.js';
-import {
-  createMockConfig,
-  createMockStartResponse,
-} from './utils/mock-helpers.js';
+import { createMockConfig, createMockStartResponse } from './utils/mock-helpers.js';
 
 // Mock DebuggerSession to avoid spawning real processes
 vi.mock('../src/debugger/session.js', () => {
@@ -51,13 +48,8 @@ describe('DebuggerSessionManager - Error Handling', () => {
   beforeEach(async () => {
     manager = new DebuggerSessionManager();
 
-    const { DebuggerSession } = vi.mocked(
-      await import('../src/debugger/session.js'),
-    );
-    mockSessionInstance = new DebuggerSession(
-      'test-id',
-      createMockConfig(),
-    ) as DebuggerSession;
+    const { DebuggerSession } = vi.mocked(await import('../src/debugger/session.js'));
+    mockSessionInstance = new DebuggerSession('test-id', createMockConfig()) as DebuggerSession;
 
     vi.clearAllMocks();
   });
@@ -88,16 +80,12 @@ describe('DebuggerSessionManager - Error Handling', () => {
       };
       const error = new Error('Command execution failed');
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
       vi.mocked(mockSessionInstance.runCommand).mockRejectedValueOnce(error);
 
       await manager.startSession(config);
 
-      await expect(manager.runCommand(command)).rejects.toThrow(
-        'Command execution failed',
-      );
+      await expect(manager.runCommand(command)).rejects.toThrow('Command execution failed');
     });
 
     it('should handle output query errors', async () => {
@@ -107,9 +95,7 @@ describe('DebuggerSessionManager - Error Handling', () => {
       const query: OutputQuery = { sessionId };
       const error = new Error('Query failed');
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
       vi.mocked(mockSessionInstance.queryOutput).mockRejectedValueOnce(error);
 
       await manager.startSession(config);
@@ -128,18 +114,12 @@ describe('DebuggerSessionManager - Error Handling', () => {
       };
       const error = new Error('Scope query failed');
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.getScopeVariables).mockRejectedValueOnce(
-        error,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.getScopeVariables).mockRejectedValueOnce(error);
 
       await manager.startSession(config);
 
-      await expect(manager.getScopeVariables(query)).rejects.toThrow(
-        'Scope query failed',
-      );
+      await expect(manager.getScopeVariables(query)).rejects.toThrow('Scope query failed');
     });
   });
 });

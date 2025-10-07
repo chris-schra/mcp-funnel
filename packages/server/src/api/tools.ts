@@ -39,14 +39,8 @@ toolsRoute.get('/search', async (c) => {
 
   const matchedTools = [];
 
-  for (const [
-    fullName,
-    { serverName, description },
-  ] of mcpProxy.toolDescriptionCache) {
-    if (
-      fullName.toLowerCase().includes(query) ||
-      description.toLowerCase().includes(query)
-    ) {
+  for (const [fullName, { serverName, description }] of mcpProxy.toolDescriptionCache) {
+    if (fullName.toLowerCase().includes(query) || description.toLowerCase().includes(query)) {
       const toolDef = mcpProxy.toolDefinitionCache.get(fullName);
       if (toolDef) {
         matchedTools.push({
@@ -63,56 +57,51 @@ toolsRoute.get('/search', async (c) => {
   return c.json({ tools: matchedTools });
 });
 
-toolsRoute.post(
-  '/:name/execute',
-  zValidator('json', ExecuteToolBodySchema),
-  async (c) => {
-    const { name } = c.req.param();
-    const body = c.req.valid('json');
-    const mcpProxy = c.get('mcpProxy');
-    const requestId = globalThis.crypto?.randomUUID()
-      ? globalThis.crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+toolsRoute.post('/:name/execute', zValidator('json', ExecuteToolBodySchema), async (c) => {
+  const { name } = c.req.param();
+  const body = c.req.valid('json');
+  const mcpProxy = c.get('mcpProxy');
+  const requestId = globalThis.crypto?.randomUUID()
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-    try {
-      // Emit executing event via WebSocket
-      // This will be handled by WebSocketManager
+  try {
+    // Emit executing event via WebSocket
+    // This will be handled by WebSocketManager
 
-      const startTime = Date.now();
+    const startTime = Date.now();
 
-      // Execute tool through MCP proxy
-      const mapping = mcpProxy.toolMapping.get(name);
-      if (!mapping) {
-        return c.json({ error: `Tool not found: ${name}` }, 404);
-      }
-
-      if (!mapping.client)
-        throw new Error(`No mapping client found for tool: ${name}`);
-
-      const result = await mapping.client.callTool({
-        name: mapping.originalName,
-        arguments: body.arguments,
-      });
-
-      const duration = Date.now() - startTime;
-
-      return c.json({
-        requestId,
-        result,
-        duration,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      return c.json(
-        {
-          requestId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500,
-      );
+    // Execute tool through MCP proxy
+    const mapping = mcpProxy.toolMapping.get(name);
+    if (!mapping) {
+      return c.json({ error: `Tool not found: ${name}` }, 404);
     }
-  },
-);
+
+    if (!mapping.client) throw new Error(`No mapping client found for tool: ${name}`);
+
+    const result = await mapping.client.callTool({
+      name: mapping.originalName,
+      arguments: body.arguments,
+    });
+
+    const duration = Date.now() - startTime;
+
+    return c.json({
+      requestId,
+      result,
+      duration,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    return c.json(
+      {
+        requestId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500,
+    );
+  }
+});
 
 toolsRoute.patch('/:name/toggle', async (c) => {
   const { name } = c.req.param();

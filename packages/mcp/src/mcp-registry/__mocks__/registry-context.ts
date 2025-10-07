@@ -8,10 +8,7 @@
  */
 
 import { vi } from 'vitest';
-import type {
-  RegistryServer,
-  RegistryInstallInfo,
-} from '../types/registry.types.js';
+import type { RegistryServer, RegistryInstallInfo } from '../types/registry.types.js';
 import type { ServerConfig } from '../interfaces/temp-server.interface.js';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 
@@ -37,15 +34,11 @@ export class RegistryContext {
     RegistryContext.instance = null;
   }
 
-  public async getServerDetails(
-    registryId: string,
-  ): Promise<RegistryServer | null> {
+  public async getServerDetails(registryId: string): Promise<RegistryServer | null> {
     return this.serverDetailsMock(registryId);
   }
 
-  public async generateInstallInfo(
-    server: RegistryServer,
-  ): Promise<RegistryInstallInfo> {
+  public async generateInstallInfo(server: RegistryServer): Promise<RegistryInstallInfo> {
     // Default mock implementation that generates a basic install info
     if (this.generateInstallInfoMock.getMockImplementation()) {
       return this.generateInstallInfoMock(server);
@@ -65,11 +58,7 @@ export class RegistryContext {
           configSnippet = {
             name: server.name,
             command: 'npx',
-            args: [
-              '-y',
-              firstPackage.identifier,
-              ...(firstPackage.package_arguments || []),
-            ],
+            args: ['-y', firstPackage.identifier, ...(firstPackage.package_arguments || [])],
             env:
               firstPackage.environment_variables?.reduce(
                 (acc, env) => {
@@ -85,10 +74,7 @@ export class RegistryContext {
           configSnippet = {
             name: server.name,
             command: 'uvx',
-            args: [
-              firstPackage.identifier,
-              ...(firstPackage.package_arguments || []),
-            ],
+            args: [firstPackage.identifier, ...(firstPackage.package_arguments || [])],
             env:
               firstPackage.environment_variables?.reduce(
                 (acc, env) => {
@@ -133,8 +119,7 @@ export class RegistryContext {
 
       // Add required environment variables to install instructions
       const requiredVars =
-        firstPackage.environment_variables?.filter((env) => env.is_required) ||
-        [];
+        firstPackage.environment_variables?.filter((env) => env.is_required) || [];
       if (requiredVars.length > 0) {
         installInstructions += `\n\nRequired environment variables:\n${requiredVars.map((v) => `- ${v.name}`).join('\n')}`;
       }

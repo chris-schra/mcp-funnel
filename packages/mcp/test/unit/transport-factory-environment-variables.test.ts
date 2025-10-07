@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import type {
-  SSETransportConfig,
-  StdioTransportConfig,
-  TransportConfig,
-} from '@mcp-funnel/models';
+import type { SSETransportConfig, StdioTransportConfig, TransportConfig } from '@mcp-funnel/models';
 import { createTransport } from '../../src/utils/transport/index.js';
 
 describe('TransportFactory - Environment Variables', () => {
@@ -19,9 +15,7 @@ describe('TransportFactory - Environment Variables', () => {
 
     const transport = await createTransport(config);
 
-    expect((transport.config as StdioTransportConfig).command).toBe(
-      '/usr/bin/node',
-    );
+    expect((transport.config as StdioTransportConfig).command).toBe('/usr/bin/node');
   });
 
   it('should resolve environment variables in args', async () => {
@@ -35,12 +29,8 @@ describe('TransportFactory - Environment Variables', () => {
 
     const transport = await createTransport(config);
 
-    expect((transport.config as StdioTransportConfig).args).toContain(
-      '--test-mode',
-    );
-    expect((transport.config as StdioTransportConfig).args).toContain(
-      '--version',
-    );
+    expect((transport.config as StdioTransportConfig).args).toContain('--test-mode');
+    expect((transport.config as StdioTransportConfig).args).toContain('--version');
   });
 
   it('should resolve environment variables in URL for SSE', async () => {
@@ -53,9 +43,7 @@ describe('TransportFactory - Environment Variables', () => {
 
     const transport = await createTransport(config);
 
-    expect((transport.config as SSETransportConfig).url).toBe(
-      'https://api.example.com/events',
-    );
+    expect((transport.config as SSETransportConfig).url).toBe('https://api.example.com/events');
   });
 
   it('should handle missing environment variables gracefully', async () => {
@@ -80,9 +68,7 @@ describe('TransportFactory - Environment Variables', () => {
 
     const transport = await createTransport(config);
 
-    expect((transport.config as StdioTransportConfig).command).toBe(
-      '/usr/bin/node',
-    );
+    expect((transport.config as StdioTransportConfig).command).toBe('/usr/bin/node');
   });
 
   it('should merge config env with process env', async () => {
@@ -99,11 +85,7 @@ describe('TransportFactory - Environment Variables', () => {
 
     const transport = await createTransport(config);
 
-    expect((transport.config as StdioTransportConfig).env?.LOCAL_VAR).toBe(
-      'local',
-    );
-    expect((transport.config as StdioTransportConfig).env?.GLOBAL_VAR).toBe(
-      'overridden',
-    );
+    expect((transport.config as StdioTransportConfig).env?.LOCAL_VAR).toBe('local');
+    expect((transport.config as StdioTransportConfig).env?.GLOBAL_VAR).toBe('overridden');
   });
 });

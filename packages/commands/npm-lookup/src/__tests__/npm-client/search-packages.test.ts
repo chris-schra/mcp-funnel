@@ -22,8 +22,7 @@ describe('NPMClient', () => {
           package: {
             name: 'react',
             version: '18.2.0',
-            description:
-              'React is a JavaScript library for building user interfaces.',
+            description: 'React is a JavaScript library for building user interfaces.',
             keywords: ['react', 'javascript'],
             date: '2022-06-14T20:00:00.000Z',
             links: {
@@ -110,8 +109,7 @@ describe('NPMClient', () => {
           {
             name: 'react',
             version: '18.2.0',
-            description:
-              'React is a JavaScript library for building user interfaces.',
+            description: 'React is a JavaScript library for building user interfaces.',
             author: 'Meta Platforms, Inc.',
             keywords: ['react', 'javascript'],
             date: '2022-06-14T20:00:00.000Z',
@@ -181,10 +179,7 @@ describe('NPMClient', () => {
       });
 
       await expect(client.searchPackages('react')).rejects.toThrow(
-        new NPMRegistryError(
-          'NPM registry search returned 500: Internal Server Error',
-          500,
-        ),
+        new NPMRegistryError('NPM registry search returned 500: Internal Server Error', 500),
       );
     });
 
@@ -192,9 +187,7 @@ describe('NPMClient', () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(client.searchPackages('react')).rejects.toThrow(
-        new NPMRegistryError(
-          'Failed to search packages with query "react": Network error',
-        ),
+        new NPMRegistryError('Failed to search packages with query "react": Network error'),
       );
     });
 

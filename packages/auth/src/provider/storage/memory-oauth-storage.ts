@@ -36,9 +36,7 @@ export class MemoryOAuthStorage implements IOAuthProviderStorage {
     this.authorizationCodes.set(code.code, { ...code });
   }
 
-  public async getAuthorizationCode(
-    code: string,
-  ): Promise<AuthorizationCode | null> {
+  public async getAuthorizationCode(code: string): Promise<AuthorizationCode | null> {
     const authCode = this.authorizationCodes.get(code);
     return authCode ? { ...authCode } : null;
   }

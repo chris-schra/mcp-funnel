@@ -24,11 +24,7 @@
  */
 
 import { MCPRegistryClient } from './registry-client.js';
-import type {
-  IRegistryCache,
-  ITemporaryServerManager,
-  IConfigManager,
-} from './index.js';
+import type { IRegistryCache, ITemporaryServerManager, IConfigManager } from './index.js';
 import { NoOpCache } from './implementations/cache-noop.js';
 import { TemporaryServerTracker } from './implementations/temp-server-tracker.js';
 import { ReadOnlyConfigManager } from './implementations/config-readonly.js';
@@ -39,10 +35,7 @@ import type {
 } from './types/registry.types.js';
 import type { ServerConfig } from './types/config.types.js';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
-import {
-  extractRegistryUrls,
-  aggregateSearchResults,
-} from './registry-utils.js';
+import { extractRegistryUrls, aggregateSearchResults } from './registry-utils.js';
 import {
   generateServerConfigFromRegistry,
   generateInstallInfoFromRegistry,
@@ -120,13 +113,11 @@ export class RegistryContext {
   ) {
     // Initialize dependencies with MVP defaults
     this.cache = options.cache || new NoOpCache();
-    this.tempServerManager =
-      options.tempServerManager || new TemporaryServerTracker();
+    this.tempServerManager = options.tempServerManager || new TemporaryServerTracker();
 
     // Configuration manager requires config path for file operations
     const configPath = options.configPath || './.mcp-funnel.json';
-    this.configManager =
-      options.configManager || new ReadOnlyConfigManager(configPath);
+    this.configManager = options.configManager || new ReadOnlyConfigManager(configPath);
 
     // Initialize registry clients for each configured registry URL
     this.registryClients = new Map();
@@ -136,14 +127,9 @@ export class RegistryContext {
       try {
         const client = new MCPRegistryClient(registryUrl, this.cache);
         this.registryClients.set(registryUrl, client);
-        console.info(
-          `[RegistryContext] Initialized client for registry: ${registryUrl}`,
-        );
+        console.info(`[RegistryContext] Initialized client for registry: ${registryUrl}`);
       } catch (error) {
-        console.error(
-          `[RegistryContext] Failed to initialize client for ${registryUrl}:`,
-          error,
-        );
+        console.error(`[RegistryContext] Failed to initialize client for ${registryUrl}:`, error);
         // Continue with other registries - don't fail entire initialization
       }
     }
@@ -170,9 +156,7 @@ export class RegistryContext {
   ): RegistryContext {
     if (!RegistryContext.instance) {
       if (!config) {
-        throw new Error(
-          'RegistryContext must be initialized with config on first access',
-        );
+        throw new Error('RegistryContext must be initialized with config on first access');
       }
       RegistryContext.instance = new RegistryContext(config, options);
     }
@@ -201,10 +185,7 @@ export class RegistryContext {
    * @returns Search result containing found servers and status information
    * @public
    */
-  public async searchServers(
-    keywords: string,
-    registry?: string,
-  ): Promise<RegistrySearchResult> {
+  public async searchServers(keywords: string, registry?: string): Promise<RegistrySearchResult> {
     if (this.registryClients.size === 0) {
       return {
         found: false,
@@ -218,38 +199,27 @@ export class RegistryContext {
     );
 
     // Filter registries if specific registry requested
-    const registriesToSearch = filterRegistriesByName(
-      this.registryClients,
-      registry,
-    );
+    const registriesToSearch = filterRegistriesByName(this.registryClients, registry);
 
     if (registriesToSearch.length === 0) {
       return {
         found: false,
         servers: [],
-        message: registry
-          ? `No registry found matching: ${registry}`
-          : 'No registries configured',
+        message: registry ? `No registry found matching: ${registry}` : 'No registries configured',
       };
     }
 
     // Search all registries in parallel for better performance
-    const searchPromises = registriesToSearch.map(
-      async ([registryUrl, client]) => {
-        try {
-          const results = await client.searchServers(keywords);
-          return { registryUrl, results, error: null };
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error';
-          console.error(
-            `[RegistryContext] Search failed for ${registryUrl}:`,
-            errorMessage,
-          );
-          return { registryUrl, results: [], error: errorMessage };
-        }
-      },
-    );
+    const searchPromises = registriesToSearch.map(async ([registryUrl, client]) => {
+      try {
+        const results = await client.searchServers(keywords);
+        return { registryUrl, results, error: null };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[RegistryContext] Search failed for ${registryUrl}:`, errorMessage);
+        return { registryUrl, results: [], error: errorMessage };
+      }
+    });
 
     const searchResults = await Promise.all(searchPromises);
 
@@ -265,33 +235,24 @@ export class RegistryContext {
    * @returns Promise resolving to server details or null if not found
    * @public
    */
-  public async getServerDetails(
-    registryId: string,
-  ): Promise<RegistryServer | null> {
+  public async getServerDetails(registryId: string): Promise<RegistryServer | null> {
     if (this.registryClients.size === 0) {
-      console.warn(
-        '[RegistryContext] No registries configured for server details lookup',
-      );
+      console.warn('[RegistryContext] No registries configured for server details lookup');
       return null;
     }
 
-    console.info(
-      `[RegistryContext] Looking up server details for: ${registryId}`,
-    );
+    console.info(`[RegistryContext] Looking up server details for: ${registryId}`);
 
     // Try each registry until server is found
     for (const [registryUrl, client] of this.registryClients.entries()) {
       try {
         const server = await client.getServer(registryId);
         if (server) {
-          console.info(
-            `[RegistryContext] Found server ${registryId} in registry: ${registryUrl}`,
-          );
+          console.info(`[RegistryContext] Found server ${registryId} in registry: ${registryUrl}`);
           return server;
         }
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error(
           `[RegistryContext] Failed to get server ${registryId} from ${registryUrl}:`,
           errorMessage,
@@ -300,9 +261,7 @@ export class RegistryContext {
       }
     }
 
-    console.info(
-      `[RegistryContext] Server ${registryId} not found in any registry`,
-    );
+    console.info(`[RegistryContext] Server ${registryId} not found in any registry`);
     return null;
   }
 
@@ -330,9 +289,7 @@ export class RegistryContext {
    * @public
    */
   public async persistTemporary(serverName: string): Promise<void> {
-    console.info(
-      `[RegistryContext] Persisting temporary server: ${serverName}`,
-    );
+    console.info(`[RegistryContext] Persisting temporary server: ${serverName}`);
 
     // Get the temporary server configuration
     const serverConfig = this.tempServerManager.getTemporary(serverName);
@@ -343,9 +300,7 @@ export class RegistryContext {
     // Add to persistent configuration
     await this.configManager.addServer(serverConfig);
 
-    console.info(
-      `[RegistryContext] Successfully persisted server: ${serverName}`,
-    );
+    console.info(`[RegistryContext] Successfully persisted server: ${serverName}`);
   }
 
   /**
@@ -366,9 +321,7 @@ export class RegistryContext {
    * @returns Promise resolving to server configuration
    * @public
    */
-  public async generateServerConfig(
-    server: RegistryServer,
-  ): Promise<ServerConfig> {
+  public async generateServerConfig(server: RegistryServer): Promise<ServerConfig> {
     return generateServerConfigFromRegistry(server);
   }
 
@@ -381,9 +334,7 @@ export class RegistryContext {
    * @returns Promise resolving to installation information
    * @public
    */
-  public async generateInstallInfo(
-    server: RegistryServer,
-  ): Promise<RegistryInstallInfo> {
+  public async generateInstallInfo(server: RegistryServer): Promise<RegistryInstallInfo> {
     return generateInstallInfoFromRegistry(server);
   }
 }

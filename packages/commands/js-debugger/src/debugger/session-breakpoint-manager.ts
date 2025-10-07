@@ -20,10 +20,7 @@ import { getGeneratedLocation } from './session-source-maps.js';
  */
 export class SessionBreakpointManager {
   private readonly breakpointRecords = new Map<string, BreakpointRecord>();
-  private readonly pendingBreakpointUpgrades = new Map<
-    string,
-    PendingBreakpointUpgrade
-  >();
+  private readonly pendingBreakpointUpgrades = new Map<string, PendingBreakpointUpgrade>();
   private readonly pendingBreakpointKeys = new Map<string, Set<string>>();
   private readonly internals: SessionBreakpointInternals;
 
@@ -84,9 +81,7 @@ export class SessionBreakpointManager {
     return { set: applied, removed };
   }
 
-  public async registerBreakpoint(
-    spec: BreakpointSpec,
-  ): Promise<BreakpointSummary> {
+  public async registerBreakpoint(spec: BreakpointSpec): Promise<BreakpointSummary> {
     if (!Number.isInteger(spec.location.lineNumber)) {
       throw new Error('Breakpoint lineNumber must be an integer.');
     }
@@ -114,18 +109,11 @@ export class SessionBreakpointManager {
     }
 
     if (spec.location.url) {
-      const reference = normalizeLocationReference(
-        spec.location.url,
-        this.targetWorkingDirectory,
-      );
+      const reference = normalizeLocationReference(spec.location.url, this.targetWorkingDirectory);
       const metadata = this.resolveScriptMetadata(reference);
       if (metadata) {
         try {
-          return await this.internals.registerBreakpointForScript(
-            metadata,
-            spec,
-            reference,
-          );
+          return await this.internals.registerBreakpointForScript(metadata, spec, reference);
         } catch (error) {
           console.warn(
             `Session ${this.sessionId}: Failed to map breakpoint for ${spec.location.url}: ${
@@ -145,9 +133,7 @@ export class SessionBreakpointManager {
     throw new Error('Breakpoint location requires either a scriptId or url.');
   }
 
-  public resolveScriptMetadata(
-    reference: NormalizedScriptReference,
-  ): ScriptMetadata | undefined {
+  public resolveScriptMetadata(reference: NormalizedScriptReference): ScriptMetadata | undefined {
     if (reference.path) {
       const scriptId = this.scriptIdsByPath.get(reference.path);
       if (scriptId) {
@@ -177,9 +163,7 @@ export class SessionBreakpointManager {
     return undefined;
   }
 
-  public async upgradePendingBreakpoints(
-    metadata: ScriptMetadata,
-  ): Promise<void> {
+  public async upgradePendingBreakpoints(metadata: ScriptMetadata): Promise<void> {
     return this.internals.upgradePendingBreakpoints(metadata);
   }
 
@@ -199,10 +183,7 @@ export class SessionBreakpointManager {
         this.trackScriptAccess(scriptId);
       }
     } else if (location.url) {
-      const reference = normalizeLocationReference(
-        location.url,
-        this.targetWorkingDirectory,
-      );
+      const reference = normalizeLocationReference(location.url, this.targetWorkingDirectory);
       metadata = this.resolveScriptMetadata(reference);
       if (!metadata) {
         throw new Error(`No scriptId registered for url ${location.url}.`);
@@ -224,19 +205,10 @@ export class SessionBreakpointManager {
     // Find the source ID in the source map
     let sourceId: string | undefined;
     if (location.url) {
-      const reference = normalizeLocationReference(
-        location.url,
-        this.targetWorkingDirectory,
-      );
-      if (
-        reference.path &&
-        metadata.sourceMap.sourcesByPath.has(reference.path)
-      ) {
+      const reference = normalizeLocationReference(location.url, this.targetWorkingDirectory);
+      if (reference.path && metadata.sourceMap.sourcesByPath.has(reference.path)) {
         sourceId = metadata.sourceMap.sourcesByPath.get(reference.path);
-      } else if (
-        reference.fileUrl &&
-        metadata.sourceMap.sourcesByFileUrl?.has(reference.fileUrl)
-      ) {
+      } else if (reference.fileUrl && metadata.sourceMap.sourcesByFileUrl?.has(reference.fileUrl)) {
         sourceId = metadata.sourceMap.sourcesByFileUrl.get(reference.fileUrl);
       }
     }

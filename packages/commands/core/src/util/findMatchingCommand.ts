@@ -25,9 +25,7 @@ export function findMatchingCommand(
   manifest: CommandManifest,
   packageSpec: string,
 ): InstalledCommand | undefined {
-  return manifest.commands.find((cmd) =>
-    packageMatchesSpec(cmd.package, packageSpec),
-  );
+  return manifest.commands.find((cmd) => packageMatchesSpec(cmd.package, packageSpec));
 }
 
 /**
@@ -43,10 +41,7 @@ export function findMatchingCommand(
  * @returns True if the package matches the spec, false otherwise
  * @internal
  */
-function packageMatchesSpec(
-  installedPackage: string,
-  packageSpec: string,
-): boolean {
+function packageMatchesSpec(installedPackage: string, packageSpec: string): boolean {
   // Direct match
   if (installedPackage === packageSpec) {
     return true;
@@ -71,9 +66,7 @@ function packageMatchesSpec(
     // git+https://host/scope/package.git. Ensure we detect those installs.
     if (packageSpec.includes('://') || packageSpec.includes('git+')) {
       // Extract the path from the git URL
-      const urlMatch = packageSpec.match(
-        /(?:git\+)?https?:\/\/[^/]+\/(.+?)(?:\.git)?(?:#.*)?$/,
-      );
+      const urlMatch = packageSpec.match(/(?:git\+)?https?:\/\/[^/]+\/(.+?)(?:\.git)?(?:#.*)?$/);
       if (urlMatch) {
         const urlPath = urlMatch[1];
         const scopeSlashPair = withoutAt;

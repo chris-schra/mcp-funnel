@@ -4,11 +4,7 @@ import { SecretProviderRegistry } from '../secret-provider-registry.js';
 import { DotEnvProvider } from '../providers/dotenv/index.js';
 import { ProcessEnvProvider } from '../process-env-provider.js';
 import { InlineProvider } from '../inline-provider.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('SecretManager Integration Tests - Registry Integration', () => {
   let testDir: string;

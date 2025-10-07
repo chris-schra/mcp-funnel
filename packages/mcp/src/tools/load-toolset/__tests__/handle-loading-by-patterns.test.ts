@@ -35,10 +35,7 @@ describe('LoadToolset', () => {
     });
 
     it('should handle patterns with no matches', async () => {
-      const result = await loadToolset.handle(
-        { tools: ['nonexistent__*'] },
-        mockContext,
-      );
+      const result = await loadToolset.handle({ tools: ['nonexistent__*'] }, mockContext);
 
       expect(enabledTools).toEqual([]);
       expect(result.content[0]).toEqual({
@@ -49,10 +46,7 @@ describe('LoadToolset', () => {
     });
 
     it('should validate tools parameter is an array', async () => {
-      const result = await loadToolset.handle(
-        { tools: 'not-an-array' },
-        mockContext,
-      );
+      const result = await loadToolset.handle({ tools: 'not-an-array' }, mockContext);
 
       expect(result.content[0]).toEqual({
         type: 'text',

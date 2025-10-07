@@ -2,11 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OAuth2ClientCredentialsProvider } from '../../implementations/oauth2-client-credentials';
 import type { OAuth2ClientCredentialsConfigZod } from '../../schemas.js';
 import type { ITokenStorage } from '@mcp-funnel/core';
-import {
-  mockFetch,
-  createMockStorage,
-  setupSuccessfulTokenResponse,
-} from './test-utils.js';
+import { mockFetch, createMockStorage, setupSuccessfulTokenResponse } from './test-utils.js';
 
 describe('Configuration Edge Cases', () => {
   let provider: OAuth2ClientCredentialsProvider;
@@ -40,10 +36,7 @@ describe('Configuration Edge Cases', () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-    provider = new OAuth2ClientCredentialsProvider(
-      configWithSpecialChars,
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(configWithSpecialChars, mockStorage);
     await provider.getHeaders();
 
     // Should properly encode special characters
@@ -68,10 +61,7 @@ describe('Configuration Edge Cases', () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-    provider = new OAuth2ClientCredentialsProvider(
-      configWithLongScope,
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(configWithLongScope, mockStorage);
     await provider.getHeaders();
 
     // Should handle long scope string without truncation

@@ -33,12 +33,8 @@ describe('ManageCommands', () => {
 
       expect(response.success).toBe(true);
       expect(response.action).toBe('uninstalled');
-      expect(response.message).toContain(
-        'Successfully uninstalled command: test-package',
-      );
-      expect(response.note).toContain(
-        'Tools will be removed when the session restarts',
-      );
+      expect(response.message).toContain('Successfully uninstalled command: test-package');
+      expect(response.note).toContain('Tools will be removed when the session restarts');
     });
 
     it('should uninstall with removeData option', async () => {
@@ -84,9 +80,7 @@ describe('ManageCommands', () => {
       const content = result.content[0] as { type: string; text: string };
       const response = JSON.parse(content.text);
 
-      expect(response.error).toContain(
-        "Command 'nonexistent' is not installed",
-      );
+      expect(response.error).toContain("Command 'nonexistent' is not installed");
     });
   });
 });

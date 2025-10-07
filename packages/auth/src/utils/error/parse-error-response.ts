@@ -22,9 +22,7 @@ import type { OAuth2ErrorResponse } from '../oauth-types.js';
  * @see file:../oauth-types.ts:16 - OAuth2ErrorResponse interface definition
  * @public
  */
-export async function parseErrorResponse(
-  response: Response,
-): Promise<OAuth2ErrorResponse> {
+export async function parseErrorResponse(response: Response): Promise<OAuth2ErrorResponse> {
   try {
     const errorData = await response.json();
     return errorData as OAuth2ErrorResponse;

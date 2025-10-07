@@ -93,11 +93,7 @@ describe('MonorepoValidator local-first resolution', () => {
     );
     await fs.writeFile(
       path.join(prettierDir, 'package.json'),
-      JSON.stringify(
-        { name: 'prettier', version: '3.2.0', module: 'index.mjs' },
-        null,
-        2,
-      ),
+      JSON.stringify({ name: 'prettier', version: '3.2.0', module: 'index.mjs' }, null, 2),
     );
 
     // Local ESM eslint stub
@@ -115,11 +111,7 @@ describe('MonorepoValidator local-first resolution', () => {
     );
     await fs.writeFile(
       path.join(eslintDir, 'package.json'),
-      JSON.stringify(
-        { name: 'eslint', version: '9.10.0', module: 'index.mjs' },
-        null,
-        2,
-      ),
+      JSON.stringify({ name: 'eslint', version: '9.10.0', module: 'index.mjs' }, null, 2),
     );
 
     const file = path.join(proj, 'index.ts');

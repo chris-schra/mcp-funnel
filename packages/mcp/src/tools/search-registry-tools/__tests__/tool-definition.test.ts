@@ -26,10 +26,7 @@ describe('SearchRegistryTools', () => {
       expect(toolDef.inputSchema.type).toBe('object');
       expect(toolDef.inputSchema.required).toEqual(['keywords']);
 
-      const properties = toolDef.inputSchema.properties as Record<
-        string,
-        Record<string, unknown>
-      >;
+      const properties = toolDef.inputSchema.properties as Record<string, Record<string, unknown>>;
       expect(properties?.keywords).toBeDefined();
       expect(properties?.keywords.type).toBe('string');
       expect(properties?.keywords.description).toContain('keywords');

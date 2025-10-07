@@ -45,13 +45,8 @@ export class SessionProcessManager {
     private readonly sessionId: DebugSessionId,
     private readonly outputBuffer: OutputBuffer,
     private readonly onMessage: (method: string, params: unknown) => void,
-    private readonly onProcessExit: (
-      code: number | null,
-      signal?: NodeJS.Signals,
-    ) => void,
-    private readonly onInspectorRegistered: (
-      inspector: InspectorEndpoint,
-    ) => void,
+    private readonly onProcessExit: (code: number | null, signal?: NodeJS.Signals) => void,
+    private readonly onInspectorRegistered: (inspector: InspectorEndpoint) => void,
   ) {
     this.inspectorPromise = new Promise<string>((resolve, reject) => {
       this.inspectorResolver = resolve;
@@ -94,18 +89,13 @@ export class SessionProcessManager {
     });
   }
 
-  public async trySendCommand(
-    method: string,
-    params?: Record<string, unknown>,
-  ): Promise<void> {
+  public async trySendCommand(method: string, params?: Record<string, unknown>): Promise<void> {
     try {
       await this.sendCommand(method, params);
     } catch (error) {
       if (
         error instanceof Error &&
-        /wasn't found|not found|unrecognized|Unhandled method/i.test(
-          error.message,
-        )
+        /wasn't found|not found|unrecognized|Unhandled method/i.test(error.message)
       ) {
         console.warn(`CDP command ${method} not available: ${error.message}`);
         return;
@@ -146,16 +136,12 @@ export class SessionProcessManager {
       try {
         this.child.kill('SIGKILL');
       } catch (error) {
-        console.warn(
-          `Session ${this.sessionId}: Failed to force kill process: ${error}`,
-        );
+        console.warn(`Session ${this.sessionId}: Failed to force kill process: ${error}`);
       }
     }
   }
 
-  private async spawnTargetProcess(
-    target: NodeDebugTargetConfig,
-  ): Promise<void> {
+  private async spawnTargetProcess(target: NodeDebugTargetConfig): Promise<void> {
     // For TypeScript files, auto-discover project context by finding closest tsconfig.json
     let cwd: string;
     if (target.cwd) {
@@ -168,17 +154,13 @@ export class SessionProcessManager {
       const tsconfigDir = await findTsconfigDir(entryDir);
       cwd = tsconfigDir ?? process.cwd();
       if (tsconfigDir) {
-        console.info(
-          `Session ${this.sessionId}: Auto-discovered cwd from tsconfig: ${cwd}`,
-        );
+        console.info(`Session ${this.sessionId}: Auto-discovered cwd from tsconfig: ${cwd}`);
       }
     } else {
       cwd = process.cwd();
     }
 
-    const entry = path.isAbsolute(target.entry)
-      ? target.entry
-      : path.resolve(cwd, target.entry);
+    const entry = path.isAbsolute(target.entry) ? target.entry : path.resolve(cwd, target.entry);
     const nodeExecutable = target.nodePath ?? process.execPath;
     const inspectHost = target.inspectHost ?? '127.0.0.1';
     const inspectSpecifier = `${inspectHost}:0`;
@@ -206,9 +188,7 @@ export class SessionProcessManager {
     });
     this.child = child;
     child.catch((err) =>
-      console.error(
-        `Session ${this.sessionId}: Process failed: ${err.message}`,
-      ),
+      console.error(`Session ${this.sessionId}: Process failed: ${err.message}`),
     );
     child.on('exit', (code, signal) => {
       this.onProcessExit(code, signal ?? undefined);
@@ -219,14 +199,10 @@ export class SessionProcessManager {
     });
 
     if (child.stdout) {
-      child.stdout.on('data', (chunk: Buffer) =>
-        this.handleStdStream('stdout', chunk),
-      );
+      child.stdout.on('data', (chunk: Buffer) => this.handleStdStream('stdout', chunk));
     }
     if (child.stderr) {
-      child.stderr.on('data', (chunk: Buffer) =>
-        this.handleStdStream('stderr', chunk),
-      );
+      child.stderr.on('data', (chunk: Buffer) => this.handleStdStream('stderr', chunk));
     }
   }
 
@@ -305,9 +281,7 @@ export class SessionProcessManager {
             console.error(
               `CDP Error Response for id ${message.id}: ${JSON.stringify(message.error)}`,
             );
-            pending.reject(
-              new Error(message.error.message ?? 'Unknown CDP error'),
-            );
+            pending.reject(new Error(message.error.message ?? 'Unknown CDP error'));
           } else {
             pending.resolve(message.result);
           }
@@ -318,13 +292,7 @@ export class SessionProcessManager {
         this.onMessage(message.method, message.params);
       }
     } catch (error) {
-      const entry = buildConsoleEntry(
-        'error',
-        'log-entry',
-        [],
-        Date.now(),
-        undefined,
-      );
+      const entry = buildConsoleEntry('error', 'log-entry', [], Date.now(), undefined);
       this.outputBuffer.addConsole({
         ...entry,
         text: `Failed to process CDP message: ${String(error)}`,
@@ -335,13 +303,7 @@ export class SessionProcessManager {
   private handleSocketError(error: unknown): void {
     if (!this.terminated) {
       const text = `WebSocket error: ${error instanceof Error ? error.message : String(error)}`;
-      const entry = buildConsoleEntry(
-        'error',
-        'log-entry',
-        [],
-        Date.now(),
-        undefined,
-      );
+      const entry = buildConsoleEntry('error', 'log-entry', [], Date.now(), undefined);
       this.outputBuffer.addConsole({ ...entry, text });
     }
   }
@@ -373,9 +335,7 @@ export class SessionProcessManager {
 
   public handleTermination(scripts: Map<string, ScriptMetadata>): void {
     if (this.inspectorRejecter) {
-      this.inspectorRejecter(
-        new Error('Process exited before inspector was available.'),
-      );
+      this.inspectorRejecter(new Error('Process exited before inspector was available.'));
       this.inspectorResolver = undefined;
       this.inspectorRejecter = undefined;
     }

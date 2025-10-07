@@ -74,8 +74,7 @@ function generateScopeInfo(scopes: string[]): ScopeInfo[] {
     // Generate fallback info for unknown scopes
     return {
       scope,
-      name:
-        scope.charAt(0).toUpperCase() + scope.slice(1).replace(/[_-]/g, ' '),
+      name: scope.charAt(0).toUpperCase() + scope.slice(1).replace(/[_-]/g, ' '),
       description: `Access permissions for ${scope}`,
     };
   });

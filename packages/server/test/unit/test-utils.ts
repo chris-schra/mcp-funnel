@@ -29,10 +29,7 @@ export type InvalidAuthConfig = { type?: string; tokens?: string[] };
  * @param timeout - Maximum time in milliseconds to wait (default: 10000)
  * @returns Promise resolving to the port number the server is running on
  */
-export const waitForServerReady = (
-  child: ChildProcess,
-  timeout = 10000,
-): Promise<number> => {
+export const waitForServerReady = (child: ChildProcess, timeout = 10000): Promise<number> => {
   return new Promise((resolve, reject) => {
     let output = '';
     const timer = setTimeout(() => {

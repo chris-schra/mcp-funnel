@@ -12,7 +12,4 @@ export { PrefixedStdioClientTransport } from './transports/base-transport.js';
 export { ReconnectablePrefixedStdioClientTransport } from './transports/reconnectable-transport.js';
 
 // Factory implementations
-export {
-  DefaultTransportFactory,
-  createTransportFactory,
-} from './transports/factory.js';
+export { DefaultTransportFactory, createTransportFactory } from './transports/factory.js';

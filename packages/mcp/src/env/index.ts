@@ -54,8 +54,7 @@ export class DefaultServerEnvBuilder implements IServerEnvBuilder {
 
     // 1. Start with filtered process.env
     // Use configured defaultPassthroughEnv or secure defaults if not specified
-    const passthroughEnv =
-      config.defaultPassthroughEnv ?? getDefaultPassthroughEnv();
+    const passthroughEnv = config.defaultPassthroughEnv ?? getDefaultPassthroughEnv();
     finalEnv = filterEnvVars(process.env, passthroughEnv);
 
     // 2. Apply default secret providers if configured
@@ -102,9 +101,7 @@ export class DefaultServerEnvBuilder implements IServerEnvBuilder {
  * @returns Environment builder instance
  * @public
  */
-export function createServerEnvBuilder(
-  type: 'default' | string = 'default',
-): IServerEnvBuilder {
+export function createServerEnvBuilder(type: 'default' | string = 'default'): IServerEnvBuilder {
   switch (type) {
     case 'default':
       return new DefaultServerEnvBuilder();

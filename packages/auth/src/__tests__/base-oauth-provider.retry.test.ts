@@ -1,13 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import {
-  AUTH_DEFAULT_EXPIRY_SECONDS,
-  AUTH_MAX_RETRIES,
-} from '../utils/index.js';
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-} from '../errors/authentication-error.js';
+import { AUTH_DEFAULT_EXPIRY_SECONDS, AUTH_MAX_RETRIES } from '../utils/index.js';
+import { AuthenticationError, OAuth2ErrorCode } from '../errors/authentication-error.js';
 import {
   TestOAuthProvider,
   MockTokenStorage,
@@ -38,10 +32,7 @@ describe('BaseOAuthProvider - Token Retry and Processing', () => {
       const tokenResponse = createTestTokenResponse();
       const makeRequest = vi.fn().mockResolvedValue(tokenResponse);
 
-      const result = await provider.testRequestTokenWithRetry(
-        makeRequest,
-        'test-request-id',
-      );
+      const result = await provider.testRequestTokenWithRetry(makeRequest, 'test-request-id');
 
       expect(result).toEqual(tokenResponse);
       expect(makeRequest).toHaveBeenCalledTimes(1);
@@ -56,20 +47,14 @@ describe('BaseOAuthProvider - Token Retry and Processing', () => {
         .mockRejectedValueOnce(networkError)
         .mockResolvedValue(tokenResponse);
 
-      const result = await provider.testRequestTokenWithRetry(
-        makeRequest,
-        'test-request-id',
-      );
+      const result = await provider.testRequestTokenWithRetry(makeRequest, 'test-request-id');
 
       expect(result).toEqual(tokenResponse);
       expect(makeRequest).toHaveBeenCalledTimes(3);
     });
 
     it('should not retry on authentication errors', async () => {
-      const authError = new AuthenticationError(
-        'Invalid client',
-        OAuth2ErrorCode.INVALID_CLIENT,
-      );
+      const authError = new AuthenticationError('Invalid client', OAuth2ErrorCode.INVALID_CLIENT);
       const makeRequest = vi.fn().mockRejectedValue(authError);
 
       await expect(
@@ -109,16 +94,8 @@ describe('BaseOAuthProvider - Token Retry and Processing', () => {
 
         // Check exponential backoff delays: 1000ms, 2000ms
         expect(setTimeoutMock).toHaveBeenCalledTimes(2);
-        expect(setTimeoutMock).toHaveBeenNthCalledWith(
-          1,
-          expect.any(Function),
-          1000,
-        );
-        expect(setTimeoutMock).toHaveBeenNthCalledWith(
-          2,
-          expect.any(Function),
-          2000,
-        );
+        expect(setTimeoutMock).toHaveBeenNthCalledWith(1, expect.any(Function), 1000);
+        expect(setTimeoutMock).toHaveBeenNthCalledWith(2, expect.any(Function), 2000);
       } finally {
         global.setTimeout = originalSetTimeout;
       }
@@ -159,11 +136,7 @@ describe('BaseOAuthProvider - Token Retry and Processing', () => {
       });
       const validateAudience = vi.fn().mockReturnValue(true);
 
-      await provider.testProcessTokenResponse(
-        tokenResponse,
-        'test-request-id',
-        validateAudience,
-      );
+      await provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience);
 
       expect(validateAudience).toHaveBeenCalledWith('https://api.example.com');
       expect(mockStorage.storeMock).toHaveBeenCalled();
@@ -176,18 +149,10 @@ describe('BaseOAuthProvider - Token Retry and Processing', () => {
       const validateAudience = vi.fn().mockReturnValue(false);
 
       await expect(
-        provider.testProcessTokenResponse(
-          tokenResponse,
-          'test-request-id',
-          validateAudience,
-        ),
+        provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience),
       ).rejects.toThrow(AuthenticationError);
       await expect(
-        provider.testProcessTokenResponse(
-          tokenResponse,
-          'test-request-id',
-          validateAudience,
-        ),
+        provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience),
       ).rejects.toThrow('Audience validation failed');
     });
 
@@ -218,11 +183,7 @@ describe('BaseOAuthProvider - Token Retry and Processing', () => {
       const tokenResponse = createTestTokenResponse({ audience: undefined });
       const validateAudience = vi.fn();
 
-      await provider.testProcessTokenResponse(
-        tokenResponse,
-        'test-request-id',
-        validateAudience,
-      );
+      await provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience);
 
       expect(validateAudience).not.toHaveBeenCalled();
       expect(mockStorage.storeMock).toHaveBeenCalled();

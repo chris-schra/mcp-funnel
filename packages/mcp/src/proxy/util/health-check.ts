@@ -44,10 +44,7 @@ export class HealthCheckManager {
 
     this.healthCheckInterval = setInterval(() => {
       this.performHealthCheck(process).catch((error) => {
-        const errorMsg = prefixedLog(
-          this.config.serverName,
-          `Health check failed: ${error}`,
-        );
+        const errorMsg = prefixedLog(this.config.serverName, `Health check failed: ${error}`);
         console.error(errorMsg);
         this.config.onHealthCheckFailed(error);
       });
@@ -73,9 +70,7 @@ export class HealthCheckManager {
    * @throws Error when process is not running or killed
    * @internal
    */
-  private async performHealthCheck(
-    getProcess: () => ChildProcess | undefined,
-  ): Promise<void> {
+  private async performHealthCheck(getProcess: () => ChildProcess | undefined): Promise<void> {
     const process = getProcess();
 
     // Simple health check - ensure the process is still alive

@@ -30,9 +30,7 @@ export function parseMessage(
 
     // Validate JSON-RPC format
     if (!message.jsonrpc || message.jsonrpc !== '2.0') {
-      throw new Error(
-        'Invalid JSON-RPC format: missing or incorrect jsonrpc version',
-      );
+      throw new Error('Invalid JSON-RPC format: missing or incorrect jsonrpc version');
     }
 
     return message;

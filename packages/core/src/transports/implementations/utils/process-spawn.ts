@@ -29,9 +29,7 @@ export interface ProcessSpawnOptions {
  *   - Other errors: Connection failed
  * @internal
  */
-export async function spawnProcessWithTimeout(
-  options: ProcessSpawnOptions,
-): Promise<ChildProcess> {
+export async function spawnProcessWithTimeout(options: ProcessSpawnOptions): Promise<ChildProcess> {
   return new Promise((resolve, reject) => {
     const { command, args, env, cwd, spawnTimeout } = options;
     let timeoutId: NodeJS.Timeout | undefined;
@@ -103,10 +101,7 @@ export function cleanupProcess(
       // Process might already be dead, that's okay
       console.debug(`[Transport] Cleanup error for ${serverName}:`, {
         sessionId,
-        error:
-          cleanupError instanceof Error
-            ? cleanupError.message
-            : String(cleanupError),
+        error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
       });
     }
   }

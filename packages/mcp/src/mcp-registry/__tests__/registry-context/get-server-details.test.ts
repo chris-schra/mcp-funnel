@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { RegistryContext } from '../../registry-context.js';
-import {
-  mockConfig,
-  createServerListResponse,
-  createMockFetchResponse,
-} from './test-utils.js';
+import { mockConfig, createServerListResponse, createMockFetchResponse } from './test-utils.js';
 
 // Mock external dependencies
 vi.mock('node:fs/promises', () => ({
@@ -62,9 +58,7 @@ describe('RegistryContext', () => {
 
     it('should return null if server not found in any registry', async () => {
       // Mock 404 response
-      mockFetch.mockResolvedValue(
-        createMockFetchResponse({}, false, 404, 'Not Found'),
-      );
+      mockFetch.mockResolvedValue(createMockFetchResponse({}, false, 404, 'Not Found'));
 
       const context = RegistryContext.getInstance(mockConfig);
       const details = await context.getServerDetails('nonexistent-server');
@@ -84,9 +78,7 @@ describe('RegistryContext', () => {
 
     it('should handle context initialization properly for getServerDetails', async () => {
       // Real implementation is always initialized when getInstance succeeds
-      mockFetch.mockResolvedValue(
-        createMockFetchResponse({}, false, 404, 'Not Found'),
-      );
+      mockFetch.mockResolvedValue(createMockFetchResponse({}, false, 404, 'Not Found'));
 
       const context = RegistryContext.getInstance(mockConfig);
       const result = await context.getServerDetails('test');

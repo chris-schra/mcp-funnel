@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  TestOAuthProvider,
-  MockTokenStorage,
-  createTestToken,
-} from './test-utils.js';
+import { TestOAuthProvider, MockTokenStorage, createTestToken } from './test-utils.js';
 
 /**
  * Tests token validation logic in BaseOAuthProvider.
@@ -58,9 +54,7 @@ describe('BaseOAuthProvider - isValid', () => {
   it('should return false when isExpired throws error', async () => {
     const token = createTestToken();
     mockStorage.setToken(token);
-    mockStorage.isExpiredMock.mockRejectedValue(
-      new Error('Expiry check failed'),
-    );
+    mockStorage.isExpiredMock.mockRejectedValue(new Error('Expiry check failed'));
 
     const isValid = await provider.isValid();
 

@@ -152,12 +152,7 @@ export async function resolveSecretsFromConfig(
   const logger = options.logger ?? defaultLogger;
   const context = options.context ?? { name: 'unknown' };
   const rethrowErrors = options.rethrowErrors ?? false;
-  const cacheKey = computeManagerCacheKey(
-    providerConfigs,
-    configDir,
-    logger,
-    rethrowErrors,
-  );
+  const cacheKey = computeManagerCacheKey(providerConfigs, configDir, logger, rethrowErrors);
 
   try {
     const cachedManager = secretManagerCache.get(cacheKey);
@@ -176,11 +171,9 @@ export async function resolveSecretsFromConfig(
       }
     });
 
-    const secretManager = new SecretManager(
-      providers,
-      hasNamedProviders ? registry : undefined,
-      { logger },
-    );
+    const secretManager = new SecretManager(providers, hasNamedProviders ? registry : undefined, {
+      logger,
+    });
     secretManagerCache.set(cacheKey, secretManager);
     return await secretManager.resolveSecrets();
   } catch (error) {

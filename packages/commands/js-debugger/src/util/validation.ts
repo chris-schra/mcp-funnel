@@ -19,10 +19,7 @@ export function expectString(value: unknown, label: string): string {
  * @returns Validated string or undefined
  * @throws Error if value is not a string
  */
-export function optionalString(
-  value: unknown,
-  label: string,
-): string | undefined {
+export function optionalString(value: unknown, label: string): string | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -53,10 +50,7 @@ export function expectNumber(value: unknown, label: string): number {
  * @returns Validated boolean or undefined
  * @throws Error if value is not a boolean
  */
-export function optionalBoolean(
-  value: unknown,
-  label: string,
-): boolean | undefined {
+export function optionalBoolean(value: unknown, label: string): boolean | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -87,10 +81,7 @@ export function expectBoolean(value: unknown, label: string): boolean {
  * @returns Validated record
  * @throws Error if value is invalid
  */
-export function expectRecord(
-  value: unknown,
-  label: string,
-): Record<string, unknown> {
+export function expectRecord(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object') {
     throw new Error(`${label} must be an object.`);
   }
@@ -104,10 +95,7 @@ export function expectRecord(
  * @returns Validated string array or undefined
  * @throws Error if value is invalid
  */
-export function optionalStringArray(
-  value: unknown,
-  label: string,
-): string[] | undefined {
+export function optionalStringArray(value: unknown, label: string): string[] | undefined {
   if (value === undefined) {
     return undefined;
   }

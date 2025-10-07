@@ -108,9 +108,7 @@ export function generateCacheKey(
  * @returns Cached transport instance or undefined if not found
  * @public
  */
-export function getCachedTransport(
-  cacheKey: string,
-): FactoryTransport | undefined {
+export function getCachedTransport(cacheKey: string): FactoryTransport | undefined {
   return transportCache.get(cacheKey);
 }
 
@@ -120,10 +118,7 @@ export function getCachedTransport(
  * @param transport - Transport instance to cache
  * @public
  */
-export function setCachedTransport(
-  cacheKey: string,
-  transport: FactoryTransport,
-): void {
+export function setCachedTransport(cacheKey: string, transport: FactoryTransport): void {
   transportCache.set(cacheKey, transport);
 }
 

@@ -235,9 +235,7 @@ describe('KeychainTokenStorage - Command Injection Security Tests', () => {
 
       await storage.clear();
 
-      expect(mockExecFileAsync).toHaveBeenCalledWith('cmdkey', [
-        '/delete:mcp-funnel:valid-server',
-      ]);
+      expect(mockExecFileAsync).toHaveBeenCalledWith('cmdkey', ['/delete:mcp-funnel:valid-server']);
     });
   });
 
@@ -369,12 +367,7 @@ describe('KeychainTokenStorage - Command Injection Security Tests', () => {
     });
 
     it('should prevent null byte injection', () => {
-      const nullByteAttacks = [
-        'server\x00',
-        'server\u0000',
-        '\x00server',
-        'server\x00/etc/passwd',
-      ];
+      const nullByteAttacks = ['server\x00', 'server\u0000', '\x00server', 'server\x00/etc/passwd'];
 
       nullByteAttacks.forEach((attack) => {
         expect(() => new KeychainTokenStorage(attack)).toThrow();

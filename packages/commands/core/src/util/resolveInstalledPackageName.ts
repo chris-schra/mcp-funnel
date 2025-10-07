@@ -107,10 +107,7 @@ export function resolveInstalledPackageName({
     }
     if (typeof value === 'string') {
       // Git installs record the git reference in the value; ensure the package name is present
-      if (
-        (packageSpec.includes('://') || packageSpec.includes('git+')) &&
-        value.includes(name)
-      ) {
+      if ((packageSpec.includes('://') || packageSpec.includes('git+')) && value.includes(name)) {
         return true;
       }
     }

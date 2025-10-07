@@ -167,9 +167,7 @@ describe('MCPRegistryClient', () => {
       const client = new MCPRegistryClient(mockBaseUrl, mockCache);
 
       // Should throw the error for the calling layer to handle
-      await expect(client.searchServers('test')).rejects.toThrow(
-        'Network error',
-      );
+      await expect(client.searchServers('test')).rejects.toThrow('Network error');
     });
 
     it('should throw on HTTP error responses', async () => {

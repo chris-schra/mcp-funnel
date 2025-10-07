@@ -25,9 +25,7 @@ describe('ExtendedTargetServerSchema', () => {
         command: 'echo',
       };
 
-      expect(() =>
-        TargetServerSchema.parse(minimalCommandConfig),
-      ).not.toThrow();
+      expect(() => TargetServerSchema.parse(minimalCommandConfig)).not.toThrow();
       const result = TargetServerSchema.parse(minimalCommandConfig);
       expect(result.name).toBe('minimal-server');
       expect(result.command).toBe('echo');
@@ -46,9 +44,7 @@ describe('ExtendedTargetServerSchema', () => {
         },
       };
 
-      expect(() =>
-        TargetServerSchema.parse(stdioTransportConfig),
-      ).not.toThrow();
+      expect(() => TargetServerSchema.parse(stdioTransportConfig)).not.toThrow();
       const result = TargetServerSchema.parse(stdioTransportConfig);
       expect(result.name).toBe('stdio-server');
       expect(result.command).toBeUndefined();

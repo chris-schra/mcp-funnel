@@ -75,10 +75,7 @@ describe('SecretManager - Secret Resolution', () => {
 
   it('should handle provider errors gracefully', async () => {
     const healthy = createInlineProvider({ HEALTHY_KEY: 'value' });
-    const failing = new ThrowingProvider(
-      'failing',
-      new Error('intentional failure'),
-    );
+    const failing = new ThrowingProvider('failing', new Error('intentional failure'));
     const manager = new SecretManager([healthy, failing]);
 
     const result = await manager.resolveSecrets();
@@ -87,10 +84,7 @@ describe('SecretManager - Secret Resolution', () => {
   });
 
   it('should handle all providers failing gracefully', async () => {
-    const failing = new ThrowingProvider(
-      'failing',
-      new Error('intentional failure'),
-    );
+    const failing = new ThrowingProvider('failing', new Error('intentional failure'));
     const manager = new SecretManager([failing]);
 
     const result = await manager.resolveSecrets();
@@ -99,11 +93,7 @@ describe('SecretManager - Secret Resolution', () => {
   });
 
   it('should support async resolution with real async behavior', async () => {
-    const delayed = new DelayedProvider(
-      'delayed-inline',
-      { SLOW_KEY: 'value' },
-      15,
-    );
+    const delayed = new DelayedProvider('delayed-inline', { SLOW_KEY: 'value' }, 15);
     const manager = new SecretManager([delayed]);
 
     const startTime = Date.now();

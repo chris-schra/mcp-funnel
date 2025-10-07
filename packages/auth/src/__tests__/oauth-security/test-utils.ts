@@ -29,9 +29,7 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
  * @param overrides - Optional configuration overrides to merge with defaults
  * @returns Complete OAuth2AuthCodeConfig with test values
  */
-export function createTestConfig(
-  overrides?: Partial<OAuth2AuthCodeConfig>,
-): OAuth2AuthCodeConfig {
+export function createTestConfig(overrides?: Partial<OAuth2AuthCodeConfig>): OAuth2AuthCodeConfig {
   return {
     type: 'oauth2-code',
     clientId: 'test-client',
@@ -68,9 +66,7 @@ export function setupConsoleSpy(): ReturnType<typeof vi.spyOn> {
  * @param consoleSpy - The console.info spy to extract URL from
  * @returns The authorization URL if found, null otherwise
  */
-export function extractAuthUrl(
-  consoleSpy: ReturnType<typeof vi.spyOn>,
-): string | null {
+export function extractAuthUrl(consoleSpy: ReturnType<typeof vi.spyOn>): string | null {
   const call = consoleSpy.mock.calls.find((c) =>
     String(c[0]).includes('Please visit the following URL'),
   );

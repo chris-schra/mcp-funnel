@@ -37,10 +37,7 @@ function loadConfig(): ProxyConfig {
     // No need to normalize here since config already has the right type
     return config;
   } catch (error) {
-    console.error(
-      `[server] Failed to load merged config (project: ${projectPath}):`,
-      error,
-    );
+    console.error(`[server] Failed to load merged config (project: ${projectPath}):`, error);
     return { servers: [] };
   }
 }
@@ -58,15 +55,9 @@ function loadConfig(): ProxyConfig {
 function createDefaultAuthConfig(): InboundAuthConfig {
   // Check if authentication is explicitly disabled
   if (process.env.DISABLE_INBOUND_AUTH === 'true') {
-    console.warn(
-      '🚨 WARNING: Inbound authentication is DISABLED. This is a security risk!',
-    );
-    console.warn(
-      '🚨 WARNING: Only use DISABLE_INBOUND_AUTH=true for development/testing.',
-    );
-    console.warn(
-      '🚨 WARNING: Your proxy server is completely OPEN to any requests.',
-    );
+    console.warn('🚨 WARNING: Inbound authentication is DISABLED. This is a security risk!');
+    console.warn('🚨 WARNING: Only use DISABLE_INBOUND_AUTH=true for development/testing.');
+    console.warn('🚨 WARNING: Your proxy server is completely OPEN to any requests.');
     return { type: 'none' };
   }
 
@@ -74,9 +65,7 @@ function createDefaultAuthConfig(): InboundAuthConfig {
   const envToken = process.env.MCP_FUNNEL_AUTH_TOKEN;
   if (envToken) {
     if (envToken.trim().length < 16) {
-      console.error(
-        '❌ MCP_FUNNEL_AUTH_TOKEN must be at least 16 characters long',
-      );
+      console.error('❌ MCP_FUNNEL_AUTH_TOKEN must be at least 16 characters long');
       process.exit(1);
     }
     console.info('✅ Using authentication token from MCP_FUNNEL_AUTH_TOKEN');
@@ -93,9 +82,7 @@ function createDefaultAuthConfig(): InboundAuthConfig {
   console.warn('==========================================');
   console.warn(`🔑 Bearer Token: ${generatedToken}`);
   console.warn('==========================================');
-  console.warn(
-    '💡 To use a persistent token, set MCP_FUNNEL_AUTH_TOKEN env var.',
-  );
+  console.warn('💡 To use a persistent token, set MCP_FUNNEL_AUTH_TOKEN env var.');
   console.warn('💡 To disable auth (DEV ONLY), set DISABLE_INBOUND_AUTH=true.');
   console.warn('');
 
@@ -120,9 +107,7 @@ async function main() {
   // Create mandatory authentication configuration
   const inboundAuth = createDefaultAuthConfig();
 
-  type ProxyCtor = new (
-    config: ReturnType<typeof loadConfig>,
-  ) => import('mcp-funnel').MCPProxy;
+  type ProxyCtor = new (config: ReturnType<typeof loadConfig>) => import('mcp-funnel').MCPProxy;
   const runtime = (await import('mcp-funnel')) as unknown as {
     MCPProxy: ProxyCtor;
   };

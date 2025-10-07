@@ -24,12 +24,7 @@ export class TokenUtils {
     scopes: string[],
     defaultRefreshTokenExpiry = 2592000,
   ): RefreshToken {
-    return generateRefreshTokenRecord(
-      clientId,
-      userId,
-      scopes,
-      defaultRefreshTokenExpiry,
-    );
+    return generateRefreshTokenRecord(clientId, userId, scopes, defaultRefreshTokenExpiry);
   }
 
   public async handleAuthorizationCodeGrant(params: TokenRequest) {
@@ -76,12 +71,6 @@ export class TokenUtils {
     params: Partial<AuthorizationRequest>,
     userId: string,
   ) {
-    return handleAuthorizationRequest(
-      this.config,
-      this.storage,
-      consentService,
-      params,
-      userId,
-    );
+    return handleAuthorizationRequest(this.config, this.storage, consentService, params, userId);
   }
 }

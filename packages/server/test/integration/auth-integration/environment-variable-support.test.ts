@@ -57,25 +57,19 @@ describe('Environment Variable Support', () => {
     testPort = address.port;
 
     // Test with environment-resolved token
-    const envTokenResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-      {
-        headers: {
-          Authorization: 'Bearer env-resolved-auth-token',
-        },
+    const envTokenResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
+      headers: {
+        Authorization: 'Bearer env-resolved-auth-token',
       },
-    );
+    });
     expect(envTokenResponse.status).toBe(200);
 
     // Test with static token
-    const staticTokenResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-      {
-        headers: {
-          Authorization: 'Bearer static-token',
-        },
+    const staticTokenResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
+      headers: {
+        Authorization: 'Bearer static-token',
       },
-    );
+    });
     expect(staticTokenResponse.status).toBe(200);
   });
 

@@ -41,10 +41,5 @@ export function parseBooleanFlag(value: unknown): boolean {
   }
 
   const lowered = normalized.toLowerCase();
-  return (
-    lowered === 'true' ||
-    lowered === '1' ||
-    lowered === 'yes' ||
-    lowered === 'on'
-  );
+  return lowered === 'true' || lowered === '1' || lowered === 'yes' || lowered === 'on';
 }

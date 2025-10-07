@@ -30,13 +30,7 @@ import type {
   InstallOptions,
   UninstallOptions,
 } from './types/index.js';
-import {
-  getPackagePath,
-  install,
-  loadCommand,
-  uninstall,
-  update,
-} from './util/index.js';
+import { getPackagePath, install, loadCommand, uninstall, update } from './util/index.js';
 
 export class CommandInstaller {
   private readonly context: CommandInstallerContext;
@@ -137,9 +131,7 @@ export class CommandInstaller {
    * ```
    * @see file:./util/update.ts - Implementation details
    */
-  public async update(
-    packageNameOrCommandName: string,
-  ): Promise<InstalledCommand> {
+  public async update(packageNameOrCommandName: string): Promise<InstalledCommand> {
     return update(this.context, packageNameOrCommandName);
   }
 
@@ -179,9 +171,7 @@ export class CommandInstaller {
    * @see file:./util/loadCommand.ts - Command loading and validation logic
    * @see file:./interfaces.ts:8 - ICommand interface definition
    */
-  public async loadInstalledCommand(
-    packageName: string,
-  ): Promise<ICommand | null> {
+  public async loadInstalledCommand(packageName: string): Promise<ICommand | null> {
     const commandPath = getPackagePath(this.context.packagesDir, packageName);
     return loadCommand(commandPath);
   }

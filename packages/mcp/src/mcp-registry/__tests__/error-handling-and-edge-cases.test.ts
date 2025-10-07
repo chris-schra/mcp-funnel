@@ -33,9 +33,7 @@ describe('MCPRegistryClient', () => {
       const client = new MCPRegistryClient(mockBaseUrl, noOpCache);
 
       // Should throw JSON parsing errors to calling layer
-      await expect(client.searchServers('test')).rejects.toThrow(
-        'Invalid JSON',
-      );
+      await expect(client.searchServers('test')).rejects.toThrow('Invalid JSON');
     });
 
     it('should handle empty responses', async () => {

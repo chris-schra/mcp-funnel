@@ -147,9 +147,7 @@ export class MockSSEServer {
     };
 
     this.messageQueue.push(message);
-    broadcastToConnections(this.connections, message, (id) =>
-      this.connections.delete(id),
-    );
+    broadcastToConnections(this.connections, message, (id) => this.connections.delete(id));
   }
 
   /**
@@ -159,11 +157,7 @@ export class MockSSEServer {
    * @param event - Event type name
    * @returns True if message was sent successfully
    */
-  sendMessageToConnection(
-    connectionId: string,
-    data: string,
-    event = 'message',
-  ): boolean {
+  sendMessageToConnection(connectionId: string, data: string, event = 'message'): boolean {
     const connection = this.connections.get(connectionId);
     if (!connection || !connection.isActive) {
       return false;
@@ -176,9 +170,7 @@ export class MockSSEServer {
       timestamp: Date.now(),
     };
 
-    sendMessageToSingleConnection(connection, message, (id) =>
-      this.connections.delete(id),
-    );
+    sendMessageToSingleConnection(connection, message, (id) => this.connections.delete(id));
     return true;
   }
 
@@ -212,9 +204,7 @@ export class MockSSEServer {
    */
   getStats() {
     return {
-      activeConnections: Array.from(this.connections.values()).filter(
-        (c) => c.isActive,
-      ).length,
+      activeConnections: Array.from(this.connections.values()).filter((c) => c.isActive).length,
       totalConnections: this.connections.size,
       messagesSent: this.messageQueue.length,
       messagesReceived: this.receivedMessages.length,
@@ -264,18 +254,14 @@ export class MockSSEServer {
     }
 
     if (this.config.simulateLatency > 0) {
-      app.use((req, res, next) =>
-        setTimeout(next, this.config.simulateLatency),
-      );
+      app.use((req, res, next) => setTimeout(next, this.config.simulateLatency));
     }
 
     // SSE endpoint
     app.get('/events', this.handleSSEConnection.bind(this));
 
     app.post('/messages', this.handleMessagePost.bind(this));
-    app.get('/health', (req, res) =>
-      res.json({ status: 'ok', timestamp: Date.now() }),
-    );
+    app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
     app.get('/error/:code', (req, res) => {
       const code = parseInt(req.params.code, 10);
       res.status(code).json({ error: `Simulated ${code} error` });
@@ -284,14 +270,8 @@ export class MockSSEServer {
     return app;
   }
 
-  private async handleSSEConnection(
-    req: Request,
-    res: Response,
-  ): Promise<void> {
-    if (
-      this.shouldSimulateConnectionError ||
-      Math.random() < this.connectionFailureRate
-    ) {
+  private async handleSSEConnection(req: Request, res: Response): Promise<void> {
+    if (this.shouldSimulateConnectionError || Math.random() < this.connectionFailureRate) {
       res.status(503).json({ error: 'Service temporarily unavailable' });
       return;
     }
@@ -342,9 +322,7 @@ export class MockSSEServer {
     const messagesToSend = getMessagesToResend(this.messageQueue, lastEventId);
 
     messagesToSend.forEach((msg) =>
-      sendMessageToSingleConnection(connection, msg, (id) =>
-        this.connections.delete(id),
-      ),
+      sendMessageToSingleConnection(connection, msg, (id) => this.connections.delete(id)),
     );
 
     const cleanup = () => {

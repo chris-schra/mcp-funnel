@@ -32,23 +32,14 @@ describe('CommandInstaller - complex scenarios', () => {
       updatedAt: '2023-01-01T00:00:00.000Z',
     };
 
-    const result1 = installer.testFindMatchingCommand(
-      complexManifest,
-      '@org1/common-tool',
-    );
+    const result1 = installer.testFindMatchingCommand(complexManifest, '@org1/common-tool');
     expect(result1?.package).toBe('@org1/common-tool');
 
-    const result2 = installer.testFindMatchingCommand(
-      complexManifest,
-      '@org2/common-tool',
-    );
+    const result2 = installer.testFindMatchingCommand(complexManifest, '@org2/common-tool');
     expect(result2?.package).toBe('@org2/common-tool');
 
     // Should not match the common part
-    const result3 = installer.testFindMatchingCommand(
-      complexManifest,
-      'common-tool',
-    );
+    const result3 = installer.testFindMatchingCommand(complexManifest, 'common-tool');
     expect(result3).toBeUndefined();
   });
 
@@ -81,20 +72,14 @@ describe('CommandInstaller - complex scenarios', () => {
     const result1 = installer.testFindMatchingCommand(prefixManifest, 'test');
     expect(result1?.package).toBe('test');
 
-    const result2 = installer.testFindMatchingCommand(
-      prefixManifest,
-      'test-utils',
-    );
+    const result2 = installer.testFindMatchingCommand(prefixManifest, 'test-utils');
     expect(result2?.package).toBe('test-utils');
 
     // Should NOT match longer names even though they contain the spec
     const result3 = installer.testFindMatchingCommand(prefixManifest, 'utils');
     expect(result3).toBeUndefined();
 
-    const result4 = installer.testFindMatchingCommand(
-      prefixManifest,
-      'framework',
-    );
+    const result4 = installer.testFindMatchingCommand(prefixManifest, 'framework');
     expect(result4).toBeUndefined();
   });
 

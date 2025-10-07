@@ -30,9 +30,7 @@ import type { IInboundAuthValidator } from '../interfaces/inbound-auth.interface
  * @returns Hono middleware function
  * @public
  */
-export function createAuthMiddleware(
-  validator: IInboundAuthValidator,
-): MiddlewareHandler {
+export function createAuthMiddleware(validator: IInboundAuthValidator): MiddlewareHandler {
   return async (c: Context, next: Next) => {
     try {
       // Validate the request using the configured validator
@@ -41,10 +39,7 @@ export function createAuthMiddleware(
       if (!authResult.isAuthenticated) {
         // Log authentication failure for security monitoring
         console.warn('Authentication failed:', {
-          ip:
-            c.req.header('X-Forwarded-For') ||
-            c.req.header('X-Real-IP') ||
-            'unknown',
+          ip: c.req.header('X-Forwarded-For') || c.req.header('X-Real-IP') || 'unknown',
           userAgent: c.req.header('User-Agent') || 'unknown',
           path: c.req.path,
           method: c.req.method,
@@ -116,8 +111,6 @@ function getWWWAuthenticateHeader(authType: string): string {
  * @returns Authentication context or undefined
  * @public
  */
-export function getAuthContext(
-  c: Context,
-): Record<string, unknown> | undefined {
+export function getAuthContext(c: Context): Record<string, unknown> | undefined {
   return c.get('authContext');
 }

@@ -83,11 +83,7 @@ export class TransportError extends Error {
     );
   }
 
-  public static connectionRefused(
-    h: string,
-    p?: number,
-    c?: Error,
-  ): TransportError {
+  public static connectionRefused(h: string, p?: number, c?: Error): TransportError {
     const loc = p ? `${h}:${p}` : h;
     return new TransportError(
       `Connection refused to ${loc}`,
@@ -125,12 +121,7 @@ export class TransportError extends Error {
   }
 
   public static protocolError(m: string, c?: Error): TransportError {
-    return new TransportError(
-      `Protocol error: ${m}`,
-      TransportErrorCode.PROTOCOL_ERROR,
-      false,
-      c,
-    );
+    return new TransportError(`Protocol error: ${m}`, TransportErrorCode.PROTOCOL_ERROR, false, c);
   }
 
   public static invalidResponse(m: string, c?: Error): TransportError {
@@ -211,12 +202,7 @@ export class TransportError extends Error {
   }
 
   public static invalidUrl(u: string, c?: Error): TransportError {
-    return new TransportError(
-      `Invalid URL: ${u}`,
-      TransportErrorCode.INVALID_URL,
-      false,
-      c,
-    );
+    return new TransportError(`Invalid URL: ${u}`, TransportErrorCode.INVALID_URL, false, c);
   }
 
   public static authenticationFailed(m: string, c?: Error): TransportError {
@@ -229,19 +215,10 @@ export class TransportError extends Error {
   }
 
   public static serverError(m: string, c?: Error): TransportError {
-    return new TransportError(
-      `Server error: ${m}`,
-      TransportErrorCode.SERVER_ERROR,
-      true,
-      c,
-    );
+    return new TransportError(`Server error: ${m}`, TransportErrorCode.SERVER_ERROR, true, c);
   }
 
-  public static fromHttpStatus(
-    s: number,
-    t?: string,
-    c?: Error,
-  ): TransportError {
+  public static fromHttpStatus(s: number, t?: string, c?: Error): TransportError {
     const msg = t ? `HTTP ${s}: ${t}` : `HTTP ${s}`;
     const retry = (s >= 500 && s < 600) || s === 408 || s === 429;
 
@@ -252,11 +229,7 @@ export class TransportError extends Error {
     else if (s === 503) code = TransportErrorCode.SERVICE_UNAVAILABLE;
     else if (s === 504) code = TransportErrorCode.GATEWAY_TIMEOUT;
     else if (s === 408) code = TransportErrorCode.REQUEST_TIMEOUT;
-    else
-      code =
-        s >= 500
-          ? TransportErrorCode.SERVER_ERROR
-          : TransportErrorCode.UNKNOWN_ERROR;
+    else code = s >= 500 ? TransportErrorCode.SERVER_ERROR : TransportErrorCode.UNKNOWN_ERROR;
 
     return new TransportError(msg, code, retry, c);
   }

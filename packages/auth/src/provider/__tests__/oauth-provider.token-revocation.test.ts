@@ -81,10 +81,7 @@ describe('OAuthProvider - Token Revocation', () => {
       redirect_uris: ['http://localhost:8080/callback'],
     });
 
-    const result = await oauthProvider.revokeToken(
-      accessToken,
-      otherClient.client_id,
-    );
+    const result = await oauthProvider.revokeToken(accessToken, otherClient.client_id);
     expect(result.success).toBe(false);
     expect(result.error).toBe('Token not owned by client');
   });
@@ -92,10 +89,7 @@ describe('OAuthProvider - Token Revocation', () => {
   it('handles revocation of a non-existent token', async () => {
     const { oauthProvider } = context;
 
-    const result = await oauthProvider.revokeToken(
-      'non-existent-token',
-      clientId,
-    );
+    const result = await oauthProvider.revokeToken('non-existent-token', clientId);
     expect(result.success).toBe(true);
   });
 });

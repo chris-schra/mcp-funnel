@@ -3,11 +3,7 @@
  */
 
 // IMPORTANT: Import test-utils first to set up mocks before other imports
-import {
-  setupTestEnvironment,
-  mockSDKTransport,
-  type MockAuthProvider,
-} from './test-utils.js';
+import { setupTestEnvironment, mockSDKTransport, type MockAuthProvider } from './test-utils.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StreamableHTTPClientTransport } from '../../../transports/implementations/streamable-http-client-transport.js';
 
@@ -97,9 +93,7 @@ describe('StreamableHTTPClientTransport - Transport Replacement and Upgrades', (
     mockSDKTransport.close.mockRejectedValue(new Error('Close failed'));
 
     // Upgrade should still succeed despite cleanup error
-    await expect(
-      transport.upgradeTransport('websocket'),
-    ).resolves.not.toThrow();
+    await expect(transport.upgradeTransport('websocket')).resolves.not.toThrow();
   });
 
   it('should setup callbacks on new transport after replacement', async () => {

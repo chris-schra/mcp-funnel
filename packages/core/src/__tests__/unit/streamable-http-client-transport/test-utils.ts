@@ -5,10 +5,7 @@
  */
 
 import { vi } from 'vitest';
-import type {
-  JSONRPCRequest,
-  JSONRPCResponse,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCRequest, JSONRPCResponse } from '@modelcontextprotocol/sdk/types.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock auth provider interface
@@ -36,9 +33,7 @@ function createMockSDKTransport() {
     protocolVersion: undefined as string | undefined,
     onclose: undefined as (() => void) | undefined,
     onerror: undefined as ((error: Error) => void) | undefined,
-    onmessage: undefined as
-      | ((message: JSONRPCRequest | JSONRPCResponse) => void)
-      | undefined,
+    onmessage: undefined as ((message: JSONRPCRequest | JSONRPCResponse) => void) | undefined,
   };
 }
 
@@ -88,9 +83,7 @@ export function setupTestEnvironment(): MockAuthProvider {
 
   // Create mock auth provider
   const mockAuthProvider: MockAuthProvider = {
-    getHeaders: vi
-      .fn()
-      .mockResolvedValue({ Authorization: 'Bearer test-token' }),
+    getHeaders: vi.fn().mockResolvedValue({ Authorization: 'Bearer test-token' }),
     refresh: vi.fn().mockResolvedValue(undefined),
     isValid: vi.fn().mockResolvedValue(true),
   };

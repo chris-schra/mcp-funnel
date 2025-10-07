@@ -7,10 +7,7 @@
  * @internal
  */
 
-import type {
-  JSONRPCMessage,
-  JSONRPCResponse,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCMessage, JSONRPCResponse } from '@modelcontextprotocol/sdk/types.js';
 import { TransportError } from '../../errors/transport-error.js';
 import type { ReconnectionManager } from '../../../reconnection-manager/index.js';
 import { RequestUtils } from '../../../utils/index.js';
@@ -51,9 +48,7 @@ export interface ConnectionLifecycleContext {
  * @param context - Connection lifecycle context
  * @internal
  */
-export function handleConnectionOpen(
-  context: ConnectionLifecycleContext,
-): void {
+export function handleConnectionOpen(context: ConnectionLifecycleContext): void {
   // Reset reconnection counter on successful connection
   context.reconnectionManager.reset();
 
@@ -74,10 +69,7 @@ export function handleConnectionOpen(
  * @param context - Connection lifecycle context
  * @internal
  */
-export function handleMessage(
-  message: JSONRPCMessage,
-  context: ConnectionLifecycleContext,
-): void {
+export function handleMessage(message: JSONRPCMessage, context: ConnectionLifecycleContext): void {
   logEvent('debug', `${context.logPrefix}:message-received`, {
     id: 'id' in message ? message.id : 'none',
     method: 'method' in message ? message.method : 'none',
@@ -93,9 +85,7 @@ export function handleMessage(
         // JSON-RPC error response
         const errorMessage = message.error.message || 'Unknown JSON-RPC error';
         const errorCode = message.error.code || -1;
-        pending.reject(
-          new Error(`JSON-RPC error ${errorCode}: ${errorMessage}`),
-        );
+        pending.reject(new Error(`JSON-RPC error ${errorCode}: ${errorMessage}`));
       } else {
         // Successful response
         pending.resolve(message as JSONRPCResponse);
@@ -118,17 +108,11 @@ export function handleMessage(
  * @param context - Connection lifecycle context
  * @internal
  */
-export function handleConnectionError(
-  error: Error,
-  context: ConnectionLifecycleContext,
-): void {
+export function handleConnectionError(error: Error, context: ConnectionLifecycleContext): void {
   const transportError =
     error instanceof TransportError
       ? error
-      : TransportError.connectionFailed(
-          `Connection error: ${error.message}`,
-          error,
-        );
+      : TransportError.connectionFailed(`Connection error: ${error.message}`, error);
 
   logEvent('error', `${context.logPrefix}:connection-error`, {
     error: transportError.message,

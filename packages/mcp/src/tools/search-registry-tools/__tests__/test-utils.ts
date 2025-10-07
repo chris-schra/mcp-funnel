@@ -40,8 +40,7 @@ export const setupTestContext = (): TestContext => {
             {
               id: 'github-mcp-server',
               name: 'GitHub MCP Server',
-              description:
-                'Interact with GitHub repositories, issues, and pull requests',
+              description: 'Interact with GitHub repositories, issues, and pull requests',
               registry_type: 'official',
               remotes: [],
               _meta: {

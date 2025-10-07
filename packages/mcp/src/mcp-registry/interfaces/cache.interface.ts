@@ -120,8 +120,7 @@ export const CacheKeys = {
      * @param toolName - Tool name
      * @returns Cache key in format `tool:${serverName}__${toolName}`
      */
-    SINGLE: (serverName: string, toolName: string) =>
-      `tool:${serverName}__${toolName}`,
+    SINGLE: (serverName: string, toolName: string) => `tool:${serverName}__${toolName}`,
     /**
      * Pattern: `tools:server:${serverName}`
      * @param serverName - Server name

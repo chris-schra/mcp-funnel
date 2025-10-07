@@ -75,17 +75,15 @@ describe('RegistryContext', () => {
         const _serverId = await context.enableTemporary(serverConfig);
 
         // In real implementation, this should not throw for valid server names
-        await expect(
-          context.persistTemporary(serverConfig.name),
-        ).resolves.not.toThrow();
+        await expect(context.persistTemporary(serverConfig.name)).resolves.not.toThrow();
       });
 
       it('should throw for non-existent server name', async () => {
         const context = RegistryContext.getInstance(mockConfig);
 
-        await expect(
-          context.persistTemporary('nonexistent-server'),
-        ).rejects.toThrow("Temporary server 'nonexistent-server' not found");
+        await expect(context.persistTemporary('nonexistent-server')).rejects.toThrow(
+          "Temporary server 'nonexistent-server' not found",
+        );
       });
 
       it('should handle server that can be persisted multiple times', async () => {
@@ -99,14 +97,10 @@ describe('RegistryContext', () => {
         await context.enableTemporary(serverConfig);
 
         // First persistence should succeed
-        await expect(
-          context.persistTemporary(serverConfig.name),
-        ).resolves.not.toThrow();
+        await expect(context.persistTemporary(serverConfig.name)).resolves.not.toThrow();
 
         // Should handle subsequent calls gracefully
-        await expect(
-          context.persistTemporary(serverConfig.name),
-        ).resolves.not.toThrow();
+        await expect(context.persistTemporary(serverConfig.name)).resolves.not.toThrow();
       });
     });
   });

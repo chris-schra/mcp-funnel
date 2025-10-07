@@ -41,10 +41,7 @@ export class TokenStorageFactory {
    * @returns Token storage implementation (ITokenStorage interface)
    * @public
    */
-  public static create(
-    type: TokenStorageType = 'auto',
-    serverId?: string,
-  ): ITokenStorage {
+  public static create(type: TokenStorageType = 'auto', serverId?: string): ITokenStorage {
     const resolvedType = this.resolveStorageType(type);
 
     switch (resolvedType) {
@@ -52,8 +49,7 @@ export class TokenStorageFactory {
         logEvent('debug', 'auth:storage_created', {
           type: 'memory',
           serverId,
-          reason:
-            'Explicit memory storage requested or CI environment detected',
+          reason: 'Explicit memory storage requested or CI environment detected',
         });
         return new MemoryTokenStorage();
 
@@ -91,9 +87,7 @@ export class TokenStorageFactory {
    * @returns Concrete storage type ('memory' or 'keychain')
    * @internal
    */
-  private static resolveStorageType(
-    type: TokenStorageType,
-  ): 'memory' | 'keychain' {
+  private static resolveStorageType(type: TokenStorageType): 'memory' | 'keychain' {
     if (type !== 'auto') {
       return type;
     }

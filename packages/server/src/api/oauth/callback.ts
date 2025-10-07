@@ -123,8 +123,7 @@ export const GetCallbackHandler: Handler = async (c) => {
   } catch (error) {
     console.error('OAuth callback error:', error);
 
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return c.html(
       `

@@ -37,10 +37,7 @@ export class PrefixedStdioClientTransport {
         args: this.options.args,
       });
     } catch (error) {
-      const errorMsg = prefixedLog(
-        this._serverName,
-        `Failed to spawn process: ${error}`,
-      );
+      const errorMsg = prefixedLog(this._serverName, `Failed to spawn process: ${error}`);
       logger.error(errorMsg, error, {
         server: this._serverName,
         context: 'spawn-failed',

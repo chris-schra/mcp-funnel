@@ -16,9 +16,6 @@ import { join } from 'path';
  * @public
  * @see file:./loadCommand.ts:32 - Uses this path to load command implementations
  */
-export function getPackagePath(
-  packagesDir: string,
-  packageName: string,
-): string {
+export function getPackagePath(packagesDir: string, packageName: string): string {
   return join(packagesDir, 'node_modules', packageName);
 }

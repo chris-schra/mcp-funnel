@@ -9,9 +9,7 @@ describe('ExtendedTargetServerWithoutNameSchema', () => {
       env: { NODE_ENV: 'test' },
     };
 
-    expect(() =>
-      TargetServerWithoutNameSchema.parse(validConfig),
-    ).not.toThrow();
+    expect(() => TargetServerWithoutNameSchema.parse(validConfig)).not.toThrow();
     const result = TargetServerWithoutNameSchema.parse(validConfig);
     expect(result.command).toBe('node');
     expect(result.args).toEqual(['server.js']);
@@ -29,9 +27,7 @@ describe('ExtendedTargetServerWithoutNameSchema', () => {
       },
     };
 
-    expect(() =>
-      TargetServerWithoutNameSchema.parse(validConfig),
-    ).not.toThrow();
+    expect(() => TargetServerWithoutNameSchema.parse(validConfig)).not.toThrow();
     const result = TargetServerWithoutNameSchema.parse(validConfig);
     expect(result.transport?.type).toBe('sse');
     expect(result.auth?.type).toBe('bearer');

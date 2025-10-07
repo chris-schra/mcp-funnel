@@ -38,10 +38,7 @@ import type {
  * @public
  */
 export function normalizeServers(
-  servers:
-    | (TargetServer | TargetServerZod)[]
-    | ServersRecord
-    | ExtendedServersRecord,
+  servers: (TargetServer | TargetServerZod)[] | ServersRecord | ExtendedServersRecord,
 ): (TargetServer | TargetServerZod)[] {
   if (Array.isArray(servers)) {
     return servers;

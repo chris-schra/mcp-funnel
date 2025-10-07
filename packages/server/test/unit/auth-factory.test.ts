@@ -38,8 +38,8 @@ describe('Auth Factory', () => {
       type: 'unsupported',
     };
 
-    expect(() =>
-      createAuthValidator(invalidConfig as InboundAuthConfig),
-    ).toThrow('Unsupported authentication type: unsupported');
+    expect(() => createAuthValidator(invalidConfig as InboundAuthConfig)).toThrow(
+      'Unsupported authentication type: unsupported',
+    );
   });
 });

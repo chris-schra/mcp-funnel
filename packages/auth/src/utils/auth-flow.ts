@@ -34,10 +34,7 @@ export interface AuthFlowContext {
  * @internal
  * @see {@link PendingAuth}
  */
-export function cleanupPendingAuth(
-  context: AuthFlowContext,
-  state?: string,
-): void {
+export function cleanupPendingAuth(context: AuthFlowContext, state?: string): void {
   if (state) {
     const pending = context.pendingAuthFlows.get(state);
     if (pending) {

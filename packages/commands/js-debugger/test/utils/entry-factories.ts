@@ -1,8 +1,4 @@
-import type {
-  ConsoleEntry,
-  ExceptionEntry,
-  StdioEntry,
-} from '../../src/types/index.js';
+import type { ConsoleEntry, ExceptionEntry, StdioEntry } from '../../src/types/index.js';
 
 /**
  * Factory for creating test stdio entries with default values.
@@ -10,10 +6,7 @@ import type {
  * @param text - The text content of the entry
  * @returns A stdio entry object
  */
-export const createStdioEntry = (
-  stream: 'stdout' | 'stderr',
-  text: string,
-): StdioEntry => ({
+export const createStdioEntry = (stream: 'stdout' | 'stderr', text: string): StdioEntry => ({
   stream,
   text,
   timestamp: Date.now(),

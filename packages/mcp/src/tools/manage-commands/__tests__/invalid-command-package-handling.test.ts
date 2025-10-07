@@ -24,9 +24,7 @@ describe('ManageCommands', () => {
       mockInstaller.install = vi
         .fn()
         .mockRejectedValue(
-          new Error(
-            "Package 'invalid-package' does not export a valid MCP Funnel command",
-          ),
+          new Error("Package 'invalid-package' does not export a valid MCP Funnel command"),
         );
 
       const result = await tool.handle(
@@ -41,9 +39,7 @@ describe('ManageCommands', () => {
       const content = result.content[0] as { type: string; text: string };
       const response = JSON.parse(content.text);
 
-      expect(response.error).toContain(
-        'does not export a valid MCP Funnel command',
-      );
+      expect(response.error).toContain('does not export a valid MCP Funnel command');
     });
   });
 });

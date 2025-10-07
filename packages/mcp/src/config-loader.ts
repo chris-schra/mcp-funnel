@@ -93,12 +93,8 @@ export function resolveMergedProxyConfig(projectConfigPath?: string): {
 
   const merged = merge(
     { servers: [] },
-    userBase && typeof userBase === 'object'
-      ? (userBase as Record<string, unknown>)
-      : {},
-    project && typeof project === 'object'
-      ? (project as Record<string, unknown>)
-      : {},
+    userBase && typeof userBase === 'object' ? (userBase as Record<string, unknown>) : {},
+    project && typeof project === 'object' ? (project as Record<string, unknown>) : {},
   );
 
   const validated = ProxyConfigSchema.parse(merged);

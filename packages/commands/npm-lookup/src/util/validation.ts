@@ -54,9 +54,7 @@ export function validateQueryParameter(
  */
 export function validateLimitParameter(
   limit: unknown,
-):
-  | { valid: false; error: string }
-  | { valid: true; value: number | undefined } {
+): { valid: false; error: string } | { valid: true; value: number | undefined } {
   if (limit === undefined) {
     return { valid: true, value: undefined };
   }

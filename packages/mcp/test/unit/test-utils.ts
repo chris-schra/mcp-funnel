@@ -25,10 +25,7 @@ export function createMockAuthProvider(): IAuthProvider {
  * @param proxy - The MCPProxy instance to check connection status
  * @param serverName - Name of the server to ensure is connected
  */
-export async function ensureServerConnected(
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> {
+export async function ensureServerConnected(proxy: MCPProxy, serverName: string): Promise<void> {
   const status = proxy.getServerStatus(serverName);
   if (status.status !== 'connected') {
     await proxy.reconnectServer(serverName);
@@ -40,10 +37,7 @@ export async function ensureServerConnected(
  * @param proxy - The MCPProxy instance to check connection status
  * @param serverName - Name of the server to ensure is disconnected
  */
-export async function ensureServerDisconnected(
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> {
+export async function ensureServerDisconnected(proxy: MCPProxy, serverName: string): Promise<void> {
   const status = proxy.getServerStatus(serverName);
   if (status.status === 'connected') {
     await proxy.disconnectServer(serverName);

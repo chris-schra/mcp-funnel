@@ -3,11 +3,7 @@
  */
 
 // IMPORTANT: Import test-utils first to set up mocks before other imports
-import {
-  setupTestEnvironment,
-  mockSDKTransport,
-  type MockAuthProvider,
-} from './test-utils.js';
+import { setupTestEnvironment, mockSDKTransport, type MockAuthProvider } from './test-utils.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StreamableHTTPClientTransport } from '../../../transports/implementations/streamable-http-client-transport.js';
 import { TransportError } from '../../../transports/errors/transport-error.js';
@@ -82,8 +78,6 @@ describe('StreamableHTTPClientTransport - Connection Management', () => {
     mockSDKTransport.close.mockResolvedValue(undefined);
     await transport.close();
 
-    await expect(transport.start()).rejects.toThrow(
-      'Transport is closed and cannot be restarted',
-    );
+    await expect(transport.start()).rejects.toThrow('Transport is closed and cannot be restarted');
   });
 });

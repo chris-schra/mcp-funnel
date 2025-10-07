@@ -42,9 +42,7 @@ export class DefaultTransportFactory implements ITransportFactory {
  * @public
  * @see {@link ITransportFactory} - Factory interface
  */
-export function createTransportFactory(
-  type: 'stdio' | string = 'stdio',
-): ITransportFactory {
+export function createTransportFactory(type: 'stdio' | string = 'stdio'): ITransportFactory {
   switch (type) {
     case 'stdio':
       return new DefaultTransportFactory();

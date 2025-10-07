@@ -23,10 +23,7 @@ export interface TestContext {
 }
 
 // Create a mock command that implements ICommand interface
-export const createMockCommand = (
-  name: string,
-  description: string,
-): ICommand => ({
+export const createMockCommand = (name: string, description: string): ICommand => ({
   name,
   description,
   executeToolViaMCP: vi.fn().mockResolvedValue({

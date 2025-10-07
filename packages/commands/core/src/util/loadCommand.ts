@@ -50,9 +50,7 @@ function isValidCommand(obj: unknown): boolean {
  * @see file:../interfaces.ts:8 - ICommand interface definition
  * @see file:./getPackagePath.ts:20 - Used to resolve command paths
  */
-export async function loadCommand(
-  commandPath: string,
-): Promise<ICommand | null> {
+export async function loadCommand(commandPath: string): Promise<ICommand | null> {
   try {
     const pkgJsonPath = join(commandPath, 'package.json');
     const pkgJson = JSON.parse(await fs.readFile(pkgJsonPath, 'utf-8'));

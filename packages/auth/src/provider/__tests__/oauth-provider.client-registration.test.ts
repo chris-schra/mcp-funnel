@@ -28,9 +28,7 @@ describe('OAuthProvider - Client Registration', () => {
     expect(client.response_types).toEqual(['code']);
     expect(client.scope).toBe('read write');
     expect(client.client_id_issued_at).toBeDefined();
-    expect(client.client_secret_expires_at).toBeGreaterThan(
-      Math.floor(Date.now() / 1000),
-    );
+    expect(client.client_secret_expires_at).toBeGreaterThan(Math.floor(Date.now() / 1000));
   });
 
   it('creates a client with defaults when optional fields are omitted', async () => {
@@ -60,8 +58,6 @@ describe('OAuthProvider - Client Registration', () => {
 
     expect(client.client_secret_expires_at).toBeGreaterThan(currentTime);
     expect(client.client_secret_expires_at).toBeLessThan(oneYearFromNow + 60);
-    expect(client.client_secret_expires_at).toBeGreaterThan(
-      oneYearFromNow - 60,
-    );
+    expect(client.client_secret_expires_at).toBeGreaterThan(oneYearFromNow - 60);
   });
 });

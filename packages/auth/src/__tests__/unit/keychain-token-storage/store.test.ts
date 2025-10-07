@@ -78,9 +78,7 @@ describe('KeychainTokenStorage', () => {
 
       it('should fallback to file storage when Windows credential manager fails', async () => {
         // Mock Windows credential manager failure
-        mockExecFileAsync.mockRejectedValue(
-          new Error('Windows credential error'),
-        );
+        mockExecFileAsync.mockRejectedValue(new Error('Windows credential error'));
 
         // Mock file operations
         mockedFs.mkdir.mockResolvedValue(undefined);
@@ -105,10 +103,10 @@ describe('KeychainTokenStorage', () => {
 
         await storage.store(mockToken);
 
-        expect(mockedFs.mkdir).toHaveBeenCalledWith(
-          expect.stringContaining('.mcp-funnel/tokens'),
-          { recursive: true, mode: 0o700 },
-        );
+        expect(mockedFs.mkdir).toHaveBeenCalledWith(expect.stringContaining('.mcp-funnel/tokens'), {
+          recursive: true,
+          mode: 0o700,
+        });
 
         expect(mockedFs.writeFile).toHaveBeenCalledWith(
           expect.any(String),

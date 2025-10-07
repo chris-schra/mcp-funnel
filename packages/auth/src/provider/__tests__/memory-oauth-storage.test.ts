@@ -243,9 +243,7 @@ describe('MemoryOAuthStorage', () => {
       await storage.cleanupExpiredTokens();
 
       expect(await storage.getRefreshToken('expired-refresh-token')).toBeNull();
-      expect(
-        await storage.getRefreshToken('never-expires-token'),
-      ).not.toBeNull();
+      expect(await storage.getRefreshToken('never-expires-token')).not.toBeNull();
     });
   });
 

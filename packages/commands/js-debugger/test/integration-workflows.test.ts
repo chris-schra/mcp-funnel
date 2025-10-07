@@ -1,18 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
-import type {
-  DebugSessionConfig,
-  StartDebugSessionResponse,
-} from '../src/types/index.js';
+import type { DebugSessionConfig, StartDebugSessionResponse } from '../src/types/index.js';
 import { waitFor } from './utils/async-helpers.js';
-import {
-  prepareNodeFixture,
-  type FixtureHandle,
-} from './utils/fixture-manager.js';
-import {
-  createNodeTarget,
-  waitForSessionTermination,
-} from './utils/session-helpers.js';
+import { prepareNodeFixture, type FixtureHandle } from './utils/fixture-manager.js';
+import { createNodeTarget, waitForSessionTermination } from './utils/session-helpers.js';
 
 describe(
   'DebuggerSessionManager Integration Tests - Workflows',
@@ -46,9 +37,7 @@ describe(
       fixtures.length = 0;
     });
 
-    const startSession = async (
-      config: DebugSessionConfig,
-    ): Promise<StartDebugSessionResponse> => {
+    const startSession = async (config: DebugSessionConfig): Promise<StartDebugSessionResponse> => {
       const response = await manager.startSession(config);
       sessionIds.push(response.session.id);
       return response;
@@ -101,9 +90,7 @@ describe(
 
         expect(scopeResult.variables).toBeDefined();
         // Verify we can see the payload variable
-        const payloadVar = scopeResult.variables.find(
-          (v) => v.name === 'payload',
-        );
+        const payloadVar = scopeResult.variables.find((v) => v.name === 'payload');
         expect(payloadVar).toBeDefined();
         expect(payloadVar?.value.type).toBe('object');
 
@@ -180,8 +167,7 @@ describe(
 
         expect(stepOverResult.pause).toBeDefined();
         const pauseAfterStepOver = stepOverResult.pause!;
-        const lineAfterStepOver =
-          pauseAfterStepOver.callFrames[0]?.location.lineNumber;
+        const lineAfterStepOver = pauseAfterStepOver.callFrames[0]?.location.lineNumber;
 
         // Should have moved to next line
         expect(lineAfterStepOver).toBeGreaterThan(13);
@@ -252,8 +238,7 @@ describe(
           async () => {
             const output = await manager.queryOutput({ sessionId });
             const consoleCount = output.entries.filter(
-              (entry) =>
-                entry.kind === 'console' && entry.entry.level !== 'info',
+              (entry) => entry.kind === 'console' && entry.entry.level !== 'info',
             ).length;
             return consoleCount >= 3 ? true : null;
           },
@@ -330,9 +315,7 @@ describe(
           // Should get different entries
           expect(secondPage.entries.length).toBeGreaterThan(0);
           if (firstPage.entries.length > 0 && secondPage.entries.length > 0) {
-            expect(secondPage.entries[0]?.cursor).not.toBe(
-              firstPage.entries[0]?.cursor,
-            );
+            expect(secondPage.entries[0]?.cursor).not.toBe(firstPage.entries[0]?.cursor);
           }
         }
       });

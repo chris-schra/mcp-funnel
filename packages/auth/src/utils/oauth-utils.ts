@@ -30,22 +30,16 @@ import { resolveEnvVar } from '@mcp-funnel/core';
  * @public
  * @see {@link OAuth2AuthCodeProvider}
  */
-export function resolveOAuth2AuthCodeConfig(
-  config: OAuth2AuthCodeConfig,
-): OAuth2AuthCodeConfig {
+export function resolveOAuth2AuthCodeConfig(config: OAuth2AuthCodeConfig): OAuth2AuthCodeConfig {
   return {
     ...config,
     clientId: resolveEnvVar(config.clientId),
-    clientSecret: config.clientSecret
-      ? resolveEnvVar(config.clientSecret)
-      : config.clientSecret,
+    clientSecret: config.clientSecret ? resolveEnvVar(config.clientSecret) : config.clientSecret,
     authorizationEndpoint: resolveEnvVar(config.authorizationEndpoint),
     tokenEndpoint: resolveEnvVar(config.tokenEndpoint),
     redirectUri: resolveEnvVar(config.redirectUri),
     scope: config.scope ? resolveEnvVar(config.scope) : config.scope,
-    audience: config.audience
-      ? resolveEnvVar(config.audience)
-      : config.audience,
+    audience: config.audience ? resolveEnvVar(config.audience) : config.audience,
   };
 }
 
@@ -85,8 +79,6 @@ export function resolveOAuth2ClientCredentialsConfig(
     clientSecret: resolveEnvVar(config.clientSecret),
     tokenEndpoint: resolveEnvVar(config.tokenEndpoint),
     scope: config.scope ? resolveEnvVar(config.scope) : config.scope,
-    audience: config.audience
-      ? resolveEnvVar(config.audience)
-      : config.audience,
+    audience: config.audience ? resolveEnvVar(config.audience) : config.audience,
   };
 }

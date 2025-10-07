@@ -1,10 +1,7 @@
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ICommand } from '@mcp-funnel/commands-core';
-import type {
-  ConnectionStateChange,
-  ReconnectionConfig,
-} from '@mcp-funnel/models';
+import type { ConnectionStateChange, ReconnectionConfig } from '@mcp-funnel/models';
 import { ILogger } from '@mcp-funnel/core';
 import type { TargetServer } from '@mcp-funnel/schemas';
 
@@ -76,10 +73,7 @@ export interface ToolInfo {
  * SEAM: Transport factory for creating different transport types
  */
 export interface ITransportFactory {
-  create(
-    serverName: string,
-    options: ReconnectableTransportOptions,
-  ): IReconnectableTransport;
+  create(serverName: string, options: ReconnectableTransportOptions): IReconnectableTransport;
 }
 
 /**
@@ -121,8 +115,6 @@ export interface IReconnectableTransport extends ITransport {
   readonly retryCount: number;
   reconnect(): Promise<void>;
   onDisconnection(handler: (state: ConnectionStateChange) => void): void;
-  removeDisconnectionHandler(
-    handler: (state: ConnectionStateChange) => void,
-  ): void;
+  removeDisconnectionHandler(handler: (state: ConnectionStateChange) => void): void;
   destroy(): Promise<void>;
 }

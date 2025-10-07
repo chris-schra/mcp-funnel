@@ -24,9 +24,7 @@ describe('SecretManager - Type Safety and Interface Compliance', () => {
   });
 
   it('should ensure resolved secrets structure', async () => {
-    const manager = new SecretManager([
-      createInlineProvider({ API_KEY: 'value' }),
-    ]);
+    const manager = new SecretManager([createInlineProvider({ API_KEY: 'value' })]);
 
     const result = await manager.resolveSecrets();
 

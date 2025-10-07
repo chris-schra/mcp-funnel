@@ -39,9 +39,7 @@ export abstract class BaseCoreTool implements ICoreTool {
     }
 
     // Check if tool name matches any pattern in exposeCoreTools
-    return config.exposeCoreTools.some((pattern) =>
-      matchesPattern(this.name, pattern),
-    );
+    return config.exposeCoreTools.some((pattern) => matchesPattern(this.name, pattern));
   }
 
   public abstract handle(

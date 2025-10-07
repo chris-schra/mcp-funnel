@@ -34,10 +34,7 @@ export class MemoryTokenStorage implements ITokenStorage {
       this.tokenData = sanitizedToken;
 
       // Schedule refresh if callback is set and token is valid (not past actual expiry)
-      if (
-        this.refreshCallback &&
-        sanitizedToken.expiresAt.getTime() > Date.now()
-      ) {
+      if (this.refreshCallback && sanitizedToken.expiresAt.getTime() > Date.now()) {
         this.scheduleTokenRefresh(sanitizedToken);
       }
 
@@ -179,8 +176,7 @@ export class MemoryTokenStorage implements ITokenStorage {
     }
 
     const now = Date.now();
-    const expiryWithBuffer =
-      token.expiresAt.getTime() - MemoryTokenStorage.REFRESH_BUFFER_MS;
+    const expiryWithBuffer = token.expiresAt.getTime() - MemoryTokenStorage.REFRESH_BUFFER_MS;
 
     return now >= expiryWithBuffer;
   }
@@ -195,8 +191,7 @@ export class MemoryTokenStorage implements ITokenStorage {
     }
 
     const now = Date.now();
-    const expiryWithBuffer =
-      token.expiresAt.getTime() - MemoryTokenStorage.REFRESH_BUFFER_MS;
+    const expiryWithBuffer = token.expiresAt.getTime() - MemoryTokenStorage.REFRESH_BUFFER_MS;
     const delay = Math.max(0, expiryWithBuffer - now);
 
     // Schedule immediately if delay is 0 or negative

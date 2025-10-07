@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import {
-  OAuth2AuthCodeConfigSchema,
-  OAuth2ClientCredentialsConfigSchema,
-} from '@mcp-funnel/auth';
+import { OAuth2AuthCodeConfigSchema, OAuth2ClientCredentialsConfigSchema } from '@mcp-funnel/auth';
 import { NoAuthConfigSchema } from './NoAuthConfigSchema';
 import { BearerAuthConfigSchema } from './BearerAuthConfigSchema.js';
 

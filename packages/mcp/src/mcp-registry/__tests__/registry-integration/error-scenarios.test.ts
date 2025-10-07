@@ -19,9 +19,7 @@ describe('Registry Integration Tests', () => {
       });
 
       const context = RegistryContext.getInstance(mockProxyConfig);
-      const serverDetails = await context.getServerDetails(
-        'non-existent-server',
-      );
+      const serverDetails = await context.getServerDetails('non-existent-server');
 
       expect(serverDetails).toBeNull();
     });
@@ -36,9 +34,7 @@ describe('Registry Integration Tests', () => {
       });
 
       const context = RegistryContext.getInstance(mockProxyConfig);
-      const searchResult = await context.searchServers(
-        'invalid-search-term-that-returns-nothing',
-      );
+      const searchResult = await context.searchServers('invalid-search-term-that-returns-nothing');
 
       expect(searchResult.found).toBe(false);
       expect(searchResult.servers).toEqual([]);

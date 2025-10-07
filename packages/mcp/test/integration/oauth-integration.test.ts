@@ -21,14 +21,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import {
-  createTestOAuthServer,
-  TestOAuthServer,
-} from '../fixtures/test-oauth-server.js';
-import {
-  MemoryTokenStorage,
-  OAuth2ClientCredentialsProvider,
-} from '@mcp-funnel/auth';
+import { createTestOAuthServer, TestOAuthServer } from '../fixtures/test-oauth-server.js';
+import { MemoryTokenStorage, OAuth2ClientCredentialsProvider } from '@mcp-funnel/auth';
 
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
@@ -182,9 +176,7 @@ describe.skipIf(!runIntegrationTests)('OAuth Integration Tests', () => {
       }
 
       expect(networkError).toBeDefined();
-      expect(networkError?.message).toContain(
-        'Network error during authentication',
-      );
+      expect(networkError?.message).toContain('Network error during authentication');
     }, 10000);
 
     it('should refresh expired tokens with real OAuth server', async () => {
@@ -265,9 +257,7 @@ describe.skipIf(!runIntegrationTests)('OAuth Integration Tests', () => {
       );
 
       // Make multiple concurrent requests
-      const promises = Array.from({ length: 5 }, () =>
-        authProvider.getHeaders(),
-      );
+      const promises = Array.from({ length: 5 }, () => authProvider.getHeaders());
       const results = await Promise.all(promises);
 
       // All requests should succeed with the same token

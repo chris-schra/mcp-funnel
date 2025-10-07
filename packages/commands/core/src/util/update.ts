@@ -44,9 +44,7 @@ export async function update(
 ): Promise<InstalledCommand> {
   const manifest = await readManifest(context.manifestPath);
   const command = manifest.commands.find(
-    (cmd) =>
-      cmd.package === packageNameOrCommandName ||
-      cmd.name === packageNameOrCommandName,
+    (cmd) => cmd.package === packageNameOrCommandName || cmd.name === packageNameOrCommandName,
   );
 
   if (!command) {
@@ -62,11 +60,7 @@ export async function update(
     });
 
     // Get new version
-    const commandPath = join(
-      context.packagesDir,
-      'node_modules',
-      command.package,
-    );
+    const commandPath = join(context.packagesDir, 'node_modules', command.package);
     const pkgJsonPath = join(commandPath, 'package.json');
     const pkgJson = JSON.parse(await fs.readFile(pkgJsonPath, 'utf-8'));
 
@@ -75,9 +69,7 @@ export async function update(
     manifest.updatedAt = new Date().toISOString();
     await writeManifest(context.manifestPath, manifest);
 
-    console.info(
-      `Successfully updated command: ${command.name} to version ${pkgJson.version}`,
-    );
+    console.info(`Successfully updated command: ${command.name} to version ${pkgJson.version}`);
     return command;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

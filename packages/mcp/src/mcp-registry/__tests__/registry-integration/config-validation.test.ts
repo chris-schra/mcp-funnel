@@ -120,9 +120,7 @@ describe('Registry Integration Tests', () => {
 
       // Verify header structure
       expect(Array.isArray(config.headers)).toBe(true);
-      const authHeader = (config.headers as KeyValueInput[]).find(
-        (h) => h.name === 'X-Auth-Token',
-      );
+      const authHeader = (config.headers as KeyValueInput[]).find((h) => h.name === 'X-Auth-Token');
       expect(authHeader).toBeTruthy();
       expect(authHeader!.is_required).toBe(true);
       expect(authHeader!.is_secret).toBe(true);

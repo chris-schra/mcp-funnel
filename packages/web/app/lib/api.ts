@@ -33,9 +33,7 @@ export const api = {
     },
 
     search: async (query: string) => {
-      const res = await fetch(
-        `${API_BASE}/tools/search?q=${encodeURIComponent(query)}`,
-      );
+      const res = await fetch(`${API_BASE}/tools/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error('Failed to search tools');
       return res.json();
     },

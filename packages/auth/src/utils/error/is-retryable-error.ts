@@ -25,11 +25,7 @@ export function isRetryableError(error: Error): boolean {
   const errorMessage = error.message.toLowerCase();
 
   // Check for specific network error codes
-  if (
-    retryableNetworkErrors.some((code) =>
-      errorMessage.includes(code.toLowerCase()),
-    )
-  ) {
+  if (retryableNetworkErrors.some((code) => errorMessage.includes(code.toLowerCase()))) {
     return true;
   }
 

@@ -4,10 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import {
-  BaseClientTransport,
-  type BaseClientTransportConfig,
-} from '@mcp-funnel/core';
+import { BaseClientTransport, type BaseClientTransportConfig } from '@mcp-funnel/core';
 
 // Mock logger module
 vi.mock('@mcp-funnel/core', async (importOriginal) => {

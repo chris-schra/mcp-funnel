@@ -61,11 +61,7 @@ export type {
 } from './interfaces.js';
 export { BaseCommand } from './base-command.js';
 export { CommandRegistry } from './registry.js';
-export {
-  discoverCommands,
-  discoverCommandsFromDefault,
-  discoverAllCommands,
-} from './discovery.js';
+export { discoverCommands, discoverCommandsFromDefault, discoverAllCommands } from './discovery.js';
 export { CommandInstaller } from './installer.js';
 export type {
   InstalledCommand,

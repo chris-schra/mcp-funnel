@@ -244,8 +244,7 @@ describe('Secrets Configuration Tests', () => {
         expect(result.servers).toHaveLength(3);
 
         const normalizedServers = normalizeServers(result.servers);
-        const [defaultServer, overrideServer, combinedServer] =
-          normalizedServers;
+        const [defaultServer, overrideServer, combinedServer] = normalizedServers;
 
         expect(defaultServer.secretProviders).toBeUndefined();
         expect(overrideServer.secretProviders).toHaveLength(1);
@@ -266,14 +265,7 @@ describe('Secrets Configuration Tests', () => {
               },
             },
           ],
-          defaultPassthroughEnv: [
-            'PATH',
-            'HOME',
-            'USER',
-            'NODE_ENV',
-            'DEBUG',
-            'TERM',
-          ],
+          defaultPassthroughEnv: ['PATH', 'HOME', 'USER', 'NODE_ENV', 'DEBUG', 'TERM'],
           defaultSecretProviders: [
             {
               type: 'process',

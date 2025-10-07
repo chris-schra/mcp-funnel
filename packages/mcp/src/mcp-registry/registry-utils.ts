@@ -7,11 +7,7 @@
  */
 
 import type { ProxyConfig } from '@mcp-funnel/schemas';
-import type {
-  KeyValueInput,
-  RegistrySearchResult,
-  ServerDetail,
-} from './types/registry.types.js';
+import type { KeyValueInput, RegistrySearchResult, ServerDetail } from './types/registry.types.js';
 
 /**
  * Converts headers from RegistryConfigEntry format to ServerConfig format.
@@ -51,8 +47,7 @@ export function convertHeaders(
  */
 export function extractRegistryUrls(config: ProxyConfig): string[] {
   // MVP: Check for registries in config, fallback to default
-  const registries = (config as ProxyConfig & { registries?: unknown })
-    .registries;
+  const registries = (config as ProxyConfig & { registries?: unknown }).registries;
 
   if (Array.isArray(registries)) {
     const validUrls = registries.filter(
@@ -76,10 +71,7 @@ export function extractRegistryUrls(config: ProxyConfig): string[] {
  * @returns True if request should be retried, false otherwise
  * @internal
  */
-export function shouldRetryRequest(
-  _error: unknown,
-  _attemptNumber: number,
-): boolean {
+export function shouldRetryRequest(_error: unknown, _attemptNumber: number): boolean {
   // MVP: No retry logic - will be implemented in future phase
   return false;
 }
@@ -96,9 +88,7 @@ export function convertServerDetailToSearchResult(
   return {
     name: server.name,
     description: server.description,
-    registryId:
-      server._meta?.['io.modelcontextprotocol.registry/official']?.id ||
-      server.id,
+    registryId: server._meta?.['io.modelcontextprotocol.registry/official']?.id || server.id,
     isRemote: !!(server.remotes && server.remotes.length > 0),
     registryType:
       server.packages?.[0]?.registry_type ||

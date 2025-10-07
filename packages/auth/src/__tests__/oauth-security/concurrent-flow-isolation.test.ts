@@ -8,12 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OAuth2AuthCodeProvider } from '../../implementations/oauth2-authorization-code.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
-import {
-  mockFetch,
-  createTestConfig,
-  createTestStorage,
-  setupConsoleSpy,
-} from './test-utils.js';
+import { mockFetch, createTestConfig, createTestStorage, setupConsoleSpy } from './test-utils.js';
 import { MemoryTokenStorage } from '../../implementations/memory-token-storage.js';
 
 describe('Concurrent Flow Isolation', () => {

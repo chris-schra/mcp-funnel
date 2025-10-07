@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DotEnvProvider } from '../index.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('DotEnvProvider - Edge Cases', () => {
   let testDir: string;
@@ -63,11 +59,7 @@ describe('DotEnvProvider - Edge Cases', () => {
       'ANOTHER_VALID=another_value',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.malformed',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.malformed', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act

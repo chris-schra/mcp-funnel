@@ -8,12 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OAuth2AuthCodeProvider } from '../../implementations/oauth2-authorization-code.js';
-import {
-  mockFetch,
-  createTestConfig,
-  createTestStorage,
-  setupConsoleSpy,
-} from './test-utils.js';
+import { mockFetch, createTestConfig, createTestStorage, setupConsoleSpy } from './test-utils.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
 import type { MemoryTokenStorage } from '../../implementations/memory-token-storage.js';
 
@@ -65,9 +60,9 @@ describe('Attack Vector Tests', () => {
     await refreshPromise;
 
     // Try to use the same state/code again (replay attack)
-    await expect(
-      provider.completeOAuthFlow(state, 'auth-code-123'),
-    ).rejects.toThrow('Invalid or expired OAuth state');
+    await expect(provider.completeOAuthFlow(state, 'auth-code-123')).rejects.toThrow(
+      'Invalid or expired OAuth state',
+    );
   });
 
   it('should prevent token hijacking via URL parameters', async () => {
@@ -106,9 +101,7 @@ describe('Attack Vector Tests', () => {
     vi.advanceTimersByTime(50);
 
     const output = consoleSpy.mock.calls.flat().join(' ');
-    expect(output).toContain(
-      'redirect_uri=https%3A%2F%2Fevil.com%2Fsteal-tokens',
-    );
+    expect(output).toContain('redirect_uri=https%3A%2F%2Fevil.com%2Fsteal-tokens');
 
     provider.destroy();
     promise.catch(() => {});
@@ -180,9 +173,9 @@ describe('Attack Vector Tests', () => {
     // All should fail with same error (timing should be similar)
     for (const invalidState of invalidStates) {
       const start = Date.now();
-      await expect(
-        provider.completeOAuthFlow(invalidState, 'test-code'),
-      ).rejects.toThrow('Invalid or expired OAuth state');
+      await expect(provider.completeOAuthFlow(invalidState, 'test-code')).rejects.toThrow(
+        'Invalid or expired OAuth state',
+      );
       const duration = Date.now() - start;
 
       // Duration should be very short (< 10ms) and consistent

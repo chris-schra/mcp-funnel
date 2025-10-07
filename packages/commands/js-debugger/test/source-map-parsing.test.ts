@@ -6,9 +6,7 @@ import { createFixture } from './utils.js';
 describe('Source Map Parsing', () => {
   describe('Source Map Parsing', () => {
     it('should parse inline data URL source maps from TypeScript files', async () => {
-      const { manager, sessionId, response, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, sessionId, response, cleanup } = await createFixture('breakpoint-script.ts');
 
       const snapshot = manager.getSnapshot(sessionId);
       expect(snapshot.session.state.status).toBe('paused');
@@ -37,9 +35,7 @@ describe('Source Map Parsing', () => {
 
   describe('Script Metadata Indexing', () => {
     it('should index script metadata by absolute path', async () => {
-      const { manager, sessionId, fixture, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, sessionId, fixture, cleanup } = await createFixture('breakpoint-script.ts');
 
       const breakpointResult = await addBreakpointDynamically(
         manager,
@@ -56,17 +52,10 @@ describe('Source Map Parsing', () => {
     });
 
     it('should index script metadata by file URL', async () => {
-      const { manager, sessionId, fixture, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, sessionId, fixture, cleanup } = await createFixture('breakpoint-script.ts');
       const fileUrl = `file://${fixture.tempPath}`;
 
-      const breakpointResult = await addBreakpointDynamically(
-        manager,
-        sessionId,
-        fileUrl,
-        13,
-      );
+      const breakpointResult = await addBreakpointDynamically(manager, sessionId, fileUrl, 13);
 
       expect(breakpointResult).toBeDefined();
       expect(breakpointResult.length).toBeGreaterThan(0);
@@ -76,9 +65,7 @@ describe('Source Map Parsing', () => {
     });
 
     it('should support both path and fileUrl lookups for same script', async () => {
-      const { manager, sessionId, fixture, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, sessionId, fixture, cleanup } = await createFixture('breakpoint-script.ts');
       const fileUrl = `file://${fixture.tempPath}`;
 
       // Set breakpoint using absolute path
@@ -103,12 +90,7 @@ describe('Source Map Parsing', () => {
       });
 
       // Set breakpoint using file:// URL
-      const breakpointByUrl = await addBreakpointDynamically(
-        manager,
-        sessionId,
-        fileUrl,
-        13,
-      );
+      const breakpointByUrl = await addBreakpointDynamically(manager, sessionId, fileUrl, 13);
 
       expect(breakpointByUrl.length).toBeGreaterThan(0);
       const urlScriptId = breakpointByUrl[0]?.resolvedLocations[0]?.scriptId;

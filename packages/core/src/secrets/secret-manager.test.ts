@@ -58,11 +58,7 @@ function createInlineProvider(values: Record<string, string>): InlineProvider {
  * @param content - Array of content lines to write
  * @returns Path to the created file
  */
-function writeEnvFile(
-  baseDir: string,
-  filename: string,
-  content: string[],
-): string {
+function writeEnvFile(baseDir: string, filename: string, content: string[]): string {
   const filePath = join(baseDir, filename);
   writeFileSync(filePath, content.join('\n'), 'utf-8');
   return filePath;
@@ -153,9 +149,7 @@ describe('SecretManager', () => {
     });
 
     it('should return false when removing non-existent provider', () => {
-      const manager = new SecretManager([
-        createInlineProvider({ API_KEY: 'x' }),
-      ]);
+      const manager = new SecretManager([createInlineProvider({ API_KEY: 'x' })]);
 
       const removed = manager.removeProvider('missing');
       expect(removed).toBe(false);
@@ -226,10 +220,7 @@ describe('SecretManager', () => {
 
     it('should handle provider errors gracefully', async () => {
       const healthy = createInlineProvider({ HEALTHY_KEY: 'value' });
-      const failing = new ThrowingProvider(
-        'failing',
-        new Error('intentional failure'),
-      );
+      const failing = new ThrowingProvider('failing', new Error('intentional failure'));
       const manager = new SecretManager([healthy, failing]);
 
       const result = await manager.resolveSecrets();
@@ -238,10 +229,7 @@ describe('SecretManager', () => {
     });
 
     it('should handle all providers failing gracefully', async () => {
-      const failing = new ThrowingProvider(
-        'failing',
-        new Error('intentional failure'),
-      );
+      const failing = new ThrowingProvider('failing', new Error('intentional failure'));
       const manager = new SecretManager([failing]);
 
       const result = await manager.resolveSecrets();
@@ -250,11 +238,7 @@ describe('SecretManager', () => {
     });
 
     it('should support async resolution with real async behavior', async () => {
-      const delayed = new DelayedProvider(
-        'delayed-inline',
-        { SLOW_KEY: 'value' },
-        15,
-      );
+      const delayed = new DelayedProvider('delayed-inline', { SLOW_KEY: 'value' }, 15);
       const manager = new SecretManager([delayed]);
 
       const startTime = Date.now();
@@ -313,9 +297,7 @@ describe('SecretManager', () => {
     });
 
     it('should handle cache invalidation correctly', async () => {
-      const manager = new SecretManager([
-        createInlineProvider({ KEY: 'value' }),
-      ]);
+      const manager = new SecretManager([createInlineProvider({ KEY: 'value' })]);
 
       await manager.resolveSecrets();
       manager.clearCache();
@@ -328,9 +310,7 @@ describe('SecretManager', () => {
   describe('Registry integration tests', () => {
     it('should register providers in registry', () => {
       const inlineProvider = createInlineProvider({ KEY: 'value' });
-      const dotEnvPath = writeEnvFile(workDir, '.env.basic', [
-        'DOT_KEY=dot-value',
-      ]);
+      const dotEnvPath = writeEnvFile(workDir, '.env.basic', ['DOT_KEY=dot-value']);
       const dotEnvProvider = new DotEnvProvider({ path: dotEnvPath });
 
       registry.register('inline', inlineProvider);
@@ -440,9 +420,7 @@ describe('SecretManager', () => {
     });
 
     it('should handle concurrent resolution calls', async () => {
-      const manager = new SecretManager([
-        createInlineProvider({ API_KEY: 'value' }),
-      ]);
+      const manager = new SecretManager([createInlineProvider({ API_KEY: 'value' })]);
 
       const [first, second, third] = await Promise.all([
         manager.resolveSecrets(),
@@ -473,9 +451,7 @@ describe('SecretManager', () => {
 
   describe('Type safety and interface compliance', () => {
     it('should ensure resolved secrets structure', async () => {
-      const manager = new SecretManager([
-        createInlineProvider({ API_KEY: 'value' }),
-      ]);
+      const manager = new SecretManager([createInlineProvider({ API_KEY: 'value' })]);
 
       const result = await manager.resolveSecrets();
 

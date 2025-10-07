@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  TestOAuthProvider,
-  MockTokenStorage,
-  createTestToken,
-} from './test-utils.js';
+import { TestOAuthProvider, MockTokenStorage, createTestToken } from './test-utils.js';
 
 describe('BaseOAuthProvider - Proactive Refresh Scheduling', () => {
   let provider: TestOAuthProvider;

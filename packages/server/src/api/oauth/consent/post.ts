@@ -5,11 +5,8 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
   try {
     const contentType = c.req.header('content-type') || '';
     const isJsonRequest = contentType.includes('application/json');
-    const wantsJsonResponse =
-      isJsonRequest || OAuthUtils.prefersJsonResponse(c);
-    const rawBody: unknown = isJsonRequest
-      ? await c.req.json()
-      : await c.req.parseBody();
+    const wantsJsonResponse = isJsonRequest || OAuthUtils.prefersJsonResponse(c);
+    const rawBody: unknown = isJsonRequest ? await c.req.json() : await c.req.parseBody();
 
     const storage = c.get('storage');
     const consentService = c.get('consentService');
@@ -19,22 +16,17 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
 
     const clientId = OAuthUtils.coerceToString(body.client_id);
     const decision =
-      OAuthUtils.coerceToString(body.decision) ??
-      OAuthUtils.coerceToString(body.action);
-    const userId =
-      OAuthUtils.coerceToString(body.user_id) ?? OAuthUtils.getCurrentUserId(c);
+      OAuthUtils.coerceToString(body.decision) ?? OAuthUtils.coerceToString(body.action);
+    const userId = OAuthUtils.coerceToString(body.user_id) ?? OAuthUtils.getCurrentUserId(c);
     const state = OAuthUtils.coerceToString(body.state);
     const codeChallenge = OAuthUtils.coerceToString(body.code_challenge);
-    const codeChallengeMethod = OAuthUtils.coerceToString(
-      body.code_challenge_method,
-    );
+    const codeChallengeMethod = OAuthUtils.coerceToString(body.code_challenge_method);
     const redirectUriRaw = OAuthUtils.coerceToString(body.redirect_uri);
 
     if (!clientId || !decision || !userId) {
       const errorBody = {
         error: 'invalid_request',
-        error_description:
-          'Missing required parameters: client_id, decision, user_id',
+        error_description: 'Missing required parameters: client_id, decision, user_id',
       } as const;
       return wantsJsonResponse
         ? c.json(errorBody, 400)
@@ -46,9 +38,7 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
         error: 'invalid_request',
         error_description: 'Decision must be either "approve" or "deny"',
       } as const;
-      return wantsJsonResponse
-        ? c.json(errorBody, 400)
-        : c.text('Invalid consent decision', 400);
+      return wantsJsonResponse ? c.json(errorBody, 400) : c.text('Invalid consent decision', 400);
     }
 
     const client = await storage.getClient(clientId);
@@ -57,27 +47,18 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
         error: 'invalid_client',
         error_description: 'Unknown client',
       } as const;
-      return wantsJsonResponse
-        ? c.json(errorBody, 400)
-        : c.text('Unknown client', 400);
+      return wantsJsonResponse ? c.json(errorBody, 400) : c.text('Unknown client', 400);
     }
 
     const requestedScopesInput = OAuthUtils.normalizeScopeInput(body.scopes);
     const fallbackScopes = OAuthUtils.normalizeScopeInput(body.scope);
-    const requestedScopes =
-      requestedScopesInput.length > 0 ? requestedScopesInput : fallbackScopes;
+    const requestedScopes = requestedScopesInput.length > 0 ? requestedScopesInput : fallbackScopes;
 
     const validRequestedScopes = Array.from(
-      new Set(
-        requestedScopes.filter((scope) =>
-          oauthConfig.supportedScopes.includes(scope),
-        ),
-      ),
+      new Set(requestedScopes.filter((scope) => oauthConfig.supportedScopes.includes(scope))),
     );
 
-    const approvedScopeInput = OAuthUtils.normalizeScopeInput(
-      body.approved_scopes,
-    );
+    const approvedScopeInput = OAuthUtils.normalizeScopeInput(body.approved_scopes);
     const approvedScopes =
       approvedScopeInput.length > 0 ? approvedScopeInput : validRequestedScopes;
     const supportedApprovedScopes = approvedScopes.filter((scope) =>
@@ -85,15 +66,11 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
     );
     const filteredApprovedScopes =
       validRequestedScopes.length > 0
-        ? supportedApprovedScopes.filter((scope) =>
-            validRequestedScopes.includes(scope),
-          )
+        ? supportedApprovedScopes.filter((scope) => validRequestedScopes.includes(scope))
         : supportedApprovedScopes;
     const uniqueApprovedScopes = Array.from(new Set(filteredApprovedScopes));
 
-    const rememberDecision = OAuthUtils.parseBooleanFlag(
-      body.remember_decision,
-    );
+    const rememberDecision = OAuthUtils.parseBooleanFlag(body.remember_decision);
     const ttlSecondsRaw = OAuthUtils.coerceToNumber(body.ttl_seconds);
     let ttlSeconds: number | undefined;
 
@@ -117,9 +94,7 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
           error: 'invalid_request',
           error_description: 'redirect_uri is not registered for this client',
         } as const;
-        return wantsJsonResponse
-          ? c.json(errorBody, 400)
-          : c.text('Invalid redirect_uri', 400);
+        return wantsJsonResponse ? c.json(errorBody, 400) : c.text('Invalid redirect_uri', 400);
       }
       redirectUri = redirectUriRaw;
     } else if (client.redirect_uris.length > 0) {
@@ -127,30 +102,19 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
     }
 
     if (decision === 'approve') {
-      if (
-        validRequestedScopes.length > 0 &&
-        uniqueApprovedScopes.length === 0
-      ) {
+      if (validRequestedScopes.length > 0 && uniqueApprovedScopes.length === 0) {
         const errorBody = {
           error: 'invalid_request',
-          error_description:
-            'Approved scopes must be a subset of the requested scopes',
+          error_description: 'Approved scopes must be a subset of the requested scopes',
         } as const;
-        return wantsJsonResponse
-          ? c.json(errorBody, 400)
-          : c.text('No valid scopes approved', 400);
+        return wantsJsonResponse ? c.json(errorBody, 400) : c.text('No valid scopes approved', 400);
       }
 
       if (uniqueApprovedScopes.length > 0) {
-        await consentService.recordUserConsent(
-          userId,
-          clientId,
-          uniqueApprovedScopes,
-          {
-            remember: rememberDecision,
-            ttlSeconds,
-          },
-        );
+        await consentService.recordUserConsent(userId, clientId, uniqueApprovedScopes, {
+          remember: rememberDecision,
+          ttlSeconds,
+        });
       }
 
       if (wantsJsonResponse) {
@@ -175,15 +139,9 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
       authorizeParams.set('redirect_uri', redirectUri);
 
       if (uniqueApprovedScopes.length > 0) {
-        authorizeParams.set(
-          'scope',
-          OAuthUtils.formatScopes(uniqueApprovedScopes),
-        );
+        authorizeParams.set('scope', OAuthUtils.formatScopes(uniqueApprovedScopes));
       } else if (validRequestedScopes.length > 0) {
-        authorizeParams.set(
-          'scope',
-          OAuthUtils.formatScopes(validRequestedScopes),
-        );
+        authorizeParams.set('scope', OAuthUtils.formatScopes(validRequestedScopes));
       }
 
       if (state) {
@@ -214,10 +172,7 @@ export const PostConsentHandler: OAuthHandler = async (c) => {
     if (redirectUri) {
       const errorRedirect = new URL(redirectUri);
       errorRedirect.searchParams.set('error', 'access_denied');
-      errorRedirect.searchParams.set(
-        'error_description',
-        'The resource owner denied the request',
-      );
+      errorRedirect.searchParams.set('error_description', 'The resource owner denied the request');
       if (state) {
         errorRedirect.searchParams.set('state', state);
       }

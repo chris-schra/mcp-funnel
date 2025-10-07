@@ -39,34 +39,25 @@ describe('CommandInstaller - real-world package examples', () => {
     };
 
     // Should match each exactly
-    expect(
-      installer.testFindMatchingCommand(realWorldManifest, 'react')?.package,
-    ).toBe('react');
-    expect(
-      installer.testFindMatchingCommand(realWorldManifest, 'react-dom')
-        ?.package,
-    ).toBe('react-dom');
-    expect(
-      installer.testFindMatchingCommand(realWorldManifest, '@types/react')
-        ?.package,
-    ).toBe('@types/react');
+    expect(installer.testFindMatchingCommand(realWorldManifest, 'react')?.package).toBe('react');
+    expect(installer.testFindMatchingCommand(realWorldManifest, 'react-dom')?.package).toBe(
+      'react-dom',
+    );
+    expect(installer.testFindMatchingCommand(realWorldManifest, '@types/react')?.package).toBe(
+      '@types/react',
+    );
 
     // Should handle versions
+    expect(installer.testFindMatchingCommand(realWorldManifest, 'react@18.0.0')?.package).toBe(
+      'react',
+    );
     expect(
-      installer.testFindMatchingCommand(realWorldManifest, 'react@18.0.0')
-        ?.package,
-    ).toBe('react');
-    expect(
-      installer.testFindMatchingCommand(
-        realWorldManifest,
-        '@types/react@17.0.0',
-      )?.package,
+      installer.testFindMatchingCommand(realWorldManifest, '@types/react@17.0.0')?.package,
     ).toBe('@types/react');
 
     // Should handle scoped packages without @
-    expect(
-      installer.testFindMatchingCommand(realWorldManifest, 'types/react')
-        ?.package,
-    ).toBe('@types/react');
+    expect(installer.testFindMatchingCommand(realWorldManifest, 'types/react')?.package).toBe(
+      '@types/react',
+    );
   });
 });

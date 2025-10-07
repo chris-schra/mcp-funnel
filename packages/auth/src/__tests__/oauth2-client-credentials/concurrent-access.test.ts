@@ -32,17 +32,10 @@ describe('OAuth2ClientCredentialsProvider - Concurrent Access', () => {
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
       vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        createMockConfig(),
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
 
       // Make multiple concurrent requests
-      const promises = [
-        provider.getHeaders(),
-        provider.getHeaders(),
-        provider.getHeaders(),
-      ];
+      const promises = [provider.getHeaders(), provider.getHeaders(), provider.getHeaders()];
 
       await Promise.all(promises);
 
@@ -61,17 +54,10 @@ describe('OAuth2ClientCredentialsProvider - Concurrent Access', () => {
       vi.mocked(mockStorage.retrieve).mockResolvedValue(validToken);
       vi.mocked(mockStorage.isExpired).mockResolvedValue(false);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        createMockConfig(),
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
 
       // Make multiple concurrent refresh calls
-      const promises = [
-        provider.refresh(),
-        provider.refresh(),
-        provider.refresh(),
-      ];
+      const promises = [provider.refresh(), provider.refresh(), provider.refresh()];
 
       await Promise.all(promises);
 

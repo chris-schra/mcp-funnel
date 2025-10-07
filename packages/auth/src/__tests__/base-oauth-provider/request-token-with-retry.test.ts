@@ -1,13 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  TestOAuthProvider,
-  MockTokenStorage,
-  createTestTokenResponse,
-} from './test-utils.js';
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-} from '../../errors/authentication-error.js';
+import { TestOAuthProvider, MockTokenStorage, createTestTokenResponse } from './test-utils.js';
+import { AuthenticationError, OAuth2ErrorCode } from '../../errors/authentication-error.js';
 import { AUTH_MAX_RETRIES } from '../../utils/index.js';
 
 describe('BaseOAuthProvider - requestTokenWithRetry', () => {
@@ -24,10 +17,7 @@ describe('BaseOAuthProvider - requestTokenWithRetry', () => {
     const tokenResponse = createTestTokenResponse();
     const makeRequest = vi.fn().mockResolvedValue(tokenResponse);
 
-    const result = await provider.testRequestTokenWithRetry(
-      makeRequest,
-      'test-request-id',
-    );
+    const result = await provider.testRequestTokenWithRetry(makeRequest, 'test-request-id');
 
     expect(result).toEqual(tokenResponse);
     expect(makeRequest).toHaveBeenCalledTimes(1);
@@ -42,20 +32,14 @@ describe('BaseOAuthProvider - requestTokenWithRetry', () => {
       .mockRejectedValueOnce(networkError)
       .mockResolvedValue(tokenResponse);
 
-    const result = await provider.testRequestTokenWithRetry(
-      makeRequest,
-      'test-request-id',
-    );
+    const result = await provider.testRequestTokenWithRetry(makeRequest, 'test-request-id');
 
     expect(result).toEqual(tokenResponse);
     expect(makeRequest).toHaveBeenCalledTimes(3);
   });
 
   it('should not retry on authentication errors', async () => {
-    const authError = new AuthenticationError(
-      'Invalid client',
-      OAuth2ErrorCode.INVALID_CLIENT,
-    );
+    const authError = new AuthenticationError('Invalid client', OAuth2ErrorCode.INVALID_CLIENT);
     const makeRequest = vi.fn().mockRejectedValue(authError);
 
     await expect(
@@ -95,16 +79,8 @@ describe('BaseOAuthProvider - requestTokenWithRetry', () => {
 
       // Check exponential backoff delays: 1000ms, 2000ms
       expect(setTimeoutMock).toHaveBeenCalledTimes(2);
-      expect(setTimeoutMock).toHaveBeenNthCalledWith(
-        1,
-        expect.any(Function),
-        1000,
-      );
-      expect(setTimeoutMock).toHaveBeenNthCalledWith(
-        2,
-        expect.any(Function),
-        2000,
-      );
+      expect(setTimeoutMock).toHaveBeenNthCalledWith(1, expect.any(Function), 1000);
+      expect(setTimeoutMock).toHaveBeenNthCalledWith(2, expect.any(Function), 2000);
     } finally {
       global.setTimeout = originalSetTimeout;
     }

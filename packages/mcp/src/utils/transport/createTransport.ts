@@ -87,10 +87,7 @@ export async function createTransport(
     }
 
     // Create appropriate transport based on type
-    const transport = await createTransportImplementation(
-      configWithDefaults,
-      dependencies,
-    );
+    const transport = await createTransportImplementation(configWithDefaults, dependencies);
 
     // Cache the transport for future requests
     setCachedTransport(cacheKey, transport);

@@ -43,17 +43,12 @@ describe('OAuth2ClientCredentialsProvider - Proactive Refresh', () => {
       vi.mocked(mockStorage.retrieve).mockResolvedValue(validToken);
       vi.mocked(mockStorage.isExpired).mockResolvedValue(false);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        createMockConfig(),
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
       await provider.getHeaders();
 
       // Should schedule refresh for 5 minutes before expiry
       if (mockStorage.scheduleRefresh) {
-        expect(mockStorage.scheduleRefresh).toHaveBeenCalledWith(
-          expect.any(Function),
-        );
+        expect(mockStorage.scheduleRefresh).toHaveBeenCalledWith(expect.any(Function));
       }
     });
 
@@ -72,10 +67,7 @@ describe('OAuth2ClientCredentialsProvider - Proactive Refresh', () => {
       });
       vi.mocked(mockStorage.isExpired).mockResolvedValue(false);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        createMockConfig(),
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
       await provider.getHeaders();
 
       // Clear fetch calls from initialization
@@ -94,10 +86,7 @@ describe('OAuth2ClientCredentialsProvider - Proactive Refresh', () => {
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
       vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        createMockConfig(),
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
 
       // Clear initial token acquisition
       vi.clearAllMocks();

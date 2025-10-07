@@ -59,11 +59,7 @@ describe('OAuth Utils - resolveEnvVar', () => {
   });
 
   it('should throw for valid patterns with undefined environment variables', () => {
-    const validPatternsWithUndefinedVars = [
-      '${VAR}_extra',
-      'prefix_${VAR}',
-      '${VAR}${OTHER}',
-    ];
+    const validPatternsWithUndefinedVars = ['${VAR}_extra', 'prefix_${VAR}', '${VAR}${OTHER}'];
 
     validPatternsWithUndefinedVars.forEach((pattern) => {
       expect(() => resolveEnvVar(pattern)).toThrow(

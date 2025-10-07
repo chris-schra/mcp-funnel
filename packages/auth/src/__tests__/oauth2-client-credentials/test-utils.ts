@@ -69,9 +69,7 @@ export function createMockConfig(
  *
  * @param response - Optional response fields to override default values
  */
-export function setupSuccessfulTokenResponse(
-  response?: Partial<OAuth2TokenResponse>,
-): void {
+export function setupSuccessfulTokenResponse(response?: Partial<OAuth2TokenResponse>): void {
   mockFetch.mockResolvedValue({
     ok: true,
     status: 200,
@@ -92,10 +90,7 @@ export function setupSuccessfulTokenResponse(
  * @param status - HTTP status code for the error response
  * @param error - OAuth2 error object with error code and description
  */
-export function setupErrorTokenResponse(
-  status: number,
-  error: OAuth2ErrorResponse,
-): void {
+export function setupErrorTokenResponse(status: number, error: OAuth2ErrorResponse): void {
   mockFetch.mockResolvedValue({
     ok: false,
     status,

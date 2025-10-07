@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  TestOAuthProvider,
-  MockTokenStorage,
-  createTestToken,
-} from './test-utils.js';
+import { TestOAuthProvider, MockTokenStorage, createTestToken } from './test-utils.js';
 
 /**
  * Tests full integration scenarios for BaseOAuthProvider including token lifecycle and concurrent requests.
@@ -67,11 +63,7 @@ describe('BaseOAuthProvider - Integration Scenarios', () => {
     });
 
     // Start multiple concurrent requests
-    const headerPromises = [
-      provider.getHeaders(),
-      provider.getHeaders(),
-      provider.getHeaders(),
-    ];
+    const headerPromises = [provider.getHeaders(), provider.getHeaders(), provider.getHeaders()];
 
     // Give a small delay to allow promises to start
     await new Promise((resolve) => setTimeout(resolve, 10));

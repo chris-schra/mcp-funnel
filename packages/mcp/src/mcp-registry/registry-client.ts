@@ -34,11 +34,7 @@ import type { ServerDetail, RegistryServer } from './types/registry.types.js';
 import type { IRegistryCache } from './interfaces/cache.interface.js';
 import { NoOpCache } from './implementations/cache-noop.js';
 import { classifyAndLogError } from './utils/error-classifier.js';
-import {
-  isUuid,
-  fetchServerByUuid,
-  findServerByName,
-} from './utils/server-fetch.js';
+import { isUuid, fetchServerByUuid, findServerByName } from './utils/server-fetch.js';
 
 /**
  * HTTP response interface for registry API responses.
@@ -110,10 +106,7 @@ export class MCPRegistryClient {
   private readonly cache: IRegistryCache<unknown>;
 
   /** Tracks in-flight server detail fetches to deduplicate concurrent requests */
-  private readonly inflightServerRequests = new Map<
-    string,
-    Promise<RegistryServer | null>
-  >();
+  private readonly inflightServerRequests = new Map<string, Promise<RegistryServer | null>>();
 
   /** Default TTL for cache entries (1 hour in milliseconds) */
   private static readonly DEFAULT_CACHE_TTL = 3600000;
@@ -180,9 +173,7 @@ export class MCPRegistryClient {
         return cached as ServerDetail[];
       }
 
-      console.info(
-        `[MCPRegistryClient] Cache miss, fetching search results for: ${keywords}`,
-      );
+      console.info(`[MCPRegistryClient] Cache miss, fetching search results for: ${keywords}`);
 
       // Fetch from registry API using the real endpoint structure
       // Real API: GET /v0/servers?search={keywords}
@@ -200,9 +191,7 @@ export class MCPRegistryClient {
         console.error(
           `[MCPRegistryClient] HTTP error during search for ${keywords}: ${response.status} ${response.statusText}`,
         );
-        throw new Error(
-          `Registry search failed: ${response.status} ${response.statusText}`,
-        );
+        throw new Error(`Registry search failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -226,15 +215,9 @@ export class MCPRegistryClient {
       const validServers = Array.isArray(servers) ? servers : [];
 
       // Store in cache with TTL
-      await this.cache.set(
-        cacheKey,
-        validServers,
-        MCPRegistryClient.DEFAULT_CACHE_TTL,
-      );
+      await this.cache.set(cacheKey, validServers, MCPRegistryClient.DEFAULT_CACHE_TTL);
 
-      console.info(
-        `[MCPRegistryClient] Search completed: ${validServers.length} servers found`,
-      );
+      console.info(`[MCPRegistryClient] Search completed: ${validServers.length} servers found`);
       return validServers;
     } catch (error) {
       // Log the error for debugging
@@ -303,11 +286,7 @@ export class MCPRegistryClient {
       const server = await inflightPromise;
 
       if (server) {
-        await this.cache.set(
-          cacheKey,
-          server,
-          MCPRegistryClient.DEFAULT_CACHE_TTL,
-        );
+        await this.cache.set(cacheKey, server, MCPRegistryClient.DEFAULT_CACHE_TTL);
       }
 
       return server;
@@ -328,12 +307,8 @@ export class MCPRegistryClient {
    * @returns Promise resolving to server details or null
    * @internal
    */
-  private async fetchServerDetails(
-    identifier: string,
-  ): Promise<RegistryServer | null> {
-    console.info(
-      `[MCPRegistryClient] Cache miss, fetching server: ${identifier}`,
-    );
+  private async fetchServerDetails(identifier: string): Promise<RegistryServer | null> {
+    console.info(`[MCPRegistryClient] Cache miss, fetching server: ${identifier}`);
 
     // Try direct UUID fetch first
     if (isUuid(identifier)) {

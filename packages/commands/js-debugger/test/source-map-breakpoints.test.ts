@@ -23,9 +23,7 @@ describe('Source Map Breakpoints', () => {
    *
    * @param condition - Optional breakpoint condition expression
    */
-  async function startContinueAndVerifyPause(
-    condition?: string,
-  ): Promise<void> {
+  async function startContinueAndVerifyPause(condition?: string): Promise<void> {
     fixture = await prepareNodeFixture('breakpoint-script.ts');
 
     const response = await manager.startSession({
@@ -58,9 +56,7 @@ describe('Source Map Breakpoints', () => {
       async () => {
         try {
           const currentSnapshot = manager.getSnapshot(sessionId!);
-          return currentSnapshot.session.state.status === 'paused'
-            ? currentSnapshot
-            : null;
+          return currentSnapshot.session.state.status === 'paused' ? currentSnapshot : null;
         } catch (error) {
           if (error instanceof Error && error.message.includes('not found')) {
             return true; // Session removed after termination - that's ok

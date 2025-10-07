@@ -30,9 +30,7 @@ import { NoAuthValidator } from './implementations/no-auth-validator.js';
  * ```
  * @public
  */
-export function createAuthValidator(
-  config: InboundAuthConfig,
-): IInboundAuthValidator {
+export function createAuthValidator(config: InboundAuthConfig): IInboundAuthValidator {
   switch (config.type) {
     case 'bearer':
       return new BearerTokenValidator(config);
@@ -43,9 +41,7 @@ export function createAuthValidator(
     default: {
       // TypeScript exhaustiveness check
       const _exhaustive: never = config;
-      throw new Error(
-        `Unsupported authentication type: ${(config as { type: string }).type}`,
-      );
+      throw new Error(`Unsupported authentication type: ${(config as { type: string }).type}`);
     }
   }
 }
@@ -89,8 +85,6 @@ export function validateAuthConfig(config: InboundAuthConfig): void {
       break;
 
     default:
-      throw new Error(
-        `Unsupported authentication type: ${(config as { type: string }).type}`,
-      );
+      throw new Error(`Unsupported authentication type: ${(config as { type: string }).type}`);
   }
 }

@@ -222,9 +222,7 @@ describe('BaseClientTransport - Message Correlation', () => {
 
     transport.testHandleMessage(errorResponse);
 
-    await expect(sendPromise).rejects.toThrow(
-      'JSON-RPC error -32600: Invalid Request',
-    );
+    await expect(sendPromise).rejects.toThrow('JSON-RPC error -32600: Invalid Request');
     expect(transport.getPendingRequests().has('error-test')).toBe(false);
   });
 
@@ -244,9 +242,7 @@ describe('BaseClientTransport - Message Correlation', () => {
     const sendPromise = shortTimeoutTransport.send(request);
 
     await expect(sendPromise).rejects.toThrow('Request timeout after 100ms');
-    expect(shortTimeoutTransport.getPendingRequests().has('timeout-test')).toBe(
-      false,
-    );
+    expect(shortTimeoutTransport.getPendingRequests().has('timeout-test')).toBe(false);
   });
 
   it('handles multiple concurrent requests correctly', async () => {
@@ -297,9 +293,7 @@ describe('BaseClientTransport - Message Correlation', () => {
 
     await expect(sendPromises[0]).resolves.toBeUndefined();
     await expect(sendPromises[1]).resolves.toBeUndefined();
-    await expect(sendPromises[2]).rejects.toThrow(
-      'JSON-RPC error -1: Test error',
-    );
+    await expect(sendPromises[2]).rejects.toThrow('JSON-RPC error -1: Test error');
 
     expect(transport.getPendingRequests().size).toBe(0);
   });

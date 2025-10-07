@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { RegistryContext } from '../../registry-context.js';
-import {
-  mockConfig,
-  createEmptyRegistryResponse,
-  createServerListResponse,
-} from './test-utils.js';
+import { mockConfig, createEmptyRegistryResponse, createServerListResponse } from './test-utils.js';
 
 // Mock external dependencies
 vi.mock('node:fs/promises', () => ({
@@ -149,10 +145,7 @@ describe('RegistryContext', () => {
       mockFetch.mockResolvedValue(createEmptyRegistryResponse());
 
       const context = RegistryContext.getInstance(mockConfig);
-      const result = await context.searchServers(
-        'filesystem',
-        'modelcontextprotocol',
-      );
+      const result = await context.searchServers('filesystem', 'modelcontextprotocol');
 
       expect(result).toBeDefined();
       // Should still work because "modelcontextprotocol" is substring of URL
@@ -164,16 +157,11 @@ describe('RegistryContext', () => {
 
     it('should return "no registry found" for unknown registry filter', async () => {
       const context = RegistryContext.getInstance(mockConfig);
-      const result = await context.searchServers(
-        'filesystem',
-        'nonexistent-registry',
-      );
+      const result = await context.searchServers('filesystem', 'nonexistent-registry');
 
       expect(result.found).toBe(false);
       expect(result.servers).toEqual([]);
-      expect(result.message).toBe(
-        'No registry found matching: nonexistent-registry',
-      );
+      expect(result.message).toBe('No registry found matching: nonexistent-registry');
       // Should not make any HTTP calls
       expect(mockFetch).not.toHaveBeenCalled();
     });

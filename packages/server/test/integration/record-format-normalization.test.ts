@@ -23,9 +23,7 @@ type ServersRecord = Record<string, TargetServerWithoutName>;
  * @param servers - Server configuration in either record or array format
  * @returns Array of server configurations with names
  */
-function normalizeServers(
-  servers: TargetServer[] | ServersRecord,
-): TargetServer[] {
+function normalizeServers(servers: TargetServer[] | ServersRecord): TargetServer[] {
   if (Array.isArray(servers)) {
     return servers;
   }

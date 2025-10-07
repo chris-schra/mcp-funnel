@@ -3,11 +3,7 @@ import { SecretManager } from '../secret-manager.js';
 import { DotEnvProvider } from '../providers/dotenv/index.js';
 import { ProcessEnvProvider } from '../process-env-provider.js';
 import { InlineProvider } from '../inline-provider.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('SecretManager Integration Tests - Multiple Provider Types', () => {
   let testDir: string;

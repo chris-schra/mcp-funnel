@@ -159,9 +159,7 @@ export class MonorepoValidator {
    * @param options - Validation options
    * @returns Promise resolving to validation summary with results and stats
    */
-  public async validate(
-    options: ValidateOptions = {},
-  ): Promise<ValidationSummary> {
+  public async validate(options: ValidateOptions = {}): Promise<ValidationSummary> {
     // Resolve files to validate
     const files = await resolveFiles(options);
 
@@ -188,15 +186,11 @@ export class MonorepoValidator {
     const eslintLocal = eslintResult.local;
 
     // Prepare TS config detection for skip decision
-    const tsFiles = files.filter(
-      (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
-    );
+    const tsFiles = files.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
     const overrideTsConfig = options.tsConfigFile
       ? path.resolve(process.cwd(), options.tsConfigFile)
       : undefined;
-    const overrideExists = overrideTsConfig
-      ? fssync.existsSync(overrideTsConfig)
-      : false;
+    const overrideExists = overrideTsConfig ? fssync.existsSync(overrideTsConfig) : false;
     const tsConfigPaths = new Set<string>();
     if (!overrideExists && tsFiles.length > 0) {
       for (const f of tsFiles) {
@@ -212,12 +206,7 @@ export class MonorepoValidator {
     tasks.push(
       (async () => {
         try {
-          const pr = await validatePrettier(
-            files,
-            this.prettierMod!,
-            this.ctx,
-            options.fix,
-          );
+          const pr = await validatePrettier(files, this.prettierMod!, this.ctx, options.fix);
           const origin: 'local' | 'bundled' =
             prettierLocal && satisfies(prettierLocal.version, COMPAT.prettier)
               ? 'local'
@@ -245,9 +234,7 @@ export class MonorepoValidator {
         try {
           await validateESLint(files, this.eslintCtor!, this.ctx, options.fix);
           const origin: 'local' | 'bundled' =
-            eslintLocal && satisfies(eslintLocal.version, COMPAT.eslint)
-              ? 'local'
-              : 'bundled';
+            eslintLocal && satisfies(eslintLocal.version, COMPAT.eslint) ? 'local' : 'bundled';
           toolStatuses.push({
             tool: 'eslint',
             status: 'ok',
@@ -256,10 +243,7 @@ export class MonorepoValidator {
           });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          const isNoConfig =
-            /no eslint configuration|couldn['']t find a configuration/i.test(
-              msg,
-            );
+          const isNoConfig = /no eslint configuration|couldn['']t find a configuration/i.test(msg);
           toolStatuses.push(
             isNoConfig
               ? {
@@ -291,12 +275,7 @@ export class MonorepoValidator {
         tasks.push(
           (async () => {
             try {
-              await validateTypeScriptWithConfig(
-                files,
-                overrideTsConfig!,
-                this.ctx,
-                this.tsNs,
-              );
+              await validateTypeScriptWithConfig(files, overrideTsConfig!, this.ctx, this.tsNs);
               toolStatuses.push({ tool: 'typescript', status: 'ok' });
             } catch (e) {
               toolStatuses.push({

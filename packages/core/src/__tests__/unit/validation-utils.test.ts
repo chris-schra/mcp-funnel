@@ -14,21 +14,13 @@ describe('ValidationUtils', () => {
 
   describe('validateUrl', () => {
     it('should accept valid URLs', () => {
-      expect(() =>
-        ValidationUtils.validateUrl('https://example.com'),
-      ).not.toThrow();
-      expect(() =>
-        ValidationUtils.validateUrl('http://localhost:3000'),
-      ).not.toThrow();
-      expect(() =>
-        ValidationUtils.validateUrl('wss://websocket.example.com'),
-      ).not.toThrow();
+      expect(() => ValidationUtils.validateUrl('https://example.com')).not.toThrow();
+      expect(() => ValidationUtils.validateUrl('http://localhost:3000')).not.toThrow();
+      expect(() => ValidationUtils.validateUrl('wss://websocket.example.com')).not.toThrow();
     });
 
     it('should throw for invalid URLs', () => {
-      expect(() => ValidationUtils.validateUrl('not-a-url')).toThrow(
-        'Invalid URL format',
-      );
+      expect(() => ValidationUtils.validateUrl('not-a-url')).toThrow('Invalid URL format');
       expect(() => ValidationUtils.validateUrl('://missing-protocol')).toThrow(
         'Invalid URL format',
       );
@@ -39,9 +31,9 @@ describe('ValidationUtils', () => {
     });
 
     it('should include context in error messages', () => {
-      expect(() =>
-        ValidationUtils.validateUrl('invalid', 'token endpoint'),
-      ).toThrow('token endpoint: Invalid URL format');
+      expect(() => ValidationUtils.validateUrl('invalid', 'token endpoint')).toThrow(
+        'token endpoint: Invalid URL format',
+      );
       expect(() => ValidationUtils.validateUrl('', 'redirect URI')).toThrow(
         'redirect URI: URL is required',
       );
@@ -64,9 +56,7 @@ describe('ValidationUtils', () => {
         tokenUrl: 'invalid-url',
         redirectUrl: 'https://redirect.example.com',
       };
-      expect(() => ValidationUtils.validateUrls(urls)).toThrow(
-        'tokenUrl: Invalid URL format',
-      );
+      expect(() => ValidationUtils.validateUrls(urls)).toThrow('tokenUrl: Invalid URL format');
     });
 
     it('should skip undefined URLs', () => {
@@ -82,25 +72,19 @@ describe('ValidationUtils', () => {
   describe('sanitizeServerId', () => {
     it('should accept valid server IDs', () => {
       expect(ValidationUtils.sanitizeServerId('server1')).toBe('server1');
-      expect(ValidationUtils.sanitizeServerId('my-server_name.test')).toBe(
-        'my-server_name.test',
-      );
+      expect(ValidationUtils.sanitizeServerId('my-server_name.test')).toBe('my-server_name.test');
       expect(ValidationUtils.sanitizeServerId('ABC123')).toBe('ABC123');
     });
 
     it('should throw for unsafe characters', () => {
-      expect(() => ValidationUtils.sanitizeServerId('server/path')).toThrow(
+      expect(() => ValidationUtils.sanitizeServerId('server/path')).toThrow('unsafe characters');
+      expect(() => ValidationUtils.sanitizeServerId('server;command')).toThrow('unsafe characters');
+      expect(() => ValidationUtils.sanitizeServerId('server$injection')).toThrow(
         'unsafe characters',
       );
-      expect(() => ValidationUtils.sanitizeServerId('server;command')).toThrow(
+      expect(() => ValidationUtils.sanitizeServerId('server with spaces')).toThrow(
         'unsafe characters',
       );
-      expect(() =>
-        ValidationUtils.sanitizeServerId('server$injection'),
-      ).toThrow('unsafe characters');
-      expect(() =>
-        ValidationUtils.sanitizeServerId('server with spaces'),
-      ).toThrow('unsafe characters');
     });
   });
 
@@ -112,11 +96,7 @@ describe('ValidationUtils', () => {
         tokenUrl: 'https://token.com',
       };
       expect(() => {
-        ValidationUtils.validateRequired(config, [
-          'clientId',
-          'clientSecret',
-          'tokenUrl',
-        ]);
+        ValidationUtils.validateRequired(config, ['clientId', 'clientSecret', 'tokenUrl']);
       }).not.toThrow();
     });
 
@@ -130,11 +110,7 @@ describe('ValidationUtils', () => {
         tokenUrl: 'https://token.com',
       };
       expect(() => {
-        ValidationUtils.validateRequired(config, [
-          'clientId',
-          'clientSecret',
-          'tokenUrl',
-        ]);
+        ValidationUtils.validateRequired(config, ['clientId', 'clientSecret', 'tokenUrl']);
       }).toThrow('Missing required field: clientSecret');
     });
 
@@ -143,11 +119,7 @@ describe('ValidationUtils', () => {
         clientId: 'id',
       };
       expect(() => {
-        ValidationUtils.validateRequired(
-          config,
-          ['clientSecret'],
-          'OAuth config',
-        );
+        ValidationUtils.validateRequired(config, ['clientSecret'], 'OAuth config');
       }).toThrow('OAuth config: Missing required field: clientSecret');
     });
   });

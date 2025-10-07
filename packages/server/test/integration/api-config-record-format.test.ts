@@ -100,9 +100,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
       expect(res.status).toBe(200);
       expect(data.config.servers).toHaveLength(3);
 
-      const serverNames = data.config.servers.map(
-        (s: { name: string }) => s.name,
-      );
+      const serverNames = data.config.servers.map((s: { name: string }) => s.name);
       expect(serverNames).toEqual(['github', 'memory', 'filesystem']);
     });
 

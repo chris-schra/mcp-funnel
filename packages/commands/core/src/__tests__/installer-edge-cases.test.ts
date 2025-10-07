@@ -39,18 +39,12 @@ describe('CommandInstaller - edge cases', () => {
   it('should handle multiple @ symbols correctly', () => {
     // extractPackageNameFromSpec('weather-tool@@1.0.0') returns 'weather-tool'
     // This should match the installed package
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'weather-tool@@1.0.0',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'weather-tool@@1.0.0');
     expect(result?.package).toBe('weather-tool');
   });
 
   it('should handle specs with special characters', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'weather-tool#tag',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'weather-tool#tag');
     expect(result).toBeUndefined();
   });
 

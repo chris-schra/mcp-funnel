@@ -16,11 +16,7 @@ describe('Direct MCP Server Communication', () => {
     // Spawn our mock MCP server
     const serverProcess = spawn(
       'tsx',
-      [
-        path.join(__dirname, '../../fixtures/mock-mcp-server.ts'),
-        'test-server',
-        'demo',
-      ],
+      [path.join(__dirname, '../../fixtures/mock-mcp-server.ts'), 'test-server', 'demo'],
       {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env },
@@ -38,11 +34,7 @@ describe('Direct MCP Server Communication', () => {
     // Create MCP client to connect to our mock server
     const transport = new StdioClientTransport({
       command: 'tsx',
-      args: [
-        path.join(__dirname, '../../fixtures/mock-mcp-server.ts'),
-        'direct-test',
-        'sample',
-      ],
+      args: [path.join(__dirname, '../../fixtures/mock-mcp-server.ts'), 'direct-test', 'sample'],
     });
 
     const client = new Client(

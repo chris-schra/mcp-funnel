@@ -92,11 +92,7 @@ export async function runCommand(name: string, args: string[]): Promise<void> {
     const command = aggregateRegistry.getCommandForCLI(name);
     if (!command) {
       console.error(`Command not found: ${name}`);
-      console.error(
-        `Available commands: ${aggregateRegistry
-          .getAllCommandNames()
-          .join(', ')}`,
-      );
+      console.error(`Available commands: ${aggregateRegistry.getAllCommandNames().join(', ')}`);
       process.exit(1);
     }
 

@@ -115,9 +115,7 @@ describe('WebSocket Close Code Handling', () => {
     // Should trigger reconnection attempt for abnormal close
     await vi.waitFor(
       () => {
-        expect(vi.mocked(WebSocket).mock.calls.length).toBeGreaterThan(
-          initialCallCount,
-        );
+        expect(vi.mocked(WebSocket).mock.calls.length).toBeGreaterThan(initialCallCount);
       },
       { timeout: 100 },
     );

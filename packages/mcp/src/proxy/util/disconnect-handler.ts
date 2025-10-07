@@ -33,9 +33,7 @@ export interface DisconnectHandlingConfig {
  * @public
  * @see file:./server-connection-manager.ts:168 - Usage in connection manager
  */
-export function setupDisconnectHandling(
-  config: DisconnectHandlingConfig,
-): void {
+export function setupDisconnectHandling(config: DisconnectHandlingConfig): void {
   const { targetServer, transport, onDisconnect } = config;
 
   // Set up transport close handler
@@ -65,10 +63,7 @@ export function setupDisconnectHandling(
     });
 
     // Handle disconnection for certain error types
-    if (
-      error.message.includes('connection') ||
-      error.message.includes('closed')
-    ) {
+    if (error.message.includes('connection') || error.message.includes('closed')) {
       onDisconnect(targetServer, 'transport_error', error.message);
     }
   };
@@ -92,10 +87,7 @@ export interface ServerDisconnectionConfig {
   /** Map of currently connected servers */
   connectedServers: Map<string, TargetServer | TargetServerZod>;
   /** Map of disconnected servers with error info */
-  disconnectedServers: Map<
-    string,
-    (TargetServer | TargetServerZod) & { error?: string }
-  >;
+  disconnectedServers: Map<string, (TargetServer | TargetServerZod) & { error?: string }>;
   /** Map of server name to client instance */
   clients: Map<string, Client>;
   /** Map of server name to connection timestamp */
@@ -119,9 +111,7 @@ export interface ServerDisconnectionConfig {
  * @public
  * @see file:./server-connection-manager.ts:186 - Usage in disconnect callback
  */
-export function handleServerDisconnection(
-  config: ServerDisconnectionConfig,
-): void {
+export function handleServerDisconnection(config: ServerDisconnectionConfig): void {
   const {
     targetServer,
     reason,
@@ -139,13 +129,9 @@ export function handleServerDisconnection(
   const serverName = targetServer.name;
 
   const disconnectionReason =
-    reason === 'manual_disconnect' || manualDisconnectRequested
-      ? 'manual_disconnect'
-      : reason;
+    reason === 'manual_disconnect' || manualDisconnectRequested ? 'manual_disconnect' : reason;
 
-  console.error(
-    `[proxy] Server disconnected: ${serverName} (${disconnectionReason})`,
-  );
+  console.error(`[proxy] Server disconnected: ${serverName} (${disconnectionReason})`);
   logEvent('info', 'server:disconnected', {
     name: serverName,
     reason: disconnectionReason,

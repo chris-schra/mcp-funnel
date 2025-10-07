@@ -15,10 +15,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-import {
-  createMockEventSourceConstructor,
-  MockEventSource,
-} from '../mocks/mock-eventsource.js';
+import { createMockEventSourceConstructor, MockEventSource } from '../mocks/mock-eventsource.js';
 
 // Mock the EventSource constructor
 const MockEventSourceConstructor = createMockEventSourceConstructor();

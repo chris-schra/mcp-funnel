@@ -195,20 +195,14 @@ export class TestSSEServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const url = new URL(req.url!, `http://localhost:${this.port}`);
 
       // Set CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, Cache-Control',
-      );
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
 
       // Handle preflight requests
       if (req.method === 'OPTIONS') {
@@ -252,10 +246,7 @@ export class TestSSEServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleSSEConnection(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleSSEConnection(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // Check authentication if required
     if (this.requireAuth) {
       const authHeader = req.headers.authorization;
@@ -313,11 +304,7 @@ export class TestSSEServer {
     // Keep connection alive with periodic heartbeat
     const heartbeat = setInterval(() => {
       if (!res.destroyed) {
-        res.write(
-          'data: {"type":"heartbeat","timestamp":"' +
-            new Date().toISOString() +
-            '"}\n\n',
-        );
+        res.write('data: {"type":"heartbeat","timestamp":"' + new Date().toISOString() + '"}\n\n');
       } else {
         clearInterval(heartbeat);
         this.clients.delete(clientId);
@@ -335,10 +322,7 @@ export class TestSSEServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleSendMessage(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleSendMessage(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const body = await this.parseRequestBody(req);
       const data = JSON.parse(body);
@@ -398,11 +382,7 @@ export class TestSSEServer {
    * @param statusCode - HTTP status code
    * @param data - Response data to serialize
    */
-  private sendJsonResponse(
-    res: ServerResponse,
-    statusCode: number,
-    data: unknown,
-  ): void {
+  private sendJsonResponse(res: ServerResponse, statusCode: number, data: unknown): void {
     res.writeHead(statusCode, {
       'Content-Type': 'application/json',
     });
@@ -415,9 +395,7 @@ export class TestSSEServer {
  * @param config - Optional SSE server configuration
  * @returns Promise resolving to server instance and connection details
  */
-export async function createTestSSEServer(
-  config?: TestSSEServerConfig,
-): Promise<{
+export async function createTestSSEServer(config?: TestSSEServerConfig): Promise<{
   server: TestSSEServer;
   port: number;
   url: string;

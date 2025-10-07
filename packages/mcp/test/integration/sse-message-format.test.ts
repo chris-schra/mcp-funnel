@@ -14,10 +14,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { TestSSEServer } from '../fixtures/test-sse-server.js';
 import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
-import type {
-  JSONRPCResponse,
-  JSONRPCMessage,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCResponse, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import {
   extractBearerToken,
   MemoryTokenStorage,
@@ -104,13 +101,10 @@ describe.skipIf(!runIntegrationTests)('SSE Message Format Integration', () => {
       expect(jsonRpcReceived).toBeDefined();
       expect(jsonRpcReceived.jsonrpc).toBe('2.0');
       expect(jsonRpcReceived.result).toBeDefined();
-      expect(
-        (jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools,
-      ).toHaveLength(1);
-      expect(
-        (jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools[0]
-          .name,
-      ).toBe('test_tool');
+      expect((jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools).toHaveLength(1);
+      expect((jsonRpcReceived.result as { tools: Array<{ name: string }> }).tools[0].name).toBe(
+        'test_tool',
+      );
 
       await transport.close();
     }, 15000);

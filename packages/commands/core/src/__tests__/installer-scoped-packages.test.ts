@@ -17,26 +17,17 @@ describe('CommandInstaller - scoped package handling', () => {
   });
 
   it('should match scoped packages without @ prefix', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'myorg/weather-helper',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'myorg/weather-helper');
     expect(result?.package).toBe('@myorg/weather-helper');
   });
 
   it('should match scoped packages without @ prefix with version', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'myorg/weather-helper@2.0.0',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'myorg/weather-helper@2.0.0');
     expect(result?.package).toBe('@myorg/weather-helper');
   });
 
   it('should not match scope-like strings for non-scoped packages', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'weather/tool',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'weather/tool');
     expect(result).toBeUndefined();
   });
 });

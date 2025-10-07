@@ -97,9 +97,7 @@ export class CommandRegistry {
    * @see file:./interfaces.ts:40 - ICommand.getMCPDefinitions method
    */
   public getAllMCPDefinitions(): Tool[] {
-    return Array.from(this.commands.values()).flatMap((command) =>
-      command.getMCPDefinitions(),
-    );
+    return Array.from(this.commands.values()).flatMap((command) => command.getMCPDefinitions());
   }
 
   /**

@@ -86,21 +86,11 @@ export class BridgeToolRequest extends BaseCoreTool {
     let resolvedToolName = args.tool;
 
     // If not found directly, try short name resolution if enabled
-    if (
-      !toolState &&
-      context.config.allowShortToolNames &&
-      context.toolMapping
-    ) {
-      const resolution = resolveToolName(
-        args.tool,
-        context.toolMapping,
-        context.config,
-      );
+    if (!toolState && context.config.allowShortToolNames && context.toolMapping) {
+      const resolution = resolveToolName(args.tool, context.toolMapping, context.config);
 
       if (!resolution.resolved) {
-        const message =
-          resolution.error?.message ||
-          `Tool not found or not exposed: ${args.tool}`;
+        const message = resolution.error?.message || `Tool not found or not exposed: ${args.tool}`;
         const fullMessage = resolution.error?.isAmbiguous
           ? message
           : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
@@ -122,8 +112,7 @@ export class BridgeToolRequest extends BaseCoreTool {
 
     if (!toolState) {
       // Check if the tool exists but is not exposed (discovered but not enabled)
-      const discoveredTool =
-        context.toolRegistry.getToolState(resolvedToolName);
+      const discoveredTool = context.toolRegistry.getToolState(resolvedToolName);
       if (discoveredTool && !discoveredTool.exposed) {
         // Auto-enable the tool since it was explicitly requested
         context.toolRegistry.enableTools([resolvedToolName], 'discovery');
@@ -146,9 +135,7 @@ export class BridgeToolRequest extends BaseCoreTool {
         }
 
         // Log that we auto-enabled the tool
-        console.info(
-          `[bridge-tool-request] Auto-enabled tool: ${resolvedToolName}`,
-        );
+        console.info(`[bridge-tool-request] Auto-enabled tool: ${resolvedToolName}`);
       } else {
         // Tool doesn't exist at all in the registry
         return {
@@ -185,8 +172,7 @@ export class BridgeToolRequest extends BaseCoreTool {
       // Neither server client nor command is available
       throw new Error(`Tool ${resolvedToolName} has no executor`);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         content: [
           {

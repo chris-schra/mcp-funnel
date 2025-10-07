@@ -25,9 +25,7 @@ export class EnvironmentResolutionError extends Error {
     );
   }
 
-  public static circularReference(
-    variable: string,
-  ): EnvironmentResolutionError {
+  public static circularReference(variable: string): EnvironmentResolutionError {
     return new EnvironmentResolutionError(
       `Circular reference detected in environment variable '${variable}'`,
       variable,
@@ -35,15 +33,11 @@ export class EnvironmentResolutionError extends Error {
   }
 
   public static maxDepthExceeded(depth: number): EnvironmentResolutionError {
-    return new EnvironmentResolutionError(
-      `Maximum resolution depth of ${depth} exceeded`,
-    );
+    return new EnvironmentResolutionError(`Maximum resolution depth of ${depth} exceeded`);
   }
 
   public static invalidPattern(pattern: string): EnvironmentResolutionError {
-    return new EnvironmentResolutionError(
-      `Invalid environment variable pattern: ${pattern}`,
-    );
+    return new EnvironmentResolutionError(`Invalid environment variable pattern: ${pattern}`);
   }
 }
 
@@ -87,11 +81,7 @@ export class EnvVarPatternResolver {
    * @throws When circular reference, depth limit exceeded, or missing required variable
    * @public
    */
-  public resolve(
-    value: string,
-    visitedVars: Set<string> = new Set(),
-    depth: number = 0,
-  ): string {
+  public resolve(value: string, visitedVars: Set<string> = new Set(), depth: number = 0): string {
     if (depth > this.maxDepth) {
       throw EnvironmentResolutionError.maxDepthExceeded(this.maxDepth);
     }
@@ -99,41 +89,38 @@ export class EnvVarPatternResolver {
     // Pattern: \$\{VAR_NAME\} or \$\{VAR_NAME:default_value\}
     const envPattern = /\$\{([A-Z_][A-Z0-9_]*)(?::([^}]*))?\}/gi;
 
-    return value.replace(
-      envPattern,
-      (match, varName: string, defaultValue?: string) => {
-        // Security: Validate variable name to prevent injection
-        if (!this.isValidVariableName(varName)) {
-          throw EnvironmentResolutionError.invalidPattern(match);
+    return value.replace(envPattern, (match, varName: string, defaultValue?: string) => {
+      // Security: Validate variable name to prevent injection
+      if (!this.isValidVariableName(varName)) {
+        throw EnvironmentResolutionError.invalidPattern(match);
+      }
+
+      // Security: Check for circular references
+      if (visitedVars.has(varName)) {
+        throw EnvironmentResolutionError.circularReference(varName);
+      }
+
+      // Get environment variable value
+      const envValue = this.envSource[varName];
+
+      if (envValue === undefined) {
+        if (defaultValue !== undefined) {
+          // Recursively resolve default value
+          const newVisited = new Set(visitedVars);
+          newVisited.add(varName);
+          return this.resolve(defaultValue, newVisited, depth + 1);
+        } else if (this.strict) {
+          throw EnvironmentResolutionError.missingVariable(varName);
+        } else {
+          return match; // Return original pattern if not strict
         }
+      }
 
-        // Security: Check for circular references
-        if (visitedVars.has(varName)) {
-          throw EnvironmentResolutionError.circularReference(varName);
-        }
-
-        // Get environment variable value
-        const envValue = this.envSource[varName];
-
-        if (envValue === undefined) {
-          if (defaultValue !== undefined) {
-            // Recursively resolve default value
-            const newVisited = new Set(visitedVars);
-            newVisited.add(varName);
-            return this.resolve(defaultValue, newVisited, depth + 1);
-          } else if (this.strict) {
-            throw EnvironmentResolutionError.missingVariable(varName);
-          } else {
-            return match; // Return original pattern if not strict
-          }
-        }
-
-        // Recursively resolve the environment variable value
-        const newVisited = new Set(visitedVars);
-        newVisited.add(varName);
-        return this.resolve(envValue, newVisited, depth + 1);
-      },
-    );
+      // Recursively resolve the environment variable value
+      const newVisited = new Set(visitedVars);
+      newVisited.add(varName);
+      return this.resolve(envValue, newVisited, depth + 1);
+    });
   }
 
   /**
@@ -171,10 +158,7 @@ export class EnvVarPatternResolver {
    * @returns Resolved string with all environment variables expanded
    * @public
    */
-  public static resolvePattern(
-    value: string,
-    config?: EnvVarPatternResolverConfig,
-  ): string {
+  public static resolvePattern(value: string, config?: EnvVarPatternResolverConfig): string {
     const resolver = new EnvVarPatternResolver(config);
     return resolver.resolve(value);
   }
@@ -192,9 +176,7 @@ export class EnvVarPatternResolver {
  * @throws When environment variable resolution fails
  * @public
  */
-export function resolveConfigFields<
-  T extends Record<string, string | undefined>,
->(
+export function resolveConfigFields<T extends Record<string, string | undefined>>(
   config: T,
   fields: (keyof T)[],
   envSource?: Record<string, string | undefined>,
@@ -214,9 +196,7 @@ export function resolveConfigFields<
         ) as T[keyof T];
       } catch (error) {
         throw new Error(
-          error instanceof Error
-            ? error.message
-            : 'Environment variable resolution failed',
+          error instanceof Error ? error.message : 'Environment variable resolution failed',
         );
       }
     }
@@ -241,9 +221,7 @@ export function resolveEnvVar(value: string): string {
       : value;
   } catch (error) {
     throw new Error(
-      error instanceof Error
-        ? error.message
-        : 'Environment variable resolution failed',
+      error instanceof Error ? error.message : 'Environment variable resolution failed',
     );
   }
 }

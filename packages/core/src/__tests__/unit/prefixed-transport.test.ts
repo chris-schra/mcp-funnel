@@ -73,9 +73,7 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
         '../../transports/implementations/stdio-client-transport.js'
       );
 
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const transport = new StdioClientTransport('github', {
         command: 'test',
@@ -91,12 +89,8 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
       // Wait for stream processing
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[github] GitHub MCP Server running on stdio',
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[github] Connecting to API...',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[github] GitHub MCP Server running on stdio');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[github] Connecting to API...');
 
       consoleErrorSpy.mockRestore();
     });
@@ -106,9 +100,7 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
         '../../transports/implementations/stdio-client-transport.js'
       );
 
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const transport = new StdioClientTransport('memory', {
         command: 'test',
@@ -125,9 +117,7 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[memory] Line with content',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[memory] Line with content');
       expect(consoleErrorSpy).toHaveBeenCalledWith('[memory] Another line');
 
       consoleErrorSpy.mockRestore();
@@ -168,9 +158,7 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
         '../../transports/implementations/stdio-client-transport.js'
       );
 
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const transport = new StdioClientTransport('filesystem', {
         command: 'test',
@@ -184,12 +172,8 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[filesystem] Not a JSON message',
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[filesystem] Another log line',
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[filesystem] Not a JSON message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[filesystem] Another log line');
 
       consoleErrorSpy.mockRestore();
     });
@@ -219,9 +203,7 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
 
       await transport.send(message);
 
-      expect(stdinWriteSpy).toHaveBeenCalledWith(
-        JSON.stringify(message) + '\n',
-      );
+      expect(stdinWriteSpy).toHaveBeenCalledWith(JSON.stringify(message) + '\n');
     });
 
     it('should throw error when sending before start', async () => {
@@ -236,9 +218,7 @@ describe('StdioClientTransport (legacy PrefixedStdioClientTransport behavior)', 
 
       const message = { jsonrpc: '2.0' as const, method: 'test', id: 1 };
 
-      await expect(transport.send(message)).rejects.toThrow(
-        'Transport not started',
-      );
+      await expect(transport.send(message)).rejects.toThrow('Transport not started');
     });
 
     it('should handle process close event', async () => {

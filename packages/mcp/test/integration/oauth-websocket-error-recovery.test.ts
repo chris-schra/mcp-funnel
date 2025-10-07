@@ -25,101 +25,97 @@ import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
 
-describe.skipIf(!runIntegrationTests)(
-  'OAuth + WebSocket Error Recovery Integration',
-  () => {
-    let _oauthServer: TestOAuthServer;
-    let wsServer: TestWebSocketServer;
-    let oauthTokenEndpoint: string;
-    let wsEndpoint: string;
+describe.skipIf(!runIntegrationTests)('OAuth + WebSocket Error Recovery Integration', () => {
+  let _oauthServer: TestOAuthServer;
+  let wsServer: TestWebSocketServer;
+  let oauthTokenEndpoint: string;
+  let wsEndpoint: string;
 
-    beforeAll(async () => {
-      const { oauthServerInfo, wsServerInfo } =
-        await setupOAuthAndWebSocketServers({
+  beforeAll(async () => {
+    const { oauthServerInfo, wsServerInfo } = await setupOAuthAndWebSocketServers({
+      clientId: 'e2e-ws-client',
+      clientSecret: 'e2e-ws-secret',
+      tokenLifetime: 3600,
+      requireAuth: true,
+    });
+
+    _oauthServer = oauthServerInfo.server;
+    oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
+    wsServer = wsServerInfo.server;
+    wsEndpoint = wsServerInfo.wsEndpoint;
+  }, 30000);
+
+  beforeEach(() => {
+    wsServer.clearMessageHistory();
+  });
+
+  describe('Error Recovery and Resilience', () => {
+    it('should recover from temporary OAuth server failure', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
           clientId: 'e2e-ws-client',
           clientSecret: 'e2e-ws-secret',
-          tokenLifetime: 3600,
-          requireAuth: true,
-        });
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
 
-      _oauthServer = oauthServerInfo.server;
-      oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
-      wsServer = wsServerInfo.server;
-      wsEndpoint = wsServerInfo.wsEndpoint;
-    }, 30000);
+      // Get initial token
+      const authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      wsServer.setValidToken(token);
 
-    beforeEach(() => {
-      wsServer.clearMessageHistory();
-    });
+      const transport = new WebSocketClientTransport({
+        url: wsEndpoint,
+        authProvider,
+      });
 
-    describe('Error Recovery and Resilience', () => {
-      it('should recover from temporary OAuth server failure', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-ws-client',
-            clientSecret: 'e2e-ws-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      expect(wsServer.getClientCount()).toBe(1);
 
-        // Get initial token
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        wsServer.setValidToken(token);
+      // Verify the connection can continue using existing token
+      // even if OAuth server becomes temporarily unavailable
+      // (This tests token caching behavior)
+      const cachedHeaders = await authProvider.getHeaders();
+      expect(cachedHeaders.Authorization).toBe(authHeaders.Authorization);
 
-        const transport = new WebSocketClientTransport({
-          url: wsEndpoint,
-          authProvider,
-        });
+      await transport.close();
+    }, 15000);
 
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(wsServer.getClientCount()).toBe(1);
+    it('should handle WebSocket server restart gracefully', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-ws-client',
+          clientSecret: 'e2e-ws-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
 
-        // Verify the connection can continue using existing token
-        // even if OAuth server becomes temporarily unavailable
-        // (This tests token caching behavior)
-        const cachedHeaders = await authProvider.getHeaders();
-        expect(cachedHeaders.Authorization).toBe(authHeaders.Authorization);
+      const authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      wsServer.setValidToken(token);
 
-        await transport.close();
-      }, 15000);
+      const transport = new WebSocketClientTransport({
+        url: wsEndpoint,
+        authProvider,
+      });
 
-      it('should handle WebSocket server restart gracefully', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-ws-client',
-            clientSecret: 'e2e-ws-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      expect(wsServer.getClientCount()).toBe(1);
 
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        wsServer.setValidToken(token);
+      // Close transport properly
+      await transport.close();
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-        const transport = new WebSocketClientTransport({
-          url: wsEndpoint,
-          authProvider,
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(wsServer.getClientCount()).toBe(1);
-
-        // Close transport properly
-        await transport.close();
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Verify cleanup (in integration tests, some cleanup delay is expected)
-        expect(wsServer.getClientCount()).toBe(0);
-      }, 10000);
-    });
-  },
-);
+      // Verify cleanup (in integration tests, some cleanup delay is expected)
+      expect(wsServer.getClientCount()).toBe(0);
+    }, 10000);
+  });
+});

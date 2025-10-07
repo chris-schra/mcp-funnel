@@ -3,10 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type {
-  JSONRPCRequest,
-  JSONRPCMessage,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCRequest, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import {
   BaseClientTransport,
   type BaseClientTransportConfig,
@@ -120,9 +117,7 @@ describe('BaseClientTransport - Lifecycle Management', () => {
       params: {},
     };
 
-    await expect(transport.send(request)).rejects.toThrow(
-      'Transport is closed',
-    );
+    await expect(transport.send(request)).rejects.toThrow('Transport is closed');
   });
 
   it('generates session ID on connection', async () => {

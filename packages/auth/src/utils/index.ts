@@ -94,8 +94,7 @@ export const OAuthUtils = {
   validateRedirectUri: OAuthValidationUtils.validateRedirectUri,
   validatePkceChallenge: OAuthValidationUtils.validatePkceChallenge,
   validateScopes: OAuthValidationUtils.validateScopes,
-  validateAuthorizationRequest:
-    OAuthValidationUtils.validateAuthorizationRequest,
+  validateAuthorizationRequest: OAuthValidationUtils.validateAuthorizationRequest,
   validateTokenRequest: OAuthValidationUtils.validateTokenRequest,
 
   // Scope utilities

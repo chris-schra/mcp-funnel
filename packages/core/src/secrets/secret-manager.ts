@@ -105,11 +105,9 @@ export class SecretManager {
       } catch (error) {
         // Log error but continue with other providers
         const providerName = provider.getName();
-        this.logger.error(
-          `Failed to resolve secrets from provider '${providerName}'`,
-          error,
-          { providerName },
-        );
+        this.logger.error(`Failed to resolve secrets from provider '${providerName}'`, error, {
+          providerName,
+        });
       }
     }
 
@@ -144,9 +142,7 @@ export class SecretManager {
    */
   public removeProvider(name: string): boolean {
     const originalLength = this.providers.length;
-    this.providers = this.providers.filter(
-      (provider) => provider.getName() !== name,
-    );
+    this.providers = this.providers.filter((provider) => provider.getName() !== name);
 
     const removed = this.providers.length !== originalLength;
     if (removed) {

@@ -37,10 +37,7 @@ export function createErrorResponse(message: string): CallToolResult {
  * @public
  * @see file:../../command.ts:104 - Usage in tool execution
  */
-export function createTextResponse(
-  text: string,
-  additionalText?: string,
-): CallToolResult {
+export function createTextResponse(text: string, additionalText?: string): CallToolResult {
   const content: Array<{ type: 'text'; text: string }> = [
     {
       type: 'text',

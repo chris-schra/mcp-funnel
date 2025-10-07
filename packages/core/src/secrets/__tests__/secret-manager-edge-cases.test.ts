@@ -41,9 +41,7 @@ describe('SecretManager - Edge Cases and Error Handling', () => {
   });
 
   it('should handle concurrent resolution calls', async () => {
-    const manager = new SecretManager([
-      createInlineProvider({ API_KEY: 'value' }),
-    ]);
+    const manager = new SecretManager([createInlineProvider({ API_KEY: 'value' })]);
 
     const [first, second, third] = await Promise.all([
       manager.resolveSecrets(),

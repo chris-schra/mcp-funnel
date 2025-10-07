@@ -77,10 +77,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'npm-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'npm-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
@@ -119,19 +116,13 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'pypi-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'pypi-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
 
       expect(installInfo.configSnippet.command).toBe('uvx');
-      expect(installInfo.configSnippet.args).toEqual([
-        'mcp-example-server',
-        '--verbose',
-      ]);
+      expect(installInfo.configSnippet.args).toEqual(['mcp-example-server', '--verbose']);
       expect(installInfo.configSnippet.env).toEqual({
         PYTHONPATH: '/opt/mcp',
       });
@@ -159,10 +150,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'oci-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'oci-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
@@ -205,10 +193,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'remote-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'remote-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
@@ -252,10 +237,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'env-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'env-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
@@ -291,10 +273,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'unknown-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'unknown-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
@@ -336,10 +315,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'hybrid-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'hybrid-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
@@ -373,10 +349,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'multi-package-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'multi-package-server' }, mockContext);
 
       const content = result.content[0] as { type: string; text: string };
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);

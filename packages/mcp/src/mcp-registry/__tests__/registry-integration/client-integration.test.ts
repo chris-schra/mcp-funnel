@@ -51,9 +51,7 @@ describe('Registry Integration Tests', () => {
         }),
       });
 
-      const client = new MCPRegistryClient(
-        'https://registry.modelcontextprotocol.io',
-      );
+      const client = new MCPRegistryClient('https://registry.modelcontextprotocol.io');
       const servers = await client.searchServers('client test');
 
       expect(servers).toHaveLength(2);

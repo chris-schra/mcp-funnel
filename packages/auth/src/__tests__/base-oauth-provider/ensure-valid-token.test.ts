@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  TestOAuthProvider,
-  MockTokenStorage,
-  createTestToken,
-} from './test-utils.js';
+import { TestOAuthProvider, MockTokenStorage, createTestToken } from './test-utils.js';
 import { AuthenticationError } from '../../errors/authentication-error.js';
 import type { ITokenStorage } from '@mcp-funnel/core';
 
@@ -59,12 +55,8 @@ describe('BaseOAuthProvider - ensureValidToken', () => {
     mockStorage.setToken(null);
     provider.acquireTokenMock.mockResolvedValue(undefined);
 
-    await expect(provider.testEnsureValidToken()).rejects.toThrow(
-      AuthenticationError,
-    );
-    await expect(provider.testEnsureValidToken()).rejects.toThrow(
-      'Failed to acquire OAuth2 token',
-    );
+    await expect(provider.testEnsureValidToken()).rejects.toThrow(AuthenticationError);
+    await expect(provider.testEnsureValidToken()).rejects.toThrow('Failed to acquire OAuth2 token');
   });
 
   it('should not schedule refresh when storage does not support it', async () => {
@@ -81,9 +73,7 @@ describe('BaseOAuthProvider - ensureValidToken', () => {
       // No scheduleRefresh method
     } as ITokenStorage;
 
-    const providerWithoutSchedule = new TestOAuthProvider(
-      storageWithoutSchedule,
-    );
+    const providerWithoutSchedule = new TestOAuthProvider(storageWithoutSchedule);
 
     const result = await providerWithoutSchedule.testEnsureValidToken();
 

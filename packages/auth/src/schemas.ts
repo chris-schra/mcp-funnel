@@ -55,35 +55,32 @@ const OAuth2ClientCredentialsBaseSchema = z.object({
  * @public
  * @see {@link OAuth2ClientCredentialsConfigZod}
  */
-export const OAuth2ClientCredentialsConfigSchema = z.preprocess(
-  (input: unknown) => {
-    if (typeof input !== 'object' || input === null) return input;
+export const OAuth2ClientCredentialsConfigSchema = z.preprocess((input: unknown) => {
+  if (typeof input !== 'object' || input === null) return input;
 
-    const result = { ...input } as Record<string, unknown>;
+  const result = { ...input } as Record<string, unknown>;
 
-    // Handle tokenUrl/tokenEndpoint - prefer tokenEndpoint, convert tokenUrl to tokenEndpoint
-    if (result.tokenEndpoint) {
-      // Keep tokenEndpoint as-is, remove tokenUrl if it exists
-      delete result.tokenUrl;
-    } else if (result.tokenUrl) {
-      result.tokenEndpoint = result.tokenUrl;
-      delete result.tokenUrl;
+  // Handle tokenUrl/tokenEndpoint - prefer tokenEndpoint, convert tokenUrl to tokenEndpoint
+  if (result.tokenEndpoint) {
+    // Keep tokenEndpoint as-is, remove tokenUrl if it exists
+    delete result.tokenUrl;
+  } else if (result.tokenUrl) {
+    result.tokenEndpoint = result.tokenUrl;
+    delete result.tokenUrl;
+  }
+
+  // Handle scope/scopes - prefer scopes if both exist, convert array to string
+  if (result.scopes) {
+    if (Array.isArray(result.scopes)) {
+      result.scope = result.scopes.join(' ');
+    } else {
+      result.scope = result.scopes;
     }
+    delete result.scopes;
+  }
 
-    // Handle scope/scopes - prefer scopes if both exist, convert array to string
-    if (result.scopes) {
-      if (Array.isArray(result.scopes)) {
-        result.scope = result.scopes.join(' ');
-      } else {
-        result.scope = result.scopes;
-      }
-      delete result.scopes;
-    }
-
-    return result;
-  },
-  OAuth2ClientCredentialsBaseSchema,
-);
+  return result;
+}, OAuth2ClientCredentialsBaseSchema);
 
 // Base schema for OAuth2 authorization code
 const OAuth2AuthCodeBaseSchema = z.object({
@@ -165,9 +162,7 @@ export const OAuth2AuthCodeConfigSchema = z.preprocess((input: unknown) => {
  * @public
  * @see {@link OAuth2ClientCredentialsConfigSchema}
  */
-export type OAuth2ClientCredentialsConfigZod = z.infer<
-  typeof OAuth2ClientCredentialsConfigSchema
->;
+export type OAuth2ClientCredentialsConfigZod = z.infer<typeof OAuth2ClientCredentialsConfigSchema>;
 
 /**
  * TypeScript type inferred from OAuth2AuthCodeConfigSchema.
@@ -175,6 +170,4 @@ export type OAuth2ClientCredentialsConfigZod = z.infer<
  * @public
  * @see {@link OAuth2AuthCodeConfigSchema}
  */
-export type OAuth2AuthCodeConfigZod = z.infer<
-  typeof OAuth2AuthCodeConfigSchema
->;
+export type OAuth2AuthCodeConfigZod = z.infer<typeof OAuth2AuthCodeConfigSchema>;

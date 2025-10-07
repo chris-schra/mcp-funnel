@@ -55,8 +55,6 @@ describe('StreamableHTTPClientTransport - Session Management', () => {
   it('should set protocol version on SDK transport', () => {
     transport.setProtocolVersion?.('2024-11-05');
 
-    expect(mockSDKTransport.setProtocolVersion).toHaveBeenCalledWith(
-      '2024-11-05',
-    );
+    expect(mockSDKTransport.setProtocolVersion).toHaveBeenCalledWith('2024-11-05');
   });
 });

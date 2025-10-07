@@ -11,10 +11,7 @@ describe('SearchRegistryTools', () => {
     it('should search registries and return results', async () => {
       const { tool, mockContext } = getContext();
 
-      const result = await tool.handle(
-        { keywords: 'github issues' },
-        mockContext,
-      );
+      const result = await tool.handle({ keywords: 'github issues' }, mockContext);
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/v0/servers?search=github%20issues'),
@@ -101,15 +98,10 @@ describe('SearchRegistryTools', () => {
         }),
       });
 
-      const result = await tool.handle(
-        { keywords: 'nonexistent' },
-        mockContext,
-      );
+      const result = await tool.handle({ keywords: 'nonexistent' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain(
-        'No servers found matching keywords: nonexistent',
-      );
+      expect(textContent.text).toContain('No servers found matching keywords: nonexistent');
       expect(textContent.text).toContain('Try broader search terms');
     });
 

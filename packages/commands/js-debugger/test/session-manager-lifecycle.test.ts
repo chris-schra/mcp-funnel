@@ -48,13 +48,8 @@ describe('DebuggerSessionManager - Lifecycle', () => {
   beforeEach(async () => {
     manager = new DebuggerSessionManager();
 
-    const { DebuggerSession } = vi.mocked(
-      await import('../src/debugger/session.js'),
-    );
-    mockSessionInstance = new DebuggerSession(
-      'test-id',
-      createMockConfig(),
-    ) as DebuggerSession;
+    const { DebuggerSession } = vi.mocked(await import('../src/debugger/session.js'));
+    mockSessionInstance = new DebuggerSession('test-id', createMockConfig()) as DebuggerSession;
 
     vi.clearAllMocks();
   });
@@ -69,9 +64,7 @@ describe('DebuggerSessionManager - Lifecycle', () => {
       const sessionId = 'generated-id';
       const mockResponse = createMockStartResponse(sessionId);
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
 
       const result = await manager.startSession(config);
 
@@ -85,9 +78,7 @@ describe('DebuggerSessionManager - Lifecycle', () => {
       const config = createMockConfig(sessionId);
       const mockResponse = createMockStartResponse(sessionId);
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
 
       const result = await manager.startSession(config);
 
@@ -115,9 +106,7 @@ describe('DebuggerSessionManager - Lifecycle', () => {
 
       vi.mocked(mockSessionInstance.initialize).mockRejectedValueOnce(error);
 
-      await expect(manager.startSession(config)).rejects.toThrow(
-        'Initialization failed',
-      );
+      await expect(manager.startSession(config)).rejects.toThrow('Initialization failed');
 
       const sessionId = mockSessionInstance.id;
       expect(() => manager.getDescriptor(sessionId)).toThrow(
@@ -129,21 +118,14 @@ describe('DebuggerSessionManager - Lifecycle', () => {
       const config = createMockConfig('test-id');
       const mockResponse = createMockStartResponse('test-id');
       let terminationHandler:
-        | ((value: {
-            code: number | null;
-            signal?: NodeJS.Signals | null;
-          }) => void)
+        | ((value: { code: number | null; signal?: NodeJS.Signals | null }) => void)
         | undefined;
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.onTerminated).mockImplementation(
-        (handler) => {
-          terminationHandler = handler;
-          return () => {};
-        },
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.onTerminated).mockImplementation((handler) => {
+        terminationHandler = handler;
+        return () => {};
+      });
 
       await manager.startSession(config);
 
@@ -152,9 +134,7 @@ describe('DebuggerSessionManager - Lifecycle', () => {
 
       terminationHandler?.({ code: 0, signal: null });
 
-      expect(() => manager.getDescriptor('test-id')).toThrow(
-        'Debugger session test-id not found.',
-      );
+      expect(() => manager.getDescriptor('test-id')).toThrow('Debugger session test-id not found.');
     });
   });
 
@@ -165,12 +145,8 @@ describe('DebuggerSessionManager - Lifecycle', () => {
       const mockResponse = createMockStartResponse(sessionId);
       const mockDescriptor = createMockDescriptor(sessionId);
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.getDescriptor).mockReturnValue(
-        mockDescriptor,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.getDescriptor).mockReturnValue(mockDescriptor);
 
       await manager.startSession(config);
       const descriptor = manager.getDescriptor(sessionId);
@@ -195,9 +171,7 @@ describe('DebuggerSessionManager - Lifecycle', () => {
       const mockResponse = createMockStartResponse(sessionId);
       const mockSnapshot = createMockSnapshot(sessionId);
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
       vi.mocked(mockSessionInstance.getSnapshot).mockReturnValue(mockSnapshot);
 
       await manager.startSession(config);
@@ -222,21 +196,14 @@ describe('DebuggerSessionManager - Lifecycle', () => {
       const config = createMockConfig(sessionId);
       const mockResponse = createMockStartResponse(sessionId);
       let terminationHandler:
-        | ((value: {
-            code: number | null;
-            signal?: NodeJS.Signals | null;
-          }) => void)
+        | ((value: { code: number | null; signal?: NodeJS.Signals | null }) => void)
         | undefined;
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.onTerminated).mockImplementation(
-        (handler) => {
-          terminationHandler = handler;
-          return () => {};
-        },
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.onTerminated).mockImplementation((handler) => {
+        terminationHandler = handler;
+        return () => {};
+      });
 
       await manager.startSession(config);
 

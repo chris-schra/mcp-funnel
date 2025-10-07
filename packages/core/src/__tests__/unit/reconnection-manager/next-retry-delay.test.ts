@@ -4,10 +4,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { ReconnectionManager } from '../../../reconnection-manager/index.js';
-import {
-  ConnectionState,
-  type ConnectionStateChange,
-} from '@mcp-funnel/models';
+import { ConnectionState, type ConnectionStateChange } from '@mcp-funnel/models';
 import { setupTimers } from './test-utils.js';
 
 describe('ReconnectionManager - Next Retry Delay', () => {

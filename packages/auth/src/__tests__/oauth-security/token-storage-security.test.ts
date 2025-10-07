@@ -7,11 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  createTestConfig,
-  createTestStorage,
-  setupConsoleSpy,
-} from './test-utils.js';
+import { createTestConfig, createTestStorage, setupConsoleSpy } from './test-utils.js';
 import { OAuth2AuthCodeProvider } from '../../implementations/oauth2-authorization-code.js';
 import { MemoryTokenStorage } from '../../implementations/memory-token-storage.js';
 import type { TokenData } from '@mcp-funnel/core';

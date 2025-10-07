@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OAuth2ClientCredentialsProvider } from '../../implementations/oauth2-client-credentials.js';
 import type { ITokenStorage, TokenData } from '@mcp-funnel/core';
-import {
-  createMockStorage,
-  createMockConfig,
-  setupSuccessfulTokenResponse,
-} from './test-utils.js';
+import { createMockStorage, createMockConfig, setupSuccessfulTokenResponse } from './test-utils.js';
 
 describe('OAuth2ClientCredentialsProvider - isValid Method', () => {
   let provider: OAuth2ClientCredentialsProvider;
@@ -32,10 +28,7 @@ describe('OAuth2ClientCredentialsProvider - isValid Method', () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValue(validToken);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(false);
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     const isValid = await provider.isValid();
 
     expect(isValid).toBe(true);
@@ -52,10 +45,7 @@ describe('OAuth2ClientCredentialsProvider - isValid Method', () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValue(expiredToken);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     const isValid = await provider.isValid();
 
     expect(isValid).toBe(false);
@@ -64,24 +54,16 @@ describe('OAuth2ClientCredentialsProvider - isValid Method', () => {
   it('should return false when no token exists', async () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValue(null);
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     const isValid = await provider.isValid();
 
     expect(isValid).toBe(false);
   });
 
   it('should handle storage errors in isValid check', async () => {
-    vi.mocked(mockStorage.retrieve).mockRejectedValue(
-      new Error('Storage error'),
-    );
+    vi.mocked(mockStorage.retrieve).mockRejectedValue(new Error('Storage error'));
 
-    provider = new OAuth2ClientCredentialsProvider(
-      createMockConfig(),
-      mockStorage,
-    );
+    provider = new OAuth2ClientCredentialsProvider(createMockConfig(), mockStorage);
     const isValid = await provider.isValid();
 
     // Should return false on storage errors

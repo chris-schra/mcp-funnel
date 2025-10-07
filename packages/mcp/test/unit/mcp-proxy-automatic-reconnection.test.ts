@@ -58,10 +58,7 @@ type MockTransport = {
 let mockTransports: Map<string, MockTransport>;
 let config: ProxyConfig;
 
-const ensureServerConnected = async (
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> => {
+const ensureServerConnected = async (proxy: MCPProxy, serverName: string): Promise<void> => {
   const status = proxy.getServerStatus(serverName);
   if (status.status !== 'connected') {
     await proxy.reconnectServer(serverName);

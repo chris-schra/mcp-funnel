@@ -40,9 +40,7 @@ export async function uninstall(
 
   // Find command by package name or command name
   const commandIndex = manifest.commands.findIndex(
-    (cmd) =>
-      cmd.package === packageNameOrCommandName ||
-      cmd.name === packageNameOrCommandName,
+    (cmd) => cmd.package === packageNameOrCommandName || cmd.name === packageNameOrCommandName,
   );
 
   if (commandIndex === -1) {

@@ -25,9 +25,7 @@ import { truncateText } from './text.js';
  * @returns Author name string or undefined if not present
  * @internal
  */
-function normalizeAuthor(
-  author: string | { name?: string } | undefined,
-): string | undefined {
+function normalizeAuthor(author: string | { name?: string } | undefined): string | undefined {
   if (typeof author === 'string') {
     return author;
   }
@@ -46,9 +44,7 @@ function normalizeAuthor(
  * @returns License type string or undefined if not present
  * @internal
  */
-function normalizeLicense(
-  license: string | { type?: string } | undefined,
-): string | undefined {
+function normalizeLicense(license: string | { type?: string } | undefined): string | undefined {
   if (typeof license === 'string') {
     return license;
   }
@@ -81,23 +77,17 @@ function normalizeLicense(
  * @public
  * @see file:../../npm-client.ts:92 - Used after fetching package data
  */
-export function transformPackageResponse(
-  data: NPMPackageResponse,
-): PackageInfo {
+export function transformPackageResponse(data: NPMPackageResponse): PackageInfo {
   const latestVersion = data['dist-tags'].latest;
   const versionInfo: NPMVersionInfo = data.versions[latestVersion];
-  const publishedAt =
-    data.time[latestVersion] || data.time.created || new Date().toISOString();
+  const publishedAt = data.time[latestVersion] || data.time.created || new Date().toISOString();
 
   const author = normalizeAuthor(data.author);
   const license = normalizeLicense(data.license);
 
   // Truncate README and description
   const readme = data.readme ? truncateText(data.readme, 5000) : undefined;
-  const description = truncateText(
-    data.description || versionInfo?.description || '',
-    500,
-  );
+  const description = truncateText(data.description || versionInfo?.description || '', 500);
 
   return {
     name: data.name,
@@ -132,9 +122,7 @@ export function transformPackageResponse(
  * @public
  * @see file:../../npm-client.ts:148 - Used after searching packages
  */
-export function transformSearchResponse(
-  data: NPMSearchResponse,
-): SearchResults {
+export function transformSearchResponse(data: NPMSearchResponse): SearchResults {
   const results: SearchResultItem[] = data.objects.map((obj) => ({
     name: obj.package.name,
     version: obj.package.version,

@@ -14,9 +14,7 @@ import type { PendingRequest } from '../base-client-transport.js';
  * @param pendingRequests - Map of pending requests
  * @internal
  */
-export function cleanupPendingRequests(
-  pendingRequests: Map<string, PendingRequest>,
-): void {
+export function cleanupPendingRequests(pendingRequests: Map<string, PendingRequest>): void {
   for (const [_id, pending] of pendingRequests) {
     pending.controller.abort();
     pending.reject(new Error('Transport closed'));

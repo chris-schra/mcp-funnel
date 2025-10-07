@@ -117,11 +117,7 @@ export function logEvent(level: LogLevel, event: string, data?: unknown): void {
  * @param extra - Additional structured context to aid debugging
  * @public
  */
-export function logError(
-  context: string,
-  rawError: unknown,
-  extra?: unknown,
-): void {
+export function logError(context: string, rawError: unknown, extra?: unknown): void {
   const err = rawError as { message?: string; stack?: string; code?: unknown };
   logEvent('error', `error:${context}`, {
     message: err?.message ?? String(rawError),
@@ -143,10 +139,7 @@ export function logError(
  * @returns Path to the server's stream log file
  * @public
  */
-export function getServerStreamLogPath(
-  serverName: string,
-  stream: 'stderr' | 'stdout',
-): string {
+export function getServerStreamLogPath(serverName: string, stream: 'stderr' | 'stdout'): string {
   return resolve(LOG_DIR, `run-${runId()}-${serverName}.${stream}.log`);
 }
 
@@ -186,11 +179,7 @@ export interface ILogger {
    * @param error - Optional error object
    * @param context - Optional context object for structured logging
    */
-  error(
-    message: string,
-    error?: Error | unknown,
-    context?: Record<string, unknown>,
-  ): void;
+  error(message: string, error?: Error | unknown, context?: Record<string, unknown>): void;
 }
 
 /**
@@ -227,11 +216,7 @@ export class ConsoleLogger implements ILogger {
     }
   }
 
-  public error(
-    message: string,
-    error?: Error | unknown,
-    context?: Record<string, unknown>,
-  ): void {
+  public error(message: string, error?: Error | unknown, context?: Record<string, unknown>): void {
     const baseContext = context || {};
     const errorContext = error
       ? {

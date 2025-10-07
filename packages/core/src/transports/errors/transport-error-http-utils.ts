@@ -54,9 +54,7 @@ export function createErrorFromHttpStatus(
   statusText?: string,
   cause?: Error,
 ): TransportError {
-  const message = statusText
-    ? `HTTP ${statusCode}: ${statusText}`
-    : `HTTP ${statusCode}`;
+  const message = statusText ? `HTTP ${statusCode}: ${statusText}` : `HTTP ${statusCode}`;
 
   // Determine if the error is retryable based on status code
   const isRetryable = isHttpStatusRetryable(statusCode);

@@ -54,9 +54,7 @@ export interface SDKTransportCallbacks {
  * @returns Configured SDK transport instance
  * @internal
  */
-export function createSDKTransport(
-  config: SDKTransportConfig,
-): SDKStreamableHTTPClientTransport {
+export function createSDKTransport(config: SDKTransportConfig): SDKStreamableHTTPClientTransport {
   const url = new URL(config.url);
   const sdkOptions: StreamableHTTPClientTransportOptions = {
     requestInit: config.requestInit,
@@ -164,10 +162,7 @@ export function validateStreamableHTTPUrl(url: string): void {
       throw new Error('StreamableHTTP URL must use http: or https: protocol');
     }
   } catch (error) {
-    throw TransportError.connectionFailed(
-      `Invalid URL format: ${error}`,
-      error as Error,
-    );
+    throw TransportError.connectionFailed(`Invalid URL format: ${error}`, error as Error);
   }
 }
 

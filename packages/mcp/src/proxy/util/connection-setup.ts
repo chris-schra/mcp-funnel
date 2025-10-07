@@ -1,11 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { logError, logEvent, StdioClientTransport } from '@mcp-funnel/core';
-import type {
-  TargetServerZod,
-  ProxyConfig,
-  TargetServer,
-} from '@mcp-funnel/schemas';
+import type { TargetServerZod, ProxyConfig, TargetServer } from '@mcp-funnel/schemas';
 import { buildServerEnvironment } from '../../env/index.js';
 import { createTransport } from '../../utils/transport/index.js';
 import { createAuthProvider } from './auth-provider-factory.js';
@@ -60,15 +56,11 @@ async function buildConnectionEnvironment(
 
   const baseCommand =
     legacyServer.command ??
-    (extendedServer.transport?.type === 'stdio'
-      ? extendedServer.transport.command
-      : undefined) ??
+    (extendedServer.transport?.type === 'stdio' ? extendedServer.transport.command : undefined) ??
     '';
   const baseArgs =
     legacyServer.args ??
-    (extendedServer.transport?.type === 'stdio'
-      ? extendedServer.transport.args
-      : undefined) ??
+    (extendedServer.transport?.type === 'stdio' ? extendedServer.transport.args : undefined) ??
     [];
 
   const targetForEnv: TargetServer = {
@@ -101,22 +93,14 @@ async function createServerTransport(
 
   const baseCommand =
     legacyServer.command ??
-    (extendedServer.transport?.type === 'stdio'
-      ? extendedServer.transport.command
-      : undefined) ??
+    (extendedServer.transport?.type === 'stdio' ? extendedServer.transport.command : undefined) ??
     '';
   const baseArgs =
     legacyServer.args ??
-    (extendedServer.transport?.type === 'stdio'
-      ? extendedServer.transport.args
-      : undefined) ??
+    (extendedServer.transport?.type === 'stdio' ? extendedServer.transport.args : undefined) ??
     [];
 
-  const authResult = createAuthProvider(
-    extendedServer.auth,
-    extendedServer.name,
-    resolvedEnv,
-  );
+  const authResult = createAuthProvider(extendedServer.auth, extendedServer.name, resolvedEnv);
 
   const transportDependencies = authResult
     ? {
@@ -127,9 +111,7 @@ async function createServerTransport(
 
   if (extendedServer.transport) {
     const explicitTransportEnv =
-      'env' in extendedServer.transport
-        ? (extendedServer.transport.env ?? {})
-        : {};
+      'env' in extendedServer.transport ? (extendedServer.transport.env ?? {}) : {};
 
     const baseTransportEnv = {
       ...resolvedEnv,
@@ -140,12 +122,8 @@ async function createServerTransport(
       extendedServer.transport.type === 'stdio'
         ? {
             ...extendedServer.transport,
-            command:
-              extendedServer.transport.command ??
-              legacyServer.command ??
-              baseCommand,
-            args:
-              extendedServer.transport.args ?? legacyServer.args ?? baseArgs,
+            command: extendedServer.transport.command ?? legacyServer.command ?? baseCommand,
+            args: extendedServer.transport.args ?? legacyServer.args ?? baseArgs,
             env: baseTransportEnv,
           }
         : {
@@ -199,10 +177,7 @@ async function discoverServerTools(
       });
     }
   } catch (error) {
-    console.error(
-      `[proxy] Failed to discover tools from ${targetServer.name}:`,
-      error,
-    );
+    console.error(`[proxy] Failed to discover tools from ${targetServer.name}:`, error);
     logError('tools:discovery_failed', error, { server: targetServer.name });
   }
 }
@@ -248,11 +223,7 @@ export async function connectToServer(
     version: '1.0.0',
   });
 
-  const resolvedEnv = await buildConnectionEnvironment(
-    targetServer,
-    config,
-    configPath,
-  );
+  const resolvedEnv = await buildConnectionEnvironment(targetServer, config, configPath);
 
   const transport = await createServerTransport(targetServer, resolvedEnv);
 

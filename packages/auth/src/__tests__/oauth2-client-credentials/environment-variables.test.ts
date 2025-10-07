@@ -2,11 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OAuth2ClientCredentialsProvider } from '../../implementations/oauth2-client-credentials';
 import type { OAuth2ClientCredentialsConfigZod } from '../../schemas.js';
 import type { ITokenStorage } from '@mcp-funnel/core';
-import {
-  mockFetch,
-  createMockStorage,
-  setupSuccessfulTokenResponse,
-} from './test-utils.js';
+import { mockFetch, createMockStorage, setupSuccessfulTokenResponse } from './test-utils.js';
 
 describe('OAuth2ClientCredentialsProvider - Environment Variable Resolution', () => {
   let provider: OAuth2ClientCredentialsProvider;
@@ -41,10 +37,7 @@ describe('OAuth2ClientCredentialsProvider - Environment Variable Resolution', ()
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
       vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        configWithEnvVar,
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(configWithEnvVar, mockStorage);
       await provider.getHeaders();
 
       // Should use environment variable value
@@ -73,10 +66,7 @@ describe('OAuth2ClientCredentialsProvider - Environment Variable Resolution', ()
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
       vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        configWithEnvVar,
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(configWithEnvVar, mockStorage);
       await provider.getHeaders();
 
       // Should use environment variable value
@@ -105,10 +95,7 @@ describe('OAuth2ClientCredentialsProvider - Environment Variable Resolution', ()
       vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
       vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
-      provider = new OAuth2ClientCredentialsProvider(
-        configWithEnvVar,
-        mockStorage,
-      );
+      provider = new OAuth2ClientCredentialsProvider(configWithEnvVar, mockStorage);
       await provider.getHeaders();
 
       // Should use environment variable value
@@ -130,14 +117,8 @@ describe('OAuth2ClientCredentialsProvider - Environment Variable Resolution', ()
 
       // Should throw error during provider construction
       expect(
-        () =>
-          new OAuth2ClientCredentialsProvider(
-            configWithMissingEnvVar,
-            mockStorage,
-          ),
-      ).toThrow(
-        "Required environment variable 'MISSING_CLIENT_ID' is not defined",
-      );
+        () => new OAuth2ClientCredentialsProvider(configWithMissingEnvVar, mockStorage),
+      ).toThrow("Required environment variable 'MISSING_CLIENT_ID' is not defined");
     });
   });
 });

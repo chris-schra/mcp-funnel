@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DotEnvProvider } from '../index.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('DotEnvProvider - Escape Sequences', () => {
   let testDir: string;
@@ -49,11 +45,7 @@ describe('DotEnvProvider - Escape Sequences', () => {
       "BACKSLASH='Value with \\\\ literal backslashes'",
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.single-escape',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.single-escape', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
@@ -78,11 +70,7 @@ describe('DotEnvProvider - Escape Sequences', () => {
       'NORMAL=simple_value',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.continuation',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.continuation', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act

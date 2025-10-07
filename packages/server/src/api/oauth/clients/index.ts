@@ -22,22 +22,12 @@ ClientRoute.post('/:clientId/rotate-secret', async (c) => {
       );
     }
 
-    const result = await oauthProvider.rotateClientSecret(
-      clientId,
-      currentSecret,
-    );
+    const result = await oauthProvider.rotateClientSecret(clientId, currentSecret);
 
     if (!result.success) {
-      const status =
-        result.error?.error === OAuthErrorCodes.INVALID_CLIENT ? 401 : 400;
-      const errorResponse = OAuthUtils.createOAuthErrorResponse(
-        result.error!,
-        status,
-      );
-      return c.json(
-        errorResponse.body,
-        errorResponse.status as 400 | 401 | 403 | 500,
-      );
+      const status = result.error?.error === OAuthErrorCodes.INVALID_CLIENT ? 401 : 400;
+      const errorResponse = OAuthUtils.createOAuthErrorResponse(result.error!, status);
+      return c.json(errorResponse.body, errorResponse.status as 400 | 401 | 403 | 500);
     }
 
     const updatedClient = result.client!;

@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import {
-  resolveSecretsFromConfig,
-  clearSecretManagerCache,
-} from './secret-resolver.js';
+import { resolveSecretsFromConfig, clearSecretManagerCache } from './secret-resolver.js';
 import type { SecretProviderConfig } from './provider-configs.js';
 
 /**
@@ -41,9 +38,7 @@ describe('secret-resolver caching', () => {
     const envPath = join(workDir, '.env');
     writeFileSync(envPath, 'CACHE_VALUE=initial', 'utf-8');
 
-    const providers: SecretProviderConfig[] = [
-      createDotEnvConfig(envPath, 'cached-env'),
-    ];
+    const providers: SecretProviderConfig[] = [createDotEnvConfig(envPath, 'cached-env')];
 
     const first = await resolveSecretsFromConfig(providers, workDir);
     expect(first.CACHE_VALUE).toBe('initial');

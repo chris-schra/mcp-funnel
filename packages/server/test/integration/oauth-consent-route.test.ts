@@ -76,9 +76,7 @@ describe('OAuth consent HTTP endpoints', () => {
     );
     expect(body.status).toBe('denied');
     expect(body.error).toBe('access_denied');
-    expect(body.error_description).toBe(
-      'The resource owner denied the request',
-    );
+    expect(body.error_description).toBe('The resource owner denied the request');
   });
 
   it('records consent approval and allows authorization to continue', async () => {
@@ -93,15 +91,12 @@ describe('OAuth consent HTTP endpoints', () => {
       state: 'approve-state',
     });
 
-    const initialAuthorize = await oauthRoute.request(
-      `/authorize?${authorizeParams.toString()}`,
-      {
-        method: 'GET',
-        headers: {
-          'x-user-id': userId,
-        },
+    const initialAuthorize = await oauthRoute.request(`/authorize?${authorizeParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'x-user-id': userId,
       },
-    );
+    });
 
     expect(initialAuthorize.status).toBe(302);
     const initialLocation = initialAuthorize.headers.get('location');
@@ -280,10 +275,7 @@ describe('OAuth consent HTTP endpoints', () => {
     expect(authorizeResponse.status).toBe(302);
     const authorizeLocation = authorizeResponse.headers.get('location');
     expect(authorizeLocation).toBeTruthy();
-    const authorizeRedirect = new URL(
-      authorizeLocation ?? '',
-      'http://localhost',
-    );
+    const authorizeRedirect = new URL(authorizeLocation ?? '', 'http://localhost');
     expect(authorizeRedirect.searchParams.get('code')).toBeTruthy();
   });
 

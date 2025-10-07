@@ -54,10 +54,7 @@ describe('CommandInstaller - false positive prevention', () => {
   });
 
   it('should NOT match case-sensitive variations', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'Weather-Tool',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'Weather-Tool');
     expect(result).toBeUndefined();
   });
 });

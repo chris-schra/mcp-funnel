@@ -101,8 +101,7 @@ export class OAuthProvider {
     response_types?: string[];
     scope?: string;
   }): Promise<ClientRegistration> {
-    const { client_secret, client_secret_expires_at } =
-      this.generateClientSecretMetadata();
+    const { client_secret, client_secret_expires_at } = this.generateClientSecretMetadata();
 
     const client: ClientRegistration = {
       client_id: generateClientId(),
@@ -140,11 +139,7 @@ export class OAuthProvider {
     state?: string;
     error?: OAuthError;
   }> {
-    return this.tokenUtils.handleAuthorizationRequest(
-      this.consentService,
-      params,
-      userId,
-    );
+    return this.tokenUtils.handleAuthorizationRequest(this.consentService, params, userId);
   }
 
   /**
@@ -170,9 +165,7 @@ export class OAuthProvider {
     const { grant_type } = params as TokenRequest;
 
     if (grant_type === GrantTypes.AUTHORIZATION_CODE) {
-      return this.tokenUtils.handleAuthorizationCodeGrant(
-        params as TokenRequest,
-      );
+      return this.tokenUtils.handleAuthorizationCodeGrant(params as TokenRequest);
     } else if (grant_type === GrantTypes.REFRESH_TOKEN) {
       return this.tokenUtils.handleRefreshTokenGrant(params as TokenRequest);
     }
@@ -262,8 +255,7 @@ export class OAuthProvider {
       };
     }
 
-    const { client_secret, client_secret_expires_at } =
-      this.generateClientSecretMetadata();
+    const { client_secret, client_secret_expires_at } = this.generateClientSecretMetadata();
 
     const updatedClient: ClientRegistration = {
       ...client,
@@ -311,10 +303,7 @@ export class OAuthProvider {
       revocation_endpoint: `${this.config.baseUrl}/revoke`,
       scopes_supported: this.config.supportedScopes,
       response_types_supported: [ResponseTypes.CODE],
-      grant_types_supported: [
-        GrantTypes.AUTHORIZATION_CODE,
-        GrantTypes.REFRESH_TOKEN,
-      ],
+      grant_types_supported: [GrantTypes.AUTHORIZATION_CODE, GrantTypes.REFRESH_TOKEN],
       token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
       code_challenge_methods_supported: ['plain', 'S256'],
     };

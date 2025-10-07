@@ -103,9 +103,7 @@ describe('TransportConfigSchema', () => {
         },
       };
 
-      expect(() =>
-        TransportConfigSchema.parse(partialReconnectConfig),
-      ).not.toThrow();
+      expect(() => TransportConfigSchema.parse(partialReconnectConfig)).not.toThrow();
       const result = TransportConfigSchema.parse(partialReconnectConfig);
       if (result.type === 'sse') {
         const sseResult = result as SSETransportConfigZod;
@@ -182,9 +180,7 @@ describe('TransportConfigSchema', () => {
           // Other fields optional
         },
       };
-      expect(() =>
-        TransportConfigSchema.parse(partialReconnectConfig),
-      ).not.toThrow();
+      expect(() => TransportConfigSchema.parse(partialReconnectConfig)).not.toThrow();
       const result = TransportConfigSchema.parse(partialReconnectConfig);
       if (result.type === 'websocket') {
         const wsResult = result as WebSocketTransportConfigZod;
@@ -217,9 +213,7 @@ describe('TransportConfigSchema', () => {
         url: 'ws://example.com',
       };
 
-      expect(() =>
-        TransportConfigSchema.parse(invalidTransportConfig),
-      ).toThrow();
+      expect(() => TransportConfigSchema.parse(invalidTransportConfig)).toThrow();
     });
 
     it('should reject transport config without type', () => {

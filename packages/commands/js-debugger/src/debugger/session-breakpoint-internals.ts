@@ -30,19 +30,12 @@ export class SessionBreakpointInternals {
       params?: Record<string, unknown>,
     ) => Promise<T>,
     private readonly breakpointRecords: Map<string, BreakpointRecord>,
-    private readonly pendingBreakpointUpgrades: Map<
-      string,
-      PendingBreakpointUpgrade
-    >,
+    private readonly pendingBreakpointUpgrades: Map<string, PendingBreakpointUpgrade>,
     private readonly pendingBreakpointKeys: Map<string, Set<string>>,
-    private readonly fromCdpLocation: (
-      location: CdpLocation,
-    ) => BreakpointLocation,
+    private readonly fromCdpLocation: (location: CdpLocation) => BreakpointLocation,
   ) {}
 
-  public async registerBreakpointByUrl(
-    spec: BreakpointSpec,
-  ): Promise<BreakpointSummary> {
+  public async registerBreakpointByUrl(spec: BreakpointSpec): Promise<BreakpointSummary> {
     const result = (await this.sendCommand('Debugger.setBreakpointByUrl', {
       url: spec.location.url,
       lineNumber: spec.location.lineNumber,
@@ -52,9 +45,7 @@ export class SessionBreakpointInternals {
       breakpointId: string;
       locations: CdpLocation[];
     };
-    const resolved = result.locations.map((location) =>
-      this.fromCdpLocation(location),
-    );
+    const resolved = result.locations.map((location) => this.fromCdpLocation(location));
     const summary: BreakpointSummary = {
       id: result.breakpointId,
       requested: spec,
@@ -92,16 +83,9 @@ export class SessionBreakpointInternals {
           originalColumn,
         );
         if (generated) {
-          const snapped = await this.snapToValidBreakpoint(
-            metadata.scriptId,
-            generated,
-          );
+          const snapped = await this.snapToValidBreakpoint(metadata.scriptId, generated);
           if (snapped) {
-            return this.setBreakpointAtGeneratedLocation(
-              metadata.scriptId,
-              snapped,
-              spec,
-            );
+            return this.setBreakpointAtGeneratedLocation(metadata.scriptId, snapped, spec);
           } else {
             console.warn(
               `Session ${this.sessionId}: Could not snap to valid breakpoint at ${metadata.scriptId}:${generated.lineNumber}:${generated.columnNumber ?? 0}`,
@@ -124,9 +108,7 @@ export class SessionBreakpointInternals {
       return summary;
     }
 
-    throw new Error(
-      'Unable to register breakpoint by scriptId without a source URL.',
-    );
+    throw new Error('Unable to register breakpoint by scriptId without a source URL.');
   }
 
   public async setBreakpointAtGeneratedLocation(
@@ -175,14 +157,11 @@ export class SessionBreakpointInternals {
       columnNumber: 0,
     };
     try {
-      const response = (await this.sendCommand(
-        'Debugger.getPossibleBreakpoints',
-        {
-          start,
-          end,
-          restrictToFunction: false,
-        },
-      )) as {
+      const response = (await this.sendCommand('Debugger.getPossibleBreakpoints', {
+        start,
+        end,
+        restrictToFunction: false,
+      })) as {
         locations: Array<{
           scriptId: string;
           lineNumber: number;
@@ -222,10 +201,7 @@ export class SessionBreakpointInternals {
     }
   }
 
-  public trackPendingUpgrade(
-    recordId: string,
-    reference: NormalizedScriptReference,
-  ): void {
+  public trackPendingUpgrade(recordId: string, reference: NormalizedScriptReference): void {
     const keys = buildReferenceKeys(reference);
     if (keys.length === 0) {
       return;
@@ -262,9 +238,7 @@ export class SessionBreakpointInternals {
     this.pendingBreakpointUpgrades.delete(recordId);
   }
 
-  public async upgradePendingBreakpoints(
-    metadata: ScriptMetadata,
-  ): Promise<void> {
+  public async upgradePendingBreakpoints(metadata: ScriptMetadata): Promise<void> {
     const keys = buildMetadataKeys(metadata);
     if (keys.length === 0) {
       return;
@@ -308,10 +282,7 @@ export class SessionBreakpointInternals {
     if (!metadata.sourceMap || !record.spec.location.url) {
       return;
     }
-    const sourceId = resolveSourceIdentifier(
-      metadata.sourceMap,
-      upgrade.reference,
-    );
+    const sourceId = resolveSourceIdentifier(metadata.sourceMap, upgrade.reference);
     if (!sourceId) {
       return;
     }
@@ -331,10 +302,7 @@ export class SessionBreakpointInternals {
       return;
     }
 
-    const snapped = await this.snapToValidBreakpoint(
-      metadata.scriptId,
-      generated,
-    );
+    const snapped = await this.snapToValidBreakpoint(metadata.scriptId, generated);
     if (!snapped) {
       console.warn(
         `Session ${this.sessionId}: Could not snap to valid breakpoint at ${metadata.scriptId}:${generated.lineNumber}:${generated.columnNumber ?? 0}`,

@@ -1,11 +1,7 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BaseCoreTool } from '../base-core-tool.js';
 import { CoreToolContext } from '../core-tool.interface.js';
-import {
-  CommandInstaller,
-  readManifest,
-  type InstalledCommand,
-} from '@mcp-funnel/commands-core';
+import { CommandInstaller, readManifest, type InstalledCommand } from '@mcp-funnel/commands-core';
 import { validatePackageParam } from './utils/validation.js';
 import {
   formatAlreadyInstalledResponse,
@@ -21,8 +17,7 @@ export class ManageCommands extends BaseCoreTool {
   public readonly name = 'manage_commands';
   public readonly tool: Tool = {
     name: this.name,
-    description:
-      'Manage MCP Funnel commands - install, uninstall, or update npm packages',
+    description: 'Manage MCP Funnel commands - install, uninstall, or update npm packages',
     inputSchema: {
       type: 'object',
       properties: {
@@ -33,18 +28,15 @@ export class ManageCommands extends BaseCoreTool {
         },
         package: {
           type: 'string',
-          description:
-            'NPM package name or spec (e.g., @org/command, package@1.0.0)',
+          description: 'NPM package name or spec (e.g., @org/command, package@1.0.0)',
         },
         version: {
           type: 'string',
-          description:
-            'Specific version to install (optional, only for install action)',
+          description: 'Specific version to install (optional, only for install action)',
         },
         force: {
           type: 'boolean',
-          description:
-            'Force reinstall even if already installed (only for install action)',
+          description: 'Force reinstall even if already installed (only for install action)',
           default: false,
         },
         removeData: {
@@ -113,8 +105,7 @@ export class ManageCommands extends BaseCoreTool {
       });
     } catch (error) {
       // Check if it's an "already installed" error
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes('already installed')) {
         return await this.handleAlreadyInstalled(packageSpec, context);
       }
@@ -144,8 +135,7 @@ export class ManageCommands extends BaseCoreTool {
     // Get existing command info
     const manifest = await readManifest(this.installer.getManifestPath());
     const existing = manifest.commands.find(
-      (cmd: InstalledCommand) =>
-        cmd.package === packageSpec || cmd.name === packageSpec,
+      (cmd: InstalledCommand) => cmd.package === packageSpec || cmd.name === packageSpec,
     );
 
     if (!existing) {
@@ -194,10 +184,6 @@ export class ManageCommands extends BaseCoreTool {
       context,
     );
 
-    return formatUpdateResponse(
-      updated,
-      reloadResult.hotReloaded,
-      reloadResult.hotReloadError,
-    );
+    return formatUpdateResponse(updated, reloadResult.hotReloaded, reloadResult.hotReloadError);
   }
 }

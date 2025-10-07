@@ -20,9 +20,7 @@ describe('Default Authentication with Environment Variables', () => {
         psCheck = spawn('ps', ['aux']);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.debug(
-          `Skipping lingering tsx dev.ts process check: ${message}`,
-        );
+        console.debug(`Skipping lingering tsx dev.ts process check: ${message}`);
         resolve();
         return;
       }
@@ -53,14 +51,10 @@ describe('Default Authentication with Environment Variables', () => {
         resolveOnce(() => {
           const tsxProcesses = output
             .split('\n')
-            .filter(
-              (line) => line.includes('tsx') && line.includes('dev.ts'),
-            ).length;
+            .filter((line) => line.includes('tsx') && line.includes('dev.ts')).length;
 
           if (tsxProcesses > 0) {
-            console.warn(
-              `Found ${tsxProcesses} lingering tsx dev.ts processes before test`,
-            );
+            console.warn(`Found ${tsxProcesses} lingering tsx dev.ts processes before test`);
           }
 
           resolve();
@@ -69,9 +63,7 @@ describe('Default Authentication with Environment Variables', () => {
 
       const onError = (error: Error) => {
         resolveOnce(() => {
-          console.debug(
-            `Skipping lingering tsx dev.ts process check: ${error.message}`,
-          );
+          console.debug(`Skipping lingering tsx dev.ts process check: ${error.message}`);
           resolve();
         });
       };
@@ -102,9 +94,7 @@ describe('Default Authentication with Environment Variables', () => {
         const exitPromise = new Promise<void>((resolve) => {
           if (serverProcess) {
             serverProcess.on('exit', (code, signal) => {
-              console.debug(
-                `Process ${pid} exited with code ${code}, signal ${signal}`,
-              );
+              console.debug(`Process ${pid} exited with code ${code}, signal ${signal}`);
               resolve();
             });
 
@@ -174,20 +164,15 @@ describe('Default Authentication with Environment Variables', () => {
     testPort = await waitForServerReady(serverProcess);
 
     // Test that auth is required
-    const noAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-    );
+    const noAuthResponse = await fetch(`http://localhost:${testPort}/api/health`);
     expect(noAuthResponse.status).toBe(401);
 
     // Test that correct token works
-    const authResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-      {
-        headers: {
-          Authorization: `Bearer ${testToken}`,
-        },
+    const authResponse = await fetch(`http://localhost:${testPort}/api/health`, {
+      headers: {
+        Authorization: `Bearer ${testToken}`,
       },
-    );
+    });
     expect(authResponse.status).toBe(200);
   });
 
@@ -224,20 +209,15 @@ describe('Default Authentication with Environment Variables', () => {
     const generatedToken = tokenMatch![1];
 
     // Test that auth is required
-    const noAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-    );
+    const noAuthResponse = await fetch(`http://localhost:${testPort}/api/health`);
     expect(noAuthResponse.status).toBe(401);
 
     // Test that generated token works
-    const authResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-      {
-        headers: {
-          Authorization: `Bearer ${generatedToken}`,
-        },
+    const authResponse = await fetch(`http://localhost:${testPort}/api/health`, {
+      headers: {
+        Authorization: `Bearer ${generatedToken}`,
       },
-    );
+    });
     expect(authResponse.status).toBe(200);
   });
 
@@ -266,15 +246,11 @@ describe('Default Authentication with Environment Variables', () => {
     testPort = await waitForServerReady(serverProcess);
 
     // Verify security warnings are displayed
-    expect(capturedOutput).toContain(
-      'WARNING: Inbound authentication is DISABLED',
-    );
+    expect(capturedOutput).toContain('WARNING: Inbound authentication is DISABLED');
     expect(capturedOutput).toContain('This is a security risk');
 
     // Test that no auth is required
-    const noAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-    );
+    const noAuthResponse = await fetch(`http://localhost:${testPort}/api/health`);
     expect(noAuthResponse.status).toBe(200);
   });
 

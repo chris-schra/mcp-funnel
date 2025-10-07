@@ -30,23 +30,17 @@ describe('SearchRegistryTools', () => {
 
     it('should be enabled when exposeCoreTools has matching pattern', () => {
       const { tool } = getContext();
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['search_*'] }),
-      ).toBe(true);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['search_*'] })).toBe(true);
     });
 
     it('should be enabled when exposeCoreTools is ["*"]', () => {
       const { tool } = getContext();
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
-        true,
-      );
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(true);
     });
 
     it('should be disabled when exposeCoreTools excludes the tool', () => {
       const { tool } = getContext();
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
-      ).toBe(false);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] })).toBe(false);
     });
   });
 });

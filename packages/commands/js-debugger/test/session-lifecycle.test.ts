@@ -1,25 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
-import type {
-  DebugSessionConfig,
-  NodeDebugTargetConfig,
-  OutputEntry,
-} from '../src/types/index.js';
+import type { DebugSessionConfig, NodeDebugTargetConfig, OutputEntry } from '../src/types/index.js';
 import { waitFor, sleep } from './utils/async-helpers.js';
 import type { FixtureHandle } from './utils/fixture-manager.js';
 import { prepareNodeFixture } from './utils/fixture-manager.js';
 import type { SessionStateStatus } from '../src/types/session/session-state.js';
-import {
-  waitForSessionTermination,
-  cleanupSession,
-} from './utils/session-helpers.js';
+import { waitForSessionTermination, cleanupSession } from './utils/session-helpers.js';
 
 describe('DebuggerSessionManager - Session Lifecycle', () => {
-  const expectStatusIn = (
-    actual: SessionStateStatus,
-    expected: SessionStateStatus[],
-  ): void => {
+  const expectStatusIn = (actual: SessionStateStatus, expected: SessionStateStatus[]): void => {
     expect(expected).toContain(actual);
   };
 
@@ -44,6 +34,9 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
 
   /**
    * Helper to run a test with automatic cleanup of manager, fixture, and session
+   * @param fixtureName
+   * @param config
+   * @param testFn
    */
   const withSession = async <T>(
     fixtureName: string,
@@ -81,10 +74,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
 
         expect(response.session).toBeDefined();
         expect(response.initialPause).toBeDefined();
-        expectStatusIn(response.session.state.status, [
-          'awaiting-debugger',
-          'paused',
-        ]);
+        expectStatusIn(response.session.state.status, ['awaiting-debugger', 'paused']);
 
         sessionId = response.session.id;
         const descriptor = manager.getDescriptor(sessionId);
@@ -114,14 +104,9 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
                 await sleep(100);
                 return null;
               }
-              return snapshot.session.state.status === 'terminated'
-                ? true
-                : null;
+              return snapshot.session.state.status === 'terminated' ? true : null;
             } catch (error) {
-              if (
-                error instanceof Error &&
-                error.message.includes('not found')
-              ) {
+              if (error instanceof Error && error.message.includes('not found')) {
                 return true;
               }
               throw error;
@@ -165,14 +150,9 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
                   await sleep(100);
                   return null;
                 }
-                return snapshot.session.state.status === 'terminated'
-                  ? true
-                  : null;
+                return snapshot.session.state.status === 'terminated' ? true : null;
               } catch (error) {
-                if (
-                  error instanceof Error &&
-                  error.message.includes('not found')
-                ) {
+                if (error instanceof Error && error.message.includes('not found')) {
                   return true;
                 }
                 throw error;
@@ -207,14 +187,9 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
             () => {
               try {
                 const descriptor = manager.getDescriptor(sessionId);
-                return descriptor.state.status === 'running'
-                  ? descriptor
-                  : null;
+                return descriptor.state.status === 'running' ? descriptor : null;
               } catch (error) {
-                if (
-                  error instanceof Error &&
-                  error.message.includes('not found')
-                ) {
+                if (error instanceof Error && error.message.includes('not found')) {
                   return true;
                 }
                 throw error;
@@ -245,7 +220,10 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
     it('should inspect TypeScript breakpoints with output', async () => {
       await withSession(
         'breakpoint-script.ts',
-        { resumeAfterConfigure: true, target: { type: 'node', entry: '', useTsx: true } },
+        {
+          resumeAfterConfigure: true,
+          target: { type: 'node', entry: '', useTsx: true },
+        },
         async (manager, sessionId) => {
           const pauseDetails = await waitFor(
             async () => {
@@ -253,18 +231,13 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
                 const snapshot = manager.getSnapshot(sessionId);
                 if (snapshot.session.state.status === 'paused') {
                   const output = await manager.queryOutput({ sessionId });
-                  if (
-                    hasOutputContent(output.entries, 'Before TS breakpoint')
-                  ) {
+                  if (hasOutputContent(output.entries, 'Before TS breakpoint')) {
                     return snapshot;
                   }
                 }
                 return null;
               } catch (error) {
-                if (
-                  error instanceof Error &&
-                  error.message.includes('not found')
-                ) {
+                if (error instanceof Error && error.message.includes('not found')) {
                   return true;
                 }
                 throw error;
@@ -277,9 +250,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
             expect(pauseDetails.session.state.status).toBe('paused');
 
             const output = await manager.queryOutput({ sessionId });
-            expect(
-              hasOutputContent(output.entries, 'Before TS breakpoint'),
-            ).toBe(true);
+            expect(hasOutputContent(output.entries, 'Before TS breakpoint')).toBe(true);
 
             await manager.runCommand({ sessionId, action: 'continue' });
           }
@@ -314,25 +285,19 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
           await waitFor(
             async () => {
               const output = await manager.queryOutput({ sessionId });
-              return hasOutputContent(output.entries, 'Test log message')
-                ? output
-                : null;
+              return hasOutputContent(output.entries, 'Test log message') ? output : null;
             },
             { timeoutMs: 3000 },
           );
 
           const output = await manager.queryOutput({ sessionId });
-          expect(hasOutputContent(output.entries, 'Test log message')).toBe(
-            true,
-          );
+          expect(hasOutputContent(output.entries, 'Test log message')).toBe(true);
 
           await waitFor(
             () => {
               try {
                 const descriptor = manager.getDescriptor(sessionId);
-                return descriptor.state.status === 'terminated'
-                  ? descriptor
-                  : null;
+                return descriptor.state.status === 'terminated' ? descriptor : null;
               } catch {
                 return true;
               }
@@ -356,9 +321,7 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
         });
         sessionId = response.session.id;
 
-        const statusHistory: SessionStateStatus[] = [
-          response.session.state.status,
-        ];
+        const statusHistory: SessionStateStatus[] = [response.session.state.status];
 
         const pausedDescriptor = manager.getDescriptor(sessionId);
         statusHistory.push(pausedDescriptor.state.status);
@@ -385,14 +348,9 @@ describe('DebuggerSessionManager - Session Lifecycle', () => {
                 await sleep(100);
                 return null;
               }
-              return snapshot.session.state.status === 'terminated'
-                ? true
-                : null;
+              return snapshot.session.state.status === 'terminated' ? true : null;
             } catch (error) {
-              if (
-                error instanceof Error &&
-                error.message.includes('not found')
-              ) {
+              if (error instanceof Error && error.message.includes('not found')) {
                 return true;
               }
               throw error;

@@ -44,12 +44,7 @@ describe('Environment Security - Core Functionality', () => {
         USER: 'test',
       };
 
-      const filtered = filterEnvVars(testEnv, [
-        'PATH',
-        'HOME',
-        'USER',
-        'MISSING',
-      ]);
+      const filtered = filterEnvVars(testEnv, ['PATH', 'HOME', 'USER', 'MISSING']);
 
       expect(filtered).toEqual({
         PATH: '/usr/bin',
@@ -146,12 +141,9 @@ describe('Environment Security - Core Functionality', () => {
       // The fix: Apply secure defaults at runtime when undefined
 
       // Verify the fix is in place by checking the logic:
-      const simulateRuntimeLogic = (config: {
-        defaultPassthroughEnv?: string[];
-      }) => {
+      const simulateRuntimeLogic = (config: { defaultPassthroughEnv?: string[] }) => {
         // This simulates the logic in index.ts:buildServerEnvironment
-        const passthroughEnv =
-          config.defaultPassthroughEnv ?? getDefaultPassthroughEnv();
+        const passthroughEnv = config.defaultPassthroughEnv ?? getDefaultPassthroughEnv();
         return passthroughEnv;
       };
 
@@ -201,9 +193,7 @@ describe('Environment Security - Core Functionality', () => {
 
       // Verify ONLY safe vars are passed
       const filteredKeys = Object.keys(filtered);
-      expect(filteredKeys.every((key) => defaultAllowlist.includes(key))).toBe(
-        true,
-      );
+      expect(filteredKeys.every((key) => defaultAllowlist.includes(key))).toBe(true);
 
       // Explicitly verify each dangerous var is blocked
       expect(filtered.AWS_ACCESS_KEY_ID).toBeUndefined();

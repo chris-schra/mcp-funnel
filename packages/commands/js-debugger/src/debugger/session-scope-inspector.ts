@@ -44,15 +44,9 @@ export class SessionScopeInspector {
     if (isRootRequest && depth !== 1) {
       depth = 1;
     }
-    const maxProperties = Math.max(
-      query.maxProperties ?? DEFAULT_MAX_PROPERTIES,
-      1,
-    );
+    const maxProperties = Math.max(query.maxProperties ?? DEFAULT_MAX_PROPERTIES, 1);
 
-    const { target, resolvedPath } = await this.resolveScopePath(
-      scopeObject,
-      path,
-    );
+    const { target, resolvedPath } = await this.resolveScopePath(scopeObject, path);
 
     if (!target.objectId) {
       return {
@@ -86,31 +80,23 @@ export class SessionScopeInspector {
       if (typeof segment === 'string') {
         const trimmed = segment.trim();
         if (!trimmed) {
-          throw new Error(
-            `Scope path segment ${index} must be a non-empty string.`,
-          );
+          throw new Error(`Scope path segment ${index} must be a non-empty string.`);
         }
         return { property: trimmed };
       }
       if ('property' in segment) {
         if (!segment.property) {
-          throw new Error(
-            `Scope path segment ${index} must include a non-empty property name.`,
-          );
+          throw new Error(`Scope path segment ${index} must include a non-empty property name.`);
         }
         return { property: segment.property };
       }
       if ('index' in segment) {
         if (!Number.isInteger(segment.index)) {
-          throw new Error(
-            `Scope path segment ${index} must provide an integer index.`,
-          );
+          throw new Error(`Scope path segment ${index} must provide an integer index.`);
         }
         return { index: segment.index };
       }
-      throw new Error(
-        `Unsupported scope path segment encountered at position ${index}.`,
-      );
+      throw new Error(`Unsupported scope path segment encountered at position ${index}.`);
     });
   }
 
@@ -138,14 +124,9 @@ export class SessionScopeInspector {
       } else {
         throw new Error('Unsupported scope path segment encountered.');
       }
-      const descriptor = await this.getPropertyDescriptor(
-        current.objectId,
-        propertyName,
-      );
+      const descriptor = await this.getPropertyDescriptor(current.objectId, propertyName);
       if (!descriptor || !descriptor.value) {
-        throw new Error(
-          `Property ${propertyName} not found while resolving path.`,
-        );
+        throw new Error(`Property ${propertyName} not found while resolving path.`);
       }
       current = toRemoteObjectSummary(descriptor.value);
       resolved.push(segment);
@@ -157,8 +138,7 @@ export class SessionScopeInspector {
     result: Omit<ScopeQueryResult, 'messages'>,
     existingMessages: string[],
   ): ScopeQueryResult {
-    const baseMessages =
-      existingMessages.length > 0 ? [...existingMessages] : [];
+    const baseMessages = existingMessages.length > 0 ? [...existingMessages] : [];
     const withMessages: ScopeQueryResult = {
       ...result,
       messages: baseMessages.length > 0 ? baseMessages : undefined,
@@ -228,9 +208,7 @@ export class SessionScopeInspector {
       generatePreview: false,
     })) as { result: CdpPropertyDescriptor[] };
 
-    const descriptors = response.result.filter(
-      (descriptor) => descriptor.value,
-    );
+    const descriptors = response.result.filter((descriptor) => descriptor.value);
     const truncated = descriptors.length > maxProperties;
     const limited = descriptors.slice(0, maxProperties);
     const variables: ScopeVariable[] = [];
@@ -244,12 +222,7 @@ export class SessionScopeInspector {
       let childTruncated: boolean | undefined;
       if (depth > 1 && summary.objectId && !seen.has(summary.objectId)) {
         seen.add(summary.objectId);
-        const child = await this.collectVariables(
-          summary.objectId,
-          depth - 1,
-          maxProperties,
-          seen,
-        );
+        const child = await this.collectVariables(summary.objectId, depth - 1, maxProperties, seen);
         children = child.variables;
         childTruncated = child.truncated;
       }

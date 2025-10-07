@@ -177,9 +177,7 @@ describe('OutputBuffer - Basic Queries', () => {
 
         // Should include: 1 log console, 2 stdio, 1 exception (4 total)
         expect(result.entries).toHaveLength(4);
-        const consoleEntries = result.entries.filter(
-          (e) => e.kind === 'console',
-        );
+        const consoleEntries = result.entries.filter((e) => e.kind === 'console');
         expect(consoleEntries).toHaveLength(1);
         if (consoleEntries[0].kind === 'console') {
           expect(consoleEntries[0].entry.level).toBe('log');
@@ -194,9 +192,7 @@ describe('OutputBuffer - Basic Queries', () => {
 
         // Should include: 1 error console, 2 stdio, 1 exception (4 total)
         expect(result.entries).toHaveLength(4);
-        const consoleEntries = result.entries.filter(
-          (e) => e.kind === 'console',
-        );
+        const consoleEntries = result.entries.filter((e) => e.kind === 'console');
         expect(consoleEntries).toHaveLength(1);
         if (consoleEntries[0].kind === 'console') {
           expect(consoleEntries[0].entry.level).toBe('error');
@@ -211,9 +207,7 @@ describe('OutputBuffer - Basic Queries', () => {
 
         // Should include all 5 entries (both levels pass filter)
         expect(result.entries).toHaveLength(5);
-        const consoleEntries = result.entries.filter(
-          (e) => e.kind === 'console',
-        );
+        const consoleEntries = result.entries.filter((e) => e.kind === 'console');
         expect(consoleEntries).toHaveLength(2);
       });
 

@@ -1,8 +1,5 @@
 import type { DebuggerSessionManager } from '../../src/debugger/session-manager.js';
-import type {
-  NodeDebugTargetConfig,
-  DebugSessionId,
-} from '../../src/types/index.js';
+import type { NodeDebugTargetConfig, DebugSessionId } from '../../src/types/index.js';
 import type { SessionStateStatus } from '../../src/types/session/session-state.js';
 import { waitFor, sleep, type WaitOptions } from './async-helpers.js';
 
@@ -48,11 +45,7 @@ export async function waitForSessionStatus(
       const snapshot = manager.getSnapshot(sessionId);
       return statuses.includes(snapshot.session.state.status) ? true : null;
     } catch (error) {
-      if (
-        allowNotFound &&
-        error instanceof Error &&
-        error.message.includes('not found')
-      ) {
+      if (allowNotFound && error instanceof Error && error.message.includes('not found')) {
         return true;
       }
       throw error;
@@ -176,7 +169,7 @@ export const cleanupSession = async (
           setTimeout(() => reject(new Error('Cleanup timeout')), timeoutMs),
         ),
       ]);
-    } catch (error) {
+    } catch (_error) {
       // Graceful cleanup failed or timed out
       if (forceKill) {
         const session = manager.getSession(sessionId);

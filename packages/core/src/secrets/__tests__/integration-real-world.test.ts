@@ -3,11 +3,7 @@ import { SecretManager } from '../secret-manager.js';
 import { DotEnvProvider } from '../providers/dotenv/index.js';
 import { ProcessEnvProvider } from '../process-env-provider.js';
 import { InlineProvider } from '../inline-provider.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('SecretManager Integration Tests - Real-world Scenarios', () => {
   let testDir: string;
@@ -46,11 +42,7 @@ describe('SecretManager Integration Tests - Real-world Scenarios', () => {
       'FEATURE_NEW_UI=true',
       'FEATURE_ANALYTICS=false',
     ].join('\n');
-    const appEnvPath = createTestEnvFile(
-      testDir,
-      '.env.development',
-      appEnvContent,
-    );
+    const appEnvPath = createTestEnvFile(testDir, '.env.development', appEnvContent);
 
     // Create deployment-specific overrides
     const deploymentOverrides = new InlineProvider({
@@ -141,11 +133,7 @@ describe('SecretManager Integration Tests - Real-world Scenarios', () => {
       'MAX_CONNECTIONS=100',
       'TIMEOUT_MS=5000',
     ].join('\n');
-    const serviceConfigPath = createTestEnvFile(
-      testDir,
-      '.env.service',
-      serviceConfigContent,
-    );
+    const serviceConfigPath = createTestEnvFile(testDir, '.env.service', serviceConfigContent);
 
     const serviceConfigProvider = new DotEnvProvider({
       path: serviceConfigPath,

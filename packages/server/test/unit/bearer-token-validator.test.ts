@@ -2,15 +2,13 @@ import { describe, it, expect, afterEach, vi, type Mock } from 'vitest';
 type CryptoModule = typeof import('crypto');
 type TimingSafeEqualFn = CryptoModule['timingSafeEqual'];
 
-const timingSafeEqualSpy: Mock<TimingSafeEqualFn> = vi.hoisted(() =>
-  vi.fn<TimingSafeEqualFn>(),
-);
+const timingSafeEqualSpy: Mock<TimingSafeEqualFn> = vi.hoisted(() => vi.fn<TimingSafeEqualFn>());
 
 vi.mock('crypto', async () => {
   const actual = await vi.importActual<CryptoModule>('crypto');
 
-  timingSafeEqualSpy.mockImplementation(
-    (...args: Parameters<TimingSafeEqualFn>) => actual.timingSafeEqual(...args),
+  timingSafeEqualSpy.mockImplementation((...args: Parameters<TimingSafeEqualFn>) =>
+    actual.timingSafeEqual(...args),
   );
 
   return {
@@ -19,10 +17,7 @@ vi.mock('crypto', async () => {
   };
 });
 
-import {
-  BearerTokenValidator,
-  type InboundBearerAuthConfig,
-} from '../../src/auth/index.js';
+import { BearerTokenValidator, type InboundBearerAuthConfig } from '../../src/auth/index.js';
 import { createMockContext } from './test-utils.js';
 
 afterEach(() => {
@@ -38,9 +33,7 @@ describe('BearerTokenValidator', () => {
 
     const validator = new BearerTokenValidator(config);
 
-    const mockContext = createMockContext(
-      vi.fn().mockReturnValue('Bearer valid-token-123'),
-    );
+    const mockContext = createMockContext(vi.fn().mockReturnValue('Bearer valid-token-123'));
 
     const result = await validator.validateRequest(mockContext);
 
@@ -57,9 +50,7 @@ describe('BearerTokenValidator', () => {
 
     const validator = new BearerTokenValidator(config);
 
-    const mockContext = createMockContext(
-      vi.fn().mockReturnValue('Bearer invalid-token'),
-    );
+    const mockContext = createMockContext(vi.fn().mockReturnValue('Bearer invalid-token'));
 
     const result = await validator.validateRequest(mockContext);
 
@@ -98,9 +89,7 @@ describe('BearerTokenValidator', () => {
     const result = await validator.validateRequest(mockContext);
 
     expect(result.isAuthenticated).toBe(false);
-    expect(result.error).toBe(
-      'Invalid Authorization header format. Expected: Bearer <token>',
-    );
+    expect(result.error).toBe('Invalid Authorization header format. Expected: Bearer <token>');
   });
 
   it('should reject empty bearer token', async () => {
@@ -193,9 +182,7 @@ describe('BearerTokenValidator', () => {
       expect(validResult.isAuthenticated).toBe(true);
       expect(timingSpy).toHaveBeenCalledTimes(1);
 
-      const invalidContext = createMockContext(
-        () => 'Bearer valid-token-1234x',
-      );
+      const invalidContext = createMockContext(() => 'Bearer valid-token-1234x');
 
       timingSpy.mockClear();
       const invalidResult = await validator.validateRequest(invalidContext);
@@ -225,11 +212,7 @@ describe('BearerTokenValidator', () => {
 
       for (const header of mismatchedHeaders) {
         timingSpy.mockClear();
-        const averageNanoseconds = await measureAverageNanoseconds(
-          validator,
-          header,
-          runs,
-        );
+        const averageNanoseconds = await measureAverageNanoseconds(validator, header, runs);
 
         samples.push(averageNanoseconds);
         expect(timingSpy).toHaveBeenCalledTimes(runs);
@@ -262,9 +245,7 @@ describe('BearerTokenValidator', () => {
       ];
 
       const samples = await Promise.all(
-        mismatchedHeaders.map((header) =>
-          measureAverageNanoseconds(validator, header, runs),
-        ),
+        mismatchedHeaders.map((header) => measureAverageNanoseconds(validator, header, runs)),
       );
 
       const maxSample = Math.max(...samples);

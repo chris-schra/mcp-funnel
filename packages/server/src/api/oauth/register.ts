@@ -13,8 +13,7 @@ export const RegisterHandler: OAuthHandler = async (c) => {
       return c.json(
         {
           error: 'invalid_request',
-          error_description:
-            'redirect_uris is required and must be a non-empty array',
+          error_description: 'redirect_uris is required and must be a non-empty array',
         },
         400,
       );

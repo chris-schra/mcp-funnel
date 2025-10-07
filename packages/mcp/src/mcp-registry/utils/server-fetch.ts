@@ -17,9 +17,7 @@ interface RegistryResponse<T> {
  * @internal
  */
 export function isUuid(identifier: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    identifier,
-  );
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
 }
 
 /**
@@ -34,9 +32,7 @@ export async function fetchServerByUuid(
   baseUrl: string,
   uuid: string,
 ): Promise<RegistryServer | null> {
-  console.info(
-    `[MCPRegistryClient] Using direct API endpoint for UUID: ${uuid}`,
-  );
+  console.info(`[MCPRegistryClient] Using direct API endpoint for UUID: ${uuid}`);
 
   const response = (await fetch(`${baseUrl}/v0/servers/${uuid}`, {
     method: 'GET',
@@ -63,9 +59,7 @@ export async function fetchServerByUuid(
   console.error(
     `[MCPRegistryClient] HTTP error during server fetch for ${uuid}: ${response.status} ${response.statusText}`,
   );
-  throw new Error(
-    `Registry server fetch failed: ${response.status} ${response.statusText}`,
-  );
+  throw new Error(`Registry server fetch failed: ${response.status} ${response.statusText}`);
 }
 
 /**
@@ -75,11 +69,6 @@ export async function fetchServerByUuid(
  * @returns Matching server or null if not found
  * @internal
  */
-export function findServerByName(
-  servers: ServerDetail[],
-  name: string,
-): RegistryServer | null {
-  return (
-    servers.find((s) => s.name.toLowerCase() === name.toLowerCase()) || null
-  );
+export function findServerByName(servers: ServerDetail[], name: string): RegistryServer | null {
+  return servers.find((s) => s.name.toLowerCase() === name.toLowerCase()) || null;
 }

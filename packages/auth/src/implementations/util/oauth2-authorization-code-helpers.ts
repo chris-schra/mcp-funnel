@@ -5,33 +5,18 @@
  * OAuth2AuthCodeProvider class while maintaining clear separation of concerns.
  */
 
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-} from '../../errors/authentication-error.js';
-import {
-  type ITokenStorage,
-  logEvent,
-  type TokenData,
-  ValidationUtils,
-} from '@mcp-funnel/core';
+import { AuthenticationError, OAuth2ErrorCode } from '../../errors/authentication-error.js';
+import { type ITokenStorage, logEvent, type TokenData, ValidationUtils } from '@mcp-funnel/core';
 import type { OAuth2TokenResponse } from '../../utils/oauth-types.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
-import {
-  generateCodeChallenge,
-  generateCodeVerifier,
-  generateState,
-} from '../../utils/pkce.js';
+import { generateCodeChallenge, generateCodeVerifier, generateState } from '../../utils/pkce.js';
 import {
   type AuthFlowContext,
   cleanupPendingAuth,
   type PendingAuth,
 } from '../../utils/auth-flow.js';
 import { buildAuthorizationUrl } from '../../utils/auth-url.js';
-import {
-  buildTokenExchangeBody,
-  buildTokenExchangeHeaders,
-} from '../../utils/token-exchange.js';
+import { buildTokenExchangeBody, buildTokenExchangeHeaders } from '../../utils/token-exchange.js';
 
 /**
  * Context needed for completing OAuth flow
@@ -40,14 +25,8 @@ export interface CompleteOAuthFlowContext {
   authFlowContext: AuthFlowContext;
   config: OAuth2AuthCodeConfig;
   storage: ITokenStorage;
-  processTokenResponse: (
-    tokenResponse: OAuth2TokenResponse,
-    requestId: string,
-  ) => Promise<void>;
-  handleTokenRequestError: (
-    error: unknown,
-    response?: Response,
-  ) => Promise<never>;
+  processTokenResponse: (tokenResponse: OAuth2TokenResponse, requestId: string) => Promise<void>;
+  handleTokenRequestError: (error: unknown, response?: Response) => Promise<never>;
   validateTokenResponse: (tokenResponse: OAuth2TokenResponse) => void;
   generateRequestId: () => string;
 }
@@ -69,10 +48,7 @@ export interface AcquireTokenContext {
  */
 export interface ExchangeCodeContext {
   config: OAuth2AuthCodeConfig;
-  handleTokenRequestError: (
-    error: unknown,
-    response?: Response,
-  ) => Promise<never>;
+  handleTokenRequestError: (error: unknown, response?: Response) => Promise<never>;
   validateTokenResponse: (tokenResponse: OAuth2TokenResponse) => void;
 }
 
@@ -159,9 +135,7 @@ export async function completeOAuthFlow(
  * @see file:../../utils/pkce.ts - PKCE code verifier and challenge generation
  * @see file:../../utils/auth-url.ts - Authorization URL building
  */
-export async function acquireToken(
-  context: AcquireTokenContext,
-): Promise<void> {
+export async function acquireToken(context: AcquireTokenContext): Promise<void> {
   return new Promise((resolve, reject) => {
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
@@ -295,9 +269,7 @@ export function validateConfig(config: OAuth2AuthCodeConfig): void {
     ValidationUtils.validateOAuthUrls(config);
   } catch (error) {
     throw new AuthenticationError(
-      error instanceof Error
-        ? error.message
-        : 'Configuration validation failed',
+      error instanceof Error ? error.message : 'Configuration validation failed',
       OAuth2ErrorCode.INVALID_REQUEST,
     );
   }

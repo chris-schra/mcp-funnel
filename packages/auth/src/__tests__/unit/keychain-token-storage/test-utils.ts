@@ -48,9 +48,7 @@ export function createMockToken(expiresInMs: number = 3600000): TokenData {
 export function setupSuccessfulMocks(): void {
   mockedFs.mkdir.mockResolvedValue(undefined);
   mockedFs.writeFile.mockResolvedValue(undefined);
-  mockedFs.readFile.mockResolvedValue(
-    Buffer.from(JSON.stringify(createMockToken())),
-  );
+  mockedFs.readFile.mockResolvedValue(Buffer.from(JSON.stringify(createMockToken())));
   mockedFs.unlink.mockResolvedValue(undefined);
   mockExecFileAsync.mockResolvedValue({ stdout: '', stderr: '' });
 }

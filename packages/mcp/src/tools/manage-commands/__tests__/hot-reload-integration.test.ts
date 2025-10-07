@@ -19,9 +19,7 @@ describe('ManageCommands', () => {
       const { tool, mockContext, mockInstaller } = getContext();
 
       const mockCommand = createMockCommand('test-command', 'A test command');
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
       mockInstaller.install = vi.fn().mockResolvedValue({
         name: 'test-command',
         package: 'test-package',
@@ -38,22 +36,15 @@ describe('ManageCommands', () => {
         mockContext,
       );
 
-      expect(mockContext.toolRegistry!.hotReloadCommand).toHaveBeenCalledWith(
-        mockCommand,
-      );
+      expect(mockContext.toolRegistry!.hotReloadCommand).toHaveBeenCalledWith(mockCommand);
       expect(mockContext.toolRegistry!.getAllTools).toHaveBeenCalled();
     });
 
     it('should attempt hot reload after successful update', async () => {
       const { tool, mockContext, mockInstaller } = getContext();
 
-      const mockCommand = createMockCommand(
-        'test-command',
-        'Updated test command',
-      );
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      const mockCommand = createMockCommand('test-command', 'Updated test command');
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
       mockInstaller.update = vi.fn().mockResolvedValue({
         name: 'test-command',
         package: 'test-package',
@@ -70,9 +61,7 @@ describe('ManageCommands', () => {
         mockContext,
       );
 
-      expect(mockContext.toolRegistry!.hotReloadCommand).toHaveBeenCalledWith(
-        mockCommand,
-      );
+      expect(mockContext.toolRegistry!.hotReloadCommand).toHaveBeenCalledWith(mockCommand);
     });
 
     it('should handle missing tool registry gracefully', async () => {
@@ -84,9 +73,7 @@ describe('ManageCommands', () => {
       } as Partial<CoreToolContext>;
 
       const mockCommand = createMockCommand('test-command', 'A test command');
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
       mockInstaller.install = vi.fn().mockResolvedValue({
         name: 'test-command',
         package: 'test-package',

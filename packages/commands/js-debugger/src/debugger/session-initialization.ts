@@ -56,27 +56,20 @@ async function setupInternalBreakpoints(
   for (const file of targetFiles) {
     try {
       // Normalize the file path to absolute path and file:// URL
-      const normalized = normalizeLocationReference(
-        file,
-        targetWorkingDirectory,
-      );
+      const normalized = normalizeLocationReference(file, targetWorkingDirectory);
 
       // Build regex that matches both the absolute path and file:// URL
       // CDP uses file:// URLs, so we need to match that format
       const patterns: string[] = [];
       if (normalized.fileUrl) {
-        patterns.push(
-          normalized.fileUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-        );
+        patterns.push(normalized.fileUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
       }
       if (normalized.path) {
         patterns.push(normalized.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
       }
 
       if (patterns.length === 0) {
-        console.warn(
-          `Session ${sessionId}: Could not normalize path for ${file}`,
-        );
+        console.warn(`Session ${sessionId}: Could not normalize path for ${file}`);
         continue;
       }
 
@@ -84,27 +77,21 @@ async function setupInternalBreakpoints(
 
       let result;
       try {
-        result = await processManager.sendCommand(
-          'Debugger.setBreakpointByUrl',
-          {
-            lineNumber: 0,
-            columnNumber: 0,
-            urlRegex,
-            condition: '',
-          },
-        );
+        result = await processManager.sendCommand('Debugger.setBreakpointByUrl', {
+          lineNumber: 0,
+          columnNumber: 0,
+          urlRegex,
+          condition: '',
+        });
       } catch (error) {
         console.error('Unable to set specific file regex breakpoint:', error);
         // If that fails, try a general breakpoint at line 0 of any script
-        result = await processManager.sendCommand(
-          'Debugger.setBreakpointByUrl',
-          {
-            lineNumber: 0,
-            columnNumber: 0,
-            url: '', // Empty URL to match any script
-            condition: '',
-          },
-        );
+        result = await processManager.sendCommand('Debugger.setBreakpointByUrl', {
+          lineNumber: 0,
+          columnNumber: 0,
+          url: '', // Empty URL to match any script
+          condition: '',
+        });
       }
       const breakpointResult = result as {
         breakpointId: string;
@@ -116,10 +103,7 @@ async function setupInternalBreakpoints(
       };
       internalBreakpoints.push(breakpointResult.breakpointId);
     } catch (error) {
-      console.warn(
-        `Session ${sessionId}: Failed to set internal breakpoint for ${file}:`,
-        error,
-      );
+      console.warn(`Session ${sessionId}: Failed to set internal breakpoint for ${file}:`, error);
     }
   }
 
@@ -204,13 +188,9 @@ function collectTargetFiles(
     for (const bp of breakpoints) {
       if (bp.location.url) {
         // Normalize breakpoint URLs to ensure they match CDP's format
-        const normalized = normalizeLocationReference(
-          bp.location.url,
-          targetWorkingDirectory,
-        );
+        const normalized = normalizeLocationReference(bp.location.url, targetWorkingDirectory);
         // Prefer file:// URL if available, fall back to path, then original
-        const key =
-          normalized.fileUrl || normalized.path || normalized.original;
+        const key = normalized.fileUrl || normalized.path || normalized.original;
         targetFiles.add(key);
       }
     }
@@ -218,12 +198,8 @@ function collectTargetFiles(
 
   // Always set a line 0 breakpoint for the main entry file to ensure script parsing
   // Normalize the entry file to an absolute path/URL
-  const normalizedEntry = normalizeLocationReference(
-    entryFile,
-    targetWorkingDirectory,
-  );
-  const entryKey =
-    normalizedEntry.fileUrl || normalizedEntry.path || normalizedEntry.original;
+  const normalizedEntry = normalizeLocationReference(entryFile, targetWorkingDirectory);
+  const entryKey = normalizedEntry.fileUrl || normalizedEntry.path || normalizedEntry.original;
   targetFiles.add(entryKey);
 
   return targetFiles;
@@ -286,9 +262,7 @@ export async function performInitialization(
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.warn(
-      `Session ${context.sessionId}: did not receive initial pause (${message}).`,
-    );
+    console.warn(`Session ${context.sessionId}: did not receive initial pause (${message}).`);
   }
 
   // Now set the actual user-requested breakpoints while paused
@@ -312,11 +286,7 @@ export async function performInitialization(
     );
 
     // Clear internal breakpoints since we don't need them anymore
-    await clearInternalBreakpoints(
-      internalBreakpoints,
-      context.processManager,
-      context.sessionId,
-    );
+    await clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
 
     if (hasResolvedBreakpoints) {
       // Resume from the internal breakpoint to hit the actual user breakpoint
@@ -340,19 +310,11 @@ export async function performInitialization(
     }
   } else if (context.config.resumeAfterConfigure) {
     // Clear internal breakpoints immediately before resuming if we're not waiting for user breakpoints
-    await clearInternalBreakpoints(
-      internalBreakpoints,
-      context.processManager,
-      context.sessionId,
-    );
+    await clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
   } else {
     // Clear internal breakpoints after a delay if we're paused and not resuming
     setTimeout(() => {
-      void clearInternalBreakpoints(
-        internalBreakpoints,
-        context.processManager,
-        context.sessionId,
-      );
+      void clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
     }, BREAKPOINT_CLEAR_DELAY_MS);
   }
 

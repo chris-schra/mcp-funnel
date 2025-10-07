@@ -42,12 +42,8 @@ describe('DiscoverToolsByWords', () => {
       searchTools: vi.fn((keywords: string[]) => {
         // Simple mock implementation that mimics the real search
         const allTools: ToolState[] = [];
-        for (const [
-          name,
-          { serverName, description },
-        ] of toolDescriptionCache) {
-          const searchText =
-            `${name} ${description} ${serverName}`.toLowerCase();
+        for (const [name, { serverName, description }] of toolDescriptionCache) {
+          const searchText = `${name} ${description} ${serverName}`.toLowerCase();
           if (keywords.length === 0) continue;
           if (keywords.every((kw) => searchText.includes(kw.toLowerCase()))) {
             const toolState: ToolState = {
@@ -139,21 +135,15 @@ describe('DiscoverToolsByWords', () => {
     });
 
     it('should be enabled when exposeCoreTools has matching pattern', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['discover_*'] }),
-      ).toBe(true);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['discover_*'] })).toBe(true);
     });
 
     it('should be enabled when exposeCoreTools is ["*"]', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
-        true,
-      );
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(true);
     });
 
     it('should be disabled when exposeCoreTools excludes the tool', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
-      ).toBe(false);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] })).toBe(false);
     });
   });
 
@@ -180,20 +170,14 @@ describe('DiscoverToolsByWords', () => {
     });
 
     it('should handle multiple keywords', async () => {
-      const result = await tool.handle(
-        { words: 'store memory data' },
-        mockContext,
-      );
+      const result = await tool.handle({ words: 'store memory data' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
       expect(textContent.text).toContain('memory__store_data');
     });
 
     it('should return empty result for non-matching keywords', async () => {
-      const result = await tool.handle(
-        { words: 'nonexistent keyword' },
-        mockContext,
-      );
+      const result = await tool.handle({ words: 'nonexistent keyword' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
       expect(textContent.text).toContain(
@@ -202,10 +186,7 @@ describe('DiscoverToolsByWords', () => {
     });
 
     it('should enable tools when enable=true', async () => {
-      const result = await tool.handle(
-        { words: 'github issue', enable: true },
-        mockContext,
-      );
+      const result = await tool.handle({ words: 'github issue', enable: true }, mockContext);
 
       expect(enabledTools).toContain('github__create_issue');
       expect(enabledTools).toContain('github__list_issues');
@@ -240,9 +221,7 @@ describe('DiscoverToolsByWords', () => {
       // GitHub tools with 'issue' as a word should come before 'tissue'
       const lines = textContent.text.split('\n');
       const githubIndex = lines.findIndex((l) => l.includes('github__'));
-      const tissueIndex = lines.findIndex((l) =>
-        l.includes('test__tissue_sample'),
-      );
+      const tissueIndex = lines.findIndex((l) => l.includes('test__tissue_sample'));
 
       if (tissueIndex !== -1) {
         expect(githubIndex).toBeLessThan(tissueIndex);
@@ -253,18 +232,14 @@ describe('DiscoverToolsByWords', () => {
       const result = await tool.handle({ words: '' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain(
-        'No local tools found matching keywords',
-      );
+      expect(textContent.text).toContain('No local tools found matching keywords');
     });
 
     it('should handle whitespace-only words parameter', async () => {
       const result = await tool.handle({ words: '   ' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain(
-        'No local tools found matching keywords',
-      );
+      expect(textContent.text).toContain('No local tools found matching keywords');
     });
 
     it('should throw error for invalid words parameter', async () => {
@@ -280,10 +255,7 @@ describe('DiscoverToolsByWords', () => {
     });
 
     it('should handle enable as non-boolean gracefully', async () => {
-      const result = await tool.handle(
-        { words: 'github', enable: 'yes' },
-        mockContext,
-      );
+      const result = await tool.handle({ words: 'github', enable: 'yes' }, mockContext);
 
       // Should treat non-boolean as false
       expect(enabledTools).toHaveLength(0);
@@ -308,12 +280,8 @@ describe('DiscoverToolsByWords', () => {
       const lines = textContent.text.split('\n');
 
       // Tools with both keywords should appear before tools with just one
-      const exactMatchIndex = lines.findIndex((l) =>
-        l.includes('a__exact_match'),
-      );
-      const partialMatchIndex = lines.findIndex((l) =>
-        l.includes('z__partial_match'),
-      );
+      const exactMatchIndex = lines.findIndex((l) => l.includes('a__exact_match'));
+      const partialMatchIndex = lines.findIndex((l) => l.includes('z__partial_match'));
 
       if (exactMatchIndex !== -1 && partialMatchIndex !== -1) {
         expect(exactMatchIndex).toBeLessThan(partialMatchIndex);

@@ -3,10 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type {
-  JSONRPCRequest,
-  JSONRPCMessage,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCRequest, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import {
   BaseClientTransport,
   type BaseClientTransportConfig,
@@ -52,10 +49,7 @@ class TestTransport extends BaseClientTransport {
     // no-op
   }
 
-  public testExecuteHttpRequest(
-    message: JSONRPCMessage,
-    signal: AbortSignal,
-  ): Promise<void> {
+  public testExecuteHttpRequest(message: JSONRPCMessage, signal: AbortSignal): Promise<void> {
     return this.executeHttpRequest(message, signal);
   }
 }
@@ -138,9 +132,7 @@ describe('BaseClientTransport - HTTP Request Handling', () => {
       statusText: 'Unauthorized',
     });
 
-    vi.mocked(mockAuthProvider.refresh!).mockRejectedValue(
-      new Error('Refresh failed'),
-    );
+    vi.mocked(mockAuthProvider.refresh!).mockRejectedValue(new Error('Refresh failed'));
 
     const message: JSONRPCRequest = {
       jsonrpc: '2.0',
@@ -151,9 +143,9 @@ describe('BaseClientTransport - HTTP Request Handling', () => {
 
     const controller = new AbortController();
 
-    await expect(
-      transport.testExecuteHttpRequest(message, controller.signal),
-    ).rejects.toThrow(TransportError);
+    await expect(transport.testExecuteHttpRequest(message, controller.signal)).rejects.toThrow(
+      TransportError,
+    );
   });
 
   it('handles non-401 HTTP errors', async () => {
@@ -172,9 +164,9 @@ describe('BaseClientTransport - HTTP Request Handling', () => {
 
     const controller = new AbortController();
 
-    await expect(
-      transport.testExecuteHttpRequest(message, controller.signal),
-    ).rejects.toThrow(TransportError);
+    await expect(transport.testExecuteHttpRequest(message, controller.signal)).rejects.toThrow(
+      TransportError,
+    );
   });
 
   it('handles network errors', async () => {
@@ -189,9 +181,9 @@ describe('BaseClientTransport - HTTP Request Handling', () => {
 
     const controller = new AbortController();
 
-    await expect(
-      transport.testExecuteHttpRequest(message, controller.signal),
-    ).rejects.toThrow(TransportError);
+    await expect(transport.testExecuteHttpRequest(message, controller.signal)).rejects.toThrow(
+      TransportError,
+    );
   });
 
   it('handles request timeout', async () => {
@@ -208,8 +200,8 @@ describe('BaseClientTransport - HTTP Request Handling', () => {
 
     const controller = new AbortController();
 
-    await expect(
-      transport.testExecuteHttpRequest(message, controller.signal),
-    ).rejects.toThrow(TransportError);
+    await expect(transport.testExecuteHttpRequest(message, controller.signal)).rejects.toThrow(
+      TransportError,
+    );
   });
 });

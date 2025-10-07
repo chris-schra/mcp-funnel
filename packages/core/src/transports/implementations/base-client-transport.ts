@@ -6,10 +6,7 @@
  * @public
  */
 
-import {
-  Transport,
-  TransportSendOptions,
-} from '@modelcontextprotocol/sdk/shared/transport.js';
+import { Transport, TransportSendOptions } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
   JSONRPCMessage,
   JSONRPCRequest,
@@ -33,10 +30,7 @@ import {
 } from './utils/connection-lifecycle.js';
 import { getAuthHeaders as getAuthHeadersUtil } from './utils/auth-helpers.js';
 import { setupRequestCorrelation } from './utils/request-correlation.js';
-import {
-  cleanupPendingRequests,
-  logTransportClosure,
-} from './utils/cleanup-helpers.js';
+import { cleanupPendingRequests, logTransportClosure } from './utils/cleanup-helpers.js';
 
 /**
  * Pending request state for JSON-RPC message correlation.
@@ -79,10 +73,7 @@ export abstract class BaseClientTransport implements Transport {
   protected readonly pendingRequests = new Map<string, PendingRequest>();
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
-  public onmessage?: (
-    message: JSONRPCMessage,
-    extra?: MessageExtraInfo,
-  ) => void;
+  public onmessage?: (message: JSONRPCMessage, extra?: MessageExtraInfo) => void;
   public sessionId?: string;
 
   public constructor(
@@ -131,10 +122,7 @@ export abstract class BaseClientTransport implements Transport {
    * @throws \{Error\} When transport is closed or timeout occurs
    * @public
    */
-  public async send(
-    message: JSONRPCMessage,
-    _options?: TransportSendOptions,
-  ): Promise<void> {
+  public async send(message: JSONRPCMessage, _options?: TransportSendOptions): Promise<void> {
     if (this.isClosed) {
       throw new Error('Transport is closed');
     }
@@ -142,11 +130,8 @@ export abstract class BaseClientTransport implements Transport {
     // For requests, set up ID generation and correlation tracking
     if ('method' in message && message.method) {
       const request = message as JSONRPCRequest;
-      return setupRequestCorrelation(
-        request,
-        this.pendingRequests,
-        this.config.timeout,
-        (msg) => this.sendMessage(msg),
+      return setupRequestCorrelation(request, this.pendingRequests, this.config.timeout, (msg) =>
+        this.sendMessage(msg),
       );
     } else {
       // For responses/notifications, just send directly
@@ -230,12 +215,7 @@ export abstract class BaseClientTransport implements Transport {
     shouldReconnect = true,
     error?: TransportError,
   ): void {
-    handleConnectionCloseUtil(
-      reason,
-      shouldReconnect,
-      error,
-      this.getLifecycleContext(),
-    );
+    handleConnectionCloseUtil(reason, shouldReconnect, error, this.getLifecycleContext());
   }
 
   /**
@@ -276,10 +256,7 @@ export abstract class BaseClientTransport implements Transport {
    * @returns Promise that resolves when request completes successfully
    * @internal
    */
-  protected async executeHttpRequest(
-    message: JSONRPCMessage,
-    signal: AbortSignal,
-  ): Promise<void> {
+  protected async executeHttpRequest(message: JSONRPCMessage, signal: AbortSignal): Promise<void> {
     return executeHttpRequest(
       this.config.url,
       message,
@@ -301,9 +278,7 @@ export abstract class BaseClientTransport implements Transport {
   }
 
   /** @internal */
-  protected abstract validateAndNormalizeUrl(
-    config: BaseClientTransportConfig,
-  ): void;
+  protected abstract validateAndNormalizeUrl(config: BaseClientTransportConfig): void;
 
   /** @internal */
   protected abstract connect(): Promise<void>;

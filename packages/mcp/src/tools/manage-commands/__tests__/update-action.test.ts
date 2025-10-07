@@ -25,13 +25,8 @@ describe('ManageCommands', () => {
         description: 'Updated test command',
       };
 
-      const mockCommand = createMockCommand(
-        'test-command',
-        'Updated test command',
-      );
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      const mockCommand = createMockCommand('test-command', 'Updated test command');
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
       mockInstaller.update = vi.fn().mockResolvedValue(updatedCommand);
 
       const result = await tool.handle(
@@ -74,9 +69,7 @@ describe('ManageCommands', () => {
       const content = result.content[0] as { type: string; text: string };
       const response = JSON.parse(content.text);
 
-      expect(response.error).toContain(
-        "Command 'nonexistent' is not installed",
-      );
+      expect(response.error).toContain("Command 'nonexistent' is not installed");
     });
 
     it('should update with hot-reload failure', async () => {

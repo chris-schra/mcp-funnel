@@ -20,10 +20,7 @@ export const PostTokenHandler: OAuthHandler = async (c) => {
 
     if (!result.success) {
       const errorResponse = OAuthUtils.createOAuthErrorResponse(result.error!);
-      return c.json(
-        errorResponse.body,
-        errorResponse.status as 400 | 401 | 403 | 500,
-      );
+      return c.json(errorResponse.body, errorResponse.status as 400 | 401 | 403 | 500);
     }
 
     const tokenResponse = OAuthUtils.createTokenResponse(

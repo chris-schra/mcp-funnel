@@ -108,10 +108,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
 
     const token = await this.storage.retrieve();
     if (!token) {
-      throw new AuthenticationError(
-        'Failed to acquire OAuth2 token',
-        AuthErrorCode.UNKNOWN_ERROR,
-      );
+      throw new AuthenticationError('Failed to acquire OAuth2 token', AuthErrorCode.UNKNOWN_ERROR);
     }
 
     return token;
@@ -127,9 +124,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
       return; // Storage doesn't support scheduling
     }
 
-    const refreshTime = new Date(
-      tokenData.expiresAt.getTime() - this.BUFFER_TIME_MS,
-    );
+    const refreshTime = new Date(tokenData.expiresAt.getTime() - this.BUFFER_TIME_MS);
     const currentTime = new Date();
 
     // Only schedule if refresh time is in the future
@@ -170,10 +165,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         // Only retry on network errors, not OAuth2 errors
-        if (
-          OAuthErrorUtils.isRetryableError(lastError) &&
-          attempt < AUTH_MAX_RETRIES
-        ) {
+        if (OAuthErrorUtils.isRetryableError(lastError) && attempt < AUTH_MAX_RETRIES) {
           const delayMs = AUTH_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
           logEvent('warn', 'auth:token_request_retry', {
             requestId,
@@ -207,17 +199,10 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
     requestId: string,
     validateAudience?: (audience: string) => boolean,
   ): Promise<void> {
-    const tokenData = TokenUtils.parseTokenResponse(
-      tokenResponse,
-      AUTH_DEFAULT_EXPIRY_SECONDS,
-    );
+    const tokenData = TokenUtils.parseTokenResponse(tokenResponse, AUTH_DEFAULT_EXPIRY_SECONDS);
 
     // Validate audience if provided
-    if (
-      validateAudience &&
-      tokenResponse.audience &&
-      !validateAudience(tokenResponse.audience)
-    ) {
+    if (validateAudience && tokenResponse.audience && !validateAudience(tokenResponse.audience)) {
       throw new AuthenticationError(
         'Audience validation failed: token audience does not match requested audience',
         OAuth2ErrorCode.INVALID_GRANT,
@@ -255,10 +240,7 @@ export abstract class BaseOAuthProvider implements IAuthProvider {
    * @returns Never returns normally, always throws
    * @throws {@link AuthenticationError} - Mapped authentication error based on error type
    */
-  protected async handleTokenRequestError(
-    error: unknown,
-    response?: Response,
-  ): Promise<never> {
+  protected async handleTokenRequestError(error: unknown, response?: Response): Promise<never> {
     if (error instanceof AuthenticationError) {
       throw error;
     }

@@ -7,11 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OAuth2AuthCodeProvider } from '../../implementations/oauth2-authorization-code.js';
-import {
-  createTestConfig,
-  createTestStorage,
-  setupConsoleSpy,
-} from './test-utils.js';
+import { createTestConfig, createTestStorage, setupConsoleSpy } from './test-utils.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
 import { MemoryTokenStorage } from '../../implementations/memory-token-storage.js';
 
@@ -76,9 +72,9 @@ describe('CSRF Protection', () => {
     provider = new OAuth2AuthCodeProvider(config, storage);
 
     // Try to complete OAuth flow with invalid state
-    await expect(
-      provider.completeOAuthFlow('invalid-state-123', 'test-code'),
-    ).rejects.toThrow('Invalid or expired OAuth state');
+    await expect(provider.completeOAuthFlow('invalid-state-123', 'test-code')).rejects.toThrow(
+      'Invalid or expired OAuth state',
+    );
   });
 
   it('should reject mismatched state parameter', async () => {
@@ -89,9 +85,9 @@ describe('CSRF Protection', () => {
     await vi.advanceTimersByTimeAsync(50);
 
     // Try to complete with different state
-    await expect(
-      provider.completeOAuthFlow('different-state', 'test-code'),
-    ).rejects.toThrow('Invalid or expired OAuth state');
+    await expect(provider.completeOAuthFlow('different-state', 'test-code')).rejects.toThrow(
+      'Invalid or expired OAuth state',
+    );
 
     refreshPromise.catch(() => {});
   });
@@ -129,9 +125,9 @@ describe('CSRF Protection', () => {
     await timeoutExpectation;
 
     // Trying to complete the flow with expired state should also fail
-    await expect(
-      provider2.completeOAuthFlow(state2, 'test-code'),
-    ).rejects.toThrow('Invalid or expired OAuth state');
+    await expect(provider2.completeOAuthFlow(state2, 'test-code')).rejects.toThrow(
+      'Invalid or expired OAuth state',
+    );
 
     provider2.destroy();
   });

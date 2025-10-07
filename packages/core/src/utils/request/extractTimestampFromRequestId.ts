@@ -8,13 +8,8 @@
  * @returns Date object representing the timestamp, or null if format doesn't match
  * @public
  */
-export function extractTimestampFromRequestId(
-  requestId: string,
-  prefix?: string,
-): Date | null {
-  const match = requestId.match(
-    new RegExp(`^${prefix ? `${prefix}_` : ''}(\\d+)_[a-f0-9]{8}$`),
-  );
+export function extractTimestampFromRequestId(requestId: string, prefix?: string): Date | null {
+  const match = requestId.match(new RegExp(`^${prefix ? `${prefix}_` : ''}(\\d+)_[a-f0-9]{8}$`));
   if (match) {
     return new Date(parseInt(match[1], 10));
   }

@@ -71,9 +71,7 @@ describe('OutputBuffer - Advanced Queries', () => {
         });
 
         const found = result.entries.some(
-          (e) =>
-            e.kind === 'console' &&
-            e.entry.arguments.some((arg) => arg.text === 'searchable'),
+          (e) => e.kind === 'console' && e.entry.arguments.some((arg) => arg.text === 'searchable'),
         );
         expect(found).toBe(true);
       });
@@ -163,9 +161,7 @@ describe('OutputBuffer - Advanced Queries', () => {
         expect(
           result.entries.every(
             (e) =>
-              e.kind === 'stdio' &&
-              e.entry.stream === 'stdout' &&
-              e.entry.text.includes('stdout'),
+              e.kind === 'stdio' && e.entry.stream === 'stdout' && e.entry.text.includes('stdout'),
           ),
         ).toBe(true);
       });

@@ -14,11 +14,7 @@ import { randomUUID } from 'crypto';
  * @param data - Response body data to serialize as JSON
  * @internal
  */
-export function sendJsonResponse(
-  res: ServerResponse,
-  statusCode: number,
-  data: unknown,
-): void {
+export function sendJsonResponse(res: ServerResponse, statusCode: number, data: unknown): void {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
   });

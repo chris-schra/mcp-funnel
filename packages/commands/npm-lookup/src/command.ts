@@ -1,9 +1,5 @@
 import { ICommand, Tool, CallToolResult } from '@mcp-funnel/commands-core';
-import {
-  NPMClient,
-  PackageNotFoundError,
-  NPMRegistryError,
-} from './npm-client.js';
+import { NPMClient, PackageNotFoundError, NPMRegistryError } from './npm-client.js';
 import { MAX_SEARCH_RESULTS } from './types.js';
 import {
   validatePackageNameParameter,
@@ -116,16 +112,12 @@ export class NPMCommand implements ICommand {
     try {
       switch (toolName) {
         case 'lookup': {
-          const packageNameValidation = validatePackageNameParameter(
-            args.packageName,
-          );
+          const packageNameValidation = validatePackageNameParameter(args.packageName);
           if (!packageNameValidation.valid) {
             return createErrorResponse(packageNameValidation.error);
           }
 
-          const packageInfo = await this.client.getPackage(
-            packageNameValidation.value,
-          );
+          const packageInfo = await this.client.getPackage(packageNameValidation.value);
 
           return createTextResponse(
             JSON.stringify(packageInfo, null, 2),
@@ -197,10 +189,7 @@ export class NPMCommand implements ICommand {
           console.error('Usage: npm search <query>');
           process.exit(1);
         }
-        const results = await this.client.searchPackages(
-          parsed.query,
-          parsed.limit,
-        );
+        const results = await this.client.searchPackages(parsed.query, parsed.limit);
         console.info(JSON.stringify(results, null, 2));
       } else {
         console.error('Usage: npm <lookup|search> ...');
@@ -219,9 +208,7 @@ export class NPMCommand implements ICommand {
         process.exit(1);
       }
 
-      console.error(
-        `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      console.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
     }
   }

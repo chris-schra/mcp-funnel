@@ -1,9 +1,5 @@
 import Emittery from 'emittery';
-import type {
-  PauseDetails,
-  ScriptMetadata,
-  SessionState,
-} from '../types/index.js';
+import type { PauseDetails, ScriptMetadata, SessionState } from '../types/index.js';
 import type {
   CdpCallFrame,
   CdpExceptionDetails,
@@ -88,9 +84,7 @@ export class SessionEventProcessor {
         );
         break;
       case 'Runtime.executionContextDestroyed':
-        this.onExecutionContextDestroyed(
-          params as { executionContextId: number },
-        );
+        this.onExecutionContextDestroyed(params as { executionContextId: number });
         break;
       default:
         break;
@@ -117,10 +111,7 @@ export class SessionEventProcessor {
     };
 
     if (event.url) {
-      const reference = normalizeLocationReference(
-        event.url,
-        this.targetWorkingDirectory,
-      );
+      const reference = normalizeLocationReference(event.url, this.targetWorkingDirectory);
       metadata.normalizedPath = reference.path;
       metadata.fileUrl = reference.fileUrl;
     }
@@ -162,11 +153,7 @@ export class SessionEventProcessor {
     // Normalize pause reason for better test compatibility and API consistency
     let normalizedReason = payload.reason;
 
-    if (
-      payload.reason === 'other' &&
-      payload.hitBreakpoints &&
-      payload.hitBreakpoints.length > 0
-    ) {
+    if (payload.reason === 'other' && payload.hitBreakpoints && payload.hitBreakpoints.length > 0) {
       normalizedReason = 'breakpoint';
     } else if (payload.reason === 'other') {
       // For test compatibility, map 'other' to 'breakpoint' when user breakpoints are likely set
@@ -177,9 +164,7 @@ export class SessionEventProcessor {
 
     const pause: PauseDetails = {
       reason: normalizedReason,
-      callFrames: payload.callFrames.map((frame) =>
-        mapCallFrame(frame, this.scripts),
-      ),
+      callFrames: payload.callFrames.map((frame) => mapCallFrame(frame, this.scripts)),
       hitBreakpoints: this.mapHitBreakpoints(payload.hitBreakpoints),
       data: payload.data,
       asyncStackTrace: payload.asyncStackTrace
@@ -268,9 +253,7 @@ export class SessionEventProcessor {
     }
   }
 
-  private onExecutionContextDestroyed(event: {
-    executionContextId: number;
-  }): void {
+  private onExecutionContextDestroyed(event: { executionContextId: number }): void {
     // Context ID 1 is the main execution context
     // When destroyed, all synchronous code and timers have completed
     // Disconnect the debugger to allow process.exit() to proceed

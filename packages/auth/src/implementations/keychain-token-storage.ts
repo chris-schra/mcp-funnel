@@ -5,11 +5,7 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { logEvent, ValidationUtils } from '@mcp-funnel/core';
 import type { ITokenStorage, TokenData } from '@mcp-funnel/core';
-import {
-  getFilename,
-  parseStoredToken,
-  serializeToken,
-} from './util/keychain-utils.js';
+import { getFilename, parseStoredToken, serializeToken } from './util/keychain-utils.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -97,11 +93,8 @@ export class KeychainTokenStorage implements ITokenStorage {
         logEvent('debug', 'auth:token_retrieve_failed', {
           serverId: this.serverId,
           keychainError:
-            keychainError instanceof Error
-              ? keychainError.message
-              : String(keychainError),
-          fileError:
-            fileError instanceof Error ? fileError.message : String(fileError),
+            keychainError instanceof Error ? keychainError.message : String(keychainError),
+          fileError: fileError instanceof Error ? fileError.message : String(fileError),
         });
         return null;
       }

@@ -16,10 +16,7 @@ describe('LoadToolset', () => {
 
   describe('handle - loading by name', () => {
     it('should load tools from a named toolset', async () => {
-      const result = await loadToolset.handle(
-        { name: 'reviewer' },
-        mockContext,
-      );
+      const result = await loadToolset.handle({ name: 'reviewer' }, mockContext);
 
       expect(enabledTools).toHaveLength(5);
       expect(enabledTools).toContain('github__list_pull_requests');
@@ -58,10 +55,7 @@ describe('LoadToolset', () => {
     });
 
     it('should return error for non-existent toolset', async () => {
-      const result = await loadToolset.handle(
-        { name: 'nonexistent' },
-        mockContext,
-      );
+      const result = await loadToolset.handle({ name: 'nonexistent' }, mockContext);
 
       expect(enabledTools).toEqual([]);
       expect(result.content[0]).toEqual({
@@ -74,10 +68,7 @@ describe('LoadToolset', () => {
     it('should handle missing toolsets config', async () => {
       mockContext.config.toolsets = undefined;
 
-      const result = await loadToolset.handle(
-        { name: 'reviewer' },
-        mockContext,
-      );
+      const result = await loadToolset.handle({ name: 'reviewer' }, mockContext);
 
       expect(result.content[0]).toEqual({
         type: 'text',
@@ -89,10 +80,7 @@ describe('LoadToolset', () => {
     it('should handle empty toolsets config', async () => {
       mockContext.config.toolsets = {};
 
-      const result = await loadToolset.handle(
-        { name: 'reviewer' },
-        mockContext,
-      );
+      const result = await loadToolset.handle({ name: 'reviewer' }, mockContext);
 
       expect(result.content[0]).toEqual({
         type: 'text',

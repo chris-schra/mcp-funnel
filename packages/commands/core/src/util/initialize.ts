@@ -24,9 +24,7 @@ import type { CommandInstallerContext } from '../types/index.js';
  * @see file:../types/index.ts:23 - CommandInstallerContext interface definition
  * @see file:./install.ts:33 - Primary usage in install workflow
  */
-export async function initialize(
-  context: CommandInstallerContext,
-): Promise<void> {
+export async function initialize(context: CommandInstallerContext): Promise<void> {
   await fs.mkdir(context.baseDir, { recursive: true });
   await fs.mkdir(context.packagesDir, { recursive: true });
   await fs.mkdir(context.cacheDir, { recursive: true });

@@ -7,11 +7,7 @@
 import { Dirent } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import {
-  discoverCommands,
-  discoverAllCommands,
-  type ICommand,
-} from '@mcp-funnel/commands-core';
+import { discoverCommands, discoverAllCommands, type ICommand } from '@mcp-funnel/commands-core';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 import type { ToolRegistry } from '../tool-registry/index.js';
 
@@ -47,20 +43,14 @@ async function registerFromRegistry(
 ): Promise<void> {
   for (const commandName of registry.getAllCommandNames()) {
     const command = registry.getCommandForMCP(commandName);
-    if (
-      command &&
-      (enabledCommands.length === 0 || enabledCommands.includes(command.name))
-    ) {
+    if (command && (enabledCommands.length === 0 || enabledCommands.includes(command.name))) {
       const mcpDefs = command.getMCPDefinitions();
       const isSingle = mcpDefs.length === 1;
-      const singleMatchesCommand =
-        isSingle && mcpDefs[0]?.name === command.name;
+      const singleMatchesCommand = isSingle && mcpDefs[0]?.name === command.name;
 
       for (const mcpDef of mcpDefs) {
         const useCompact = singleMatchesCommand && mcpDef.name === command.name;
-        const displayName = useCompact
-          ? `${command.name}`
-          : `${command.name}_${mcpDef.name}`;
+        const displayName = useCompact ? `${command.name}` : `${command.name}_${mcpDef.name}`;
 
         if (!mcpDef.description) {
           throw new Error(
@@ -98,11 +88,7 @@ async function loadBundledCommands(
     const { existsSync } = await import('fs');
     if (existsSync(commandsPath)) {
       const bundledRegistry = await discoverCommands(commandsPath);
-      await registerFromRegistry(
-        bundledRegistry,
-        enabledCommands,
-        toolRegistry,
-      );
+      await registerFromRegistry(bundledRegistry, enabledCommands, toolRegistry);
     }
   } catch {
     // Ignore - bundled commands directory may not exist
@@ -149,26 +135,16 @@ async function loadInstalledCommandPackages(
         const candidate = modObj.default || modObj.command;
         const chosen = isValidCommand(candidate)
           ? candidate
-          : (Object.values(modObj).find(isValidCommand) as
-              | ICommand
-              | undefined);
+          : (Object.values(modObj).find(isValidCommand) as ICommand | undefined);
 
-        if (
-          chosen &&
-          (enabledCommands.length === 0 ||
-            enabledCommands.includes(chosen.name))
-        ) {
+        if (chosen && (enabledCommands.length === 0 || enabledCommands.includes(chosen.name))) {
           const mcpDefs = chosen.getMCPDefinitions();
           const isSingle = mcpDefs.length === 1;
-          const singleMatchesCommand =
-            isSingle && mcpDefs[0]?.name === chosen.name;
+          const singleMatchesCommand = isSingle && mcpDefs[0]?.name === chosen.name;
 
           for (const mcpDef of mcpDefs) {
-            const useCompact =
-              singleMatchesCommand && mcpDef.name === chosen.name;
-            const displayName = useCompact
-              ? `${chosen.name}`
-              : `${chosen.name}_${mcpDef.name}`;
+            const useCompact = singleMatchesCommand && mcpDef.name === chosen.name;
+            const displayName = useCompact ? `${chosen.name}` : `${chosen.name}_${mcpDef.name}`;
 
             if (!mcpDef.description) {
               throw new Error(

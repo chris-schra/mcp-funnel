@@ -47,10 +47,7 @@ export function createToolContext(
       server.sendToolListChanged();
       console.error(`[proxy] Sent tools/list_changed notification`);
     },
-    sendNotification: async (
-      method: string,
-      params?: Record<string, unknown>,
-    ) => {
+    sendNotification: async (method: string, params?: Record<string, unknown>) => {
       try {
         // Create a properly typed notification object that conforms to the Notification interface
         const notification: Notification = {
@@ -63,11 +60,8 @@ export function createToolContext(
         await server.notification(notification as Notification);
       } catch (error) {
         // Server might not be connected in tests - log but don't throw
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error(
-          `[proxy] Failed to send ${method} notification: ${errorMessage}`,
-        );
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[proxy] Failed to send ${method} notification: ${errorMessage}`);
       }
     },
   };

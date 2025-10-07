@@ -1,13 +1,7 @@
 import { ReconnectionManager } from '@mcp-funnel/core';
-import {
-  ConnectionState,
-  type ConnectionStateChange,
-} from '@mcp-funnel/models';
+import { ConnectionState, type ConnectionStateChange } from '@mcp-funnel/models';
 import { logger, prefixedLog } from '../logging.js';
-import type {
-  ReconnectableTransportOptions,
-  IReconnectableTransport,
-} from '../types.js';
+import type { ReconnectableTransportOptions, IReconnectableTransport } from '../types.js';
 import { HealthCheckManager } from '../util/health-check.js';
 import { scheduleReconnection } from '../util/reconnection-scheduler.js';
 import {
@@ -27,8 +21,7 @@ export class ReconnectablePrefixedStdioClientTransport
   private healthCheckManager: HealthCheckManager;
   private reconnectionOptions: NormalizedReconnectionOptions;
   private isManuallyDisconnected = false;
-  private disconnectionHandlers: ((state: ConnectionStateChange) => void)[] =
-    [];
+  private disconnectionHandlers: ((state: ConnectionStateChange) => void)[] = [];
 
   public constructor(
     serverName: string,
@@ -37,12 +30,9 @@ export class ReconnectablePrefixedStdioClientTransport
     super(serverName, enhancedOptions);
 
     // Normalize options with defaults
-    this.reconnectionOptions =
-      createNormalizedReconnectionOptions(enhancedOptions);
+    this.reconnectionOptions = createNormalizedReconnectionOptions(enhancedOptions);
 
-    this.reconnectionManager = new ReconnectionManager(
-      this.reconnectionOptions.reconnection,
-    );
+    this.reconnectionManager = new ReconnectionManager(this.reconnectionOptions.reconnection);
 
     // Set up health check manager
     this.healthCheckManager = new HealthCheckManager({
@@ -108,10 +98,7 @@ export class ReconnectablePrefixedStdioClientTransport
     this.healthCheckManager.stop();
     this.reconnectionManager.onDisconnected(error);
 
-    if (
-      !this.isManuallyDisconnected &&
-      this.reconnectionManager.hasRetriesLeft
-    ) {
+    if (!this.isManuallyDisconnected && this.reconnectionManager.hasRetriesLeft) {
       this.scheduleReconnection();
     }
   }
@@ -147,23 +134,17 @@ export class ReconnectablePrefixedStdioClientTransport
   }
 
   public async reconnect(): Promise<void> {
-    console.error(
-      prefixedLog(this._serverName, 'Manual reconnection requested'),
-    );
+    console.error(prefixedLog(this._serverName, 'Manual reconnection requested'));
     this.reconnectionManager.reset();
     await this.close();
     await this.start();
   }
 
-  public onDisconnection(
-    handler: (state: ConnectionStateChange) => void,
-  ): void {
+  public onDisconnection(handler: (state: ConnectionStateChange) => void): void {
     this.disconnectionHandlers.push(handler);
   }
 
-  public removeDisconnectionHandler(
-    handler: (state: ConnectionStateChange) => void,
-  ): void {
+  public removeDisconnectionHandler(handler: (state: ConnectionStateChange) => void): void {
     const index = this.disconnectionHandlers.indexOf(handler);
     if (index >= 0) {
       this.disconnectionHandlers.splice(index, 1);

@@ -57,10 +57,7 @@ describe('SearchRegistryTools', () => {
       const { tool, mockContext } = getContext();
 
       // Test registry filter that won't match the default URL
-      const result = await tool.handle(
-        { keywords: 'test', registry: 'nonexistent' },
-        mockContext,
-      );
+      const result = await tool.handle({ keywords: 'test', registry: 'nonexistent' }, mockContext);
 
       // No HTTP call should be made since no registries match the filter
       expect(mockFetch).not.toHaveBeenCalled();

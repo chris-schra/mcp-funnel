@@ -83,8 +83,7 @@ export class ReconnectionManager {
 
   private calculateNextDelay(): number {
     const baseDelay = Math.min(
-      this.config.initialDelay *
-        Math.pow(this.config.backoffMultiplier, this.retryCount),
+      this.config.initialDelay * Math.pow(this.config.backoffMultiplier, this.retryCount),
       this.config.maxDelay,
     );
 
@@ -109,9 +108,7 @@ export class ReconnectionManager {
     }
 
     const newState =
-      this.retryCount === 0
-        ? ConnectionState.Connecting
-        : ConnectionState.Reconnecting;
+      this.retryCount === 0 ? ConnectionState.Connecting : ConnectionState.Reconnecting;
 
     this.setState(newState);
   }
@@ -156,11 +153,7 @@ export class ReconnectionManager {
     return new Promise((resolve, reject) => {
       if (!this.hasRetriesLeft) {
         this.setState(ConnectionState.Failed);
-        reject(
-          new Error(
-            `Max reconnection attempts (${this.config.maxRetries}) exceeded`,
-          ),
-        );
+        reject(new Error(`Max reconnection attempts (${this.config.maxRetries}) exceeded`));
         return;
       }
 
@@ -252,9 +245,7 @@ export class ReconnectionManager {
    * @param handler - Handler to remove
    * @public
    */
-  public removeStateChangeHandler(
-    handler: (event: ConnectionStateChange) => void,
-  ): void {
+  public removeStateChangeHandler(handler: (event: ConnectionStateChange) => void): void {
     const index = this.stateChangeHandlers.indexOf(handler);
     if (index >= 0) {
       this.stateChangeHandlers.splice(index, 1);

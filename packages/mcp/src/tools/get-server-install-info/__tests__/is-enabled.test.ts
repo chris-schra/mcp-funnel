@@ -65,21 +65,15 @@ describe('GetServerInstallInfo', () => {
     });
 
     it('should be enabled when exposeCoreTools has matching pattern', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['get_*'] })).toBe(
-        true,
-      );
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['get_*'] })).toBe(true);
     });
 
     it('should be enabled when exposeCoreTools is ["*"]', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
-        true,
-      );
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(true);
     });
 
     it('should be disabled when exposeCoreTools excludes the tool', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
-      ).toBe(false);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] })).toBe(false);
     });
   });
 });

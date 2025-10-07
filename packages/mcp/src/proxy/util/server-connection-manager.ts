@@ -1,11 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { logError, logEvent, ReconnectionManager } from '@mcp-funnel/core';
-import type {
-  TargetServerZod,
-  ProxyConfig,
-  TargetServer,
-} from '@mcp-funnel/schemas';
+import type { TargetServerZod, ProxyConfig, TargetServer } from '@mcp-funnel/schemas';
 import { ToolRegistry } from '../../tool-registry/index.js';
 import { EventEmitter } from 'events';
 import { connectToServer, type ConnectionConfig } from './connection-setup.js';
@@ -14,14 +10,8 @@ import {
   attemptReconnection,
   shouldAutoReconnect,
 } from './reconnection-handler.js';
-import {
-  setupDisconnectHandling,
-  handleServerDisconnection,
-} from './disconnect-handler.js';
-import {
-  performManualReconnect,
-  performManualDisconnect,
-} from './manual-connection-operations.js';
+import { setupDisconnectHandling, handleServerDisconnection } from './disconnect-handler.js';
+import { performManualReconnect, performManualDisconnect } from './manual-connection-operations.js';
 
 /**
  * Manages server connection lifecycle including connections, disconnections, and reconnections.
@@ -64,9 +54,7 @@ export class ServerConnectionManager {
    * @param servers - Target server configurations
    * @public
    */
-  public initializeDisconnectedServers(
-    servers: (TargetServer | TargetServerZod)[],
-  ): void {
+  public initializeDisconnectedServers(servers: (TargetServer | TargetServerZod)[]): void {
     servers.forEach((server) => {
       this.disconnectedServers.set(server.name, server);
     });
@@ -84,8 +72,7 @@ export class ServerConnectionManager {
     errorMessage?: string,
   ): void => {
     const serverName = targetServer.name;
-    const manualDisconnectRequested =
-      this.manualDisconnectRequests.has(serverName);
+    const manualDisconnectRequested = this.manualDisconnectRequests.has(serverName);
 
     // Handle the disconnection using extracted logic
     handleServerDisconnection({
@@ -103,12 +90,9 @@ export class ServerConnectionManager {
     });
 
     // Set up automatic reconnection if enabled
-    const isManualDisconnect =
-      reason === 'manual_disconnect' || manualDisconnectRequested;
+    const isManualDisconnect = reason === 'manual_disconnect' || manualDisconnectRequested;
 
-    if (
-      shouldAutoReconnect(this.config, isManualDisconnect, this.isShuttingDown)
-    ) {
+    if (shouldAutoReconnect(this.config, isManualDisconnect, this.isShuttingDown)) {
       this.setupAutoReconnection(targetServer);
     }
 
@@ -121,9 +105,7 @@ export class ServerConnectionManager {
    * @param targetServer - Server to set up automatic reconnection for
    * @internal
    */
-  private setupAutoReconnection(
-    targetServer: TargetServer | TargetServerZod,
-  ): void {
+  private setupAutoReconnection(targetServer: TargetServer | TargetServerZod): void {
     const serverName = targetServer.name;
 
     // Create ReconnectionManager if it doesn't exist
@@ -142,9 +124,7 @@ export class ServerConnectionManager {
     // Schedule the first reconnection attempt
     const reconnectionManager = this.reconnectionManagers.get(serverName);
     if (reconnectionManager) {
-      reconnectionManager.scheduleReconnection(() =>
-        this.attemptAutoReconnection(targetServer),
-      );
+      reconnectionManager.scheduleReconnection(() => this.attemptAutoReconnection(targetServer));
     }
   }
 
@@ -173,9 +153,7 @@ export class ServerConnectionManager {
         // Re-schedule reconnection - the ReconnectionManager will handle backoff
         const manager = this.reconnectionManagers.get(name);
         if (manager) {
-          manager.scheduleReconnection(() =>
-            this.attemptAutoReconnection(targetServer),
-          );
+          manager.scheduleReconnection(() => this.attemptAutoReconnection(targetServer));
         }
       },
     });
@@ -186,9 +164,7 @@ export class ServerConnectionManager {
    * @param targetServer - Server configuration to connect to
    * @public
    */
-  public async connectToSingleServer(
-    targetServer: TargetServer | TargetServerZod,
-  ): Promise<void> {
+  public async connectToSingleServer(targetServer: TargetServer | TargetServerZod): Promise<void> {
     const connectionConfig: ConnectionConfig = {
       targetServer,
       config: this.config,
@@ -196,8 +172,7 @@ export class ServerConnectionManager {
       toolRegistry: this.toolRegistry,
     };
 
-    const { client, transport, connectedAt } =
-      await connectToServer(connectionConfig);
+    const { client, transport, connectedAt } = await connectToServer(connectionConfig);
 
     // Set up disconnect handling
     setupDisconnectHandling({
@@ -227,18 +202,13 @@ export class ServerConnectionManager {
    * @param servers - Array of target server configurations
    * @public
    */
-  public async connectToTargetServers(
-    servers: (TargetServer | TargetServerZod)[],
-  ): Promise<void> {
+  public async connectToTargetServers(servers: (TargetServer | TargetServerZod)[]): Promise<void> {
     const connectionPromises = servers.map(async (targetServer) => {
       try {
         await this.connectToSingleServer(targetServer);
         return { name: targetServer.name, status: 'connected' as const };
       } catch (error) {
-        console.error(
-          `[proxy] Failed to connect to ${targetServer.name}:`,
-          error,
-        );
+        console.error(`[proxy] Failed to connect to ${targetServer.name}:`, error);
         logError('connection-failed', error, {
           name: targetServer.name,
           command: targetServer.command,
@@ -249,9 +219,7 @@ export class ServerConnectionManager {
     });
 
     const results = await Promise.allSettled(connectionPromises);
-    const summary = results.map((r) =>
-      r.status === 'fulfilled' ? r.value : r.reason,
-    );
+    const summary = results.map((r) => (r.status === 'fulfilled' ? r.value : r.reason));
     logEvent('info', 'server:connect_summary', { summary });
   }
 
@@ -268,9 +236,7 @@ export class ServerConnectionManager {
     }
 
     if (this.manualReconnections.has(name)) {
-      throw new Error(
-        `Manual reconnection already in progress for server '${name}'`,
-      );
+      throw new Error(`Manual reconnection already in progress for server '${name}'`);
     }
 
     // Find the server in disconnectedServers
@@ -330,10 +296,8 @@ export class ServerConnectionManager {
         client,
         transport,
         reconnectionManager: this.reconnectionManagers.get(name),
-        onDisconnect: (server, reason) =>
-          this.onServerDisconnect(server, reason),
-        cleanupReconnectionManager: (serverName) =>
-          this.reconnectionManagers.delete(serverName),
+        onDisconnect: (server, reason) => this.onServerDisconnect(server, reason),
+        cleanupReconnectionManager: (serverName) => this.reconnectionManagers.delete(serverName),
       });
     } finally {
       this.manualDisconnectRequests.delete(name);
@@ -396,18 +360,16 @@ export class ServerConnectionManager {
     }
 
     // Close all active client connections
-    const disconnectPromises = Array.from(this.connectedServers.keys()).map(
-      async (name) => {
-        try {
-          const client = this.clients.get(name);
-          if (client) {
-            await client.close();
-          }
-        } catch (error) {
-          // Ignore errors during shutdown
+    const disconnectPromises = Array.from(this.connectedServers.keys()).map(async (name) => {
+      try {
+        const client = this.clients.get(name);
+        if (client) {
+          await client.close();
         }
-      },
-    );
+      } catch (_error) {
+        // Ignore errors during shutdown
+      }
+    });
 
     await Promise.allSettled(disconnectPromises);
     console.error('SessionManager shutdown complete');

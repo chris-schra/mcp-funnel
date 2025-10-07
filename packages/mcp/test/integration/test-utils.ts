@@ -1,9 +1,5 @@
 import { beforeEach } from 'vitest';
-import type {
-  ProxyConfig,
-  TargetServerZod,
-  SecretProviderConfigSchema,
-} from '@mcp-funnel/schemas';
+import type { ProxyConfig, TargetServerZod, SecretProviderConfigSchema } from '@mcp-funnel/schemas';
 import type { z } from 'zod';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -26,18 +22,14 @@ export const useTestContext = (): (() => TestContext) => {
 };
 
 // Helper to create test server configurations
-export const createTestServer = (
-  overrides: Partial<TargetServerZod>,
-): TargetServerZod => ({
+export const createTestServer = (overrides: Partial<TargetServerZod>): TargetServerZod => ({
   name: 'test-server',
   command: 'node',
   ...overrides,
 });
 
 // Helper to create test proxy configurations
-export const createTestConfig = (
-  overrides: Partial<ProxyConfig>,
-): ProxyConfig => ({
+export const createTestConfig = (overrides: Partial<ProxyConfig>): ProxyConfig => ({
   servers: [],
   ...overrides,
 });

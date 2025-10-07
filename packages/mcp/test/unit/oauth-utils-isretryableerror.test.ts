@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-  OAuthUtils,
-} from '@mcp-funnel/auth';
+import { AuthenticationError, OAuth2ErrorCode, OAuthUtils } from '@mcp-funnel/auth';
 
 const { isRetryableError } = OAuthUtils;
 

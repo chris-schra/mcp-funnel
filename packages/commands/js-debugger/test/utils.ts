@@ -1,10 +1,7 @@
 import { waitFor } from './utils/async-helpers.js';
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
 import type { DebugSessionId } from '../src/types/index.js';
-import {
-  type FixtureHandle,
-  prepareNodeFixture,
-} from './utils/fixture-manager.js';
+import { type FixtureHandle, prepareNodeFixture } from './utils/fixture-manager.js';
 import { cleanupSession } from './utils/session-helpers.js';
 
 /**

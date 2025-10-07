@@ -53,10 +53,7 @@ export class ValidatorContext {
    * @param file - Absolute path to the file
    * @param result - Validation result from prettier, eslint, or typescript
    */
-  public addResult(
-    file: string,
-    result: FileValidationResults[string][number],
-  ): void {
+  public addResult(file: string, result: FileValidationResults[string][number]): void {
     this.ensureFileEntry(file);
     this.fileResults[file]?.push(result);
   }

@@ -36,8 +36,7 @@ export class MemoryUserConsentService implements IUserConsentService {
   private consents = new Map<string, ConsentBucket>();
 
   public constructor(options: MemoryUserConsentServiceOptions = {}) {
-    this.defaultTtlSeconds =
-      options.defaultTtlSeconds ?? 60 * 60; /* default 1 hour */
+    this.defaultTtlSeconds = options.defaultTtlSeconds ?? 60 * 60; /* default 1 hour */
     this.rememberedTtlSeconds =
       options.rememberedTtlSeconds ?? 60 * 60 * 24 * 30; /* default 30 days */
   }
@@ -46,10 +45,7 @@ export class MemoryUserConsentService implements IUserConsentService {
     return `${userId}:${clientId}`;
   }
 
-  private resolveExpiry(
-    issuedAt: number,
-    options?: RecordUserConsentOptions,
-  ): number | null {
+  private resolveExpiry(issuedAt: number, options?: RecordUserConsentOptions): number | null {
     if (options?.ttlSeconds !== undefined) {
       if (options.ttlSeconds <= 0) {
         return issuedAt;

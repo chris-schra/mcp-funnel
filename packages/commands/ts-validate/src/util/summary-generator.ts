@@ -1,8 +1,4 @@
-import type {
-  FileValidationResults,
-  ValidationSummary,
-  ToolRunStatus,
-} from '../validator.js';
+import type { FileValidationResults, ValidationSummary, ToolRunStatus } from '../validator.js';
 
 /**
  * Creates a validation summary from file results.
@@ -23,9 +19,7 @@ export function createSummary(
   toolStatuses: ToolRunStatus[],
   totalFilesCount: number,
 ): ValidationSummary {
-  const filesWithErrors = Object.keys(fileResults).filter(
-    (file) => fileResults[file].length > 0,
-  );
+  const filesWithErrors = Object.keys(fileResults).filter((file) => fileResults[file].length > 0);
 
   const fixableFiles = Object.keys(fileResults).filter((file) =>
     fileResults[file].some((r) => r.fixable && !r.fixedAutomatically),
@@ -73,9 +67,7 @@ export function generateSuggestedActions(
     const hasUnfixedEslint = results.some(
       (r) => r.tool === 'eslint' && r.fixable && !r.fixedAutomatically,
     );
-    const hasTypeErrors = results.some(
-      (r) => r.tool === 'typescript' && r.severity === 'error',
-    );
+    const hasTypeErrors = results.some((r) => r.tool === 'typescript' && r.severity === 'error');
 
     if (hasUnfixedPrettier) {
       actions?.push({

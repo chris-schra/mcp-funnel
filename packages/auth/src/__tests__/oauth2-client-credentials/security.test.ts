@@ -50,9 +50,7 @@ describe('Security', () => {
     provider = new OAuth2ClientCredentialsProvider(mockConfig, mockStorage);
 
     // Should throw audience validation error
-    await expect(provider.getHeaders()).rejects.toThrow(
-      'Audience validation failed',
-    );
+    await expect(provider.getHeaders()).rejects.toThrow('Audience validation failed');
   });
 
   it('should sanitize tokens in error messages', async () => {
@@ -72,8 +70,7 @@ describe('Security', () => {
       await provider.getHeaders();
     } catch (error: unknown) {
       // Error message should not contain actual tokens
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       expect(errorMessage).not.toContain('test-client-secret');
       expect(errorMessage).not.toContain(mockConfig.clientSecret);
     }

@@ -52,9 +52,7 @@ export function createSecretProvider(
     default: {
       // TypeScript exhaustiveness check - this should never happen
       const exhaustiveCheck: never = config;
-      throw new Error(
-        `Unknown secret provider type: ${JSON.stringify(exhaustiveCheck)}`,
-      );
+      throw new Error(`Unknown secret provider type: ${JSON.stringify(exhaustiveCheck)}`);
     }
   }
 }
@@ -95,9 +93,7 @@ export function createSecretProviders(
  * @throws Error - When the configuration is invalid
  * @public
  */
-export function validateSecretProviderConfig(
-  config: unknown,
-): config is SecretProviderConfig {
+export function validateSecretProviderConfig(config: unknown): config is SecretProviderConfig {
   if (!config || typeof config !== 'object') {
     throw new Error('Secret provider config must be an object');
   }
@@ -124,10 +120,7 @@ export function validateSecretProviderConfig(
       break;
 
     case 'inline':
-      if (
-        !typedConfig.config.values ||
-        typeof typedConfig.config.values !== 'object'
-      ) {
+      if (!typedConfig.config.values || typeof typedConfig.config.values !== 'object') {
         throw new Error('Inline provider config must have a values object');
       }
       break;

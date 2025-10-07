@@ -12,10 +12,7 @@ import type { DotEnvProviderOptions } from './types.js';
  * @returns Absolute path to the .env file
  * @internal
  */
-export function resolveDotEnvPath(
-  options: DotEnvProviderOptions,
-  configFileDir?: string,
-): string {
+export function resolveDotEnvPath(options: DotEnvProviderOptions, configFileDir?: string): string {
   if (isAbsolute(options.path)) {
     return options.path;
   }
@@ -32,10 +29,7 @@ export function resolveDotEnvPath(
  * @throws \{Error\} When file cannot be read (including ENOENT for missing files)
  * @internal
  */
-export function readDotEnvFile(
-  filePath: string,
-  encoding: BufferEncoding,
-): string {
+export function readDotEnvFile(filePath: string, encoding: BufferEncoding): string {
   return readFileSync(filePath, encoding);
 }
 

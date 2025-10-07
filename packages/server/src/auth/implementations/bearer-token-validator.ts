@@ -32,10 +32,7 @@ import type {
   AuthResult,
   InboundBearerAuthConfig,
 } from '../interfaces/inbound-auth.interface.js';
-import {
-  EnvironmentResolutionError,
-  EnvVarPatternResolver,
-} from '@mcp-funnel/core';
+import { EnvironmentResolutionError, EnvVarPatternResolver } from '@mcp-funnel/core';
 
 /**
  * Bearer token authentication validator.
@@ -47,9 +44,7 @@ export class BearerTokenValidator implements IInboundAuthValidator {
 
   public constructor(config: InboundBearerAuthConfig) {
     if (!config.tokens || config.tokens.length === 0) {
-      throw new Error(
-        'Bearer token configuration must include at least one token',
-      );
+      throw new Error('Bearer token configuration must include at least one token');
     }
 
     // Initialize the environment resolver with strict mode
@@ -73,9 +68,7 @@ export class BearerTokenValidator implements IInboundAuthValidator {
       }
     }
 
-    console.info(
-      `Initialized bearer token validator with ${this.validTokens.length} tokens`,
-    );
+    console.info(`Initialized bearer token validator with ${this.validTokens.length} tokens`);
   }
 
   public async validateRequest(context: Context): Promise<AuthResult> {
@@ -95,8 +88,7 @@ export class BearerTokenValidator implements IInboundAuthValidator {
       if (!bearerMatch) {
         return {
           isAuthenticated: false,
-          error:
-            'Invalid Authorization header format. Expected: Bearer <token>',
+          error: 'Invalid Authorization header format. Expected: Bearer <token>',
         };
       }
 

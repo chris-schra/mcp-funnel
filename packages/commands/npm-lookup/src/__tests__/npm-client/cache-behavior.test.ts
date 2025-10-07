@@ -27,8 +27,7 @@ describe('cache behavior', () => {
           dist: {
             integrity: 'sha512-test',
             shasum: 'test',
-            tarball:
-              'https://registry.npmjs.org/test-package/-/test-package-1.0.0.tgz',
+            tarball: 'https://registry.npmjs.org/test-package/-/test-package-1.0.0.tgz',
             fileCount: 1,
             unpackedSize: 100,
           },

@@ -58,20 +58,14 @@ async function makeTempDir(): Promise<string> {
  * @param destination - Absolute path where the copy should be created
  * @internal
  */
-async function copyRecursive(
-  source: string,
-  destination: string,
-): Promise<void> {
+async function copyRecursive(source: string, destination: string): Promise<void> {
   const stat = await fs.stat(source);
 
   if (stat.isDirectory()) {
     await fs.mkdir(destination, { recursive: true });
     const entries = await fs.readdir(source);
     for (const entry of entries) {
-      await copyRecursive(
-        path.join(source, entry),
-        path.join(destination, entry),
-      );
+      await copyRecursive(path.join(source, entry), path.join(destination, entry));
     }
     return;
   }
@@ -127,9 +121,7 @@ async function prepareFixture(relativePath: string): Promise<FixtureHandle> {
  * ```
  * @public
  */
-export async function prepareNodeFixture(
-  fixtureName: string,
-): Promise<FixtureHandle> {
+export async function prepareNodeFixture(fixtureName: string): Promise<FixtureHandle> {
   const sourcePath = path.join(FIXTURES_ROOT, 'node', fixtureName);
   await ensureExists(sourcePath);
 
@@ -163,9 +155,7 @@ export async function prepareNodeFixture(
  * ```
  * @public
  */
-export async function prepareBrowserFixture(
-  fixtureName: string,
-): Promise<FixtureHandle> {
+export async function prepareBrowserFixture(fixtureName: string): Promise<FixtureHandle> {
   return prepareFixture(path.join('browser', fixtureName));
 }
 

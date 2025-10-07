@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { ITokenStorage } from '@mcp-funnel/core';
 import { createMemoryTokenStorage } from '../../../implementations/memory-token-storage.js';
-import {
-  createTestToken,
-  setupMockTimers,
-  restoreTimers,
-} from './test-utils.js';
+import { createTestToken, setupMockTimers, restoreTimers } from './test-utils.js';
 
 describe('MemoryTokenStorage', () => {
   let storage: ITokenStorage;
@@ -37,20 +33,14 @@ describe('MemoryTokenStorage', () => {
 
       const retrieved = await storage.retrieve();
       expect(retrieved).toBeDefined();
-      expect([token1.accessToken, token2.accessToken]).toContain(
-        retrieved?.accessToken,
-      );
+      expect([token1.accessToken, token2.accessToken]).toContain(retrieved?.accessToken);
     });
 
     it('should handle concurrent retrieve operations', async () => {
       const token = createTestToken();
       await storage.store(token);
 
-      const retrievePromises = [
-        storage.retrieve(),
-        storage.retrieve(),
-        storage.retrieve(),
-      ];
+      const retrievePromises = [storage.retrieve(), storage.retrieve(), storage.retrieve()];
 
       const results = await Promise.all(retrievePromises);
 
@@ -62,11 +52,7 @@ describe('MemoryTokenStorage', () => {
     it('should handle concurrent store and retrieve operations', async () => {
       const token = createTestToken();
 
-      const operations = [
-        storage.store(token),
-        storage.retrieve(),
-        storage.isExpired(),
-      ];
+      const operations = [storage.store(token), storage.retrieve(), storage.isExpired()];
 
       await expect(Promise.all(operations)).resolves.not.toThrow();
     });

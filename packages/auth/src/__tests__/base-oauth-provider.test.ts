@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-} from '../errors/authentication-error.js';
+import { AuthenticationError, OAuth2ErrorCode } from '../errors/authentication-error.js';
 import type { ITokenStorage } from '@mcp-funnel/core';
 import type { OAuth2TokenResponse } from '../utils/index.js';
 import {
@@ -135,9 +132,7 @@ describe('BaseOAuthProvider', () => {
     it('should return false when isExpired throws error', async () => {
       const token = createTestToken();
       mockStorage.setToken(token);
-      mockStorage.isExpiredMock.mockRejectedValue(
-        new Error('Expiry check failed'),
-      );
+      mockStorage.isExpiredMock.mockRejectedValue(new Error('Expiry check failed'));
 
       const isValid = await provider.isValid();
 
@@ -242,9 +237,7 @@ describe('BaseOAuthProvider', () => {
       mockStorage.setToken(null);
       provider.acquireTokenMock.mockResolvedValue(undefined);
 
-      await expect(provider.testEnsureValidToken()).rejects.toThrow(
-        AuthenticationError,
-      );
+      await expect(provider.testEnsureValidToken()).rejects.toThrow(AuthenticationError);
       await expect(provider.testEnsureValidToken()).rejects.toThrow(
         'Failed to acquire OAuth2 token',
       );
@@ -264,9 +257,7 @@ describe('BaseOAuthProvider', () => {
         // No scheduleRefresh method
       } as ITokenStorage;
 
-      const providerWithoutSchedule = new TestOAuthProvider(
-        storageWithoutSchedule,
-      );
+      const providerWithoutSchedule = new TestOAuthProvider(storageWithoutSchedule);
 
       const result = await providerWithoutSchedule.testEnsureValidToken();
 
@@ -277,14 +268,9 @@ describe('BaseOAuthProvider', () => {
 
   describe('handleTokenRequestError', () => {
     it('should re-throw AuthenticationError directly', async () => {
-      const authError = new AuthenticationError(
-        'Test error',
-        OAuth2ErrorCode.INVALID_CLIENT,
-      );
+      const authError = new AuthenticationError('Test error', OAuth2ErrorCode.INVALID_CLIENT);
 
-      await expect(
-        provider.testHandleTokenRequestError(authError),
-      ).rejects.toThrow(authError);
+      await expect(provider.testHandleTokenRequestError(authError)).rejects.toThrow(authError);
     });
 
     it('should handle HTTP error responses', async () => {
@@ -307,34 +293,34 @@ describe('BaseOAuthProvider', () => {
     it('should handle JSON parsing errors', async () => {
       const syntaxError = new SyntaxError('Unexpected token');
 
-      await expect(
-        provider.testHandleTokenRequestError(syntaxError),
-      ).rejects.toThrow(AuthenticationError);
-      await expect(
-        provider.testHandleTokenRequestError(syntaxError),
-      ).rejects.toThrow('Failed to parse OAuth2 token response');
+      await expect(provider.testHandleTokenRequestError(syntaxError)).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(provider.testHandleTokenRequestError(syntaxError)).rejects.toThrow(
+        'Failed to parse OAuth2 token response',
+      );
     });
 
     it('should handle generic fetch errors', async () => {
       const fetchError = new Error('Network error');
 
-      await expect(
-        provider.testHandleTokenRequestError(fetchError),
-      ).rejects.toThrow(AuthenticationError);
-      await expect(
-        provider.testHandleTokenRequestError(fetchError),
-      ).rejects.toThrow('Network error during authentication');
+      await expect(provider.testHandleTokenRequestError(fetchError)).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(provider.testHandleTokenRequestError(fetchError)).rejects.toThrow(
+        'Network error during authentication',
+      );
     });
 
     it('should handle non-Error objects', async () => {
       const stringError = 'String error';
 
-      await expect(
-        provider.testHandleTokenRequestError(stringError),
-      ).rejects.toThrow(AuthenticationError);
-      await expect(
-        provider.testHandleTokenRequestError(stringError),
-      ).rejects.toThrow('Network error during authentication: String error');
+      await expect(provider.testHandleTokenRequestError(stringError)).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(provider.testHandleTokenRequestError(stringError)).rejects.toThrow(
+        'Network error during authentication: String error',
+      );
     });
   });
 
@@ -342,9 +328,7 @@ describe('BaseOAuthProvider', () => {
     it('should pass for valid token response', () => {
       const tokenResponse = createTestTokenResponse();
 
-      expect(() =>
-        provider.testValidateTokenResponse(tokenResponse),
-      ).not.toThrow();
+      expect(() => provider.testValidateTokenResponse(tokenResponse)).not.toThrow();
     });
 
     it('should throw error for missing access_token', () => {
@@ -353,9 +337,7 @@ describe('BaseOAuthProvider', () => {
         access_token: '',
       };
 
-      expect(() => provider.testValidateTokenResponse(tokenResponse)).toThrow(
-        AuthenticationError,
-      );
+      expect(() => provider.testValidateTokenResponse(tokenResponse)).toThrow(AuthenticationError);
       expect(() => provider.testValidateTokenResponse(tokenResponse)).toThrow(
         'OAuth2 token response missing access_token field',
       );
@@ -365,9 +347,7 @@ describe('BaseOAuthProvider', () => {
       const tokenResponse = createTestTokenResponse();
       delete (tokenResponse as Partial<OAuth2TokenResponse>).access_token;
 
-      expect(() => provider.testValidateTokenResponse(tokenResponse)).toThrow(
-        AuthenticationError,
-      );
+      expect(() => provider.testValidateTokenResponse(tokenResponse)).toThrow(AuthenticationError);
     });
   });
 

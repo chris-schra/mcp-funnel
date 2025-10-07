@@ -48,9 +48,7 @@ describe('AuthConfigSchema', () => {
       const result = AuthConfigSchema.parse(bearerConfig);
       expect(result.type).toBe('bearer');
       if (result.type === 'bearer') {
-        expect((result as BearerAuthConfigZod).token).toBe(
-          'secret-bearer-token',
-        );
+        expect((result as BearerAuthConfigZod).token).toBe('secret-bearer-token');
       }
     });
 
@@ -95,9 +93,7 @@ describe('AuthConfigSchema', () => {
         const oauth2Result = result as OAuth2ClientCredentialsConfigZod;
         expect(oauth2Result.clientId).toBe('client-123');
         expect(oauth2Result.clientSecret).toBe('secret-456');
-        expect(oauth2Result.tokenEndpoint).toBe(
-          'https://auth.example.com/token',
-        );
+        expect(oauth2Result.tokenEndpoint).toBe('https://auth.example.com/token');
         expect(oauth2Result.scope).toBe('read write');
         expect(oauth2Result.audience).toBe('api.example.com');
       }
@@ -140,9 +136,7 @@ describe('AuthConfigSchema', () => {
       ];
 
       invalidConfigs.forEach((config) => {
-        expect(() =>
-          OAuth2ClientCredentialsConfigSchema.parse(config),
-        ).toThrow();
+        expect(() => OAuth2ClientCredentialsConfigSchema.parse(config)).toThrow();
       });
     });
   });
@@ -166,12 +160,8 @@ describe('AuthConfigSchema', () => {
       if (result.type === 'oauth2-code') {
         const oauth2Result = result as OAuth2AuthCodeConfigZod;
         expect(oauth2Result.clientId).toBe('web-app-123');
-        expect(oauth2Result.authorizationEndpoint).toBe(
-          'https://auth.example.com/authorize',
-        );
-        expect(oauth2Result.redirectUri).toBe(
-          'https://app.example.com/callback',
-        );
+        expect(oauth2Result.authorizationEndpoint).toBe('https://auth.example.com/authorize');
+        expect(oauth2Result.redirectUri).toBe('https://app.example.com/callback');
       }
     });
 

@@ -43,10 +43,8 @@ export async function resolveLocalModule(
         module?: string;
       };
       const entry = (() => {
-        if (pkgJson.module)
-          return path.join(path.dirname(pkgJsonPath), pkgJson.module);
-        if (pkgJson.main)
-          return path.join(path.dirname(pkgJsonPath), pkgJson.main);
+        if (pkgJson.module) return path.join(path.dirname(pkgJsonPath), pkgJson.module);
+        if (pkgJson.main) return path.join(path.dirname(pkgJsonPath), pkgJson.main);
         return requireFromHere.resolve(name, { paths: [dir] });
       })();
       return { modulePath: entry, version: pkgJson.version };
@@ -68,20 +66,15 @@ export async function resolveLocalModule(
  *
  * @public
  */
-export function extractESLintCtor(
-  mod: unknown,
-): (typeof import('eslint'))['ESLint'] | undefined {
-  if (!mod || (typeof mod !== 'object' && typeof mod !== 'function'))
-    return undefined;
+export function extractESLintCtor(mod: unknown): (typeof import('eslint'))['ESLint'] | undefined {
+  if (!mod || (typeof mod !== 'object' && typeof mod !== 'function')) return undefined;
   const obj = mod as Record<string, unknown>;
   const direct = obj.ESLint as unknown;
-  if (typeof direct === 'function')
-    return direct as (typeof import('eslint'))['ESLint'];
+  if (typeof direct === 'function') return direct as (typeof import('eslint'))['ESLint'];
   const def = obj.default as unknown;
   if (def && typeof def === 'object') {
     const nested = (def as Record<string, unknown>).ESLint as unknown;
-    if (typeof nested === 'function')
-      return nested as (typeof import('eslint'))['ESLint'];
+    if (typeof nested === 'function') return nested as (typeof import('eslint'))['ESLint'];
   }
   if (def && typeof def === 'function') {
     return def as (typeof import('eslint'))['ESLint'];

@@ -58,9 +58,7 @@ describe('Auth Middleware', () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toBe('Unauthorized');
-    expect(res.headers.get('WWW-Authenticate')).toBe(
-      'Bearer realm="MCP Proxy API"',
-    );
+    expect(res.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
   });
 
   it('should reject requests without authentication', async () => {

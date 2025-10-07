@@ -2,17 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DebuggerSessionManager } from '../src/debugger/session-manager.js';
 import { prepareNodeFixture } from './utils/fixture-manager.js';
 import { waitFor } from './utils/async-helpers.js';
-import {
-  waitForOutput,
-  queryWithConsoleLevel,
-  queryWithStream,
-} from './utils/output-helpers.js';
-import type {
-  DebugSessionId,
-  OutputEntry,
-  ConsoleLevel,
-  StreamName,
-} from '../src/types/index.js';
+import { waitForOutput, queryWithConsoleLevel, queryWithStream } from './utils/output-helpers.js';
+import type { DebugSessionId, OutputEntry, ConsoleLevel, StreamName } from '../src/types/index.js';
 import type { FixtureHandle } from './utils/fixture-manager.js';
 
 describe('Output Collection', () => {
@@ -48,15 +39,11 @@ describe('Output Collection', () => {
       expect(stderrResult.entries.length).toBeGreaterThan(0);
 
       expect(
-        stdoutResult.entries.every(
-          (e) => e.kind !== 'stdio' || e.entry.stream === 'stdout',
-        ),
+        stdoutResult.entries.every((e) => e.kind !== 'stdio' || e.entry.stream === 'stdout'),
       ).toBe(true);
 
       expect(
-        stderrResult.entries.every(
-          (e) => e.kind !== 'stdio' || e.entry.stream === 'stderr',
-        ),
+        stderrResult.entries.every((e) => e.kind !== 'stdio' || e.entry.stream === 'stderr'),
       ).toBe(true);
     });
 
@@ -67,26 +54,20 @@ describe('Output Collection', () => {
         const result = await queryWithConsoleLevel(manager, sessionId, level);
 
         expect(result.entries.length).toBeGreaterThan(0);
-        expect(
-          result.entries.every(
-            (e) => e.kind !== 'console' || e.entry.level === level,
-          ),
-        ).toBe(true);
+        expect(result.entries.every((e) => e.kind !== 'console' || e.entry.level === level)).toBe(
+          true,
+        );
       }
     });
 
     it('should include timestamps on all entries', async () => {
-      const result = await waitForOutput(() =>
-        manager.queryOutput({ sessionId, limit: 50 }),
-      );
+      const result = await waitForOutput(() => manager.queryOutput({ sessionId, limit: 50 }));
 
       expect(result.entries.length).toBeGreaterThan(0);
 
       for (const entry of result.entries) {
         const timestamp =
-          entry.kind === 'stdio' ||
-          entry.kind === 'console' ||
-          entry.kind === 'exception'
+          entry.kind === 'stdio' || entry.kind === 'console' || entry.kind === 'exception'
             ? entry.entry.timestamp
             : 0;
 
@@ -112,18 +93,12 @@ describe('Output Collection', () => {
 
       const validStreams: Set<StreamName> = new Set(['stdout', 'stderr']);
       expect(
-        multiStream.entries.every(
-          (e) => e.kind !== 'stdio' || validStreams.has(e.entry.stream),
-        ),
+        multiStream.entries.every((e) => e.kind !== 'stdio' || validStreams.has(e.entry.stream)),
       ).toBe(true);
     });
 
     it('should filter by single and multiple console levels', async () => {
-      const singleLevel = await queryWithConsoleLevel(
-        manager,
-        sessionId,
-        'log',
-      );
+      const singleLevel = await queryWithConsoleLevel(manager, sessionId, 'log');
       const multiLevel = await waitForOutput(() =>
         manager.queryOutput({
           sessionId,
@@ -137,9 +112,7 @@ describe('Output Collection', () => {
 
       const validLevels: Set<ConsoleLevel> = new Set(['log', 'warn', 'error']);
       expect(
-        multiLevel.entries.every(
-          (e) => e.kind !== 'console' || validLevels.has(e.entry.level),
-        ),
+        multiLevel.entries.every((e) => e.kind !== 'console' || validLevels.has(e.entry.level)),
       ).toBe(true);
     });
 
@@ -171,18 +144,14 @@ describe('Output Collection', () => {
           case 'console':
             return (
               entry.entry.text.toLowerCase().includes(lowerSearch) ||
-              entry.entry.arguments.some((arg) =>
-                arg.text.toLowerCase().includes(lowerSearch),
-              )
+              entry.entry.arguments.some((arg) => arg.text.toLowerCase().includes(lowerSearch))
             );
           default:
             return false;
         }
       };
 
-      expect(
-        lowerCase.entries.some((e) => hasMatch(e, 'test log message')),
-      ).toBe(true);
+      expect(lowerCase.entries.some((e) => hasMatch(e, 'test log message'))).toBe(true);
     });
 
     it('should control exception inclusion', async () => {
@@ -200,9 +169,7 @@ describe('Output Collection', () => {
         limit: 50,
       });
 
-      expect(
-        withoutExceptions.entries.every((e) => e.kind !== 'exception'),
-      ).toBe(true);
+      expect(withoutExceptions.entries.every((e) => e.kind !== 'exception')).toBe(true);
 
       expect(withExceptions.entries.length).toBeGreaterThanOrEqual(0);
     });
@@ -210,39 +177,29 @@ describe('Output Collection', () => {
 
   describe('Cursor-based Pagination', () => {
     it('should return monotonically increasing cursors', async () => {
-      const result = await waitForOutput(() =>
-        manager.queryOutput({ sessionId, limit: 50 }),
-      );
+      const result = await waitForOutput(() => manager.queryOutput({ sessionId, limit: 50 }));
 
       expect(result.entries.length).toBeGreaterThan(0);
 
       for (let i = 1; i < result.entries.length; i++) {
-        expect(result.entries[i].cursor).toBeGreaterThan(
-          result.entries[i - 1].cursor,
-        );
+        expect(result.entries[i].cursor).toBeGreaterThan(result.entries[i - 1].cursor);
       }
     });
 
     it('should respect limit and return pagination metadata', async () => {
       const limit = 3;
-      const result = await waitForOutput(() =>
-        manager.queryOutput({ sessionId, limit }),
-      );
+      const result = await waitForOutput(() => manager.queryOutput({ sessionId, limit }));
 
       expect(result.entries.length).toBeLessThanOrEqual(limit);
       expect(result.nextCursor).toBeTypeOf('number');
 
       if (result.entries.length > 0) {
-        expect(result.nextCursor).toBe(
-          result.entries[result.entries.length - 1].cursor,
-        );
+        expect(result.nextCursor).toBe(result.entries[result.entries.length - 1].cursor);
       }
     });
 
     it('should paginate using since cursor', async () => {
-      const firstPage = await waitForOutput(() =>
-        manager.queryOutput({ sessionId, limit: 2 }),
-      );
+      const firstPage = await waitForOutput(() => manager.queryOutput({ sessionId, limit: 2 }));
 
       expect(firstPage.entries.length).toBeGreaterThan(0);
 
@@ -254,30 +211,20 @@ describe('Output Collection', () => {
         limit: 10,
       });
 
-      expect(
-        secondPage.entries.every(
-          (entry) => entry.cursor > firstPage.nextCursor,
-        ),
-      ).toBe(true);
+      expect(secondPage.entries.every((entry) => entry.cursor > firstPage.nextCursor)).toBe(true);
     });
 
     it('should set hasMore correctly', async () => {
-      const limited = await waitForOutput(() =>
-        manager.queryOutput({ sessionId, limit: 1 }),
-      );
+      const limited = await waitForOutput(() => manager.queryOutput({ sessionId, limit: 1 }));
 
       if (limited.entries.length > 0) {
-        await waitForOutput(() =>
-          manager.queryOutput({ sessionId, limit: 50 }),
-        );
+        await waitForOutput(() => manager.queryOutput({ sessionId, limit: 50 }));
 
         const result = await manager.queryOutput({ sessionId, limit: 1 });
         expect(result.hasMore).toBe(true);
       }
 
-      const unlimited = await waitForOutput(() =>
-        manager.queryOutput({ sessionId, limit: 1000 }),
-      );
+      const unlimited = await waitForOutput(() => manager.queryOutput({ sessionId, limit: 1000 }));
 
       expect(unlimited.hasMore).toBe(false);
     });
@@ -323,8 +270,7 @@ describe('Output Collection', () => {
       );
 
       const hasInspectorUrl = result.entries.some(
-        (e) =>
-          e.kind === 'stdio' && e.entry.text.includes('Debugger listening'),
+        (e) => e.kind === 'stdio' && e.entry.text.includes('Debugger listening'),
       );
       expect(hasInspectorUrl).toBe(true);
 
@@ -338,9 +284,7 @@ describe('Output Collection', () => {
 
   describe('Output Buffering and Limits', () => {
     it('should buffer output over time', async () => {
-      const initial = await waitForOutput(() =>
-        manager.queryOutput({ sessionId }),
-      );
+      const initial = await waitForOutput(() => manager.queryOutput({ sessionId }));
 
       const initialCount = initial.entries.length;
 
@@ -357,14 +301,10 @@ describe('Output Collection', () => {
     });
 
     it('should maintain cursor ordering', async () => {
-      const result = await waitForOutput(() =>
-        manager.queryOutput({ sessionId, limit: 100 }),
-      );
+      const result = await waitForOutput(() => manager.queryOutput({ sessionId, limit: 100 }));
 
       for (let i = 1; i < result.entries.length; i++) {
-        expect(result.entries[i].cursor).toBeGreaterThan(
-          result.entries[i - 1].cursor,
-        );
+        expect(result.entries[i].cursor).toBeGreaterThan(result.entries[i - 1].cursor);
       }
     });
 

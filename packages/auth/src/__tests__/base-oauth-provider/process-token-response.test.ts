@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  TestOAuthProvider,
-  MockTokenStorage,
-  createTestTokenResponse,
-} from './test-utils.js';
+import { TestOAuthProvider, MockTokenStorage, createTestTokenResponse } from './test-utils.js';
 import { AuthenticationError } from '../../errors/authentication-error.js';
 import { AUTH_DEFAULT_EXPIRY_SECONDS } from '../../utils/index.js';
 
@@ -39,11 +35,7 @@ describe('BaseOAuthProvider - processTokenResponse', () => {
     });
     const validateAudience = vi.fn().mockReturnValue(true);
 
-    await provider.testProcessTokenResponse(
-      tokenResponse,
-      'test-request-id',
-      validateAudience,
-    );
+    await provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience);
 
     expect(validateAudience).toHaveBeenCalledWith('https://api.example.com');
     expect(mockStorage.storeMock).toHaveBeenCalled();
@@ -56,18 +48,10 @@ describe('BaseOAuthProvider - processTokenResponse', () => {
     const validateAudience = vi.fn().mockReturnValue(false);
 
     await expect(
-      provider.testProcessTokenResponse(
-        tokenResponse,
-        'test-request-id',
-        validateAudience,
-      ),
+      provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience),
     ).rejects.toThrow(AuthenticationError);
     await expect(
-      provider.testProcessTokenResponse(
-        tokenResponse,
-        'test-request-id',
-        validateAudience,
-      ),
+      provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience),
     ).rejects.toThrow('Audience validation failed');
   });
 
@@ -98,11 +82,7 @@ describe('BaseOAuthProvider - processTokenResponse', () => {
     const tokenResponse = createTestTokenResponse({ audience: undefined });
     const validateAudience = vi.fn();
 
-    await provider.testProcessTokenResponse(
-      tokenResponse,
-      'test-request-id',
-      validateAudience,
-    );
+    await provider.testProcessTokenResponse(tokenResponse, 'test-request-id', validateAudience);
 
     expect(validateAudience).not.toHaveBeenCalled();
     expect(mockStorage.storeMock).toHaveBeenCalled();

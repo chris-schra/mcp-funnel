@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { ITokenStorage, TokenData } from '@mcp-funnel/core';
 import { createMemoryTokenStorage } from '../../../implementations/memory-token-storage.js';
-import {
-  createTestToken,
-  setupMockTimers,
-  restoreTimers,
-} from './test-utils.js';
+import { createTestToken, setupMockTimers, restoreTimers } from './test-utils.js';
 
 describe('Token Lifecycle', () => {
   let storage: ITokenStorage;

@@ -35,18 +35,10 @@ describe('TransportFactory - Transport Configuration', () => {
 
     const transport = await createTransport(config);
 
-    expect(
-      (transport.config as SSETransportConfig).reconnect?.maxAttempts,
-    ).toBe(3);
-    expect(
-      (transport.config as SSETransportConfig).reconnect?.initialDelayMs,
-    ).toBe(1000);
-    expect((transport.config as SSETransportConfig).reconnect?.maxDelayMs).toBe(
-      30000,
-    );
-    expect(
-      (transport.config as SSETransportConfig).reconnect?.backoffMultiplier,
-    ).toBe(2);
+    expect((transport.config as SSETransportConfig).reconnect?.maxAttempts).toBe(3);
+    expect((transport.config as SSETransportConfig).reconnect?.initialDelayMs).toBe(1000);
+    expect((transport.config as SSETransportConfig).reconnect?.maxDelayMs).toBe(30000);
+    expect((transport.config as SSETransportConfig).reconnect?.backoffMultiplier).toBe(2);
   });
 
   it('should merge custom reconnect settings with defaults', async () => {
@@ -61,11 +53,7 @@ describe('TransportFactory - Transport Configuration', () => {
 
     const transport = await createTransport(config);
 
-    expect(
-      (transport.config as SSETransportConfig).reconnect?.maxAttempts,
-    ).toBe(5);
-    expect(
-      (transport.config as SSETransportConfig).reconnect?.initialDelayMs,
-    ).toBe(1000); // default
+    expect((transport.config as SSETransportConfig).reconnect?.maxAttempts).toBe(5);
+    expect((transport.config as SSETransportConfig).reconnect?.initialDelayMs).toBe(1000); // default
   });
 });

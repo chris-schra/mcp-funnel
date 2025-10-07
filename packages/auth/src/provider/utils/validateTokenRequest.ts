@@ -1,8 +1,4 @@
-import {
-  type OAuthError,
-  OAuthErrorCodes,
-  type TokenRequest,
-} from '@mcp-funnel/models';
+import { type OAuthError, OAuthErrorCodes, type TokenRequest } from '@mcp-funnel/models';
 
 /**
  * Validates OAuth 2.0 token request parameters according to RFC 6749.

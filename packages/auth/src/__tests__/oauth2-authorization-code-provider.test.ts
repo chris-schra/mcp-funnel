@@ -58,9 +58,7 @@ describe('OAuth2AuthCodeProvider', () => {
       const invalidConfig = { ...mockConfig, clientId: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow(
-        'OAuth2 Authorization Code config: Missing required field: clientId',
-      );
+      }).toThrow('OAuth2 Authorization Code config: Missing required field: clientId');
     });
 
     it('should throw error for missing auth URL', () => {
@@ -74,18 +72,14 @@ describe('OAuth2AuthCodeProvider', () => {
       const invalidConfig = { ...mockConfig, tokenEndpoint: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow(
-        'OAuth2 Authorization Code config: Missing required field: tokenEndpoint',
-      );
+      }).toThrow('OAuth2 Authorization Code config: Missing required field: tokenEndpoint');
     });
 
     it('should throw error for missing redirect URI', () => {
       const invalidConfig = { ...mockConfig, redirectUri: '' };
       expect(() => {
         new OAuth2AuthCodeProvider(invalidConfig, mockStorage);
-      }).toThrow(
-        'OAuth2 Authorization Code config: Missing required field: redirectUri',
-      );
+      }).toThrow('OAuth2 Authorization Code config: Missing required field: redirectUri');
     });
 
     it('should throw error for invalid URLs', () => {
@@ -152,9 +146,7 @@ describe('OAuth2AuthCodeProvider', () => {
     });
 
     it('should return false on storage error', async () => {
-      mockStorage.retrieve = vi
-        .fn()
-        .mockRejectedValue(new Error('Storage error'));
+      mockStorage.retrieve = vi.fn().mockRejectedValue(new Error('Storage error'));
       expect(await provider.isValid()).toBe(false);
     });
   });
@@ -172,9 +164,9 @@ describe('OAuth2AuthCodeProvider', () => {
     });
 
     it('should throw error when no pending authorization', async () => {
-      await expect(
-        provider.completeOAuthFlow('test-state', 'test-code'),
-      ).rejects.toThrow('Invalid or expired OAuth state');
+      await expect(provider.completeOAuthFlow('test-state', 'test-code')).rejects.toThrow(
+        'Invalid or expired OAuth state',
+      );
     });
 
     it('should throw error for invalid state parameter', async () => {
@@ -182,9 +174,9 @@ describe('OAuth2AuthCodeProvider', () => {
       const initPromise = provider.refresh();
 
       // Try to complete with wrong state
-      await expect(
-        provider.completeOAuthFlow('wrong-state', 'test-code'),
-      ).rejects.toThrow('Invalid or expired OAuth state');
+      await expect(provider.completeOAuthFlow('wrong-state', 'test-code')).rejects.toThrow(
+        'Invalid or expired OAuth state',
+      );
 
       // Clean up
       initPromise.catch(() => {}); // Prevent unhandled rejection
@@ -260,9 +252,7 @@ describe('OAuth2AuthCodeProvider', () => {
       await provider.completeOAuthFlow(state, 'invalid-code');
 
       // The refresh promise should reject with the error
-      await expect(refreshPromise).rejects.toThrow(
-        'OAuth2 authentication failed: invalid_grant',
-      );
+      await expect(refreshPromise).rejects.toThrow('OAuth2 authentication failed: invalid_grant');
     });
   });
 
@@ -329,9 +319,7 @@ describe('OAuth2AuthCodeProvider', () => {
       await expect(completePromise).resolves.toBeUndefined();
 
       // The headers promise should reject with the OAuth error
-      await expect(headersPromise).rejects.toThrow(
-        'OAuth2 authentication failed',
-      );
+      await expect(headersPromise).rejects.toThrow('OAuth2 authentication failed');
     });
   });
 });

@@ -14,10 +14,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
 import { TestSSEServer } from '../fixtures/test-sse-server.js';
 import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
-import type {
-  JSONRPCResponse,
-  JSONRPCMessage,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCResponse, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import {
   extractBearerToken,
   MemoryTokenStorage,
@@ -29,90 +26,87 @@ import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
 
-describe.skipIf(!runIntegrationTests)(
-  'OAuth + SSE Performance Integration',
-  () => {
-    let _oauthServer: TestOAuthServer;
-    let sseServer: TestSSEServer;
-    let oauthTokenEndpoint: string;
-    let sseEndpoint: string;
+describe.skipIf(!runIntegrationTests)('OAuth + SSE Performance Integration', () => {
+  let _oauthServer: TestOAuthServer;
+  let sseServer: TestSSEServer;
+  let oauthTokenEndpoint: string;
+  let sseEndpoint: string;
 
-    beforeAll(async () => {
-      const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
-        clientId: 'e2e-integration-client',
-        clientSecret: 'e2e-integration-secret',
-        tokenLifetime: 3600,
-        requireAuth: true,
+  beforeAll(async () => {
+    const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
+      clientId: 'e2e-integration-client',
+      clientSecret: 'e2e-integration-secret',
+      tokenLifetime: 3600,
+      requireAuth: true,
+    });
+
+    _oauthServer = oauthServerInfo.server;
+    oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
+    sseServer = sseServerInfo.server;
+    sseEndpoint = sseServerInfo.sseEndpoint;
+  }, 30000);
+
+  beforeEach(() => {
+    sseServer.clearMessageHistory();
+  });
+
+  describe('Performance and Load', () => {
+    it('should handle high-frequency message transmission', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-integration-client',
+          clientSecret: 'e2e-integration-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
+
+      const authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(token);
+
+      const transport = new SSEClientTransport({
+        url: sseEndpoint,
+        authProvider,
       });
 
-      _oauthServer = oauthServerInfo.server;
-      oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
-      sseServer = sseServerInfo.server;
-      sseEndpoint = sseServerInfo.sseEndpoint;
-    }, 30000);
+      const receivedMessages: JSONRPCMessage[] = [];
+      transport.onmessage = (message: JSONRPCMessage) => {
+        receivedMessages.push(message);
+      };
 
-    beforeEach(() => {
-      sseServer.clearMessageHistory();
-    });
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    describe('Performance and Load', () => {
-      it('should handle high-frequency message transmission', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
-
-        const receivedMessages: JSONRPCMessage[] = [];
-        transport.onmessage = (message: JSONRPCMessage) => {
-          receivedMessages.push(message);
+      // Send multiple messages rapidly
+      const messageCount = 10;
+      for (let i = 0; i < messageCount; i++) {
+        const message: JSONRPCResponse = {
+          jsonrpc: '2.0',
+          id: `perf-test-${i}`,
+          result: { index: i, timestamp: Date.now() },
         };
+        sseServer.broadcast(message);
 
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Small delay to avoid overwhelming
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
 
-        // Send multiple messages rapidly
-        const messageCount = 10;
-        for (let i = 0; i < messageCount; i++) {
-          const message: JSONRPCResponse = {
-            jsonrpc: '2.0',
-            id: `perf-test-${i}`,
-            result: { index: i, timestamp: Date.now() },
-          };
-          sseServer.broadcast(message);
+      // Wait for all messages to be received
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-          // Small delay to avoid overwhelming
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
+      // Count messages with our test prefix (excluding welcome/heartbeat)
+      const testMessages = receivedMessages.filter(
+        (msg) =>
+          (msg as JSONRPCResponse).id &&
+          String((msg as JSONRPCResponse).id).startsWith('perf-test-'),
+      );
 
-        // Wait for all messages to be received
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+      expect(testMessages.length).toBe(messageCount);
 
-        // Count messages with our test prefix (excluding welcome/heartbeat)
-        const testMessages = receivedMessages.filter(
-          (msg) =>
-            (msg as JSONRPCResponse).id &&
-            String((msg as JSONRPCResponse).id).startsWith('perf-test-'),
-        );
-
-        expect(testMessages.length).toBe(messageCount);
-
-        await transport.close();
-      }, 20000);
-    });
-  },
-);
+      await transport.close();
+    }, 20000);
+  });
+});

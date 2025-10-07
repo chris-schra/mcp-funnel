@@ -1,7 +1,4 @@
-import type {
-  DebuggerCommandResult,
-  BreakpointSummary,
-} from '../../src/types/index.js';
+import type { DebuggerCommandResult, BreakpointSummary } from '../../src/types/index.js';
 
 /**
  * Extracts breakpoint summaries from a debugger command result.
@@ -9,6 +6,5 @@ import type {
  * @returns Array of breakpoint summaries, or empty array if none set
  * @internal
  */
-export const getBreakpointSummary = (
-  result: DebuggerCommandResult,
-): BreakpointSummary[] => result.setBreakpoints ?? [];
+export const getBreakpointSummary = (result: DebuggerCommandResult): BreakpointSummary[] =>
+  result.setBreakpoints ?? [];

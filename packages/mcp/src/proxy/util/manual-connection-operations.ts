@@ -28,10 +28,7 @@ export interface ManualDisconnectionContext {
   client: Client | undefined;
   transport: Transport | undefined;
   reconnectionManager: ReconnectionManager | undefined;
-  onDisconnect: (
-    targetServer: TargetServer | TargetServerZod,
-    reason: string,
-  ) => void;
+  onDisconnect: (targetServer: TargetServer | TargetServerZod, reason: string) => void;
   cleanupReconnectionManager: (name: string) => void;
 }
 
@@ -48,9 +45,7 @@ export interface ManualDisconnectionContext {
  * @throws \{Error\} When reconnection fails
  * @internal
  */
-export async function performManualReconnect(
-  context: ManualReconnectionContext,
-): Promise<void> {
+export async function performManualReconnect(context: ManualReconnectionContext): Promise<void> {
   const {
     serverName,
     disconnectedServer,
@@ -108,9 +103,7 @@ export async function performManualReconnect(
  * @throws \{Error\} When disconnection fails
  * @internal
  */
-export async function performManualDisconnect(
-  context: ManualDisconnectionContext,
-): Promise<void> {
+export async function performManualDisconnect(context: ManualDisconnectionContext): Promise<void> {
   const {
     serverName,
     targetServer,
@@ -149,10 +142,7 @@ export async function performManualDisconnect(
     // But we also call it directly to ensure cleanup happens
     onDisconnect(targetServer, 'manual_disconnect');
   } catch (error) {
-    console.error(
-      `[proxy] Error during disconnection from ${serverName}:`,
-      error,
-    );
+    console.error(`[proxy] Error during disconnection from ${serverName}:`, error);
     logError('server:disconnect_failed', error, { name: serverName });
     throw error;
   }

@@ -19,18 +19,14 @@
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import WebSocket from 'ws';
 import { TransportError } from '../errors/transport-error.js';
-import {
-  BaseClientTransport,
-  BaseClientTransportConfig,
-} from './base-client-transport.js';
+import { BaseClientTransport, BaseClientTransportConfig } from './base-client-transport.js';
 import { logEvent } from '../../logger.js';
 
 /**
  * Configuration for WebSocket client transport.
  * @public
  */
-export interface WebSocketClientTransportConfig
-  extends BaseClientTransportConfig {
+export interface WebSocketClientTransportConfig extends BaseClientTransportConfig {
   /** Ping interval in milliseconds (default: 30000) */
   pingInterval?: number;
 }
@@ -75,9 +71,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
    * Validate and normalize URL for WebSocket
    * @param config - WebSocket transport configuration
    */
-  protected validateAndNormalizeUrl(
-    config: WebSocketClientTransportConfig,
-  ): void {
+  protected validateAndNormalizeUrl(config: WebSocketClientTransportConfig): void {
     try {
       const url = new URL(config.url);
 
@@ -167,16 +161,10 @@ export class WebSocketClientTransport extends BaseClientTransport {
         if (error.name === 'AbortError') {
           throw TransportError.requestTimeout(this.config.timeout, error);
         }
-        throw TransportError.connectionFailed(
-          `WebSocket send failed: ${error.message}`,
-          error,
-        );
+        throw TransportError.connectionFailed(`WebSocket send failed: ${error.message}`, error);
       }
 
-      throw TransportError.connectionFailed(
-        `WebSocket send failed: ${error}`,
-        error as Error,
-      );
+      throw TransportError.connectionFailed(`WebSocket send failed: ${error}`, error as Error);
     }
   }
 
@@ -285,9 +273,7 @@ export class WebSocketClientTransport extends BaseClientTransport {
         error = TransportError.connectionReset();
         break;
       case 1002: // Protocol error
-        error = TransportError.protocolError(
-          `WebSocket protocol error: ${reasonText}`,
-        );
+        error = TransportError.protocolError(`WebSocket protocol error: ${reasonText}`);
         shouldReconnect = false;
         break;
       case 1003: // Unsupported data

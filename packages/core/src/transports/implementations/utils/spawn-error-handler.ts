@@ -49,9 +49,7 @@ export function handleSpawnError(
       );
     case 'EMFILE':
     case 'ENFILE':
-      return TransportError.serviceUnavailable(
-        error instanceof Error ? error : undefined,
-      );
+      return TransportError.serviceUnavailable(error instanceof Error ? error : undefined);
     case 'ETIMEDOUT':
       return TransportError.connectionTimeout(
         spawnTimeout || 30000,

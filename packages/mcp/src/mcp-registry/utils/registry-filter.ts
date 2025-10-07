@@ -27,9 +27,7 @@ export function filterRegistriesByName(
 
     if (registryUrl) {
       // Exact match by registry ID
-      registriesToSearch = registriesToSearch.filter(
-        ([url]) => url === registryUrl,
-      );
+      registriesToSearch = registriesToSearch.filter(([url]) => url === registryUrl);
     } else {
       // Fallback to URL substring matching for custom registries
       registriesToSearch = registriesToSearch.filter(([url]) =>

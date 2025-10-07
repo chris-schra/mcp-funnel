@@ -55,9 +55,7 @@ describe('ManageCommands', () => {
       // Mock installer to throw during operation
       mockInstaller.install = vi
         .fn()
-        .mockRejectedValue(
-          new Error('Failed to initialize installer directory'),
-        );
+        .mockRejectedValue(new Error('Failed to initialize installer directory'));
 
       const result = await tool.handle(
         {
@@ -71,9 +69,7 @@ describe('ManageCommands', () => {
       const content = result.content[0] as { type: string; text: string };
       const response = JSON.parse(content.text);
 
-      expect(response.error).toContain(
-        'Failed to initialize installer directory',
-      );
+      expect(response.error).toContain('Failed to initialize installer directory');
     });
   });
 });

@@ -70,9 +70,7 @@ export function mapLocation(
  * @param value - The value to convert to JSON-safe format
  * @returns JSON-safe value, bigint, or undefined if not convertible
  */
-export function extractJsonValue(
-  value: unknown,
-): JsonValue | bigint | undefined {
+export function extractJsonValue(value: unknown): JsonValue | bigint | undefined {
   if (value === null) {
     return null;
   }
@@ -131,9 +129,7 @@ export function renderRemoteObject(remote: CdpRemoteObject): string {
  * @param remote - The CDP remote object to convert
  * @returns RemoteObjectSummary representation
  */
-export function toRemoteObjectSummary(
-  remote: CdpRemoteObject,
-): RemoteObjectSummary {
+export function toRemoteObjectSummary(remote: CdpRemoteObject): RemoteObjectSummary {
   const summary: RemoteObjectSummary = {
     type: remote.type,
   };
@@ -142,8 +138,7 @@ export function toRemoteObjectSummary(
   if (remote.description) summary.description = remote.description;
   const value = extractJsonValue(remote.value);
   if (value !== undefined) summary.value = value;
-  if (remote.unserializableValue)
-    summary.unserializableValue = remote.unserializableValue;
+  if (remote.unserializableValue) summary.unserializableValue = remote.unserializableValue;
   if (remote.objectId) summary.objectId = remote.objectId;
   if (remote.preview?.description) {
     summary.preview = remote.preview.description;
@@ -167,12 +162,8 @@ export function mapScope(
     type: scope.type,
     object: toRemoteObjectSummary(scope.object),
     name: scope.name,
-    startLocation: scope.startLocation
-      ? mapLocation(scope.startLocation, scripts)
-      : undefined,
-    endLocation: scope.endLocation
-      ? mapLocation(scope.endLocation, scripts)
-      : undefined,
+    startLocation: scope.startLocation ? mapLocation(scope.startLocation, scripts) : undefined,
+    endLocation: scope.endLocation ? mapLocation(scope.endLocation, scripts) : undefined,
   };
 }
 
@@ -196,9 +187,7 @@ export function mapCallFrame(
     url: frame.url,
     scopeChain: frame.scopeChain.map((scope) => mapScope(scope, scripts)),
     this: toRemoteObjectSummary(frame.this),
-    returnValue: frame.returnValue
-      ? toRemoteObjectSummary(frame.returnValue)
-      : undefined,
+    returnValue: frame.returnValue ? toRemoteObjectSummary(frame.returnValue) : undefined,
     canBeRestarted: frame.canBeRestarted,
   };
 }
@@ -240,9 +229,7 @@ export function mapException(details: CdpExceptionDetails): ExceptionDetails {
     scriptId: details.scriptId,
     url: details.url,
     stackTrace: mapStackTrace(details.stackTrace),
-    exception: details.exception
-      ? toRemoteObjectSummary(details.exception)
-      : undefined,
+    exception: details.exception ? toRemoteObjectSummary(details.exception) : undefined,
     executionContextId: details.executionContextId,
   };
 }
@@ -322,9 +309,7 @@ export function createExceptionEntry(
 ): ExceptionEntry {
   const mapped = mapException(details);
   const text =
-    mapped.exception?.description ||
-    mapped.exception?.unserializableValue ||
-    mapped.text;
+    mapped.exception?.description || mapped.exception?.unserializableValue || mapped.text;
   return {
     text,
     details: mapped,

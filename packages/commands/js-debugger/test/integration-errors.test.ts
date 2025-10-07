@@ -6,10 +6,7 @@ import type {
   StartDebugSessionResponse,
 } from '../src/types/index.js';
 import { waitFor } from './utils/async-helpers.js';
-import {
-  prepareNodeFixture,
-  type FixtureHandle,
-} from './utils/fixture-manager.js';
+import { prepareNodeFixture, type FixtureHandle } from './utils/fixture-manager.js';
 
 describe(
   'DebuggerSessionManager Integration Tests - Error Scenarios',
@@ -53,9 +50,7 @@ describe(
       ...options,
     });
 
-    const startSession = async (
-      config: DebugSessionConfig,
-    ): Promise<StartDebugSessionResponse> => {
+    const startSession = async (config: DebugSessionConfig): Promise<StartDebugSessionResponse> => {
       const response = await manager.startSession(config);
       sessionIds.push(response.session.id);
       return response;
@@ -76,14 +71,9 @@ describe(
           async () => {
             try {
               const snapshot = manager.getSnapshot(sessionId);
-              return snapshot.session.state.status === 'terminated'
-                ? true
-                : null;
+              return snapshot.session.state.status === 'terminated' ? true : null;
             } catch (error) {
-              if (
-                error instanceof Error &&
-                error.message.includes('not found')
-              ) {
+              if (error instanceof Error && error.message.includes('not found')) {
                 return true;
               }
               throw error;
@@ -159,14 +149,9 @@ describe(
           async () => {
             try {
               const snapshot = manager.getSnapshot(sessionId);
-              return snapshot.session.state.status === 'terminated'
-                ? true
-                : null;
+              return snapshot.session.state.status === 'terminated' ? true : null;
             } catch (error) {
-              if (
-                error instanceof Error &&
-                error.message.includes('not found')
-              ) {
+              if (error instanceof Error && error.message.includes('not found')) {
                 return true;
               }
               throw error;
@@ -205,15 +190,11 @@ describe(
               try {
                 const snapshot = manager.getSnapshot(sessionId);
                 // This will never be true, causing timeout
-                return snapshot.session.state.status ===
-                  ('impossible-status' as 'terminated')
+                return snapshot.session.state.status === ('impossible-status' as 'terminated')
                   ? true
                   : null;
               } catch (error) {
-                if (
-                  error instanceof Error &&
-                  error.message.includes('not found')
-                ) {
+                if (error instanceof Error && error.message.includes('not found')) {
                   // Session was removed, return null to continue waiting
                   return null;
                 }

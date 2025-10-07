@@ -27,17 +27,17 @@ describe('SearchRegistryTools', () => {
     it('should throw error for null keywords parameter', async () => {
       const { tool, mockContext } = getContext();
 
-      await expect(
-        tool.handle({ keywords: null }, mockContext),
-      ).rejects.toThrow('Missing or invalid "keywords" parameter');
+      await expect(tool.handle({ keywords: null }, mockContext)).rejects.toThrow(
+        'Missing or invalid "keywords" parameter',
+      );
     });
 
     it('should throw error for invalid registry parameter type', async () => {
       const { tool, mockContext } = getContext();
 
-      await expect(
-        tool.handle({ keywords: 'test', registry: 123 }, mockContext),
-      ).rejects.toThrow('Invalid "registry" parameter - must be a string');
+      await expect(tool.handle({ keywords: 'test', registry: 123 }, mockContext)).rejects.toThrow(
+        'Invalid "registry" parameter - must be a string',
+      );
     });
 
     it('should throw error for empty keywords', async () => {
@@ -85,9 +85,7 @@ describe('SearchRegistryTools', () => {
 
       expect(result.content).toHaveLength(1);
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain(
-        'No servers found matching keywords: test',
-      );
+      expect(textContent.text).toContain('No servers found matching keywords: test');
     });
   });
 });

@@ -1,7 +1,4 @@
-import type {
-  ITemporaryServerManager,
-  ServerConfig,
-} from '../interfaces/temp-server.interface.js';
+import type { ITemporaryServerManager, ServerConfig } from '../interfaces/temp-server.interface.js';
 
 /**
  * MVP implementation that tracks temporary servers without actually spawning them.
@@ -92,9 +89,7 @@ export class TemporaryServerTracker implements ITemporaryServerManager {
       return null;
     }
 
-    console.info(
-      `[Registry] Would persist temporary server '${serverName}' to configuration`,
-    );
+    console.info(`[Registry] Would persist temporary server '${serverName}' to configuration`);
     return config;
   }
 }

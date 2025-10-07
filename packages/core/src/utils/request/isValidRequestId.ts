@@ -10,7 +10,5 @@
  * @see {@link generateRequestId} - Function that generates IDs validated by this function
  */
 export function isValidRequestId(requestId: string, prefix?: string): boolean {
-  return new RegExp(`^${prefix ? `${prefix}_` : ''}\\d+_[a-f0-9]{8}$`).test(
-    requestId,
-  );
+  return new RegExp(`^${prefix ? `${prefix}_` : ''}\\d+_[a-f0-9]{8}$`).test(requestId);
 }

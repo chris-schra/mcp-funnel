@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { ITokenStorage } from '@mcp-funnel/core';
 import { createMemoryTokenStorage } from '../../../implementations/memory-token-storage.js';
-import {
-  createTestToken,
-  setupMockTimers,
-  restoreTimers,
-} from './test-utils.js';
+import { createTestToken, setupMockTimers, restoreTimers } from './test-utils.js';
 
 describe('Security', () => {
   let storage: ITokenStorage;
@@ -36,12 +32,9 @@ describe('Security', () => {
     // Force an error condition and verify token is not in error message
     try {
       // This would trigger an internal error in actual implementation
-      await (
-        storage as ITokenStorage & { _triggerError?: () => Promise<void> }
-      )._triggerError?.();
+      await (storage as ITokenStorage & { _triggerError?: () => Promise<void> })._triggerError?.();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       expect(errorMessage).not.toContain('secret-token-12345');
       expect(errorMessage).not.toContain(sensitiveToken.accessToken);
     }
@@ -73,9 +66,7 @@ describe('Security', () => {
     await storage.store(tokenWithWhitespace);
     const retrieved = await storage.retrieve();
 
-    expect(retrieved?.accessToken.trim()).toBe(
-      tokenWithWhitespace.accessToken.trim(),
-    );
+    expect(retrieved?.accessToken.trim()).toBe(tokenWithWhitespace.accessToken.trim());
     expect(retrieved?.tokenType.trim()).toBe('Bearer');
   });
 
@@ -86,9 +77,7 @@ describe('Security', () => {
       tokenType: 'Bearer',
     };
 
-    await expect(storage.store(invalidToken)).rejects.toThrow(
-      'Access token cannot be empty',
-    );
+    await expect(storage.store(invalidToken)).rejects.toThrow('Access token cannot be empty');
   });
 
   it('should reject tokens with invalid token type', async () => {
@@ -98,9 +87,7 @@ describe('Security', () => {
       tokenType: '',
     };
 
-    await expect(storage.store(invalidToken)).rejects.toThrow(
-      'Token type cannot be empty',
-    );
+    await expect(storage.store(invalidToken)).rejects.toThrow('Token type cannot be empty');
   });
 
   it('should handle memory cleanup on dispose', async () => {

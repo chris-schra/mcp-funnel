@@ -8,14 +8,8 @@ import * as readline from 'readline';
 import { TransportError } from '../errors/transport-error.js';
 import { logError, logEvent } from '../../logger.js';
 import { handleSpawnError } from './utils/spawn-error-handler.js';
-import {
-  handleStdoutLine,
-  handleStderrLine,
-} from './utils/stdio-line-handlers.js';
-import {
-  spawnProcessWithTimeout,
-  cleanupProcess,
-} from './utils/process-spawn.js';
+import { handleStdoutLine, handleStderrLine } from './utils/stdio-line-handlers.js';
+import { spawnProcessWithTimeout, cleanupProcess } from './utils/process-spawn.js';
 
 /**
  * Configuration options for StdioClientTransport.
@@ -123,14 +117,9 @@ export class StdioClientTransport implements Transport {
    * @throws \{TransportError\} When transport not started or send fails
    * @public
    */
-  public async send(
-    message: JSONRPCMessage,
-    options?: TransportSendOptions,
-  ): Promise<void> {
+  public async send(message: JSONRPCMessage, options?: TransportSendOptions): Promise<void> {
     if (!this.isStarted || !this.process?.stdin) {
-      throw TransportError.protocolError(
-        'Transport not started or stdin unavailable',
-      );
+      throw TransportError.protocolError('Transport not started or stdin unavailable');
     }
 
     if (this.isClosed) {
@@ -224,9 +213,7 @@ export class StdioClientTransport implements Transport {
    */
   private setupProcessHandlers(): void {
     if (!this.process) {
-      throw TransportError.protocolError(
-        'Process not available for handler setup',
-      );
+      throw TransportError.protocolError('Process not available for handler setup');
     }
 
     // Handle stdout for JSON-RPC messages
@@ -272,11 +259,7 @@ export class StdioClientTransport implements Transport {
    * @param error - Error from child process
    */
   private handleProcessError(error: Error): void {
-    const transportError = handleSpawnError(
-      error,
-      this.options.command,
-      this.options.spawnTimeout,
-    );
+    const transportError = handleSpawnError(error, this.options.command, this.options.spawnTimeout);
 
     logError('transport:stdio:process_error', transportError, {
       server: this.serverName,
@@ -293,10 +276,7 @@ export class StdioClientTransport implements Transport {
    * @param code - Exit code from child process
    * @param signal - Signal that terminated the process
    */
-  private handleProcessClose(
-    code: number | null,
-    signal: NodeJS.Signals | null,
-  ): void {
+  private handleProcessClose(code: number | null, signal: NodeJS.Signals | null): void {
     logEvent('info', 'transport:stdio:process_closed', {
       server: this.serverName,
       sessionId: this.sessionId,
@@ -306,9 +286,7 @@ export class StdioClientTransport implements Transport {
 
     if (code !== 0 && code !== null) {
       const error = TransportError.connectionReset(
-        new Error(
-          `Process exited with code ${code}${signal ? `, signal ${signal}` : ''}`,
-        ),
+        new Error(`Process exited with code ${code}${signal ? `, signal ${signal}` : ''}`),
       );
 
       logError('transport:stdio:process_exit_error', error, {
@@ -334,10 +312,7 @@ export class StdioClientTransport implements Transport {
    * @param code - Exit code from child process
    * @param signal - Signal that terminated the process
    */
-  private handleProcessExit(
-    code: number | null,
-    signal: NodeJS.Signals | null,
-  ): void {
+  private handleProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
     logEvent('debug', 'transport:stdio:process_exited', {
       server: this.serverName,
       sessionId: this.sessionId,

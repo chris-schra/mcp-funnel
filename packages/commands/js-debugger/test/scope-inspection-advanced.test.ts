@@ -4,10 +4,8 @@ import { prepareNodeFixture } from './utils/fixture-manager.js';
 import { startAndPause, getScopeVars } from './utils/scope-helpers.js';
 import { cleanupSession } from './utils/session-helpers.js';
 import type { DebugSessionConfig } from '../src/types/index.js';
-import type { FixtureHandle } from './utils/fixture-manager.js';
 
 describe('Scope Variable Inspection - Advanced', () => {
-
   describe('maxProperties Limit', () => {
     it('should respect maxProperties limit', async () => {
       const manager = new DebuggerSessionManager();
@@ -16,22 +14,13 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
-        const result = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          0,
-          {
-            depth: 1,
-            maxProperties: 2,
-          },
-        );
+        const result = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+          depth: 1,
+          maxProperties: 2,
+        });
 
         expect(result).toBeDefined();
         expect(result.variables).toBeDefined();
@@ -50,35 +39,20 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
         // Get a scope that likely has more than 1 property
-        const fullResult = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          0,
-          {
-            depth: 1,
-            maxProperties: 100,
-          },
-        );
+        const fullResult = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+          depth: 1,
+          maxProperties: 100,
+        });
 
         if (fullResult.variables.length > 2) {
-          const limitedResult = await getScopeVars(
-            manager,
-            sessionId,
-            topFrame.callFrameId,
-            0,
-            {
-              depth: 1,
-              maxProperties: 1,
-            },
-          );
+          const limitedResult = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+            depth: 1,
+            maxProperties: 1,
+          });
 
           expect(limitedResult.truncated).toBe(true);
         }
@@ -95,22 +69,13 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
-        const result = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          0,
-          {
-            depth: 1,
-            maxProperties: 1,
-          },
-        );
+        const result = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+          depth: 1,
+          maxProperties: 1,
+        });
 
         expect(result).toBeDefined();
         expect(result.variables.length).toBeLessThanOrEqual(1);
@@ -174,21 +139,13 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
         const outOfRangeIndex = topFrame.scopeChain.length + 10;
 
         await expect(async () => {
-          await getScopeVars(
-            manager,
-            sessionId!,
-            topFrame.callFrameId,
-            outOfRangeIndex,
-          );
+          await getScopeVars(manager, sessionId!, topFrame.callFrameId, outOfRangeIndex);
         }).rejects.toThrow(/out of range/i);
       } finally {
         await cleanupSession(manager, sessionId);
@@ -217,22 +174,13 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
-        const result = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          0,
-          {
-            path: ['localState'],
-            depth: 1,
-          },
-        );
+        const result = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+          path: ['localState'],
+          depth: 1,
+        });
 
         expect(result.variables).toBeDefined();
         result.variables.forEach((variable) => {
@@ -253,23 +201,14 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
         // Look in a broader scope (closure or global) for function definitions
         const scopeIndex = Math.min(1, topFrame.scopeChain.length - 1);
-        const result = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          scopeIndex,
-          {
-            depth: 1,
-          },
-        );
+        const result = await getScopeVars(manager, sessionId, topFrame.callFrameId, scopeIndex, {
+          depth: 1,
+        });
 
         const computeValueVar = result.variables.find(
           (v) => v.name === 'computeValue' || v.name === 'triggerPause',
@@ -290,22 +229,13 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
-        const result = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          0,
-          {
-            path: ['localState'],
-            depth: 1,
-          },
-        );
+        const result = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+          path: ['localState'],
+          depth: 1,
+        });
 
         const doubledVar = result.variables.find((v) => v.name === 'doubled');
         if (doubledVar) {
@@ -326,23 +256,14 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
-        const result = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          0,
-          {
-            path: ['localState'],
-            depth: 2,
-            maxProperties: 1,
-          },
-        );
+        const result = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+          path: ['localState'],
+          depth: 2,
+          maxProperties: 1,
+        });
 
         // When drilling into nested objects with tight limits, truncation may occur
         expect(result).toBeDefined();
@@ -361,21 +282,12 @@ describe('Scope Variable Inspection - Advanced', () => {
 
       try {
         let pauseDetails;
-        ({ sessionId, pauseDetails } = await startAndPause(
-          manager,
-          fixture.tempPath,
-        ));
+        ({ sessionId, pauseDetails } = await startAndPause(manager, fixture.tempPath));
         const topFrame = pauseDetails.callFrames[0];
 
-        const result = await getScopeVars(
-          manager,
-          sessionId,
-          topFrame.callFrameId,
-          0,
-          {
-            depth: 3, // Request depth > 1 without path
-          },
-        );
+        const result = await getScopeVars(manager, sessionId, topFrame.callFrameId, 0, {
+          depth: 3, // Request depth > 1 without path
+        });
 
         // The implementation should provide a message about depth reduction
         expect(result.messages).toBeDefined();

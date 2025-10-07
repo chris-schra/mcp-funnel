@@ -5,10 +5,7 @@ import { tmpdir } from 'os';
 import { SecretManager } from '../secret-manager.js';
 import { SecretProviderRegistry } from '../secret-provider-registry.js';
 import { DotEnvProvider } from '../providers/dotenv/index.js';
-import {
-  createInlineProvider,
-  writeEnvFile,
-} from './secret-manager-test-utils.js';
+import { createInlineProvider, writeEnvFile } from './secret-manager-test-utils.js';
 
 describe('SecretManager - Registry Integration', () => {
   let registry: SecretProviderRegistry;
@@ -28,9 +25,7 @@ describe('SecretManager - Registry Integration', () => {
 
   it('should register providers in registry', () => {
     const inlineProvider = createInlineProvider({ KEY: 'value' });
-    const dotEnvPath = writeEnvFile(workDir, '.env.basic', [
-      'DOT_KEY=dot-value',
-    ]);
+    const dotEnvPath = writeEnvFile(workDir, '.env.basic', ['DOT_KEY=dot-value']);
     const dotEnvProvider = new DotEnvProvider({ path: dotEnvPath });
 
     registry.register('inline', inlineProvider);

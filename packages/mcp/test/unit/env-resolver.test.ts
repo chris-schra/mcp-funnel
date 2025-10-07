@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { ProxyConfig, TargetServer } from '@mcp-funnel/schemas';
 import { buildServerEnvironment } from '../../src/env/index.js';
 
-const baseConfigPath = new URL('../fixtures/test-config.json', import.meta.url)
-  .pathname;
+const baseConfigPath = new URL('../fixtures/test-config.json', import.meta.url).pathname;
 
 const createConfig = (overrides: Partial<ProxyConfig> = {}): ProxyConfig => ({
   servers: overrides.servers ?? {

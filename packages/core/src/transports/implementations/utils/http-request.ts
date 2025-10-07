@@ -5,10 +5,7 @@
  * @internal
  */
 
-import type {
-  JSONRPCMessage,
-  JSONRPCRequest,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCMessage, JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 import { TransportError } from '../../errors/transport-error.js';
 import type { IAuthProvider } from '../../../auth/index.js';
 import { logEvent } from '../../../logger.js';
@@ -81,10 +78,7 @@ export async function executeHttpRequest(
           });
 
           if (!retryResponse.ok) {
-            throw TransportError.fromHttpStatus(
-              retryResponse.status,
-              retryResponse.statusText,
-            );
+            throw TransportError.fromHttpStatus(retryResponse.status, retryResponse.statusText);
           }
           return;
         } catch (refreshError) {
@@ -113,16 +107,10 @@ export async function executeHttpRequest(
         throw TransportError.requestTimeout(timeout, error);
       }
       if (error.message.includes('fetch')) {
-        throw TransportError.connectionFailed(
-          `Network error: ${error.message}`,
-          error,
-        );
+        throw TransportError.connectionFailed(`Network error: ${error.message}`, error);
       }
     }
 
-    throw TransportError.connectionFailed(
-      `HTTP request failed: ${error}`,
-      error as Error,
-    );
+    throw TransportError.connectionFailed(`HTTP request failed: ${error}`, error as Error);
   }
 }

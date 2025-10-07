@@ -68,9 +68,7 @@ export abstract class BaseCommand implements ICommand {
    * // Returns: \{ verbose: true, format: 'json' \}
    * ```
    */
-  protected parseCommonOptions(
-    args: Record<string, unknown> | string[],
-  ): ICommandOptions {
+  protected parseCommonOptions(args: Record<string, unknown> | string[]): ICommandOptions {
     const options: ICommandOptions = {};
 
     if (Array.isArray(args)) {
@@ -89,10 +87,7 @@ export abstract class BaseCommand implements ICommand {
       // MCP args
       options.verbose = Boolean(args.verbose);
       options.dryRun = Boolean(args.dryRun);
-      if (
-        typeof args.format === 'string' &&
-        ['json', 'text', 'console'].includes(args.format)
-      ) {
+      if (typeof args.format === 'string' && ['json', 'text', 'console'].includes(args.format)) {
         options.format = args.format as 'json' | 'text' | 'console';
       }
     }

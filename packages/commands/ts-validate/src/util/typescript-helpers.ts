@@ -18,9 +18,7 @@
  *
  * @public
  */
-export function getTypeScriptFix(
-  diagnostic: import('typescript').Diagnostic,
-): string | undefined {
+export function getTypeScriptFix(diagnostic: import('typescript').Diagnostic): string | undefined {
   // This could be expanded to detect common fixable patterns
   // For now, just identify some common cases
   const code = diagnostic.code;

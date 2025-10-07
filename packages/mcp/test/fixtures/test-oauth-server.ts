@@ -127,20 +127,14 @@ export class TestOAuthServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const url = new URL(req.url!, `http://localhost:${this.port}`);
 
       // Set CORS headers for browser compatibility
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization',
-      );
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
       // Handle preflight requests
       if (req.method === 'OPTIONS') {
@@ -189,10 +183,7 @@ export class TestOAuthServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleTokenRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleTokenRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // Parse authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Basic ')) {
@@ -204,16 +195,11 @@ export class TestOAuthServer {
     }
 
     // Decode Basic auth credentials
-    const credentials = Buffer.from(authHeader.slice(6), 'base64').toString(
-      'utf-8',
-    );
+    const credentials = Buffer.from(authHeader.slice(6), 'base64').toString('utf-8');
     const [clientId, clientSecret] = credentials.split(':');
 
     // Validate client credentials
-    if (
-      clientId !== this.validClientId ||
-      clientSecret !== this.validClientSecret
-    ) {
+    if (clientId !== this.validClientId || clientSecret !== this.validClientSecret) {
       this.sendJsonResponse(res, 401, {
         error: 'invalid_client',
         error_description: 'Invalid client credentials',
@@ -269,10 +255,7 @@ export class TestOAuthServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleProtectedRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleProtectedRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -329,11 +312,7 @@ export class TestOAuthServer {
    * @param statusCode - HTTP status code
    * @param data - Response data to serialize
    */
-  private sendJsonResponse(
-    res: ServerResponse,
-    statusCode: number,
-    data: unknown,
-  ): void {
+  private sendJsonResponse(res: ServerResponse, statusCode: number, data: unknown): void {
     res.writeHead(statusCode, {
       'Content-Type': 'application/json',
     });
@@ -346,9 +325,7 @@ export class TestOAuthServer {
  * @param config - Optional OAuth server configuration
  * @returns Promise resolving to server instance and connection details
  */
-export async function createTestOAuthServer(
-  config?: TestOAuthServerConfig,
-): Promise<{
+export async function createTestOAuthServer(config?: TestOAuthServerConfig): Promise<{
   server: TestOAuthServer;
   port: number;
   url: string;

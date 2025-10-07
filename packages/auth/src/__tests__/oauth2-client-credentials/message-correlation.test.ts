@@ -48,27 +48,23 @@ describe('Message Correlation', () => {
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
     // Mock initial failure then success
-    mockFetch
-      .mockRejectedValueOnce(new Error('Network timeout'))
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            access_token: 'retry-success-token',
-            token_type: 'Bearer',
-            expires_in: 3600,
-          }),
-      });
+    mockFetch.mockRejectedValueOnce(new Error('Network timeout')).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          access_token: 'retry-success-token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+        }),
+    });
 
     provider = new OAuth2ClientCredentialsProvider(mockConfig, mockStorage);
     await provider.getHeaders();
 
     // Both requests should have the same request ID
-    const firstCallRequestId =
-      mockFetch.mock.calls[0]?.[1]?.headers?.['X-Request-ID'];
-    const secondCallRequestId =
-      mockFetch.mock.calls[1]?.[1]?.headers?.['X-Request-ID'];
+    const firstCallRequestId = mockFetch.mock.calls[0]?.[1]?.headers?.['X-Request-ID'];
+    const secondCallRequestId = mockFetch.mock.calls[1]?.[1]?.headers?.['X-Request-ID'];
 
     expect(firstCallRequestId).toBe(secondCallRequestId);
   });

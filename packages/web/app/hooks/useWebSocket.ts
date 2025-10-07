@@ -144,9 +144,7 @@ export function useWebSocket() {
           case 'tool.executing':
           case 'tool.result':
             // Handle tool execution events
-            window.dispatchEvent(
-              new CustomEvent('tool-event', { detail: data }),
-            );
+            window.dispatchEvent(new CustomEvent('tool-event', { detail: data }));
             break;
         }
       } catch (error) {

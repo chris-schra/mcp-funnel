@@ -61,9 +61,7 @@ export const createMockConfig = (id?: string): DebugSessionConfig => ({
  * @param sessionId - The session ID for the descriptor
  * @returns A mock debug session descriptor
  */
-export const createMockDescriptor = (
-  sessionId: string,
-): DebugSessionDescriptor => ({
+export const createMockDescriptor = (sessionId: string): DebugSessionDescriptor => ({
   id: sessionId,
   target: {
     type: 'node',
@@ -80,9 +78,7 @@ export const createMockDescriptor = (
  * @param sessionId - The session ID for the snapshot
  * @returns A mock debug session snapshot
  */
-export const createMockSnapshot = (
-  sessionId: string,
-): DebugSessionSnapshot => ({
+export const createMockSnapshot = (sessionId: string): DebugSessionSnapshot => ({
   session: createMockDescriptor(sessionId),
   output: {
     stdio: [],
@@ -96,8 +92,6 @@ export const createMockSnapshot = (
  * @param sessionId - The session ID for the response
  * @returns A mock start debug session response
  */
-export const createMockStartResponse = (
-  sessionId: string,
-): StartDebugSessionResponse => ({
+export const createMockStartResponse = (sessionId: string): StartDebugSessionResponse => ({
   session: createMockDescriptor(sessionId),
 });

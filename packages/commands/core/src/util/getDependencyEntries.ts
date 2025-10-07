@@ -7,9 +7,7 @@
  * @returns Array of [packageName, versionSpec] tuples from the dependencies field, or empty array if no dependencies exist
  * @internal
  */
-export function getDependencyEntries(
-  pkgJson: Record<string, unknown>,
-): [string, string][] {
+export function getDependencyEntries(pkgJson: Record<string, unknown>): [string, string][] {
   const deps = pkgJson.dependencies as Record<string, string> | undefined;
   if (!deps) {
     return [];

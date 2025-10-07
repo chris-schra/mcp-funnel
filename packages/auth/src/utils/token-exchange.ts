@@ -22,9 +22,7 @@ export interface TokenExchangeParams {
  * @see file:./token-exchange.ts:8-12 - TokenExchangeParams interface
  * @see file:../implementations/oauth2-authorization-code.ts:392 - Usage in OAuth2 flow
  */
-export function buildTokenExchangeBody(
-  params: TokenExchangeParams,
-): URLSearchParams {
+export function buildTokenExchangeBody(params: TokenExchangeParams): URLSearchParams {
   const { config, code, codeVerifier } = params;
 
   return new URLSearchParams({
@@ -46,18 +44,14 @@ export function buildTokenExchangeBody(
  * @internal
  * @see file:../implementations/oauth2-authorization-code.ts:398 - Usage in OAuth2 flow
  */
-export function buildTokenExchangeHeaders(
-  config: OAuth2AuthCodeConfig,
-): Record<string, string> {
+export function buildTokenExchangeHeaders(config: OAuth2AuthCodeConfig): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/x-www-form-urlencoded',
   };
 
   // Add client authentication if client secret is provided
   if (config.clientSecret) {
-    const credentials = Buffer.from(
-      `${config.clientId}:${config.clientSecret}`,
-    ).toString('base64');
+    const credentials = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
     headers.Authorization = `Basic ${credentials}`;
   }
 

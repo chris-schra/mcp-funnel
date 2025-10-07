@@ -28,9 +28,7 @@ import { RegistryConfigEntry } from './types/config.types.js';
  * ```
  * @public
  */
-export function generateConfigSnippet(
-  server: RegistryServer,
-): RegistryConfigEntry {
+export function generateConfigSnippet(server: RegistryServer): RegistryConfigEntry {
   const entry: RegistryConfigEntry = {
     name: server.name,
   };
@@ -83,13 +81,7 @@ export function generateConfigSnippet(
         } else {
           // Default behavior
           entry.command = 'docker';
-          entry.args = [
-            'run',
-            '-i',
-            '--rm',
-            pkg.identifier,
-            ...(pkg.package_arguments || []),
-          ];
+          entry.args = ['run', '-i', '--rm', pkg.identifier, ...(pkg.package_arguments || [])];
         }
         handled = true;
         break;
@@ -104,11 +96,7 @@ export function generateConfigSnippet(
         } else {
           // Default behavior
           entry.command = 'npx';
-          entry.args = [
-            '-y',
-            `github:${pkg.identifier}`,
-            ...(pkg.package_arguments || []),
-          ];
+          entry.args = ['-y', `github:${pkg.identifier}`, ...(pkg.package_arguments || [])];
         }
         handled = true;
         break;
@@ -181,8 +169,7 @@ function generateCommandArgsLines(
 
   // Check if environment variables follow
   const hasEnvVars = Boolean(
-    pkg.environment_variables &&
-      pkg.environment_variables.some((env) => env.value !== undefined),
+    pkg.environment_variables && pkg.environment_variables.some((env) => env.value !== undefined),
   );
   const argsComma = hasEnvVars ? ',' : '';
   lines.push(`  "args": ${JSON.stringify(argsArray)}${argsComma}`);
@@ -223,9 +210,7 @@ export function generateInstallInstructions(server: RegistryServer): string {
     const remote = server.remotes[0];
     lines.push('## Remote Server Setup');
     lines.push('');
-    lines.push(
-      'This server runs remotely and does not require local installation.',
-    );
+    lines.push('This server runs remotely and does not require local installation.');
     lines.push('');
     lines.push('### Configuration');
     lines.push('Add the following to your MCP client configuration:');
@@ -234,9 +219,7 @@ export function generateInstallInstructions(server: RegistryServer): string {
     lines.push(`${JSON.stringify(server.name)}: {`);
     lines.push(`  "transport": ${JSON.stringify(remote.type)},`);
     const hasHeaders = Boolean(remote.headers && remote.headers.length > 0);
-    lines.push(
-      `  "url": ${JSON.stringify(remote.url)}${hasHeaders ? ',' : ''}`,
-    );
+    lines.push(`  "url": ${JSON.stringify(remote.url)}${hasHeaders ? ',' : ''}`);
     if (hasHeaders && remote.headers) {
       lines.push('  "headers": {');
       remote.headers.forEach((header, index, arr) => {
@@ -258,12 +241,8 @@ export function generateInstallInstructions(server: RegistryServer): string {
       lines.push(
         'This server requires authentication tokens or API keys in the headers. Make sure to:',
       );
-      lines.push(
-        '- Replace placeholder values (e.g., ${API_TOKEN}) with actual credentials',
-      );
-      lines.push(
-        '- Keep authentication tokens secure and do not commit them to version control',
-      );
+      lines.push('- Replace placeholder values (e.g., ${API_TOKEN}) with actual credentials');
+      lines.push('- Keep authentication tokens secure and do not commit them to version control');
     }
 
     return lines.join('\n');
@@ -309,10 +288,7 @@ export function generateInstallInstructions(server: RegistryServer): string {
 
     switch (pkg.registry_type) {
       case 'npm': {
-        const result = generateCommandArgsLines(pkg, 'npx', [
-          '-y',
-          pkg.identifier,
-        ]);
+        const result = generateCommandArgsLines(pkg, 'npx', ['-y', pkg.identifier]);
         lines.push(...result.lines);
         break;
       }
@@ -332,25 +308,19 @@ export function generateInstallInstructions(server: RegistryServer): string {
         break;
       }
       default:
-        lines.push(
-          `  // Configuration depends on package type for ${pkg.identifier}`,
-        );
+        lines.push(`  // Configuration depends on package type for ${pkg.identifier}`);
         break;
     }
 
     if (pkg.environment_variables && pkg.environment_variables.length > 0) {
       // Only include variables with values in the config
-      const varsWithValues = pkg.environment_variables.filter(
-        (env) => env.value !== undefined,
-      );
+      const varsWithValues = pkg.environment_variables.filter((env) => env.value !== undefined);
       if (varsWithValues.length > 0) {
         lines.push('  "env": {');
         varsWithValues.forEach((envVar, index, arr) => {
           const comma = index < arr.length - 1 ? ',' : '';
           const value = envVar.value;
-          lines.push(
-            `    ${JSON.stringify(envVar.name)}: ${JSON.stringify(value)}${comma}`,
-          );
+          lines.push(`    ${JSON.stringify(envVar.name)}: ${JSON.stringify(value)}${comma}`);
         });
         lines.push('  }');
       }
@@ -359,14 +329,9 @@ export function generateInstallInstructions(server: RegistryServer): string {
     lines.push('}');
     lines.push('```');
 
-    if (
-      pkg.environment_variables &&
-      pkg.environment_variables.some((env) => env.is_required)
-    ) {
+    if (pkg.environment_variables && pkg.environment_variables.some((env) => env.is_required)) {
       lines.push('');
-      const requiredVars = pkg.environment_variables.filter(
-        (env) => env.is_required,
-      );
+      const requiredVars = pkg.environment_variables.filter((env) => env.is_required);
       const title =
         requiredVars.length === 1
           ? 'Required environment variable'

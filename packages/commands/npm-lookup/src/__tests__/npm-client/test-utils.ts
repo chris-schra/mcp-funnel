@@ -26,8 +26,7 @@ export function createMockPackageResponse(
       '18.2.0': {
         name: 'react',
         version: '18.2.0',
-        description:
-          'React is a JavaScript library for building user interfaces.',
+        description: 'React is a JavaScript library for building user interfaces.',
         main: 'index.js',
         dependencies: {
           'loose-envify': '^1.1.0',
@@ -102,8 +101,7 @@ export function createMockSearchResponse(
           name: 'react',
           scope: 'unscoped',
           version: '18.2.0',
-          description:
-            'React is a JavaScript library for building user interfaces.',
+          description: 'React is a JavaScript library for building user interfaces.',
           keywords: ['react', 'javascript', 'ui'],
           date: '2022-06-14T20:00:00.000Z',
           links: {

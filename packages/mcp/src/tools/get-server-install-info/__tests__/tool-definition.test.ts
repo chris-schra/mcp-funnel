@@ -62,9 +62,7 @@ describe('GetServerInstallInfo', () => {
       >;
       expect(properties.registryId).toBeDefined();
       expect(properties.registryId.type).toBe('string');
-      expect(properties.registryId.description).toContain(
-        'registry identifier',
-      );
+      expect(properties.registryId.description).toContain('registry identifier');
     });
   });
 });

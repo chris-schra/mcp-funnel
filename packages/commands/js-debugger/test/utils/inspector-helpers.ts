@@ -187,11 +187,7 @@ export function createCdpCommandSender(ws: WebSocket) {
  * @param timeoutMs - Maximum time to wait for events in milliseconds
  * @returns Array of collected console event objects
  */
-export async function collectConsoleEvents(
-  ws: WebSocket,
-  expectedCount: number,
-  timeoutMs = 4000,
-) {
+export async function collectConsoleEvents(ws: WebSocket, expectedCount: number, timeoutMs = 4000) {
   const events: Array<{
     type: string;
     args: Array<{ value?: unknown; description?: string }>;
@@ -214,10 +210,10 @@ export async function collectConsoleEvents(
   ws.once('close', closeHandler);
 
   try {
-    return await waitFor(
-      () => (events.length >= expectedCount ? [...events] : null),
-      { timeoutMs, intervalMs: 50 },
-    );
+    return await waitFor(() => (events.length >= expectedCount ? [...events] : null), {
+      timeoutMs,
+      intervalMs: 50,
+    });
   } finally {
     ws.off('message', handler);
     ws.off('close', closeHandler);

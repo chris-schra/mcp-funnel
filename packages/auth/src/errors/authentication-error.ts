@@ -85,11 +85,7 @@ export class AuthenticationError extends Error {
    * @returns AuthenticationError with TOKEN_EXPIRED code
    */
   public static expiredToken(cause?: Error): AuthenticationError {
-    return new AuthenticationError(
-      'Access token has expired',
-      AuthErrorCode.TOKEN_EXPIRED,
-      cause,
-    );
+    return new AuthenticationError('Access token has expired', AuthErrorCode.TOKEN_EXPIRED, cause);
   }
 
   /**
@@ -97,10 +93,7 @@ export class AuthenticationError extends Error {
    * @returns AuthenticationError with MISSING_TOKEN code
    */
   public static missingToken(): AuthenticationError {
-    return new AuthenticationError(
-      'No access token provided',
-      AuthErrorCode.MISSING_TOKEN,
-    );
+    return new AuthenticationError('No access token provided', AuthErrorCode.MISSING_TOKEN);
   }
 
   /**
@@ -122,18 +115,11 @@ export class AuthenticationError extends Error {
    * @param cause - Optional underlying error that caused this failure
    * @returns AuthenticationError with INVALID_REQUEST code
    */
-  public static invalidRequest(
-    description?: string,
-    cause?: Error,
-  ): AuthenticationError {
+  public static invalidRequest(description?: string, cause?: Error): AuthenticationError {
     const message = description
       ? `Invalid OAuth2 request: ${description}`
       : 'The request is missing a required parameter, includes an invalid parameter value, or is otherwise malformed';
-    return new AuthenticationError(
-      message,
-      OAuth2ErrorCode.INVALID_REQUEST,
-      cause,
-    );
+    return new AuthenticationError(message, OAuth2ErrorCode.INVALID_REQUEST, cause);
   }
 
   /**
@@ -155,18 +141,11 @@ export class AuthenticationError extends Error {
    * @param cause - Optional underlying error that caused this failure
    * @returns AuthenticationError with INVALID_GRANT code
    */
-  public static invalidGrant(
-    description?: string,
-    cause?: Error,
-  ): AuthenticationError {
+  public static invalidGrant(description?: string, cause?: Error): AuthenticationError {
     const message = description
       ? `Invalid grant: ${description}`
       : 'The provided authorization grant is invalid, expired, revoked, or does not match the redirection URI';
-    return new AuthenticationError(
-      message,
-      OAuth2ErrorCode.INVALID_GRANT,
-      cause,
-    );
+    return new AuthenticationError(message, OAuth2ErrorCode.INVALID_GRANT, cause);
   }
 
   /**
@@ -188,10 +167,7 @@ export class AuthenticationError extends Error {
    * @param cause - Optional underlying error that caused this failure
    * @returns AuthenticationError with NETWORK_ERROR code
    */
-  public static networkError(
-    message: string,
-    cause?: Error,
-  ): AuthenticationError {
+  public static networkError(message: string, cause?: Error): AuthenticationError {
     return new AuthenticationError(
       `Network error during authentication: ${message}`,
       AuthErrorCode.NETWORK_ERROR,

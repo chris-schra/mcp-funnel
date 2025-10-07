@@ -43,10 +43,7 @@ export class OAuthResponseUtils {
    * @public
    * @see file:../error/oauth-error.utils.ts - Error creation utilities
    */
-  public static createOAuthErrorResponse(
-    error: OAuthError,
-    statusCode: number = 400,
-  ) {
+  public static createOAuthErrorResponse(error: OAuthError, statusCode: number = 400) {
     return {
       status: statusCode,
       headers: {

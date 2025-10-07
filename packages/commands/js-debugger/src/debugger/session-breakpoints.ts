@@ -54,9 +54,7 @@ export function normalizeLocationReference(
  * @param reference - The normalized script reference
  * @returns Array of lookup keys for the reference
  */
-export function buildReferenceKeys(
-  reference: NormalizedScriptReference,
-): string[] {
+export function buildReferenceKeys(reference: NormalizedScriptReference): string[] {
   const keys = new Set<string>();
   if (reference.original) {
     keys.add(reference.original);

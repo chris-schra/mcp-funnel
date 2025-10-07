@@ -43,17 +43,11 @@ export function scheduleReconnection(
       console.error(prefixedLog(config.serverName, 'Reconnection successful'));
     })
     .catch((error) => {
-      const failMsg = prefixedLog(
-        config.serverName,
-        `Reconnection failed: ${error}`,
-      );
+      const failMsg = prefixedLog(config.serverName, `Reconnection failed: ${error}`);
       console.error(failMsg);
 
       if (error.message.includes('Max reconnection attempts')) {
-        const giveUpMsg = prefixedLog(
-          config.serverName,
-          'Giving up after maximum retry attempts',
-        );
+        const giveUpMsg = prefixedLog(config.serverName, 'Giving up after maximum retry attempts');
         console.error(giveUpMsg);
         logger.error('reconnection-failed-max-retries', error, {
           server: config.serverName,

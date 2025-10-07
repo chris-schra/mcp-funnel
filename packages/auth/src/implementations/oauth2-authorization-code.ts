@@ -1,7 +1,4 @@
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-} from '../errors/authentication-error.js';
+import { AuthenticationError, OAuth2ErrorCode } from '../errors/authentication-error.js';
 import { type ITokenStorage, logEvent, type TokenData } from '@mcp-funnel/core';
 import { BaseOAuthProvider } from './base-oauth-provider.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
@@ -22,11 +19,9 @@ import {
  * Cleanup registry for automatic resource cleanup when OAuth providers are garbage collected
  * This prevents memory leaks when destroy() is not called manually
  */
-const cleanupRegistry = new FinalizationRegistry<NodeJS.Timeout>(
-  (intervalId) => {
-    clearInterval(intervalId);
-  },
-);
+const cleanupRegistry = new FinalizationRegistry<NodeJS.Timeout>((intervalId) => {
+  clearInterval(intervalId);
+});
 
 /**
  * OAuth2 Authorization Code provider implementing IAuthProvider
@@ -148,13 +143,9 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
     // Start periodic cleanup of expired states (every 2 minutes)
     this.cleanupInterval = setInterval(
       () => {
-        cleanupExpiredStates(
-          this.authFlowContext,
-          this.STATE_EXPIRY_MS,
-          (state) => {
-            logEvent('info', 'auth:oauth_state_expired', { state });
-          },
-        );
+        cleanupExpiredStates(this.authFlowContext, this.STATE_EXPIRY_MS, (state) => {
+          logEvent('info', 'auth:oauth_state_expired', { state });
+        });
       },
       2 * 60 * 1000,
     );
@@ -291,9 +282,7 @@ export class OAuth2AuthCodeProvider extends BaseOAuthProvider {
    * @public
    * @see file:./oauth2-authorization-code.ts:161 - completeOAuthFlow usage
    */
-  public static getProviderForState(
-    state: string,
-  ): OAuth2AuthCodeProvider | undefined {
+  public static getProviderForState(state: string): OAuth2AuthCodeProvider | undefined {
     return OAuth2AuthCodeProvider.stateToProvider.get(state);
   }
 

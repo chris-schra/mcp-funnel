@@ -38,10 +38,7 @@ function isLikelyVariableDeclaration(line: string | undefined): boolean {
  * @returns true if more lines needed to complete the value
  * @internal
  */
-function needsContinuation(
-  line: string,
-  hasBackslashContinuation: boolean,
-): boolean {
+function needsContinuation(line: string, hasBackslashContinuation: boolean): boolean {
   if (hasBackslashContinuation) {
     return true;
   }
@@ -138,10 +135,7 @@ export function preprocessLines(content: string): string[] {
       }
     }
 
-    const continuationNeeded = needsContinuation(
-      currentLine,
-      hasBackslashContinuation,
-    );
+    const continuationNeeded = needsContinuation(currentLine, hasBackslashContinuation);
 
     if (continuationNeeded && !hasBackslashContinuation) {
       const nextLine = rawLines[i + 1];

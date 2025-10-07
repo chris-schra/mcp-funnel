@@ -132,9 +132,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
         keywords = args.words.or.map((k) => k.toLowerCase());
         searchMode = 'or';
       } else {
-        throw new Error(
-          'Invalid words format - use string, {and: [...]}, or {or: [...]}',
-        );
+        throw new Error('Invalid words format - use string, {and: [...]}, or {or: [...]}');
       }
     } else {
       throw new Error('Missing or invalid "words" parameter');
@@ -155,22 +153,18 @@ export class DiscoverToolsByWords extends BaseCoreTool {
         .map((m) => {
           const inputSchema = m.definition?.inputSchema;
 
-          const args = Object.entries(inputSchema?.properties || {}).map(
-            ([argName, prop]) => {
-              const def = prop as { type: string; description?: string };
-              let retVal = `${argName}: ${def.type}`;
-              if (m.definition?.inputSchema?.required?.includes(argName)) {
-                retVal += ' [required]';
-              }
-              return retVal;
-            },
-          );
+          const args = Object.entries(inputSchema?.properties || {}).map(([argName, prop]) => {
+            const def = prop as { type: string; description?: string };
+            let retVal = `${argName}: ${def.type}`;
+            if (m.definition?.inputSchema?.required?.includes(argName)) {
+              retVal += ' [required]';
+            }
+            return retVal;
+          });
 
           // Use full description when enabling (contains usage instructions)
           // Use truncated description for discovery listing
-          const desc = enable
-            ? m.description
-            : this.truncateDescription(m.description);
+          const desc = enable ? m.description : this.truncateDescription(m.description);
           let retVal = `- ${m.fullName}: ${desc}`;
           if (args.length) {
             retVal += `\n  args:`;

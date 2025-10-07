@@ -80,8 +80,7 @@ export class GetServerInstallInfo extends BaseCoreTool {
         ],
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('[GetServerInstallInfo] Error:', error);
 
       return {

@@ -20,11 +20,7 @@ describe('Process Lifecycle', () => {
         {
           name: 'lifecycle',
           command: 'tsx',
-          args: [
-            path.join(fixturesDir, 'mock-mcp-server.ts'),
-            'lifecycle-test',
-            'test',
-          ],
+          args: [path.join(fixturesDir, 'mock-mcp-server.ts'), 'lifecycle-test', 'test'],
         },
       ],
     };
@@ -211,10 +207,7 @@ describe('Process Lifecycle', () => {
       ],
     });
 
-    const client = new Client(
-      { name: 'test', version: '1.0.0' },
-      { capabilities: {} },
-    );
+    const client = new Client({ name: 'test', version: '1.0.0' }, { capabilities: {} });
 
     await client.connect(transport);
 

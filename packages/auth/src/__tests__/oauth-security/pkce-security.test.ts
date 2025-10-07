@@ -10,12 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHash } from 'crypto';
 import { OAuth2AuthCodeProvider } from '../../implementations/oauth2-authorization-code.js';
-import {
-  mockFetch,
-  createTestConfig,
-  createTestStorage,
-  setupConsoleSpy,
-} from './test-utils.js';
+import { mockFetch, createTestConfig, createTestStorage, setupConsoleSpy } from './test-utils.js';
 import type { MemoryTokenStorage } from '../../implementations/memory-token-storage.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
 
@@ -166,9 +161,7 @@ describe('PKCE Security', () => {
     await provider.completeOAuthFlow(state, 'auth-code-123');
 
     // The refresh promise should reject with the error
-    await expect(refreshPromise).rejects.toThrow(
-      'OAuth2 authentication failed: invalid_grant',
-    );
+    await expect(refreshPromise).rejects.toThrow('OAuth2 authentication failed: invalid_grant');
   });
 
   it('should properly implement PKCE challenge verification', async () => {

@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DotEnvProvider } from '../index.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('DotEnvProvider - Variable Interpolation', () => {
   let testDir: string;
@@ -27,11 +23,7 @@ describe('DotEnvProvider - Variable Interpolation', () => {
       'PATH=/usr/bin:/bin',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.interpolation',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.interpolation', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
@@ -56,11 +48,7 @@ describe('DotEnvProvider - Variable Interpolation', () => {
       'MIXED="$DEFINED_VAR and $UNDEFINED_VAR"',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.undefined',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.undefined', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act

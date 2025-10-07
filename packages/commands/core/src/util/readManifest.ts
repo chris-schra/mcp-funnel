@@ -13,9 +13,7 @@ import type { CommandManifest } from '../types/index.js';
  * @see file:./writeManifest.ts - Corresponding write operation
  * @see file:../types/index.ts:9 - CommandManifest type definition
  */
-export async function readManifest(
-  manifestPath: string,
-): Promise<CommandManifest> {
+export async function readManifest(manifestPath: string): Promise<CommandManifest> {
   try {
     const content = await fs.readFile(manifestPath, 'utf-8');
     return JSON.parse(content);

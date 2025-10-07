@@ -9,12 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHash } from 'crypto';
 import { OAuth2AuthCodeProvider } from '../../implementations/oauth2-authorization-code.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
-import {
-  createTestConfig,
-  createTestStorage,
-  setupConsoleSpy,
-  mockFetch,
-} from './test-utils.js';
+import { createTestConfig, createTestStorage, setupConsoleSpy, mockFetch } from './test-utils.js';
 import { MemoryTokenStorage } from '../../implementations/memory-token-storage.js';
 
 describe('Cryptographic Security', () => {
@@ -107,22 +102,20 @@ describe('Cryptographic Security', () => {
     const state = stateMatch![1];
 
     // Capture the verifier from token request
-    mockFetch.mockImplementationOnce(
-      async (url: string, options?: RequestInit) => {
-        const body = (options?.body as string) || '';
-        const verifierMatch = body.match(/code_verifier=([^&]+)/);
-        capturedVerifier = decodeURIComponent(verifierMatch![1]);
+    mockFetch.mockImplementationOnce(async (url: string, options?: RequestInit) => {
+      const body = (options?.body as string) || '';
+      const verifierMatch = body.match(/code_verifier=([^&]+)/);
+      capturedVerifier = decodeURIComponent(verifierMatch![1]);
 
-        return {
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            access_token: 'test-token',
-            token_type: 'Bearer',
-            expires_in: 3600,
-          }),
-        };
-      },
-    );
+      return {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: 'test-token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+        }),
+      };
+    });
 
     await provider.completeOAuthFlow(state, 'test-code');
     await refreshPromise;

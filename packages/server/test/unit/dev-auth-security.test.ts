@@ -20,9 +20,7 @@ describe('Security Verification', () => {
         psCheck = spawn('ps', ['aux']);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.debug(
-          `Skipping lingering tsx dev.ts process check: ${message}`,
-        );
+        console.debug(`Skipping lingering tsx dev.ts process check: ${message}`);
         resolve();
         return;
       }
@@ -53,14 +51,10 @@ describe('Security Verification', () => {
         resolveOnce(() => {
           const tsxProcesses = output
             .split('\n')
-            .filter(
-              (line) => line.includes('tsx') && line.includes('dev.ts'),
-            ).length;
+            .filter((line) => line.includes('tsx') && line.includes('dev.ts')).length;
 
           if (tsxProcesses > 0) {
-            console.warn(
-              `Found ${tsxProcesses} lingering tsx dev.ts processes before test`,
-            );
+            console.warn(`Found ${tsxProcesses} lingering tsx dev.ts processes before test`);
           }
 
           resolve();
@@ -69,9 +63,7 @@ describe('Security Verification', () => {
 
       const onError = (error: Error) => {
         resolveOnce(() => {
-          console.debug(
-            `Skipping lingering tsx dev.ts process check: ${error.message}`,
-          );
+          console.debug(`Skipping lingering tsx dev.ts process check: ${error.message}`);
           resolve();
         });
       };
@@ -102,9 +94,7 @@ describe('Security Verification', () => {
         const exitPromise = new Promise<void>((resolve) => {
           if (serverProcess) {
             serverProcess.on('exit', (code, signal) => {
-              console.debug(
-                `Process ${pid} exited with code ${code}, signal ${signal}`,
-              );
+              console.debug(`Process ${pid} exited with code ${code}, signal ${signal}`);
               resolve();
             });
 
@@ -183,19 +173,14 @@ describe('Security Verification', () => {
     ];
 
     for (const endpoint of endpoints) {
-      const noAuthResponse = await fetch(
-        `http://localhost:${testPort}${endpoint}`,
-      );
+      const noAuthResponse = await fetch(`http://localhost:${testPort}${endpoint}`);
       expect(noAuthResponse.status).toBe(401);
 
-      const authResponse = await fetch(
-        `http://localhost:${testPort}${endpoint}`,
-        {
-          headers: {
-            Authorization: `Bearer ${testToken}`,
-          },
+      const authResponse = await fetch(`http://localhost:${testPort}${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${testToken}`,
         },
-      );
+      });
       // Should not be 401 (auth passed, though endpoint might have other issues)
       expect(authResponse.status).not.toBe(401);
     }

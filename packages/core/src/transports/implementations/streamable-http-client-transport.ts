@@ -12,14 +12,8 @@
  * @see file:../util/sdk-transport-helpers.ts - SDK transport integration utilities
  */
 import { StreamableHTTPClientTransport as SDKStreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import {
-  Transport,
-  TransportSendOptions,
-} from '@modelcontextprotocol/sdk/shared/transport.js';
-import {
-  JSONRPCMessage,
-  MessageExtraInfo,
-} from '@modelcontextprotocol/sdk/types.js';
+import { Transport, TransportSendOptions } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { JSONRPCMessage, MessageExtraInfo } from '@modelcontextprotocol/sdk/types.js';
 // Note: OAuthClientProvider from SDK is not used directly as it has a different interface
 // than our simplified AuthProvider. We handle auth manually via requestInit headers.
 import { TransportError } from '../errors/transport-error.js';
@@ -84,10 +78,7 @@ export class StreamableHTTPClientTransport implements Transport {
   // Transport interface properties
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
-  public onmessage?: (
-    message: JSONRPCMessage,
-    extra?: MessageExtraInfo,
-  ) => void;
+  public onmessage?: (message: JSONRPCMessage, extra?: MessageExtraInfo) => void;
   public sessionId?: string;
 
   public constructor(config: StreamableHTTPClientTransportConfig) {
@@ -190,20 +181,15 @@ export class StreamableHTTPClientTransport implements Transport {
    * @throws \{TransportError\} When send fails
    * @public
    */
-  public async send(
-    message: JSONRPCMessage,
-    options?: TransportSendOptions,
-  ): Promise<void> {
+  public async send(message: JSONRPCMessage, options?: TransportSendOptions): Promise<void> {
     if (this.isClosed) throw new Error('Transport is closed');
     if (!this.isStarted) throw new Error('Transport not started');
     try {
       const sdkOptions = options
         ? {
-            resumptionToken: (options as { resumptionToken?: string })
-              .resumptionToken,
-            onresumptiontoken: (
-              options as { onresumptiontoken?: (token: string) => void }
-            ).onresumptiontoken,
+            resumptionToken: (options as { resumptionToken?: string }).resumptionToken,
+            onresumptiontoken: (options as { onresumptiontoken?: (token: string) => void })
+              .onresumptiontoken,
           }
         : undefined;
       await this.sdkTransport.send(message, sdkOptions);
@@ -215,10 +201,7 @@ export class StreamableHTTPClientTransport implements Transport {
       const transportError =
         error instanceof TransportError
           ? error
-          : TransportError.connectionFailed(
-              `Failed to send message: ${error}`,
-              error as Error,
-            );
+          : TransportError.connectionFailed(`Failed to send message: ${error}`, error as Error);
       logEvent('error', `${this.logPrefix}:send-failed`, {
         error: transportError.message,
         method: 'method' in message ? message.method : 'response',
@@ -324,9 +307,7 @@ export class StreamableHTTPClientTransport implements Transport {
    * @throws \{Error\} When transport is closed
    * @public
    */
-  public async upgradeTransport(
-    _type: 'websocket' | 'sse' | 'http',
-  ): Promise<void> {
+  public async upgradeTransport(_type: 'websocket' | 'sse' | 'http'): Promise<void> {
     if (this.isClosed) throw new Error('Cannot upgrade closed transport');
     await this.recreateTransportWithAuth();
     if (this.isStarted) {
@@ -342,10 +323,7 @@ export class StreamableHTTPClientTransport implements Transport {
    * @internal
    */
   private async recreateTransportWithAuth(): Promise<void> {
-    const requestInitWithAuth = mergeAuthHeaders(
-      this.config.requestInit,
-      this.currentAuthHeaders,
-    );
+    const requestInitWithAuth = mergeAuthHeaders(this.config.requestInit, this.currentAuthHeaders);
     const newTransport = createSDKTransport({
       url: this.config.url,
       sessionId: this.config.sessionId,

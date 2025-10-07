@@ -26,100 +26,97 @@ import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
 
-describe.skipIf(!runIntegrationTests)(
-  'OAuth + SSE Error Recovery Integration',
-  () => {
-    let _oauthServer: TestOAuthServer;
-    let sseServer: TestSSEServer;
-    let oauthTokenEndpoint: string;
-    let sseEndpoint: string;
+describe.skipIf(!runIntegrationTests)('OAuth + SSE Error Recovery Integration', () => {
+  let _oauthServer: TestOAuthServer;
+  let sseServer: TestSSEServer;
+  let oauthTokenEndpoint: string;
+  let sseEndpoint: string;
 
-    beforeAll(async () => {
-      const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
-        clientId: 'e2e-integration-client',
-        clientSecret: 'e2e-integration-secret',
-        tokenLifetime: 3600,
-        requireAuth: true,
+  beforeAll(async () => {
+    const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
+      clientId: 'e2e-integration-client',
+      clientSecret: 'e2e-integration-secret',
+      tokenLifetime: 3600,
+      requireAuth: true,
+    });
+
+    _oauthServer = oauthServerInfo.server;
+    oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
+    sseServer = sseServerInfo.server;
+    sseEndpoint = sseServerInfo.sseEndpoint;
+  }, 30000);
+
+  beforeEach(() => {
+    sseServer.clearMessageHistory();
+  });
+
+  describe('Error Recovery and Resilience', () => {
+    it('should recover from temporary OAuth server failure', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-integration-client',
+          clientSecret: 'e2e-integration-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
+
+      // Get initial token
+      const authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(token);
+
+      const transport = new SSEClientTransport({
+        url: sseEndpoint,
+        authProvider,
       });
 
-      _oauthServer = oauthServerInfo.server;
-      oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
-      sseServer = sseServerInfo.server;
-      sseEndpoint = sseServerInfo.sseEndpoint;
-    }, 30000);
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
 
-    beforeEach(() => {
-      sseServer.clearMessageHistory();
-    });
+      // Verify the connection can continue using existing token
+      // even if OAuth server becomes temporarily unavailable
+      // (This tests token caching behavior)
+      const cachedHeaders = await authProvider.getHeaders();
+      expect(cachedHeaders.Authorization).toBe(authHeaders.Authorization);
 
-    describe('Error Recovery and Resilience', () => {
-      it('should recover from temporary OAuth server failure', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
+      await transport.close();
+    }, 15000);
 
-        // Get initial token
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
+    it('should handle SSE server restart gracefully', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-integration-client',
+          clientSecret: 'e2e-integration-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
 
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
+      const authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(token);
 
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
+      const transport = new SSEClientTransport({
+        url: sseEndpoint,
+        authProvider,
+      });
 
-        // Verify the connection can continue using existing token
-        // even if OAuth server becomes temporarily unavailable
-        // (This tests token caching behavior)
-        const cachedHeaders = await authProvider.getHeaders();
-        expect(cachedHeaders.Authorization).toBe(authHeaders.Authorization);
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
 
-        await transport.close();
-      }, 15000);
+      // Close transport properly
+      await transport.close();
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      it('should handle SSE server restart gracefully', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
-
-        // Close transport properly
-        await transport.close();
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Verify cleanup (in integration tests, some cleanup delay is expected)
-        expect(sseServer.getClientCount()).toBeLessThanOrEqual(5);
-      }, 10000);
-    });
-  },
-);
+      // Verify cleanup (in integration tests, some cleanup delay is expected)
+      expect(sseServer.getClientCount()).toBeLessThanOrEqual(5);
+    }, 10000);
+  });
+});

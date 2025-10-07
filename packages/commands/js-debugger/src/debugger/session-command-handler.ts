@@ -13,10 +13,7 @@ import type { SessionEvents } from './session-types.js';
 export interface CommandExecutionContext {
   status: SessionState;
   events: Emittery<SessionEvents>;
-  sendCommand: <T = unknown>(
-    method: string,
-    params?: Record<string, unknown>,
-  ) => Promise<T>;
+  sendCommand: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
   eventProcessor: SessionEventProcessor;
   breakpointManager: SessionBreakpointManager;
   setCommandIntent: (intent: 'resume' | 'pause' | null) => void;
@@ -51,10 +48,7 @@ export async function executeDebuggerAction(
       }
       break;
     case 'pause':
-      if (
-        context.status.status === 'paused' &&
-        context.eventProcessor.getLastPause()
-      ) {
+      if (context.status.status === 'paused' && context.eventProcessor.getLastPause()) {
         pauseDetails = context.eventProcessor.getLastPause();
       } else if (
         context.status.status === 'running' ||
@@ -62,36 +56,20 @@ export async function executeDebuggerAction(
       ) {
         context.setCommandIntent('pause');
         await context.sendCommand('Debugger.pause');
-        pauseDetails = await waitForPause(
-          context.events,
-          context.getLastPause(),
-          'pause',
-        );
+        pauseDetails = await waitForPause(context.events, context.getLastPause(), 'pause');
       }
       break;
     case 'stepInto':
       await context.sendCommand('Debugger.stepInto');
-      pauseDetails = await waitForPause(
-        context.events,
-        context.getLastPause(),
-        'stepInto',
-      );
+      pauseDetails = await waitForPause(context.events, context.getLastPause(), 'stepInto');
       break;
     case 'stepOver':
       await context.sendCommand('Debugger.stepOver');
-      pauseDetails = await waitForPause(
-        context.events,
-        context.getLastPause(),
-        'stepOver',
-      );
+      pauseDetails = await waitForPause(context.events, context.getLastPause(), 'stepOver');
       break;
     case 'stepOut':
       await context.sendCommand('Debugger.stepOut');
-      pauseDetails = await waitForPause(
-        context.events,
-        context.getLastPause(),
-        'stepOut',
-      );
+      pauseDetails = await waitForPause(context.events, context.getLastPause(), 'stepOut');
       break;
     case 'continueToLocation':
       await tryRunIfWaitingForDebugger(context.sendCommand);
@@ -104,9 +82,7 @@ export async function executeDebuggerAction(
       }
       break;
     default:
-      throw new Error(
-        `Unsupported action: ${(command as { action: string }).action}`,
-      );
+      throw new Error(`Unsupported action: ${(command as { action: string }).action}`);
   }
 
   return { pauseDetails, resumed };
@@ -117,9 +93,7 @@ export async function executeDebuggerAction(
  * @param command - The debugger command that was executed
  * @returns Command acknowledgment with sent status and location if applicable
  */
-export function buildCommandAcknowledgment(
-  command: DebuggerCommand,
-): CommandAcknowledgment {
+export function buildCommandAcknowledgment(command: DebuggerCommand): CommandAcknowledgment {
   switch (command.action) {
     case 'continue':
       return { command: 'continue', sent: true };

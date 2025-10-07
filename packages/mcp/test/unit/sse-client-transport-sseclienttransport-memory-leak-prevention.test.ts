@@ -17,10 +17,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 import { createMockSSEServer } from '../mocks/mock-sse-server.js';
 import { SSEClientTransport } from '@mcp-funnel/core';
-import {
-  createMockEventSourceConstructor,
-  MockEventSource,
-} from '../mocks/mock-eventsource.js';
+import { createMockEventSourceConstructor, MockEventSource } from '../mocks/mock-eventsource.js';
 
 // Mock the EventSource constructor
 const MockEventSourceConstructor = createMockEventSourceConstructor();

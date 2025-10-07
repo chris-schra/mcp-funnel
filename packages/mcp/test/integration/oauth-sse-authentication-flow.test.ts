@@ -18,10 +18,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
 import { TestSSEServer } from '../fixtures/test-sse-server.js';
 import { setupOAuthAndSSEServers } from '../helpers/server-setup.js';
-import type {
-  JSONRPCResponse,
-  JSONRPCMessage,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCResponse, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import {
   extractBearerToken,
   MemoryTokenStorage,
@@ -33,279 +30,274 @@ import type { TestOAuthServer } from '../fixtures/test-oauth-server.js';
 // Skip integration tests unless explicitly enabled
 const runIntegrationTests = process.env.RUN_INTEGRATION_TESTS === 'true';
 
-describe.skipIf(!runIntegrationTests)(
-  'OAuth + SSE Authentication Flow Integration',
-  () => {
-    let oauthServer: TestOAuthServer;
-    let sseServer: TestSSEServer;
-    let oauthTokenEndpoint: string;
-    let sseEndpoint: string;
+describe.skipIf(!runIntegrationTests)('OAuth + SSE Authentication Flow Integration', () => {
+  let oauthServer: TestOAuthServer;
+  let sseServer: TestSSEServer;
+  let oauthTokenEndpoint: string;
+  let sseEndpoint: string;
 
-    beforeAll(async () => {
-      const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
-        clientId: 'e2e-integration-client',
-        clientSecret: 'e2e-integration-secret',
-        tokenLifetime: 3600,
-        requireAuth: true,
+  beforeAll(async () => {
+    const { oauthServerInfo, sseServerInfo } = await setupOAuthAndSSEServers({
+      clientId: 'e2e-integration-client',
+      clientSecret: 'e2e-integration-secret',
+      tokenLifetime: 3600,
+      requireAuth: true,
+    });
+
+    oauthServer = oauthServerInfo.server;
+    oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
+    sseServer = sseServerInfo.server;
+    sseEndpoint = sseServerInfo.sseEndpoint;
+  }, 30000);
+
+  beforeEach(() => {
+    sseServer.clearMessageHistory();
+  });
+
+  describe('Complete OAuth + SSE Authentication Flow', () => {
+    it('should complete full authentication and connection flow', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+
+      // Step 1: Create OAuth provider and acquire token
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-integration-client',
+          clientSecret: 'e2e-integration-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+          scope: 'read write',
+        },
+        tokenStorage,
+      );
+
+      // Step 2: Get auth headers (triggers OAuth flow)
+      const authHeaders = await authProvider.getHeaders();
+      expect(authHeaders.Authorization).toMatch(/^Bearer test-access-/);
+
+      // Step 3: Configure SSE server to accept the token
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(token);
+
+      // Step 4: Create SSE transport with OAuth integration
+      const transport = new SSEClientTransport({
+        url: sseEndpoint,
+        authProvider,
       });
 
-      oauthServer = oauthServerInfo.server;
-      oauthTokenEndpoint = oauthServerInfo.tokenEndpoint;
-      sseServer = sseServerInfo.server;
-      sseEndpoint = sseServerInfo.sseEndpoint;
-    }, 30000);
+      // Step 5: Establish authenticated SSE connection
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    beforeEach(() => {
-      sseServer.clearMessageHistory();
-    });
+      // Step 6: Verify end-to-end connection
+      expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
 
-    describe('Complete OAuth + SSE Authentication Flow', () => {
-      it('should complete full authentication and connection flow', async () => {
-        const tokenStorage = new MemoryTokenStorage();
+      // Verify token was properly issued and stored
+      const storedToken = await tokenStorage.retrieve();
+      expect(storedToken?.accessToken).toBe(token);
 
-        // Step 1: Create OAuth provider and acquire token
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-            scope: 'read write',
-          },
-          tokenStorage,
-        );
+      // Verify OAuth server issued the token
+      const issuedTokens = oauthServer.getIssuedTokens();
+      expect(issuedTokens).toHaveLength(1);
+      expect(issuedTokens[0].accessToken).toBe(token);
 
-        // Step 2: Get auth headers (triggers OAuth flow)
-        const authHeaders = await authProvider.getHeaders();
-        expect(authHeaders.Authorization).toMatch(/^Bearer test-access-/);
+      await transport.close();
+    }, 20000);
 
-        // Step 3: Configure SSE server to accept the token
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
+    it('should handle end-to-end message transmission with authentication', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-integration-client',
+          clientSecret: 'e2e-integration-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
 
-        // Step 4: Create SSE transport with OAuth integration
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
+      // Set up authenticated connection
+      const authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(token);
 
-        // Step 5: Establish authenticated SSE connection
+      const transport = new SSEClientTransport({
+        url: sseEndpoint,
+        authProvider,
+      });
+
+      // Capture received messages
+      const receivedMessages: JSONRPCMessage[] = [];
+      transport.onmessage = (message: JSONRPCMessage) => {
+        receivedMessages.push(message);
+      };
+
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Send authenticated message from server to client
+      const serverMessage: JSONRPCResponse = {
+        jsonrpc: '2.0',
+        id: 'e2e-test-1',
+        result: {
+          message: 'End-to-end authenticated message',
+          timestamp: new Date().toISOString(),
+        },
+      };
+
+      sseServer.broadcast(serverMessage);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Verify message was received
+      const e2eMessage = receivedMessages.find(
+        (msg) => (msg as JSONRPCResponse).id === 'e2e-test-1',
+      ) as JSONRPCResponse;
+      expect(e2eMessage).toBeDefined();
+      expect(e2eMessage.result.message).toBe('End-to-end authenticated message');
+
+      await transport.close();
+    }, 15000);
+
+    it('should handle token refresh during active SSE connection', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-integration-client',
+          clientSecret: 'e2e-integration-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
+
+      // Get initial token and establish connection
+      let authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(token);
+
+      const transport = new SSEClientTransport({
+        url: sseEndpoint,
+        authProvider,
+      });
+
+      await transport.start();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
+
+      // Simulate token expiration
+      oauthServer.expireToken(token);
+      await tokenStorage.store({
+        accessToken: token,
+        tokenType: 'Bearer',
+        expiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
+      });
+
+      // Force token refresh by making a request
+      authHeaders = await authProvider.getHeaders();
+      const newToken = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(newToken);
+
+      // Verify new token is different and connection remains active
+      expect(newToken).not.toBe(token);
+      expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
+
+      // Verify we can still send messages with new token
+      const testMessage: JSONRPCResponse = {
+        jsonrpc: '2.0',
+        id: 'refresh-test',
+        result: { message: 'Post-refresh message' },
+      };
+
+      const receivedMessages: JSONRPCMessage[] = [];
+      transport.onmessage = (message: JSONRPCMessage) => {
+        receivedMessages.push(message);
+      };
+
+      sseServer.broadcast(testMessage);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const refreshMessage = receivedMessages.find(
+        (msg) => (msg as JSONRPCResponse).id === 'refresh-test',
+      );
+      expect(refreshMessage).toBeDefined();
+
+      await transport.close();
+    }, 20000);
+
+    it('should handle authentication failures end-to-end', async () => {
+      // Test with invalid credentials
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'invalid-client',
+          clientSecret: 'invalid-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
+
+      const transport = new SSEClientTransport({
+        url: sseEndpoint,
+        authProvider,
+      });
+
+      // Should fail during OAuth token acquisition
+      let _authError: Error | undefined;
+      try {
         await transport.start();
+        // Wait a bit for the authentication to fail
         await new Promise((resolve) => setTimeout(resolve, 1000));
+      } catch (error) {
+        _authError = error as Error;
+      }
 
-        // Step 6: Verify end-to-end connection
-        expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
+      // The SSE transport may start successfully but fail authentication asynchronously
+      // The key test is that no connection should be established
+      expect(sseServer.getClientCount()).toBe(0);
 
-        // Verify token was properly issued and stored
-        const storedToken = await tokenStorage.retrieve();
-        expect(storedToken?.accessToken).toBe(token);
+      await transport.close();
+    }, 10000);
 
-        // Verify OAuth server issued the token
-        const issuedTokens = oauthServer.getIssuedTokens();
-        expect(issuedTokens).toHaveLength(1);
-        expect(issuedTokens[0].accessToken).toBe(token);
+    it('should handle multiple concurrent authenticated connections', async () => {
+      const tokenStorage = new MemoryTokenStorage();
+      const authProvider = new OAuth2ClientCredentialsProvider(
+        {
+          type: 'oauth2-client',
+          clientId: 'e2e-integration-client',
+          clientSecret: 'e2e-integration-secret',
+          tokenEndpoint: oauthTokenEndpoint,
+        },
+        tokenStorage,
+      );
 
-        await transport.close();
-      }, 20000);
+      // Get shared token
+      const authHeaders = await authProvider.getHeaders();
+      const token = extractBearerToken(authHeaders.Authorization)!;
+      sseServer.setValidToken(token);
 
-      it('should handle end-to-end message transmission with authentication', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        // Set up authenticated connection
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
+      // Create multiple transports sharing the same auth provider
+      const transports: SSEClientTransport[] = [];
+      for (let i = 0; i < 3; i++) {
         const transport = new SSEClientTransport({
           url: sseEndpoint,
           authProvider,
         });
+        transports.push(transport);
+      }
 
-        // Capture received messages
-        const receivedMessages: JSONRPCMessage[] = [];
-        transport.onmessage = (message: JSONRPCMessage) => {
-          receivedMessages.push(message);
-        };
+      // Start all connections concurrently
+      await Promise.all(transports.map((t) => t.start()));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      // All should be connected with the same token
+      expect(sseServer.getClientCount()).toBe(3);
 
-        // Send authenticated message from server to client
-        const serverMessage: JSONRPCResponse = {
-          jsonrpc: '2.0',
-          id: 'e2e-test-1',
-          result: {
-            message: 'End-to-end authenticated message',
-            timestamp: new Date().toISOString(),
-          },
-        };
+      // Should have reused the same OAuth token (but allow for realistic concurrency)
+      const issuedTokens = oauthServer.getIssuedTokens();
+      expect(issuedTokens.length).toBeLessThanOrEqual(10); // Allow for realistic race conditions
 
-        sseServer.broadcast(serverMessage);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Verify message was received
-        const e2eMessage = receivedMessages.find(
-          (msg) => (msg as JSONRPCResponse).id === 'e2e-test-1',
-        ) as JSONRPCResponse;
-        expect(e2eMessage).toBeDefined();
-        expect(e2eMessage.result.message).toBe(
-          'End-to-end authenticated message',
-        );
-
-        await transport.close();
-      }, 15000);
-
-      it('should handle token refresh during active SSE connection', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        // Get initial token and establish connection
-        let authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
-
-        await transport.start();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
-
-        // Simulate token expiration
-        oauthServer.expireToken(token);
-        await tokenStorage.store({
-          accessToken: token,
-          tokenType: 'Bearer',
-          expiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
-        });
-
-        // Force token refresh by making a request
-        authHeaders = await authProvider.getHeaders();
-        const newToken = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(newToken);
-
-        // Verify new token is different and connection remains active
-        expect(newToken).not.toBe(token);
-        expect(sseServer.getClientCount()).toBeGreaterThanOrEqual(1);
-
-        // Verify we can still send messages with new token
-        const testMessage: JSONRPCResponse = {
-          jsonrpc: '2.0',
-          id: 'refresh-test',
-          result: { message: 'Post-refresh message' },
-        };
-
-        const receivedMessages: JSONRPCMessage[] = [];
-        transport.onmessage = (message: JSONRPCMessage) => {
-          receivedMessages.push(message);
-        };
-
-        sseServer.broadcast(testMessage);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const refreshMessage = receivedMessages.find(
-          (msg) => (msg as JSONRPCResponse).id === 'refresh-test',
-        );
-        expect(refreshMessage).toBeDefined();
-
-        await transport.close();
-      }, 20000);
-
-      it('should handle authentication failures end-to-end', async () => {
-        // Test with invalid credentials
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'invalid-client',
-            clientSecret: 'invalid-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        const transport = new SSEClientTransport({
-          url: sseEndpoint,
-          authProvider,
-        });
-
-        // Should fail during OAuth token acquisition
-        let _authError: Error | undefined;
-        try {
-          await transport.start();
-          // Wait a bit for the authentication to fail
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        } catch (error) {
-          _authError = error as Error;
-        }
-
-        // The SSE transport may start successfully but fail authentication asynchronously
-        // The key test is that no connection should be established
-        expect(sseServer.getClientCount()).toBe(0);
-
-        await transport.close();
-      }, 10000);
-
-      it('should handle multiple concurrent authenticated connections', async () => {
-        const tokenStorage = new MemoryTokenStorage();
-        const authProvider = new OAuth2ClientCredentialsProvider(
-          {
-            type: 'oauth2-client',
-            clientId: 'e2e-integration-client',
-            clientSecret: 'e2e-integration-secret',
-            tokenEndpoint: oauthTokenEndpoint,
-          },
-          tokenStorage,
-        );
-
-        // Get shared token
-        const authHeaders = await authProvider.getHeaders();
-        const token = extractBearerToken(authHeaders.Authorization)!;
-        sseServer.setValidToken(token);
-
-        // Create multiple transports sharing the same auth provider
-        const transports: SSEClientTransport[] = [];
-        for (let i = 0; i < 3; i++) {
-          const transport = new SSEClientTransport({
-            url: sseEndpoint,
-            authProvider,
-          });
-          transports.push(transport);
-        }
-
-        // Start all connections concurrently
-        await Promise.all(transports.map((t) => t.start()));
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // All should be connected with the same token
-        expect(sseServer.getClientCount()).toBe(3);
-
-        // Should have reused the same OAuth token (but allow for realistic concurrency)
-        const issuedTokens = oauthServer.getIssuedTokens();
-        expect(issuedTokens.length).toBeLessThanOrEqual(10); // Allow for realistic race conditions
-
-        // Clean up
-        await Promise.all(transports.map((t) => t.close()));
-      }, 20000);
-    });
-  },
-);
+      // Clean up
+      await Promise.all(transports.map((t) => t.close()));
+    }, 20000);
+  });
+});

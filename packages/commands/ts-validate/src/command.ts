@@ -18,8 +18,7 @@ rootLogger.level = process.env.LOG_LEVEL || 'info';*/
 
 export class TsValidateCommand implements ICommand {
   public readonly name = 'ts-validate';
-  public readonly description =
-    'Run prettier, eslint, and TypeScript validation';
+  public readonly description = 'Run prettier, eslint, and TypeScript validation';
 
   public async executeToolViaMCP(
     toolName: string,
@@ -29,9 +28,7 @@ export class TsValidateCommand implements ICommand {
     return this.executeViaMCP(args);
   }
 
-  public async executeViaMCP(
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> {
+  public async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
     const validator = new MonorepoValidator();
     const mcpFiles = ((): string[] | undefined => {
       if (Array.isArray(args.files)) return args.files as string[];
@@ -50,17 +47,15 @@ export class TsValidateCommand implements ICommand {
             : Boolean(args.fix)
           : Boolean(args.autoFix),
       cache: args.cache === true, // Default to false for safety
-      tsConfigFile:
-        typeof args.tsConfigFile === 'string'
-          ? String(args.tsConfigFile)
-          : undefined,
+      tsConfigFile: typeof args.tsConfigFile === 'string' ? String(args.tsConfigFile) : undefined,
     };
     const compact = args.compact === undefined ? true : Boolean(args.compact);
     const result = await validator.validate(options);
 
     // Compact fileResults by default: include only files with results
-    let out: ValidationSummary & { processedFiles?: string[] } =
-      result as ValidationSummary & { processedFiles?: string[] };
+    let out: ValidationSummary & { processedFiles?: string[] } = result as ValidationSummary & {
+      processedFiles?: string[];
+    };
     if (compact) {
       const compacted: FileValidationResults = {};
       for (const [file, list] of Object.entries(result.fileResults)) {
@@ -72,8 +67,7 @@ export class TsValidateCommand implements ICommand {
       // Expand to include clean files with empty arrays
       const expanded: FileValidationResults = { ...result.fileResults };
       const allFiles: string[] =
-        (result as ValidationSummary & { processedFiles?: string[] })
-          .processedFiles || [];
+        (result as ValidationSummary & { processedFiles?: string[] }).processedFiles || [];
       for (const f of allFiles) {
         if (!Object.prototype.hasOwnProperty.call(expanded, f)) {
           expanded[f] = [];
@@ -131,8 +125,7 @@ ${chalk.bold('Examples:')}
     // otherwise treat single argument as a glob pattern
     const hasMultipleFiles = positional.length > 1;
     const files = hasMultipleFiles ? positional : undefined;
-    const globPattern =
-      !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
+    const globPattern = !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
 
     const options: ValidateOptions = {
       files: files,
@@ -153,17 +146,12 @@ ${chalk.bold('Examples:')}
         if (Object.keys(summary.fileResults).length === 0) {
           console.info(chalk.green('✨ No issues found'));
           // Still report tool statuses if any were skipped/failed
-          const failed =
-            summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
-          const skipped =
-            summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
           if (failed.length > 0 || skipped.length > 0) {
             console.info(chalk.blue.bold('\n🛠 Tool Status:'));
             for (const s of [...failed, ...skipped]) {
-              const label =
-                s.status === 'failed'
-                  ? chalk.red('failed')
-                  : chalk.yellow('skipped');
+              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
               const reason = s.reason ? ` (${s.reason})` : '';
               const err = s.error ? `: ${s.error}` : '';
               console.info(`  - ${s.tool}: ${label}${reason}${err}`);
@@ -173,27 +161,18 @@ ${chalk.bold('Examples:')}
           process.exit(exitCode);
         }
 
-        const hasIssues = Object.values(summary.fileResults).some(
-          (r) => r.length > 0,
-        );
+        const hasIssues = Object.values(summary.fileResults).some((r) => r.length > 0);
 
-        const anyFailed = summary.toolStatuses?.some(
-          (s) => s.status === 'failed',
-        );
+        const anyFailed = summary.toolStatuses?.some((s) => s.status === 'failed');
         if (!hasIssues) {
           console.info(chalk.green('✅ All files passed validation!'));
           // Report tool statuses if any skipped/failed
-          const failed =
-            summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
-          const skipped =
-            summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
           if (failed.length > 0 || skipped.length > 0) {
             console.info(chalk.blue.bold('\n🛠 Tool Status:'));
             for (const s of [...failed, ...skipped]) {
-              const label =
-                s.status === 'failed'
-                  ? chalk.red('failed')
-                  : chalk.yellow('skipped');
+              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
               const reason = s.reason ? ` (${s.reason})` : '';
               const err = s.error ? `: ${s.error}` : '';
               console.info(`  - ${s.tool}: ${label}${reason}${err}`);
@@ -213,14 +192,8 @@ ${chalk.bold('Examples:')}
 
             for (const result of results) {
               const icon =
-                result.severity === 'error'
-                  ? '❌'
-                  : result.severity === 'warning'
-                    ? '⚠️'
-                    : 'ℹ️';
-              const location = result.line
-                ? `:${result.line}:${result.column}`
-                : '';
+                result.severity === 'error' ? '❌' : result.severity === 'warning' ? '⚠️' : 'ℹ️';
+              const location = result.line ? `:${result.line}:${result.column}` : '';
               const ruleInfo = result.ruleId ? ` (${result.ruleId})` : '';
 
               const logFn =
@@ -229,15 +202,11 @@ ${chalk.bold('Examples:')}
                   : result.severity === 'warning'
                     ? console.warn
                     : console.info;
-              logFn(
-                `  ${icon} [${result.tool}${location}] ${result.message}${ruleInfo}`,
-              );
+              logFn(`  ${icon} [${result.tool}${location}] ${result.message}${ruleInfo}`);
 
               if (result.fixable && !result.fixedAutomatically) {
                 console.info(
-                  chalk.green(
-                    `     💡 Fixable: ${result.suggestedFix || 'auto-fix available'}`,
-                  ),
+                  chalk.green(`     💡 Fixable: ${result.suggestedFix || 'auto-fix available'}`),
                 );
               }
             }
@@ -250,26 +219,15 @@ ${chalk.bold('Examples:')}
         console.info(`  Files with issues: ${summary.filesWithErrors}`);
 
         if (summary.fixableFiles.length > 0) {
-          console.warn(
-            chalk.yellow(
-              `  Auto-fixable files: ${summary.fixableFiles.length}`,
-            ),
-          );
+          console.warn(chalk.yellow(`  Auto-fixable files: ${summary.fixableFiles.length}`));
         }
 
         if (summary.unfixableFiles.length > 0) {
-          console.error(
-            chalk.red(
-              `  Manual fixes needed: ${summary.unfixableFiles.length}`,
-            ),
-          );
+          console.error(chalk.red(`  Manual fixes needed: ${summary.unfixableFiles.length}`));
         }
 
         // Suggested actions for AI
-        if (
-          flags.includes('--show-actions') &&
-          summary.suggestedActions.length > 0
-        ) {
+        if (flags.includes('--show-actions') && summary.suggestedActions.length > 0) {
           console.info(chalk.blue.bold('\n🤖 Suggested Actions:'));
           for (const action of summary.suggestedActions) {
             const relativePath = path.relative(process.cwd(), action.file);
@@ -310,8 +268,7 @@ ${chalk.bold('Examples:')}
             },
             dir: {
               type: 'string',
-              description:
-                'Single directory to validate (equivalent to passing it in files)',
+              description: 'Single directory to validate (equivalent to passing it in files)',
             },
             glob: {
               type: 'string',
@@ -328,8 +285,7 @@ ${chalk.bold('Examples:')}
             },
             cache: {
               type: 'boolean',
-              description:
-                'Use caching for faster subsequent runs (default: true)',
+              description: 'Use caching for faster subsequent runs (default: true)',
             },
             tsConfigFile: {
               type: 'string',
@@ -338,8 +294,7 @@ ${chalk.bold('Examples:')}
             },
             compact: {
               type: 'boolean',
-              description:
-                'When true (default), omit files with no results from fileResults',
+              description: 'When true (default), omit files with no results from fileResults',
             },
           },
         },

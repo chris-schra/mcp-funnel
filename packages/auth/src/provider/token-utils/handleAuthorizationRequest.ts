@@ -37,14 +37,8 @@ export const handleAuthorizationRequest = async (
     return { success: false, error: validation.error };
   }
 
-  const {
-    client_id,
-    redirect_uri,
-    scope,
-    state,
-    code_challenge,
-    code_challenge_method,
-  } = params as AuthorizationRequest;
+  const { client_id, redirect_uri, scope, state, code_challenge, code_challenge_method } =
+    params as AuthorizationRequest;
 
   // Get client information
   const client = await storage.getClient(client_id);
@@ -93,11 +87,7 @@ export const handleAuthorizationRequest = async (
   }
 
   // Check user consent
-  const hasConsent = await consentService.hasUserConsented(
-    userId,
-    client_id,
-    requestedScopes,
-  );
+  const hasConsent = await consentService.hasUserConsented(userId, client_id, requestedScopes);
 
   if (!hasConsent) {
     const consentParams = new URLSearchParams({

@@ -13,9 +13,7 @@ import type { LegacyConfig } from './transport/LegacyConfig.js';
  * @internal
  * @see file:../../core/src/env/environment-resolver.ts - EnvVarPatternResolver implementation
  */
-function resolveTransportConfigVars(
-  config: TransportConfig | LegacyConfig,
-): ResolvedConfig {
+function resolveTransportConfigVars(config: TransportConfig | LegacyConfig): ResolvedConfig {
   const resolved = { ...config };
 
   // Helper function to resolve variables in a string
@@ -26,9 +24,7 @@ function resolveTransportConfigVars(
         : value;
     } catch (error) {
       throw TransportError.serverError(
-        error instanceof Error
-          ? error.message
-          : 'Environment variable resolution failed',
+        error instanceof Error ? error.message : 'Environment variable resolution failed',
       );
     }
   };

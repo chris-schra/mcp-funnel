@@ -10,35 +10,14 @@ import { ToolRegistry, ToolState } from '../../../tool-registry/index.js';
  */
 export function createMockContext(enabledTools: string[]): CoreToolContext {
   const toolDescriptionCache = new Map([
-    [
-      'github__create_issue',
-      { serverName: 'github', description: 'Create an issue' },
-    ],
-    [
-      'github__update_issue',
-      { serverName: 'github', description: 'Update an issue' },
-    ],
-    [
-      'github__list_pull_requests',
-      { serverName: 'github', description: 'List PRs' },
-    ],
-    [
-      'github__create_pull_request',
-      { serverName: 'github', description: 'Create a PR' },
-    ],
-    [
-      'github__update_pull_request',
-      { serverName: 'github', description: 'Update a PR' },
-    ],
-    [
-      'github__merge_pull_request',
-      { serverName: 'github', description: 'Merge a PR' },
-    ],
+    ['github__create_issue', { serverName: 'github', description: 'Create an issue' }],
+    ['github__update_issue', { serverName: 'github', description: 'Update an issue' }],
+    ['github__list_pull_requests', { serverName: 'github', description: 'List PRs' }],
+    ['github__create_pull_request', { serverName: 'github', description: 'Create a PR' }],
+    ['github__update_pull_request', { serverName: 'github', description: 'Update a PR' }],
+    ['github__merge_pull_request', { serverName: 'github', description: 'Merge a PR' }],
     ['memory__store', { serverName: 'memory', description: 'Store data' }],
-    [
-      'memory__retrieve',
-      { serverName: 'memory', description: 'Retrieve data' },
-    ],
+    ['memory__retrieve', { serverName: 'memory', description: 'Retrieve data' }],
   ]);
 
   const mockRegistry: Partial<ToolRegistry> = {

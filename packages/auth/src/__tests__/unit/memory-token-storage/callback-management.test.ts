@@ -80,9 +80,7 @@ describe('Callback Management', () => {
 
     await storage.store(token2);
 
-    expect(mockClearTimeout).toHaveBeenCalledWith(
-      expect.objectContaining({ id: firstTimerId }),
-    );
+    expect(mockClearTimeout).toHaveBeenCalledWith(expect.objectContaining({ id: firstTimerId }));
     expect(mockSetTimeout).toHaveBeenCalledTimes(2);
   });
 
@@ -99,15 +97,11 @@ describe('Callback Management', () => {
 
     await storage.clear();
 
-    expect(mockClearTimeout).toHaveBeenCalledWith(
-      expect.objectContaining({ id: timerId }),
-    );
+    expect(mockClearTimeout).toHaveBeenCalledWith(expect.objectContaining({ id: timerId }));
   });
 
   it('should handle refresh callback that throws error', async () => {
-    const refreshCallback = vi
-      .fn()
-      .mockRejectedValue(new Error('Refresh failed'));
+    const refreshCallback = vi.fn().mockRejectedValue(new Error('Refresh failed'));
     const token = createTestToken(1000); // expires very soon
 
     if (storage.scheduleRefresh) {
@@ -149,8 +143,7 @@ describe('Callback Management', () => {
       await storage.store(createTestToken(7200000));
 
       // Simulate timeout
-      const latestCall =
-        mockSetTimeout.mock.calls[mockSetTimeout.mock.calls.length - 1];
+      const latestCall = mockSetTimeout.mock.calls[mockSetTimeout.mock.calls.length - 1];
       const scheduledCallback = latestCall[0];
       await scheduledCallback();
 

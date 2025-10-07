@@ -1,8 +1,4 @@
-import type {
-  CommandInstallerContext,
-  InstalledCommand,
-  InstallOptions,
-} from '../types/index.js';
+import type { CommandInstallerContext, InstalledCommand, InstallOptions } from '../types/index.js';
 import { initialize } from './initialize.js';
 import { readManifest } from '@mcp-funnel/commands-core';
 import { findMatchingCommand } from './findMatchingCommand.js';
@@ -76,13 +72,10 @@ export async function install(
   }
 
   const packagesJsonBefore = await readPackagesPackageJson(context.packagesDir);
-  const dependencyGuess =
-    existing?.package || extractPackageNameFromSpec(packageSpec);
+  const dependencyGuess = existing?.package || extractPackageNameFromSpec(packageSpec);
 
   // Determine the install spec
-  const installSpec = options.version
-    ? `${dependencyGuess}@${options.version}`
-    : packageSpec;
+  const installSpec = options.version ? `${dependencyGuess}@${options.version}` : packageSpec;
 
   console.info(`Installing command package: ${installSpec}`);
 
@@ -96,9 +89,7 @@ export async function install(
       console.warn('Installation warnings:', stderr);
     }
 
-    const packagesJsonAfter = await readPackagesPackageJson(
-      context.packagesDir,
-    );
+    const packagesJsonAfter = await readPackagesPackageJson(context.packagesDir);
     const resolvedPackageName = resolveInstalledPackageName({
       installSpec,
       packageSpec,
@@ -109,10 +100,7 @@ export async function install(
     });
 
     // Load the installed command to get metadata
-    const commandPath = getPackagePath(
-      context.packagesDir,
-      resolvedPackageName,
-    );
+    const commandPath = getPackagePath(context.packagesDir, resolvedPackageName);
     const command = await loadCommand(commandPath);
 
     if (!command) {
@@ -140,9 +128,7 @@ export async function install(
 
     // Update manifest
     if (existing) {
-      const index = manifest.commands.findIndex(
-        (cmd) => cmd.package === existing.package,
-      );
+      const index = manifest.commands.findIndex((cmd) => cmd.package === existing.package);
       manifest.commands[index] = installedCommand;
     } else {
       manifest.commands.push(installedCommand);

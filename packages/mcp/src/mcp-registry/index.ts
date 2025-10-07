@@ -41,7 +41,4 @@ export { RegistryContext } from './registry-context.js';
 export { NoOpCache } from './implementations/cache-noop.js';
 export { TemporaryServerTracker } from './implementations/temp-server-tracker.js';
 export { ReadOnlyConfigManager } from './implementations/config-readonly.js';
-export {
-  generateConfigSnippet,
-  generateInstallInstructions,
-} from './config-generator.js';
+export { generateConfigSnippet, generateInstallInstructions } from './config-generator.js';

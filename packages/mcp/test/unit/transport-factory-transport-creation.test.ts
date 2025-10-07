@@ -61,9 +61,7 @@ describe('TransportFactory - Transport Creation', () => {
       command: 'test',
     };
 
-    await expect(createTransport(config)).rejects.toThrow(
-      'Unsupported transport type: unknown',
-    );
+    await expect(createTransport(config)).rejects.toThrow('Unsupported transport type: unknown');
   });
 
   it('should apply default values for optional config fields', async () => {

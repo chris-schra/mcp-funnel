@@ -65,9 +65,7 @@ export class DebuggerSession {
     this.config = config;
     this.maxScriptCacheSize = config.maxScriptCacheSize ?? 1000;
     const nodeTarget = this.getNodeTargetConfig(config.target);
-    this.targetWorkingDirectory = nodeTarget.cwd
-      ? path.resolve(nodeTarget.cwd)
-      : process.cwd();
+    this.targetWorkingDirectory = nodeTarget.cwd ? path.resolve(nodeTarget.cwd) : process.cwd();
     this.descriptor = this.createInitialDescriptor();
 
     this.processManager = new SessionProcessManager(
@@ -91,13 +89,7 @@ export class DebuggerSession {
     this.scopeInspector = new SessionScopeInspector(
       (method, params) => this.processManager.sendCommand(method, params),
       (text) => {
-        const entry = buildConsoleEntry(
-          'info',
-          'log-entry',
-          [],
-          Date.now(),
-          undefined,
-        );
+        const entry = buildConsoleEntry('info', 'log-entry', [], Date.now(), undefined);
         entry.text = text;
         this.outputBuffer.addConsole(entry);
       },
@@ -134,9 +126,7 @@ export class DebuggerSession {
     return {
       ...this.descriptor,
       target: { ...this.descriptor.target },
-      inspector: this.descriptor.inspector
-        ? { ...this.descriptor.inspector }
-        : undefined,
+      inspector: this.descriptor.inspector ? { ...this.descriptor.inspector } : undefined,
       state: this.buildSessionState(),
     };
   }
@@ -169,10 +159,7 @@ export class DebuggerSession {
       .once('execution-complete')
       .then(() => this.processManager.closeConnection())
       .catch((err) =>
-        console.error(
-          `Session ${this.id}: Error disconnecting after execution complete:`,
-          err,
-        ),
+        console.error(`Session ${this.id}: Error disconnecting after execution complete:`, err),
       );
 
     const { breakpoints, initialPause } = await performInitialization({
@@ -194,9 +181,7 @@ export class DebuggerSession {
     return { session: this.getDescriptor(), breakpoints, initialPause };
   }
 
-  public async runCommand(
-    command: DebuggerCommand,
-  ): Promise<DebuggerCommandResult> {
+  public async runCommand(command: DebuggerCommand): Promise<DebuggerCommandResult> {
     const mutationResult = await this.breakpointManager.applyBreakpointMutation(
       command.breakpoints,
     );
@@ -204,8 +189,7 @@ export class DebuggerSession {
     const executionContext: CommandExecutionContext = {
       status: this.status,
       events: this.events,
-      sendCommand: (method, params) =>
-        this.processManager.sendCommand(method, params),
+      sendCommand: (method, params) => this.processManager.sendCommand(method, params),
       eventProcessor: this.eventProcessor,
       breakpointManager: this.breakpointManager,
       setCommandIntent: (intent) => {
@@ -223,10 +207,8 @@ export class DebuggerSession {
       session: this.getDescriptor(),
       commandAck: buildCommandAcknowledgment(command),
     };
-    if (mutationResult.set.length > 0)
-      response.setBreakpoints = mutationResult.set;
-    if (mutationResult.removed.length > 0)
-      response.removedBreakpoints = mutationResult.removed;
+    if (mutationResult.set.length > 0) response.setBreakpoints = mutationResult.set;
+    if (mutationResult.removed.length > 0) response.removedBreakpoints = mutationResult.removed;
     if (pauseDetails) response.pause = pauseDetails;
     return response;
   }
@@ -238,13 +220,9 @@ export class DebuggerSession {
   public async getScopeVariables(query: ScopeQuery): Promise<ScopeQueryResult> {
     const lastPause = this.eventProcessor.getLastPause();
     if (!lastPause) {
-      throw new Error(
-        'Session is not paused. Pause execution before inspecting scopes.',
-      );
+      throw new Error('Session is not paused. Pause execution before inspecting scopes.');
     }
-    const callFrame = lastPause.callFrames.find(
-      (frame) => frame.callFrameId === query.callFrameId,
-    );
+    const callFrame = lastPause.callFrames.find((frame) => frame.callFrameId === query.callFrameId);
     if (!callFrame) {
       throw new Error(`Call frame ${query.callFrameId} not found.`);
     }
@@ -335,9 +313,7 @@ export class DebuggerSession {
     };
   }
 
-  private getNodeTargetConfig(
-    target: DebugSessionConfig['target'],
-  ): NodeDebugTargetConfig {
+  private getNodeTargetConfig(target: DebugSessionConfig['target']): NodeDebugTargetConfig {
     if ((target as NodeDebugTargetConfig).type !== 'node') {
       throw new Error('Only Node.js targets are currently supported.');
     }
@@ -366,10 +342,7 @@ export class DebuggerSession {
     }
   }
 
-  private handleProcessExit(
-    code: number | null,
-    signal?: NodeJS.Signals,
-  ): void {
+  private handleProcessExit(code: number | null, signal?: NodeJS.Signals): void {
     if (this.terminated) return;
     this.terminated = true;
     this.updateStatus({

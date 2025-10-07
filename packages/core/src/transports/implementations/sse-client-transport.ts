@@ -19,16 +19,9 @@
  */
 
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import {
-  EventSource,
-  EventSourceFetchInit,
-  FetchLikeResponse,
-} from 'eventsource';
+import { EventSource, EventSourceFetchInit, FetchLikeResponse } from 'eventsource';
 import { TransportError } from '../errors/transport-error.js';
-import {
-  BaseClientTransport,
-  BaseClientTransportConfig,
-} from './base-client-transport.js';
+import { BaseClientTransport, BaseClientTransportConfig } from './base-client-transport.js';
 import { logEvent } from '../../logger.js';
 
 /**
@@ -117,10 +110,7 @@ export class SSEClientTransport extends BaseClientTransport {
    * @param message - JSON-RPC message to send
    */
   protected async sendMessage(message: JSONRPCMessage): Promise<void> {
-    await this.executeHttpRequest(
-      message,
-      AbortSignal.timeout(this.config.timeout),
-    );
+    await this.executeHttpRequest(message, AbortSignal.timeout(this.config.timeout));
   }
 
   /**
@@ -180,10 +170,7 @@ export class SSEClientTransport extends BaseClientTransport {
    * @returns Custom fetch function with auth headers injected
    */
   private createAuthenticatedFetch(authHeaders: Record<string, string>) {
-    return async (
-      url: string | URL,
-      init: EventSourceFetchInit,
-    ): Promise<FetchLikeResponse> => {
+    return async (url: string | URL, init: EventSourceFetchInit): Promise<FetchLikeResponse> => {
       // Merge auth headers with any existing headers
       const mergedHeaders = {
         ...init.headers,
@@ -225,10 +212,7 @@ export class SSEClientTransport extends BaseClientTransport {
         this.eventSource.removeEventListener('open', this.boundHandlers.open);
       }
       if (this.boundHandlers.message) {
-        this.eventSource.removeEventListener(
-          'message',
-          this.boundHandlers.message,
-        );
+        this.eventSource.removeEventListener('message', this.boundHandlers.message);
       }
       if (this.boundHandlers.error) {
         this.eventSource.removeEventListener('error', this.boundHandlers.error);

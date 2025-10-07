@@ -235,14 +235,8 @@ describe('Multi-Server Integration', () => {
   describe('Tool Call Routing', () => {
     it('should route tool calls to the correct server', async () => {
       const toolMapping = new Map([
-        [
-          'github__create_issue',
-          { server: 'github', originalName: 'create_issue' },
-        ],
-        [
-          'memory__store_memory',
-          { server: 'memory', originalName: 'store_memory' },
-        ],
+        ['github__create_issue', { server: 'github', originalName: 'create_issue' }],
+        ['memory__store_memory', { server: 'memory', originalName: 'store_memory' }],
       ]);
 
       const routeToolCall = (toolName: string, args: unknown) => {
@@ -272,9 +266,7 @@ describe('Multi-Server Integration', () => {
       expect(memoryCall.tool).toBe('store_memory');
       expect((memoryCall.args as { content: string }).content).toBe('Data');
 
-      expect(() => routeToolCall('unknown__tool', {})).toThrow(
-        'Tool not found',
-      );
+      expect(() => routeToolCall('unknown__tool', {})).toThrow('Tool not found');
     });
   });
 });

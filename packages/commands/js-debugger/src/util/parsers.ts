@@ -25,9 +25,7 @@ import {
  * @returns Parsed debug session configuration
  * @throws Error if input is invalid
  */
-export function parseDebugSessionConfig(
-  input: Record<string, unknown>,
-): DebugSessionConfig {
+export function parseDebugSessionConfig(input: Record<string, unknown>): DebugSessionConfig {
   const id = optionalString(input.id, 'id');
   const target = expectRecord(input.target, 'target');
   const targetType = expectString(target.type, 'target.type');
@@ -41,17 +39,11 @@ export function parseDebugSessionConfig(
   const nodeTarget = {
     type: 'node' as const,
     entry,
-    entryArguments: optionalStringArray(
-      target.entryArguments,
-      'target.entryArguments',
-    ),
+    entryArguments: optionalStringArray(target.entryArguments, 'target.entryArguments'),
     cwd: optionalString(target.cwd, 'target.cwd'),
     env: optionalStringRecord(target.env, 'target.env'),
     useTsx: optionalBoolean(target.useTsx, 'target.useTsx'),
-    runtimeArguments: optionalStringArray(
-      target.runtimeArguments,
-      'target.runtimeArguments',
-    ),
+    runtimeArguments: optionalStringArray(target.runtimeArguments, 'target.runtimeArguments'),
     nodePath: optionalString(target.nodePath, 'target.nodePath'),
     inspectHost: optionalString(target.inspectHost, 'target.inspectHost'),
   } satisfies DebugSessionConfig['target'];
@@ -62,10 +54,7 @@ export function parseDebugSessionConfig(
     config.breakpoints = parseBreakpointArray(input.breakpoints, 'breakpoints');
   }
   if (input.resumeAfterConfigure !== undefined) {
-    config.resumeAfterConfigure = expectBoolean(
-      input.resumeAfterConfigure,
-      'resumeAfterConfigure',
-    );
+    config.resumeAfterConfigure = expectBoolean(input.resumeAfterConfigure, 'resumeAfterConfigure');
   }
 
   return config;
@@ -77,9 +66,7 @@ export function parseDebugSessionConfig(
  * @returns Parsed debugger command
  * @throws Error if input is invalid
  */
-export function parseDebuggerCommand(
-  input: Record<string, unknown>,
-): DebuggerCommand {
+export function parseDebuggerCommand(input: Record<string, unknown>): DebuggerCommand {
   const sessionId = expectString(input.sessionId, 'sessionId');
   const action = expectString(input.action, 'action');
   const breakpoints = parseBreakpointMutation(input.breakpoints);
@@ -116,8 +103,7 @@ export function parseScopeQuery(input: Record<string, unknown>): ScopeQuery {
   const callFrameId = expectString(input.callFrameId, 'callFrameId');
   const scopeNumber = expectNumber(input.scopeNumber, 'scopeNumber');
   const path = input.path ? parseScopePath(input.path, 'path') : undefined;
-  const depth =
-    input.depth !== undefined ? expectNumber(input.depth, 'depth') : undefined;
+  const depth = input.depth !== undefined ? expectNumber(input.depth, 'depth') : undefined;
   const maxProperties =
     input.maxProperties !== undefined
       ? expectNumber(input.maxProperties, 'maxProperties')
@@ -134,28 +120,20 @@ export function parseScopeQuery(input: Record<string, unknown>): ScopeQuery {
  */
 export function parseOutputQuery(input: Record<string, unknown>): OutputQuery {
   const sessionId = expectString(input.sessionId, 'sessionId');
-  const since =
-    input.since !== undefined ? expectNumber(input.since, 'since') : undefined;
-  const limit =
-    input.limit !== undefined ? expectNumber(input.limit, 'limit') : undefined;
+  const since = input.since !== undefined ? expectNumber(input.since, 'since') : undefined;
+  const limit = input.limit !== undefined ? expectNumber(input.limit, 'limit') : undefined;
   const search = optionalString(input.search, 'search');
 
-  const streams = input.streams
-    ? optionalStringArray(input.streams, 'streams')
-    : undefined;
+  const streams = input.streams ? optionalStringArray(input.streams, 'streams') : undefined;
   if (streams) {
     for (const stream of streams) {
       if (stream !== 'stdout' && stream !== 'stderr') {
-        throw new Error(
-          `streams entries must be 'stdout' or 'stderr' (received ${stream}).`,
-        );
+        throw new Error(`streams entries must be 'stdout' or 'stderr' (received ${stream}).`);
       }
     }
   }
 
-  const levels = input.levels
-    ? optionalStringArray(input.levels, 'levels')
-    : undefined;
+  const levels = input.levels ? optionalStringArray(input.levels, 'levels') : undefined;
   if (levels) {
     for (const level of levels) {
       if (!['log', 'error', 'warn', 'info', 'debug'].includes(level)) {
@@ -186,9 +164,7 @@ export function parseOutputQuery(input: Record<string, unknown>): OutputQuery {
  * @returns Parsed breakpoint mutation or undefined
  * @throws Error if input is invalid
  */
-function parseBreakpointMutation(
-  value: unknown,
-): BreakpointMutation | undefined {
+function parseBreakpointMutation(value: unknown): BreakpointMutation | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -217,10 +193,7 @@ function parseBreakpointArray(value: unknown, label: string): BreakpointSpec[] {
     throw new Error(`${label} must be an array.`);
   }
   return value.map((entry, index) =>
-    parseBreakpointSpec(
-      expectRecord(entry, `${label}[${index}]`),
-      `${label}[${index}]`,
-    ),
+    parseBreakpointSpec(expectRecord(entry, `${label}[${index}]`), `${label}[${index}]`),
   );
 }
 
@@ -231,10 +204,7 @@ function parseBreakpointArray(value: unknown, label: string): BreakpointSpec[] {
  * @returns Parsed breakpoint spec
  * @throws Error if input is invalid
  */
-function parseBreakpointSpec(
-  value: Record<string, unknown>,
-  label: string,
-): BreakpointSpec {
+function parseBreakpointSpec(value: Record<string, unknown>, label: string): BreakpointSpec {
   const locationRecord = expectRecord(value.location, `${label}.location`);
   const location = parseBreakpointLocation(locationRecord, `${label}.location`);
   const condition = optionalString(value.condition, `${label}.condition`);
@@ -294,8 +264,6 @@ function parseScopePath(value: unknown, label: string): ScopePathSegment[] {
       const prop = expectString(record.property, `${label}[${index}].property`);
       return { property: prop };
     }
-    throw new Error(
-      `${label}[${index}] must include either "index" or "property".`,
-    );
+    throw new Error(`${label}[${index}] must include either "index" or "property".`);
   });
 }

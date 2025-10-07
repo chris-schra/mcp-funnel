@@ -16,10 +16,7 @@ describe('LoadToolset', () => {
 
   describe('pattern matching', () => {
     it('should match exact tool names', async () => {
-      await loadToolset.handle(
-        { tools: ['github__create_issue'] },
-        mockContext,
-      );
+      await loadToolset.handle({ tools: ['github__create_issue'] }, mockContext);
 
       expect(enabledTools).toEqual(['github__create_issue']);
     });

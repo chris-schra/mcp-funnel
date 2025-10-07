@@ -54,9 +54,7 @@ describe('NoOpCache', () => {
       expect(await cache.get('tool:github__create_issue')).toBeNull();
       expect(await cache.get('registry:servers')).toBeNull();
       expect(await cache.get('')).toBeNull();
-      expect(
-        await cache.get('some-very-long-key-name-that-might-exist'),
-      ).toBeNull();
+      expect(await cache.get('some-very-long-key-name-that-might-exist')).toBeNull();
     });
 
     it('should return null even after setting values', async () => {
@@ -73,9 +71,7 @@ describe('NoOpCache', () => {
     it('should accept values without error', async () => {
       // Test that set operations complete without throwing
       await expect(cache.set('key1', 'string-value')).resolves.not.toThrow();
-      await expect(
-        cache.set('key2', { complex: 'object' }),
-      ).resolves.not.toThrow();
+      await expect(cache.set('key2', { complex: 'object' })).resolves.not.toThrow();
       await expect(cache.set('key3', 12345)).resolves.not.toThrow();
       await expect(cache.set('key4', null)).resolves.not.toThrow();
       await expect(cache.set('key5', undefined)).resolves.not.toThrow();
@@ -83,16 +79,10 @@ describe('NoOpCache', () => {
 
     it('should accept TTL parameter but ignore it', async () => {
       // Test that TTL parameter is accepted but has no effect
-      await expect(
-        cache.set('key-with-ttl', 'value', 1000),
-      ).resolves.not.toThrow();
+      await expect(cache.set('key-with-ttl', 'value', 1000)).resolves.not.toThrow();
       await expect(cache.set('key-no-ttl', 'value')).resolves.not.toThrow();
-      await expect(
-        cache.set('key-zero-ttl', 'value', 0),
-      ).resolves.not.toThrow();
-      await expect(
-        cache.set('key-negative-ttl', 'value', -1),
-      ).resolves.not.toThrow();
+      await expect(cache.set('key-zero-ttl', 'value', 0)).resolves.not.toThrow();
+      await expect(cache.set('key-negative-ttl', 'value', -1)).resolves.not.toThrow();
 
       // Verify that values are still not stored regardless of TTL
       expect(await cache.get('key-with-ttl')).toBeNull();
@@ -133,9 +123,7 @@ describe('NoOpCache', () => {
     it('should not error when deleting non-existent keys', async () => {
       // Test that delete operations complete without throwing for any key
       await expect(cache.delete('non-existent-key')).resolves.not.toThrow();
-      await expect(
-        cache.delete('tool:github__create_issue'),
-      ).resolves.not.toThrow();
+      await expect(cache.delete('tool:github__create_issue')).resolves.not.toThrow();
       await expect(cache.delete('')).resolves.not.toThrow();
       await expect(cache.delete('some-random-key')).resolves.not.toThrow();
     });
@@ -185,8 +173,7 @@ describe('NoOpCache', () => {
         description: string;
       }
 
-      const typedCache: IRegistryCache<ToolData> =
-        new MockNoOpCache<ToolData>();
+      const typedCache: IRegistryCache<ToolData> = new MockNoOpCache<ToolData>();
 
       const toolData: ToolData = {
         name: 'create_issue',
@@ -194,9 +181,7 @@ describe('NoOpCache', () => {
         description: 'Creates a GitHub issue',
       };
 
-      await expect(
-        typedCache.set('tool:github__create_issue', toolData),
-      ).resolves.not.toThrow();
+      await expect(typedCache.set('tool:github__create_issue', toolData)).resolves.not.toThrow();
       expect(await typedCache.get('tool:github__create_issue')).toBeNull();
       expect(await typedCache.has('tool:github__create_issue')).toBe(false);
     });
@@ -213,8 +198,7 @@ describe('NoOpCache', () => {
       expect(await numberCache.get('number-key')).toBeNull();
 
       // Test with boolean cache
-      const booleanCache: IRegistryCache<boolean> =
-        new MockNoOpCache<boolean>();
+      const booleanCache: IRegistryCache<boolean> = new MockNoOpCache<boolean>();
       await booleanCache.set('boolean-key', true);
       expect(await booleanCache.get('boolean-key')).toBeNull();
     });
@@ -222,8 +206,7 @@ describe('NoOpCache', () => {
     it('should work with union types', async () => {
       // Test with union type cache
       type CacheValue = string | number | { id: number; name: string };
-      const unionCache: IRegistryCache<CacheValue> =
-        new MockNoOpCache<CacheValue>();
+      const unionCache: IRegistryCache<CacheValue> = new MockNoOpCache<CacheValue>();
 
       await unionCache.set('string-value', 'test');
       await unionCache.set('number-value', 123);
@@ -239,16 +222,10 @@ describe('NoOpCache', () => {
     it('should accept various TTL values without error', async () => {
       // Test that different TTL values are accepted
       await expect(cache.set('ttl-1000', 'value', 1000)).resolves.not.toThrow();
-      await expect(
-        cache.set('ttl-60000', 'value', 60000),
-      ).resolves.not.toThrow();
+      await expect(cache.set('ttl-60000', 'value', 60000)).resolves.not.toThrow();
       await expect(cache.set('ttl-0', 'value', 0)).resolves.not.toThrow();
-      await expect(
-        cache.set('ttl-negative', 'value', -1),
-      ).resolves.not.toThrow();
-      await expect(
-        cache.set('ttl-undefined', 'value', undefined),
-      ).resolves.not.toThrow();
+      await expect(cache.set('ttl-negative', 'value', -1)).resolves.not.toThrow();
+      await expect(cache.set('ttl-undefined', 'value', undefined)).resolves.not.toThrow();
     });
 
     it('should ignore TTL and not store values regardless', async () => {

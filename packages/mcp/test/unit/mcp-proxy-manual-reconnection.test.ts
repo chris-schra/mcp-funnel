@@ -57,20 +57,14 @@ type MockTransport = {
 let mockTransports: Map<string, MockTransport>;
 let config: ProxyConfig;
 
-const _ensureServerConnected = async (
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> => {
+const _ensureServerConnected = async (proxy: MCPProxy, serverName: string): Promise<void> => {
   const status = proxy.getServerStatus(serverName);
   if (status.status !== 'connected') {
     await proxy.reconnectServer(serverName);
   }
 };
 
-const _ensureServerDisconnected = async (
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> => {
+const _ensureServerDisconnected = async (proxy: MCPProxy, serverName: string): Promise<void> => {
   const status = proxy.getServerStatus(serverName);
   if (status.status === 'connected') {
     await proxy.disconnectServer(serverName);
@@ -136,9 +130,7 @@ describe('MCPProxy Reconnection Logic - Manual Reconnection', () => {
 
   it('should successfully reconnect a disconnected server', async () => {
     // Initialize with failing connections to keep servers disconnected
-    mockClient.connect.mockRejectedValue(
-      new Error('Initial connection failed'),
-    );
+    mockClient.connect.mockRejectedValue(new Error('Initial connection failed'));
     await mcpProxy.initialize();
 
     // Reset the mock for successful reconnection
@@ -164,10 +156,7 @@ describe('MCPProxy Reconnection Logic - Manual Reconnection', () => {
     // Mock the transport creation
     const { StdioClientTransport } = await import('@mcp-funnel/core');
     vi.mocked(StdioClientTransport).mockImplementation(
-      () =>
-        mockStdioTransport as unknown as InstanceType<
-          typeof StdioClientTransport
-        >,
+      () => mockStdioTransport as unknown as InstanceType<typeof StdioClientTransport>,
     );
 
     // Set up event listeners to verify events are emitted
@@ -224,9 +213,7 @@ describe('MCPProxy Reconnection Logic - Manual Reconnection', () => {
 
   it('should handle reconnection failure gracefully', async () => {
     // Initialize with failing connections to keep servers disconnected
-    mockClient.connect.mockRejectedValue(
-      new Error('Initial connection failed'),
-    );
+    mockClient.connect.mockRejectedValue(new Error('Initial connection failed'));
     await mcpProxy.initialize();
 
     const serverName = 'test-server';
@@ -236,9 +223,7 @@ describe('MCPProxy Reconnection Logic - Manual Reconnection', () => {
     mockClient.connect.mockRejectedValueOnce(connectionError);
 
     // Attempt reconnection - should throw but not crash
-    await expect(mcpProxy.reconnectServer(serverName)).rejects.toThrow(
-      'Connection failed',
-    );
+    await expect(mcpProxy.reconnectServer(serverName)).rejects.toThrow('Connection failed');
 
     // Verify the server remains disconnected with error info
     const status = mcpProxy.getServerStatus(serverName);
@@ -248,9 +233,7 @@ describe('MCPProxy Reconnection Logic - Manual Reconnection', () => {
 
   it('should reset reconnection attempts counter on manual reconnection', async () => {
     // Initialize with failing connections to keep servers disconnected
-    mockClient.connect.mockRejectedValue(
-      new Error('Initial connection failed'),
-    );
+    mockClient.connect.mockRejectedValue(new Error('Initial connection failed'));
     await mcpProxy.initialize();
 
     // Reset mock for successful reconnection

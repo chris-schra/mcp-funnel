@@ -41,39 +41,29 @@ describe('Bearer Token Authentication', () => {
     testPort = address.port;
 
     // Test authenticated request
-    const authResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-      {
-        headers: {
-          Authorization: 'Bearer test-auth-token-123',
-        },
+    const authResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
+      headers: {
+        Authorization: 'Bearer test-auth-token-123',
       },
-    );
+    });
 
     expect(authResponse.status).toBe(200);
     const authData = await authResponse.json();
     expect(authData.status).toBe('ok');
 
     // Test unauthenticated request
-    const noAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-    );
+    const noAuthResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`);
     expect(noAuthResponse.status).toBe(401);
     const noAuthData = await noAuthResponse.json();
     expect(noAuthData.error).toBe('Unauthorized');
-    expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe(
-      'Bearer realm="MCP Proxy API"',
-    );
+    expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
 
     // Test invalid token
-    const invalidAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-      {
-        headers: {
-          Authorization: 'Bearer invalid-token',
-        },
+    const invalidAuthResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
+      headers: {
+        Authorization: 'Bearer invalid-token',
       },
-    );
+    });
     expect(invalidAuthResponse.status).toBe(401);
   });
 
@@ -125,9 +115,7 @@ describe('Bearer Token Authentication', () => {
 
       noAuthWs.on('open', () => {
         noAuthWs.close();
-        reject(
-          new Error('Unauthenticated WebSocket connection should have failed'),
-        );
+        reject(new Error('Unauthenticated WebSocket connection should have failed'));
       });
 
       noAuthWs.on('error', () => {
@@ -162,19 +150,14 @@ describe('Bearer Token Authentication', () => {
     testPort = address.port;
 
     // Health endpoint now requires auth for security
-    const healthNoAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-    );
+    const healthNoAuthResponse = await fetch(`http://localhost:${testPort}/api/health`);
     expect(healthNoAuthResponse.status).toBe(401);
 
-    const healthAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-      {
-        headers: {
-          Authorization: 'Bearer test-token',
-        },
+    const healthAuthResponse = await fetch(`http://localhost:${testPort}/api/health`, {
+      headers: {
+        Authorization: 'Bearer test-token',
       },
-    );
+    });
     expect(healthAuthResponse.status).toBe(200);
     const healthData = await healthAuthResponse.json();
     expect(healthData.status).toBe('ok');

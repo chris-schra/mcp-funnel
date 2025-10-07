@@ -2,10 +2,7 @@
  * Utility functions for npm-lookup command
  */
 export { truncateText } from './text.js';
-export {
-  transformPackageResponse,
-  transformSearchResponse,
-} from './transform.js';
+export { transformPackageResponse, transformSearchResponse } from './transform.js';
 export {
   validatePackageNameParameter,
   validateQueryParameter,

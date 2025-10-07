@@ -139,12 +139,7 @@ describe('Secrets Configuration Tests', () => {
 
         const result = ProxyConfigSchema.parse(validConfig);
         expect(result).toEqual(validConfig);
-        expect(result.defaultPassthroughEnv).toEqual([
-          'PATH',
-          'HOME',
-          'USER',
-          'NODE_ENV',
-        ]);
+        expect(result.defaultPassthroughEnv).toEqual(['PATH', 'HOME', 'USER', 'NODE_ENV']);
       });
 
       it('should validate empty defaultPassthroughEnv array', () => {
@@ -250,15 +245,9 @@ describe('Secrets Configuration Tests', () => {
           config: { values: { SECRET: 'value' } },
         };
 
-        expect(SecretProviderConfigSchema.parse(dotenvProvider)).toEqual(
-          dotenvProvider,
-        );
-        expect(SecretProviderConfigSchema.parse(processProvider)).toEqual(
-          processProvider,
-        );
-        expect(SecretProviderConfigSchema.parse(inlineProvider)).toEqual(
-          inlineProvider,
-        );
+        expect(SecretProviderConfigSchema.parse(dotenvProvider)).toEqual(dotenvProvider);
+        expect(SecretProviderConfigSchema.parse(processProvider)).toEqual(processProvider);
+        expect(SecretProviderConfigSchema.parse(inlineProvider)).toEqual(inlineProvider);
       });
 
       it('should reject mismatched type and config combinations', () => {

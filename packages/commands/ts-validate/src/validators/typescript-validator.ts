@@ -52,9 +52,7 @@ export function filterTsFilesByRootConfig(tsFiles: string[]): string[] {
   }
 
   try {
-    const rootConfig = JSON.parse(
-      fssync.readFileSync(rootTsConfigPath, 'utf-8'),
-    );
+    const rootConfig = JSON.parse(fssync.readFileSync(rootTsConfigPath, 'utf-8'));
     const rootExcludePatterns: string[] = rootConfig.exclude || [];
 
     // Pre-compile minimatch matchers outside the filter loop for performance
@@ -112,11 +110,7 @@ export async function validateTypeScriptWithConfig(
 
   const ts = await loadTypeScript(tsConfigFile, tsNs);
   const { config } = ts.readConfigFile(tsConfigFile, ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(
-    config,
-    ts.sys,
-    path.dirname(tsConfigFile),
-  );
+  const parsed = ts.parseJsonConfigFileContent(config, ts.sys, path.dirname(tsConfigFile));
 
   if (parsed.errors.length === 0) {
     const program = ts.createProgram({
@@ -135,14 +129,8 @@ export async function validateTypeScriptWithConfig(
       const file = diagnostic.file.fileName;
       if (!filesToValidate.has(file)) continue;
       const start = diagnostic.start || 0;
-      const { line, character } = ts.getLineAndCharacterOfPosition(
-        diagnostic.file,
-        start,
-      );
-      const message = ts.flattenDiagnosticMessageText(
-        diagnostic.messageText,
-        '\n',
-      );
+      const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, start);
+      const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
       const suggestedFix = getTypeScriptFix(diagnostic);
       const isError = diagnostic.category === ts.DiagnosticCategory.Error;
       ctx.addResult(file, {
@@ -211,19 +199,12 @@ export async function validateTypeScriptByDiscovery(
     const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
 
     // Parse the config for this project
-    const parsed = ts.parseJsonConfigFileContent(
-      config,
-      ts.sys,
-      path.dirname(configPath),
-    );
+    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, path.dirname(configPath));
 
     if (parsed.errors.length > 0) {
       console.error(chalk.red(`Error parsing ${configPath}:`));
       parsed.errors.forEach((error) => {
-        const message = ts!.flattenDiagnosticMessageText(
-          error.messageText,
-          '\n',
-        );
+        const message = ts!.flattenDiagnosticMessageText(error.messageText, '\n');
         console.error(`  ${message}`);
       });
       continue;
@@ -253,15 +234,9 @@ export async function validateTypeScriptByDiscovery(
       if (!filesToValidate.has(file)) continue;
 
       const start = diagnostic.start || 0;
-      const { line, character } = ts.getLineAndCharacterOfPosition(
-        diagnostic.file,
-        start,
-      );
+      const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, start);
 
-      const message = ts.flattenDiagnosticMessageText(
-        diagnostic.messageText,
-        '\n',
-      );
+      const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
 
       const suggestedFix = getTypeScriptFix(diagnostic);
       const isError = diagnostic.category === ts.DiagnosticCategory.Error;

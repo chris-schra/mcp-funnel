@@ -13,9 +13,7 @@ import type { BreakpointSpec } from '../src/types/index.js';
 describe.concurrent('Breakpoint Management', () => {
   describe('Setting breakpoints by URL', () => {
     it('should set a breakpoint using URL', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const breakpoint: BreakpointSpec = {
           location: { url: fixture.tempPath, lineNumber: 13 },
@@ -37,9 +35,7 @@ describe.concurrent('Breakpoint Management', () => {
     });
 
     it('should set multiple breakpoints on same file', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const result = await manager.runCommand({
           sessionId,
@@ -63,9 +59,7 @@ describe.concurrent('Breakpoint Management', () => {
 
   describe('Conditional breakpoints', () => {
     it('should set a conditional breakpoint', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const result = await manager.runCommand({
           sessionId,
@@ -80,18 +74,14 @@ describe.concurrent('Breakpoint Management', () => {
           },
         });
         const summaries = getBreakpointSummary(result);
-        expect(summaries[0].requested.condition).toBe(
-          'payload.original === 21',
-        );
+        expect(summaries[0].requested.condition).toBe('payload.original === 21');
       } finally {
         await cleanup();
       }
     });
 
     it('should not hit breakpoint when condition is false', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         await manager.runCommand({
           sessionId,
@@ -115,9 +105,7 @@ describe.concurrent('Breakpoint Management', () => {
     });
 
     it('should hit breakpoint when condition is true', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const result = await manager.runCommand({
           sessionId,
@@ -141,9 +129,7 @@ describe.concurrent('Breakpoint Management', () => {
 
   describe('Removing breakpoints', () => {
     it('should remove breakpoints and not hit them', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const setResult = await manager.runCommand({
           sessionId,
@@ -171,9 +157,7 @@ describe.concurrent('Breakpoint Management', () => {
     });
 
     it('should remove multiple breakpoints', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const setResult = await manager.runCommand({
           sessionId,
@@ -200,9 +184,7 @@ describe.concurrent('Breakpoint Management', () => {
 
   describe('Breakpoint hit events', () => {
     it('should report pause details and call stack', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const result = await manager.runCommand({
           sessionId,
@@ -222,9 +204,7 @@ describe.concurrent('Breakpoint Management', () => {
 
   describe('continueToLocation', () => {
     it('should continue to specified location', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         await manager.runCommand({ sessionId, action: 'pause' });
         await waitForPause(manager, sessionId);
@@ -240,9 +220,7 @@ describe.concurrent('Breakpoint Management', () => {
     });
 
     it('should resume if location unreachable', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         await manager.runCommand({ sessionId, action: 'pause' });
         await waitForPause(manager, sessionId);
@@ -263,9 +241,7 @@ describe.concurrent('Breakpoint Management', () => {
 
   describe('Breakpoint resolution', () => {
     it('should resolve and distinguish requested vs actual locations', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const result = await manager.runCommand({
           sessionId,
@@ -283,9 +259,7 @@ describe.concurrent('Breakpoint Management', () => {
         if (descriptor.state.status === 'paused') {
           expect(descriptor.state.pause.reason).toBe('breakpoint');
           expect(descriptor.state.pause.hitBreakpoints).toBeDefined();
-          expect(descriptor.state.pause.hitBreakpoints!.length).toBeGreaterThan(
-            0,
-          );
+          expect(descriptor.state.pause.hitBreakpoints!.length).toBeGreaterThan(0);
         }
       } finally {
         await cleanup();
@@ -293,9 +267,7 @@ describe.concurrent('Breakpoint Management', () => {
     });
 
     it('should handle breakpoint in comment gracefully', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         await manager.runCommand({
           sessionId,
@@ -316,9 +288,7 @@ describe.concurrent('Breakpoint Management', () => {
 
   describe('Breakpoint and stepping', () => {
     it('should support stepping from breakpoint', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         await manager.runCommand({
           sessionId,
@@ -339,9 +309,7 @@ describe.concurrent('Breakpoint Management', () => {
     });
 
     it('should continue between multiple breakpoints', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         await manager.runCommand({
           sessionId,
@@ -364,31 +332,23 @@ describe.concurrent('Breakpoint Management', () => {
 
   describe('Edge cases', () => {
     it('should handle setting breakpoint on non-existent file', async () => {
-      const { manager, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const result = await manager.runCommand({
           sessionId,
           action: 'continue',
           breakpoints: {
-            set: [
-              { location: { url: '/non/existent/file.ts', lineNumber: 10 } },
-            ],
+            set: [{ location: { url: '/non/existent/file.ts', lineNumber: 10 } }],
           },
         });
-        expect(getBreakpointSummary(result)[0].resolvedLocations).toHaveLength(
-          0,
-        );
+        expect(getBreakpointSummary(result)[0].resolvedLocations).toHaveLength(0);
       } finally {
         await cleanup();
       }
     });
 
     it('should handle setting and removing in same command', async () => {
-      const { manager, fixture, sessionId, cleanup } = await createFixture(
-        'breakpoint-script.ts',
-      );
+      const { manager, fixture, sessionId, cleanup } = await createFixture('breakpoint-script.ts');
       try {
         const setResult = await manager.runCommand({
           sessionId,

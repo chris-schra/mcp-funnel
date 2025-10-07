@@ -202,10 +202,7 @@ export class MockEventSource extends EventEmitter {
     this.clearReconnectionTimer();
 
     this.reconnectionTimer = setTimeout(() => {
-      if (
-        this.shouldReconnect &&
-        this.readyState === MockEventSource.CONNECTING
-      ) {
+      if (this.shouldReconnect && this.readyState === MockEventSource.CONNECTING) {
         this.connectionAttempts++;
         this.readyState = MockEventSource.OPEN;
         this.emit('open', new Event('open'));
@@ -228,10 +225,7 @@ export class MockEventSource extends EventEmitter {
     this.on(type, listener);
   }
 
-  removeEventListener(
-    type: string,
-    listener: (...args: unknown[]) => void,
-  ): void {
+  removeEventListener(type: string, listener: (...args: unknown[]) => void): void {
     this.off(type, listener);
   }
 

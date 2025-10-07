@@ -37,9 +37,7 @@ export function resolveToolName(
 
   if (allowShort && looksShort) {
     // Try to find tools ending with __<shortname>
-    const candidates = Array.from(toolMapping.keys()).filter((k) =>
-      k.endsWith(`__${inputName}`),
-    );
+    const candidates = Array.from(toolMapping.keys()).filter((k) => k.endsWith(`__${inputName}`));
 
     if (candidates.length === 1) {
       // Unambiguous match found
@@ -69,9 +67,7 @@ export function resolveToolName(
   ];
 
   if (!looksShort || !allowShort) {
-    hintParts.push(
-      'To execute a tool, always use the fully prefixed name (e.g., "server__tool").',
-    );
+    hintParts.push('To execute a tool, always use the fully prefixed name (e.g., "server__tool").');
   }
 
   if (suggestions.length > 0) {

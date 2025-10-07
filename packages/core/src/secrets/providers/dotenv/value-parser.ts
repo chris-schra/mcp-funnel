@@ -90,8 +90,7 @@ export function parseDoubleQuotedValue(value: string): string {
 
   if (!closed) {
     const newlineIndex = result.indexOf('\n');
-    const truncated =
-      newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
+    const truncated = newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
     return `"${truncated}`;
   }
 
@@ -133,8 +132,7 @@ export function parseSingleQuotedValue(value: string): string {
 
   if (!closed) {
     const newlineIndex = result.indexOf('\n');
-    const truncated =
-      newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
+    const truncated = newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
     return `'${truncated}`;
   }
 

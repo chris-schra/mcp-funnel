@@ -56,8 +56,7 @@ describe('OAuth2ClientCredentialsProvider - Error Handling', () => {
       },
       {
         error: 'server_error',
-        description:
-          'The authorization server encountered an unexpected condition',
+        description: 'The authorization server encountered an unexpected condition',
         expectedMessage:
           'OAuth2 authentication failed: server_error - The authorization server encountered an unexpected condition',
       },
@@ -76,9 +75,7 @@ describe('OAuth2ClientCredentialsProvider - Error Handling', () => {
 
       provider = new OAuth2ClientCredentialsProvider(mockConfig, mockStorage);
 
-      await expect(provider.getHeaders()).rejects.toThrow(
-        scenario.expectedMessage,
-      );
+      await expect(provider.getHeaders()).rejects.toThrow(scenario.expectedMessage);
     }
   });
 
@@ -116,17 +113,13 @@ describe('OAuth2ClientCredentialsProvider - Error Handling', () => {
     provider = new OAuth2ClientCredentialsProvider(mockConfig, mockStorage);
 
     // Should throw JSON parsing error
-    await expect(provider.getHeaders()).rejects.toThrow(
-      'Failed to parse OAuth2 token response',
-    );
+    await expect(provider.getHeaders()).rejects.toThrow('Failed to parse OAuth2 token response');
   });
 
   it('should handle token storage errors gracefully', async () => {
     vi.mocked(mockStorage.retrieve).mockResolvedValueOnce(null);
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
-    vi.mocked(mockStorage.store).mockRejectedValue(
-      new Error('Storage unavailable'),
-    );
+    vi.mocked(mockStorage.store).mockRejectedValue(new Error('Storage unavailable'));
 
     // provider = new OAuth2ClientCredentialsProvider(mockConfig, mockStorage);
 

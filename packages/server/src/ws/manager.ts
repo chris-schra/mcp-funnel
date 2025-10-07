@@ -1,10 +1,5 @@
 import { WebSocket } from 'ws';
-import {
-  WSMessageSchema,
-  type WSEvent,
-  type WSMessage,
-  type ExecuteTool,
-} from '../types/index.js';
+import { WSMessageSchema, type WSEvent, type WSMessage, type ExecuteTool } from '../types/index.js';
 import type { MCPProxy } from 'mcp-funnel';
 
 interface Client {
@@ -110,10 +105,7 @@ export class WebSocketManager {
         throw new Error(`Tool not found: ${payload.toolName}`);
       }
 
-      if (!mapping.client)
-        throw new Error(
-          `No mapping client found for tool: ${payload.toolName}`,
-        );
+      if (!mapping.client) throw new Error(`No mapping client found for tool: ${payload.toolName}`);
 
       const result = await mapping.client.callTool({
         name: mapping.originalName,
@@ -162,8 +154,7 @@ export class WebSocketManager {
 
     // Send current tools
     const tools = [];
-    for (const [fullName, { serverName, tool }] of this.mcpProxy
-      .toolDefinitionCache) {
+    for (const [fullName, { serverName, tool }] of this.mcpProxy.toolDefinitionCache) {
       tools.push({
         name: fullName,
         description: tool.description,
@@ -187,9 +178,7 @@ export class WebSocketManager {
 
   private setupProxyEventListeners() {
     if (!this.mcpProxy) {
-      console.warn(
-        '[ws] MCPProxy not available, skipping event listener setup',
-      );
+      console.warn('[ws] MCPProxy not available, skipping event listener setup');
       return;
     }
 
@@ -256,11 +245,7 @@ export class WebSocketManager {
     return false;
   }
 
-  public sendLog(
-    level: 'info' | 'warn' | 'error' | 'debug',
-    message: string,
-    source: string,
-  ) {
+  public sendLog(level: 'info' | 'warn' | 'error' | 'debug', message: string, source: string) {
     this.broadcast({
       type: 'log.message',
       payload: {

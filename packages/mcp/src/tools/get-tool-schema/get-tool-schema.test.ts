@@ -11,10 +11,7 @@ describe('GetToolSchema', () => {
   beforeEach(() => {
     tool = new GetToolSchema();
 
-    const mockToolDefinitionCache = new Map<
-      string,
-      { serverName: string; tool: Tool }
-    >();
+    const mockToolDefinitionCache = new Map<string, { serverName: string; tool: Tool }>();
     mockToolDefinitionCache.set('github__create_issue', {
       serverName: 'github',
       tool: {
@@ -85,8 +82,7 @@ describe('GetToolSchema', () => {
         properties: {
           tool: {
             type: 'string',
-            description:
-              'Full tool name including server prefix (e.g., "github__create_issue")',
+            description: 'Full tool name including server prefix (e.g., "github__create_issue")',
           },
         },
         required: ['tool'],
@@ -104,36 +100,25 @@ describe('GetToolSchema', () => {
     });
 
     it('should be enabled when exposeCoreTools includes tool name', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['get_tool_schema'] }),
-      ).toBe(true);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['get_tool_schema'] })).toBe(true);
     });
 
     it('should be enabled when exposeCoreTools has matching pattern', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['get_*'] })).toBe(
-        true,
-      );
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['get_*'] })).toBe(true);
     });
 
     it('should be enabled when exposeCoreTools is ["*"]', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
-        true,
-      );
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(true);
     });
 
     it('should be disabled when exposeCoreTools excludes the tool', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
-      ).toBe(false);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] })).toBe(false);
     });
   });
 
   describe('handle', () => {
     it('should return tool schema for existing tool', async () => {
-      const result = await tool.handle(
-        { tool: 'github__create_issue' },
-        mockContext,
-      );
+      const result = await tool.handle({ tool: 'github__create_issue' }, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0];
@@ -152,16 +137,11 @@ describe('GetToolSchema', () => {
         required: ['repository', 'title'],
       });
       expect(parsed.usage).toContain('bridge_tool_request');
-      expect(parsed.description).toBe(
-        'Create a new issue in a GitHub repository',
-      );
+      expect(parsed.description).toBe('Create a new issue in a GitHub repository');
     });
 
     it('should return error message for non-existent tool', async () => {
-      const result = await tool.handle(
-        { tool: 'nonexistent__tool' },
-        mockContext,
-      );
+      const result = await tool.handle({ tool: 'nonexistent__tool' }, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0];
@@ -207,10 +187,7 @@ describe('GetToolSchema', () => {
         ...mockContext,
         toolDefinitionCache: undefined,
       };
-      const result = await tool.handle(
-        { tool: 'any__tool' },
-        contextWithoutCache,
-      );
+      const result = await tool.handle({ tool: 'any__tool' }, contextWithoutCache);
 
       const textContent = result.content[0] as { type: string; text: string };
       expect(textContent.text).toContain('Tool not found');

@@ -1,11 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SourceMapConsumer } from 'source-map';
-import type {
-  BasicSourceMapConsumer,
-  NullablePosition,
-  RawSourceMap,
-} from 'source-map';
+import type { BasicSourceMapConsumer, NullablePosition, RawSourceMap } from 'source-map';
 
 import type { ScriptMetadata, ScriptSourceMap } from '../types/index.js';
 import {
@@ -31,9 +27,7 @@ export async function createSourceMap(
   sourceMapUrl: string,
   targetWorkingDirectory: string,
 ): Promise<ScriptSourceMap | undefined> {
-  const scriptDir = metadata.normalizedPath
-    ? path.dirname(metadata.normalizedPath)
-    : undefined;
+  const scriptDir = metadata.normalizedPath ? path.dirname(metadata.normalizedPath) : undefined;
   const raw = await parseSourceMap(sourceMapUrl, scriptDir);
   if (!raw) {
     return undefined;
@@ -41,19 +35,10 @@ export async function createSourceMap(
   const consumer = (await new SourceMapConsumer(raw)) as BasicSourceMapConsumer;
   const sourcesByPath = new Map<string, string>();
   const sourcesByFileUrl = new Map<string, string>();
-  const sourceRoot = resolveSourceRoot(
-    raw.sourceRoot,
-    scriptDir,
-    targetWorkingDirectory,
-  );
+  const sourceRoot = resolveSourceRoot(raw.sourceRoot, scriptDir, targetWorkingDirectory);
 
   for (const sourceId of consumer.sources) {
-    const normalized = normalizeSourcePath(
-      sourceId,
-      sourceRoot,
-      scriptDir,
-      targetWorkingDirectory,
-    );
+    const normalized = normalizeSourcePath(sourceId, sourceRoot, scriptDir, targetWorkingDirectory);
     if (normalized) {
       if (!sourcesByPath.has(normalized)) {
         sourcesByPath.set(normalized, sourceId);
@@ -128,9 +113,7 @@ export async function parseSourceMap(
  *
  * @public
  */
-export function decodeDataUrlSourceMap(
-  dataUrl: string,
-): RawSourceMap | undefined {
+export function decodeDataUrlSourceMap(dataUrl: string): RawSourceMap | undefined {
   const commaIndex = dataUrl.indexOf(',');
   if (commaIndex === -1) {
     return undefined;
@@ -249,9 +232,7 @@ export function hasUriScheme(value: string): boolean {
  *
  * @public
  */
-export function toGeneratedLocation(
-  position: NullablePosition,
-): GeneratedLocation | undefined {
+export function toGeneratedLocation(position: NullablePosition): GeneratedLocation | undefined {
   if (!position.line) {
     return undefined;
   }
@@ -337,9 +318,7 @@ export function collectGeneratedCandidates(
         });
   return positions
     .map((position) => toGeneratedLocation(position))
-    .filter(
-      (location): location is GeneratedLocation => location !== undefined,
-    );
+    .filter((location): location is GeneratedLocation => location !== undefined);
 }
 
 /**
@@ -359,22 +338,12 @@ export function getGeneratedLocation(
   originalLine: number,
   originalColumn: number,
 ): GeneratedLocation | undefined {
-  const direct = lookupGeneratedPosition(
-    consumer,
-    sourceId,
-    originalLine,
-    originalColumn,
-  );
+  const direct = lookupGeneratedPosition(consumer, sourceId, originalLine, originalColumn);
   if (direct) {
     return direct;
   }
 
-  const candidates = collectGeneratedCandidates(
-    consumer,
-    sourceId,
-    originalLine,
-    originalColumn,
-  );
+  const candidates = collectGeneratedCandidates(consumer, sourceId, originalLine, originalColumn);
   if (candidates.length === 0) {
     return undefined;
   }

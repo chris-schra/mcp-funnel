@@ -50,9 +50,7 @@ export function createReconnectionManager(
   // Set up state change handler for max attempts
   reconnectionManager.onStateChange((event) => {
     if (event.to === 'failed') {
-      console.error(
-        `[proxy] Max reconnection attempts reached for ${serverName}`,
-      );
+      console.error(`[proxy] Max reconnection attempts reached for ${serverName}`);
       logEvent('error', 'server:max_reconnection_attempts', {
         name: serverName,
       });
@@ -94,17 +92,9 @@ export interface ReconnectionAttemptConfig {
  * @public
  * @see file:./server-connection-manager.ts:201 - Usage in connection manager
  */
-export async function attemptReconnection(
-  attemptConfig: ReconnectionAttemptConfig,
-): Promise<void> {
-  const {
-    targetServer,
-    reconnectionManager,
-    eventEmitter,
-    connectFn,
-    onSuccess,
-    onFailure,
-  } = attemptConfig;
+export async function attemptReconnection(attemptConfig: ReconnectionAttemptConfig): Promise<void> {
+  const { targetServer, reconnectionManager, eventEmitter, connectFn, onSuccess, onFailure } =
+    attemptConfig;
 
   const serverName = targetServer.name;
   const retryAttempt = reconnectionManager?.getAttemptCount() || 0;

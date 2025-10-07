@@ -9,11 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OAuth2AuthCodeProvider } from '../../implementations/oauth2-authorization-code.js';
 import type { OAuth2AuthCodeConfig } from '@mcp-funnel/models';
-import {
-  createTestConfig,
-  createTestStorage,
-  setupConsoleSpy,
-} from './test-utils.js';
+import { createTestConfig, createTestStorage, setupConsoleSpy } from './test-utils.js';
 import type { MemoryTokenStorage } from '../../implementations/memory-token-storage.js';
 
 describe('State Management Security', () => {
@@ -67,9 +63,9 @@ describe('State Management Security', () => {
     await timeoutExpectation;
 
     // State should be expired and cleaned up
-    await expect(
-      provider.completeOAuthFlow(state, 'test-code'),
-    ).rejects.toThrow('Invalid or expired OAuth state');
+    await expect(provider.completeOAuthFlow(state, 'test-code')).rejects.toThrow(
+      'Invalid or expired OAuth state',
+    );
 
     // Clean up properly
     provider.destroy();

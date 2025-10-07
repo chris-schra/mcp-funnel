@@ -59,8 +59,8 @@ describe('Configuration Validation', () => {
       type: 'unsupported',
     };
 
-    expect(() =>
-      validateAuthConfig(invalidConfig as InboundAuthConfig),
-    ).toThrow('Unsupported authentication type: unsupported');
+    expect(() => validateAuthConfig(invalidConfig as InboundAuthConfig)).toThrow(
+      'Unsupported authentication type: unsupported',
+    );
   });
 });

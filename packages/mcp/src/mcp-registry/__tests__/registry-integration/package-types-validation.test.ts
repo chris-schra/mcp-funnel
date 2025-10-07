@@ -34,13 +34,7 @@ describe('Registry Integration Tests', () => {
       const config = generateConfigSnippet(server);
 
       expect(config.command).toBe('npx');
-      expect(config.args).toEqual([
-        '-y',
-        '@scope/npm-server',
-        '--production',
-        '--port',
-        '3000',
-      ]);
+      expect(config.args).toEqual(['-y', '@scope/npm-server', '--production', '--port', '3000']);
       expect(config.env).toEqual({ NODE_ENV: 'production' });
     });
 
@@ -65,12 +59,7 @@ describe('Registry Integration Tests', () => {
       const config = generateConfigSnippet(server);
 
       expect(config.command).toBe('uvx');
-      expect(config.args).toEqual([
-        'mcp-python-server',
-        '--verbose',
-        '--host',
-        '0.0.0.0',
-      ]);
+      expect(config.args).toEqual(['mcp-python-server', '--verbose', '--host', '0.0.0.0']);
       expect(config.env).toEqual({
         PYTHONPATH: '/opt/mcp',
         LOG_LEVEL: 'DEBUG',
@@ -165,12 +154,7 @@ describe('Registry Integration Tests', () => {
       const config = generateConfigSnippet(server);
 
       expect(config.command).toBe('npx');
-      expect(config.args).toEqual([
-        '-y',
-        'github:owner/repo',
-        'start',
-        '--production',
-      ]);
+      expect(config.args).toEqual(['-y', 'github:owner/repo', 'start', '--production']);
       expect(config.env).toEqual({ NODE_ENV: 'production' });
     });
   });

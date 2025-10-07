@@ -64,12 +64,8 @@ describe('ToolRegistry', () => {
       const teamTools = registry.searchTools(['team']);
 
       // Should not find github__get_teams or github__get_team_members
-      expect(teamTools.map((t) => t.fullName)).not.toContain(
-        'github__get_teams',
-      );
-      expect(teamTools.map((t) => t.fullName)).not.toContain(
-        'github__get_team_members',
-      );
+      expect(teamTools.map((t) => t.fullName)).not.toContain('github__get_teams');
+      expect(teamTools.map((t) => t.fullName)).not.toContain('github__get_team_members');
     });
 
     it('should NOT expose hidden tools in getExposedTools', () => {
@@ -108,21 +104,15 @@ describe('ToolRegistry', () => {
 
     it('should respect wildcard patterns in hideTools', () => {
       const teamMembers = registry.searchTools(['members']);
-      expect(teamMembers.map((t) => t.fullName)).not.toContain(
-        'github__get_team_members',
-      );
+      expect(teamMembers.map((t) => t.fullName)).not.toContain('github__get_team_members');
 
       const debugTools = registry.searchTools(['debug']);
-      expect(debugTools.map((t) => t.fullName)).not.toContain(
-        'memory__debug_stats',
-      );
+      expect(debugTools.map((t) => t.fullName)).not.toContain('memory__debug_stats');
     });
 
     it('should still allow non-hidden tools to be discovered', () => {
       const issueTools = registry.searchTools(['issue']);
-      expect(issueTools.map((t) => t.fullName)).toContain(
-        'github__create_issue',
-      );
+      expect(issueTools.map((t) => t.fullName)).toContain('github__create_issue');
 
       const memoryTools = registry.searchTools(['store']);
       expect(memoryTools.map((t) => t.fullName)).toContain('memory__store');
@@ -134,9 +124,7 @@ describe('ToolRegistry', () => {
 
       // Should still not be discoverable or executable
       const teamTools = registry.searchTools(['teams']);
-      expect(teamTools.map((t) => t.fullName)).not.toContain(
-        'github__get_teams',
-      );
+      expect(teamTools.map((t) => t.fullName)).not.toContain('github__get_teams');
 
       const executable = registry.getToolForExecution('github__get_teams');
       expect(executable).toBeUndefined();

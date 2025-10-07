@@ -67,14 +67,11 @@ describe('Registry Integration Tests', () => {
       expect(searchResult.found).toBe(true);
       expect(searchResult.servers).toHaveLength(1);
       expect(searchResult.servers![0].name).toBe('NPM Example Server');
-      expect(searchResult.servers![0].registryId).toBe(
-        'npm-example-registry-id',
-      );
+      expect(searchResult.servers![0].registryId).toBe('npm-example-registry-id');
       expect(searchResult.servers![0].isRemote).toBe(false);
 
       // Step 2: Get server details using server name (since getServer searches by name)
-      const serverDetails =
-        await context.getServerDetails('NPM Example Server');
+      const serverDetails = await context.getServerDetails('NPM Example Server');
       expect(serverDetails).toBeTruthy();
       expect(serverDetails!.name).toBe('NPM Example Server');
       expect(serverDetails!.packages).toHaveLength(1);
@@ -83,11 +80,7 @@ describe('Registry Integration Tests', () => {
       const config = await context.generateServerConfig(serverDetails!);
       expect(config.name).toBe('NPM Example Server');
       expect(config.command).toBe('node');
-      expect(config.args).toEqual([
-        '@mcp/example-server',
-        '--config',
-        'production.json',
-      ]);
+      expect(config.args).toEqual(['@mcp/example-server', '--config', 'production.json']);
       expect(config.env).toEqual({ NODE_ENV: 'production' });
 
       // Step 4: Generate install instructions

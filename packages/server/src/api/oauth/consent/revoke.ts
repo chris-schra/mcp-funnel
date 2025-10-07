@@ -5,14 +5,11 @@ export const PostConsentRevokeHandler: Handler = async (c) => {
   try {
     const contentType = c.req.header('content-type') || '';
     const isJsonRequest = contentType.includes('application/json');
-    const rawBody: unknown = isJsonRequest
-      ? await c.req.json()
-      : await c.req.parseBody();
+    const rawBody: unknown = isJsonRequest ? await c.req.json() : await c.req.parseBody();
 
     const body = (rawBody as Record<string, unknown>) ?? {};
     const clientId = OAuthUtils.coerceToString(body.client_id);
-    const userId =
-      OAuthUtils.coerceToString(body.user_id) ?? OAuthUtils.getCurrentUserId(c);
+    const userId = OAuthUtils.coerceToString(body.user_id) ?? OAuthUtils.getCurrentUserId(c);
 
     if (!clientId || !userId) {
       return c.json(
@@ -37,20 +34,14 @@ export const PostConsentRevokeHandler: Handler = async (c) => {
 
     const scopesToRevoke = OAuthUtils.normalizeScopeInput(body.scopes);
     const fallbackScopes = OAuthUtils.normalizeScopeInput(body.scope);
-    const combinedScopes = scopesToRevoke.length
-      ? scopesToRevoke
-      : fallbackScopes;
+    const combinedScopes = scopesToRevoke.length ? scopesToRevoke : fallbackScopes;
     const validScopes = combinedScopes.filter((scope) =>
       c.get('oauthConfig').supportedScopes.includes(scope),
     );
 
     await c
       .get('consentService')
-      .revokeUserConsent(
-        userId,
-        clientId,
-        validScopes.length > 0 ? validScopes : undefined,
-      );
+      .revokeUserConsent(userId, clientId, validScopes.length > 0 ? validScopes : undefined);
 
     return c.json({
       status: 'success',

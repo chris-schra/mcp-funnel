@@ -128,9 +128,7 @@ export class MockWebSocket {
 
   removeListener(event: string, listener: (...args: unknown[]) => void): this {
     if (this.listeners[event]) {
-      this.listeners[event] = this.listeners[event].filter(
-        (l) => l !== listener,
-      );
+      this.listeners[event] = this.listeners[event].filter((l) => l !== listener);
     }
     return this;
   }
@@ -168,10 +166,7 @@ export class MockWebSocket {
     return this.on(event, listener);
   }
 
-  prependOnceListener(
-    event: string,
-    listener: (...args: unknown[]) => void,
-  ): this {
+  prependOnceListener(event: string, listener: (...args: unknown[]) => void): this {
     return this.once(event, listener);
   }
 

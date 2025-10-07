@@ -57,20 +57,14 @@ type MockTransport = {
 let mockTransports: Map<string, MockTransport>;
 let config: ProxyConfig;
 
-const ensureServerConnected = async (
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> => {
+const ensureServerConnected = async (proxy: MCPProxy, serverName: string): Promise<void> => {
   const status = proxy.getServerStatus(serverName);
   if (status.status !== 'connected') {
     await proxy.reconnectServer(serverName);
   }
 };
 
-const ensureServerDisconnected = async (
-  proxy: MCPProxy,
-  serverName: string,
-): Promise<void> => {
+const ensureServerDisconnected = async (proxy: MCPProxy, serverName: string): Promise<void> => {
   const status = proxy.getServerStatus(serverName);
   if (status.status === 'connected') {
     await proxy.disconnectServer(serverName);
@@ -180,10 +174,7 @@ describe('MCPProxy Reconnection Logic - Edge Cases', () => {
 
     // Mock slow reconnection
     mockClient.connect.mockImplementation(
-      () =>
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Server removed')), 1000),
-        ),
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error('Server removed')), 1000)),
     );
 
     await ensureServerDisconnected(mcpProxy, serverName);
@@ -192,8 +183,7 @@ describe('MCPProxy Reconnection Logic - Edge Cases', () => {
     const reconnectPromise = mcpProxy.reconnectServer(serverName);
 
     // Set up expectation BEFORE advancing timers to avoid unhandled rejection
-    const expectation =
-      expect(reconnectPromise).rejects.toThrow('Server removed');
+    const expectation = expect(reconnectPromise).rejects.toThrow('Server removed');
 
     // Advance time to trigger the rejection
     vi.advanceTimersByTime(1000);

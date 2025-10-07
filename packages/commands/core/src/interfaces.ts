@@ -19,10 +19,7 @@ export interface ICommand {
    * @param args - Arguments passed from the MCP client as a JSON object
    * @returns MCP-compliant tool result containing text or resource content
    */
-  executeToolViaMCP(
-    toolName: string,
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult>;
+  executeToolViaMCP(toolName: string, args: Record<string, unknown>): Promise<CallToolResult>;
 
   /**
    * Execute the command via CLI interface.

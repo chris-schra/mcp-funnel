@@ -29,9 +29,7 @@ describe('ProxyServer Tool Filtering', () => {
         const tools = proxyServer.registry.getExposedTools();
 
         // Check that mockserver__hidden_tool is not in the list
-        const hiddenTool = tools.find(
-          (t) => t.name === 'mockserver__hidden_tool',
-        );
+        const hiddenTool = tools.find((t) => t.name === 'mockserver__hidden_tool');
         expect(hiddenTool).toBeUndefined();
 
         // Check that mockserver__echo IS in the list (not hidden)
@@ -39,9 +37,7 @@ describe('ProxyServer Tool Filtering', () => {
         expect(echoTool).toBeDefined();
 
         // Check that issue tools are hidden
-        const issueTool = tools.find(
-          (t) => t.name === 'mockserver__create_issue',
-        );
+        const issueTool = tools.find((t) => t.name === 'mockserver__create_issue');
         expect(issueTool).toBeUndefined();
       } finally {
         // MCPProxy doesn't have a stop/close method in the current implementation
@@ -68,9 +64,7 @@ describe('ProxyServer Tool Filtering', () => {
         const tools = proxyServer.registry.getExposedTools();
 
         // With empty exposeTools, no server tools should be visible
-        const serverTools = tools.filter((t) =>
-          t.name.startsWith('mockserver__'),
-        );
+        const serverTools = tools.filter((t) => t.name.startsWith('mockserver__'));
         expect(serverTools.length).toBe(0);
 
         // But core tools might still be visible if exposeCoreTools is not set
@@ -103,23 +97,17 @@ describe('ProxyServer Tool Filtering', () => {
         const tools = proxyServer.registry.getExposedTools();
 
         // Without exposeTools defined, all tools except hidden ones should be visible
-        const hiddenTool = tools.find(
-          (t) => t.name === 'mockserver__hidden_tool',
-        );
+        const hiddenTool = tools.find((t) => t.name === 'mockserver__hidden_tool');
         expect(hiddenTool).toBeUndefined();
 
         const echoTool = tools.find((t) => t.name === 'mockserver__echo');
         expect(echoTool).toBeDefined();
 
-        const otherTool = tools.find(
-          (t) => t.name === 'mockserver__other_tool',
-        );
+        const otherTool = tools.find((t) => t.name === 'mockserver__other_tool');
         expect(otherTool).toBeDefined();
 
         // Issue tools should be hidden
-        const createIssueTool = tools.find(
-          (t) => t.name === 'mockserver__create_issue',
-        );
+        const createIssueTool = tools.find((t) => t.name === 'mockserver__create_issue');
         expect(createIssueTool).toBeUndefined();
       } finally {
         // MCPProxy doesn't have a stop/close method in the current implementation

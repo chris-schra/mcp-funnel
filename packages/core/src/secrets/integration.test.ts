@@ -30,11 +30,7 @@ function createTestDirectory(): string {
  * @param content - File content string
  * @returns Absolute path to created file
  */
-function createTestEnvFile(
-  dir: string,
-  filename: string,
-  content: string,
-): string {
+function createTestEnvFile(dir: string, filename: string, content: string): string {
   const filePath = join(dir, filename);
   writeFileSync(filePath, content, 'utf-8');
   return filePath;
@@ -192,11 +188,7 @@ describe('SecretManager Integration Tests', () => {
         '# This is a comment',
         'SIMPLE_VALUE=simple',
       ].join('\n');
-      const envFilePath = createTestEnvFile(
-        testDir,
-        '.env.complex',
-        envContent,
-      );
+      const envFilePath = createTestEnvFile(testDir, '.env.complex', envContent);
 
       const dotenvProvider = new DotEnvProvider({
         path: envFilePath,
@@ -232,11 +224,7 @@ describe('SecretManager Integration Tests', () => {
       };
 
       const envContent = 'FILE_SECRET=file-secret';
-      const envFilePath = createTestEnvFile(
-        testDir,
-        '.env.registry',
-        envContent,
-      );
+      const envFilePath = createTestEnvFile(testDir, '.env.registry', envContent);
 
       // Create registry and providers
       const registry = new SecretProviderRegistry();
@@ -459,11 +447,7 @@ describe('SecretManager Integration Tests', () => {
         'FEATURE_NEW_UI=true',
         'FEATURE_ANALYTICS=false',
       ].join('\n');
-      const appEnvPath = createTestEnvFile(
-        testDir,
-        '.env.development',
-        appEnvContent,
-      );
+      const appEnvPath = createTestEnvFile(testDir, '.env.development', appEnvContent);
 
       // Create deployment-specific overrides
       const deploymentOverrides = new InlineProvider({
@@ -554,11 +538,7 @@ describe('SecretManager Integration Tests', () => {
         'MAX_CONNECTIONS=100',
         'TIMEOUT_MS=5000',
       ].join('\n');
-      const serviceConfigPath = createTestEnvFile(
-        testDir,
-        '.env.service',
-        serviceConfigContent,
-      );
+      const serviceConfigPath = createTestEnvFile(testDir, '.env.service', serviceConfigContent);
 
       const serviceConfigProvider = new DotEnvProvider({
         path: serviceConfigPath,

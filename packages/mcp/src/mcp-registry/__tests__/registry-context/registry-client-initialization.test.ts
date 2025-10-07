@@ -46,10 +46,7 @@ describe('RegistryContext', () => {
     it('should initialize with multiple registry URLs', () => {
       const configWithRegistries = {
         ...mockConfig,
-        registries: [
-          'https://registry.example.com/api',
-          'https://backup-registry.example.com/api',
-        ],
+        registries: ['https://registry.example.com/api', 'https://backup-registry.example.com/api'],
       } as ProxyConfig & { registries: string[] };
 
       const context = RegistryContext.getInstance(configWithRegistries);

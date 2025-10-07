@@ -8,9 +8,7 @@ import path from 'path';
  * @returns Absolute path to tsconfig.json directory, or undefined if not found
  * @internal
  */
-export async function findTsconfigDir(
-  startDir: string,
-): Promise<string | undefined> {
+export async function findTsconfigDir(startDir: string): Promise<string | undefined> {
   let currentDir = path.resolve(startDir);
   const root = path.parse(currentDir).root;
 

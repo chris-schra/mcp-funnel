@@ -8,10 +8,5 @@
     "declaration": true
   },
   "include": ["./src/**/*.ts"],
-  "exclude": [
-    "**/node_modules/**/*",
-    "**/dist/**/*",
-    "**/*.test.ts",
-    "**/*.integration.test.ts"
-  ]
+  "exclude": ["**/node_modules/**/*", "**/dist/**/*", "**/*.test.ts", "**/*.integration.test.ts"]
 }

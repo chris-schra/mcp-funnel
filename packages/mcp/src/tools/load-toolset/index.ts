@@ -11,9 +11,7 @@ export interface LoadToolsetByPatternsParams {
   tools: string[];
 }
 
-export type LoadToolsetParams =
-  | LoadToolsetByNameParams
-  | LoadToolsetByPatternsParams;
+export type LoadToolsetParams = LoadToolsetByNameParams | LoadToolsetByPatternsParams;
 
 /**
  * Type guard checking if params contain a toolset name.
@@ -31,9 +29,7 @@ function isLoadByName(params: unknown): params is LoadToolsetByNameParams {
  * @returns True if params has 'tools' property
  * @internal
  */
-function isLoadByPatterns(
-  params: unknown,
-): params is LoadToolsetByPatternsParams {
+function isLoadByPatterns(params: unknown): params is LoadToolsetByPatternsParams {
   return typeof params === 'object' && params !== null && 'tools' in params;
 }
 
@@ -88,14 +84,12 @@ export class LoadToolset extends BaseCoreTool {
         properties: {
           name: {
             type: 'string',
-            description:
-              'Name of predefined toolset to load (mutually exclusive with tools)',
+            description: 'Name of predefined toolset to load (mutually exclusive with tools)',
           },
           tools: {
             type: 'array',
             items: { type: 'string' },
-            description:
-              'Array of tool patterns to load (mutually exclusive with name)',
+            description: 'Array of tool patterns to load (mutually exclusive with name)',
           },
         },
         // Can't use oneOf at top level - will validate in handler

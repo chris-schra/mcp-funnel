@@ -81,9 +81,7 @@ describe('LoadToolset - Reality Check', () => {
 
       // NOW THE REALITY CHECK:
       // Try to call the tool directly - THIS WILL FAIL
-      const directCallWorks = proxy['toolMapping'].has(
-        'github__create_pull_request',
-      );
+      const directCallWorks = proxy['toolMapping'].has('github__create_pull_request');
       expect(directCallWorks).toBe(true); // Tool mapping exists
 
       // But it's NOT in the exposed tools list for Claude
@@ -170,9 +168,8 @@ describe('LoadToolset - Reality Check', () => {
       const result = await loadTool?.handle({ name: 'reviewer' }, context);
 
       // The response itself goes into message history
-      const responseText = (
-        (result?.content[0] as { type: string; text: string }) || { text: '' }
-      ).text;
+      const responseText = ((result?.content[0] as { type: string; text: string }) || { text: '' })
+        .text;
       expect(responseText).toBe('Loaded 5 tools from "reviewer" toolset');
 
       // This text is now part of the conversation context
@@ -228,9 +225,7 @@ describe('LoadToolset - Reality Check', () => {
       // Claude Code doesn't support dynamic updates, so it does nothing
 
       // The tool is "enabled" internally
-      expect(context.dynamicallyEnabledTools.has('github__create_issue')).toBe(
-        true,
-      );
+      expect(context.dynamicallyEnabledTools.has('github__create_issue')).toBe(true);
 
       // But it's NOT in the core tools that Claude can see
       const coreToolNames = Array.from(proxy['coreTools'].keys());
@@ -360,10 +355,7 @@ describe('LoadToolset - Reality Check', () => {
       newContext.dynamicallyEnabledTools.clear(); // Reset
 
       const loadTool = proxy['coreTools'].get('load_toolset');
-      const loadResult = await loadTool?.handle(
-        { tools: ['github__*_pull_request*'] },
-        newContext,
-      );
+      const loadResult = await loadTool?.handle({ tools: ['github__*_pull_request*'] }, newContext);
 
       const loadResponse = (
         (loadResult?.content[0] as { type: string; text: string }) || {

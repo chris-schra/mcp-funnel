@@ -76,10 +76,7 @@ export async function hotReloadCommand(
  * @returns Array of tool full names for the command
  * @public
  */
-export function getExistingTools(
-  commandName: string,
-  context: CoreToolContext,
-): string[] {
+export function getExistingTools(commandName: string, context: CoreToolContext): string[] {
   if (!context.toolRegistry) {
     return [];
   }

@@ -74,9 +74,7 @@ export function formatInstallResponse(
   hotReloadError?: string,
 ): CallToolResult {
   const toolsMessage =
-    discoveredTools.length > 0
-      ? `Available tools: ${discoveredTools.join(', ')}`
-      : '';
+    discoveredTools.length > 0 ? `Available tools: ${discoveredTools.join(', ')}` : '';
 
   const hint = hotReloaded
     ? `Command installed and hot-reloaded! ${toolsMessage || 'Tools are now available for use.'}\n\n📝 Installation Modes:\n1. Session-only: Tools are available now via discovery\n2. Persistent: Add to .mcp-funnel.json for automatic loading\n\n${generateConfigHint(command.name)}`

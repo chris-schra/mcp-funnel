@@ -59,13 +59,8 @@ function getStats(tools: ToolState[]) {
  * @returns True if tool matches keyword criteria
  * @internal
  */
-function matchesKeywords(
-  tool: ToolState,
-  keywords: string[],
-  mode: 'and' | 'or' = 'and',
-): boolean {
-  const searchText =
-    `${tool.fullName} ${tool.description} ${tool.serverName}`.toLowerCase();
+function matchesKeywords(tool: ToolState, keywords: string[], mode: 'and' | 'or' = 'and'): boolean {
+  const searchText = `${tool.fullName} ${tool.description} ${tool.serverName}`.toLowerCase();
 
   if (mode === 'or') {
     // OR logic: tool must contain at least one keyword
@@ -86,11 +81,7 @@ function matchesKeywords(
  * @returns Array of matching tools sorted by exposure status
  * @internal
  */
-function searchTools(
-  tools: ToolState[],
-  keywords: string[],
-  mode: 'and' | 'or' = 'and',
-) {
+function searchTools(tools: ToolState[], keywords: string[], mode: 'and' | 'or' = 'and') {
   return tools
     .filter((t) => t.discovered)
     .filter((t) => ToolRegistryUtils.matchesKeywords(t, keywords, mode))

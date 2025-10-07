@@ -20,17 +20,13 @@ import type { ValidateOptions } from '../validator.js';
  *
  * @public
  */
-export async function resolveFiles(
-  options: ValidateOptions,
-): Promise<string[]> {
+export async function resolveFiles(options: ValidateOptions): Promise<string[]> {
   if (options.files) {
     // Process each provided path
     const patterns: string[] = [];
 
     for (const file of options.files) {
-      const absolutePath = path.isAbsolute(file)
-        ? file
-        : path.resolve(process.cwd(), file);
+      const absolutePath = path.isAbsolute(file) ? file : path.resolve(process.cwd(), file);
 
       try {
         const stats = await fs.stat(absolutePath);

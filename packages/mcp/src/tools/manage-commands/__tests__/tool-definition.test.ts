@@ -24,27 +24,18 @@ describe('ManageCommands', () => {
       expect(toolDef.inputSchema.type).toBe('object');
       expect(toolDef.inputSchema.required).toEqual(['action', 'package']);
 
-      const properties = toolDef.inputSchema.properties as Record<
-        string,
-        SchemaProperty
-      >;
+      const properties = toolDef.inputSchema.properties as Record<string, SchemaProperty>;
 
       expect(properties.action).toBeDefined();
       expect(properties.action.type).toBe('string');
-      expect(properties.action.enum).toEqual([
-        'install',
-        'uninstall',
-        'update',
-      ]);
+      expect(properties.action.enum).toEqual(['install', 'uninstall', 'update']);
 
       expect(properties.package).toBeDefined();
       expect(properties.package.type).toBe('string');
       expect(properties.package.description).toContain('NPM package name');
 
       expect(properties.version).toBeDefined();
-      expect(properties.version.description).toContain(
-        'Specific version to install',
-      );
+      expect(properties.version.description).toContain('Specific version to install');
 
       expect(properties.force).toBeDefined();
       expect(properties.force.type).toBe('boolean');

@@ -22,8 +22,7 @@ export async function waitForOutput(
   } = {},
 ): Promise<OutputQueryResult> {
   const { condition, timeoutMs = 5000 } = options;
-  const defaultCondition = (result: OutputQueryResult) =>
-    result.entries.length > 0;
+  const defaultCondition = (result: OutputQueryResult) => result.entries.length > 0;
   const checkCondition = condition ?? defaultCondition;
 
   return waitFor(
@@ -56,8 +55,7 @@ export async function queryWithConsoleLevel(
         includeExceptions: false,
       }),
     {
-      condition: (r) =>
-        r.entries.some((e) => e.kind === 'console' && e.entry.level === level),
+      condition: (r) => r.entries.some((e) => e.kind === 'console' && e.entry.level === level),
       timeoutMs: 5000,
     },
   );

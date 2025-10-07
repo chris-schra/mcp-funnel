@@ -66,15 +66,13 @@ export class ReadOnlyConfigManager implements IConfigManager {
       return JSON.parse(content) as ProxyConfig;
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(
-          `Failed to read config from ${this.configPath}: ${error.message}`,
-          { cause: error },
-        );
+        throw new Error(`Failed to read config from ${this.configPath}: ${error.message}`, {
+          cause: error,
+        });
       }
-      throw new Error(
-        `Failed to read config from ${this.configPath}: Unknown error`,
-        { cause: error },
-      );
+      throw new Error(`Failed to read config from ${this.configPath}: Unknown error`, {
+        cause: error,
+      });
     }
   }
 
@@ -92,9 +90,7 @@ export class ReadOnlyConfigManager implements IConfigManager {
       const currentConfig = await this.readConfig();
 
       if (this.serverExists(currentConfig, server.name)) {
-        throw new Error(
-          `Server with name '${server.name}' already exists in configuration`,
-        );
+        throw new Error(`Server with name '${server.name}' already exists in configuration`);
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('already exists')) {
@@ -103,13 +99,8 @@ export class ReadOnlyConfigManager implements IConfigManager {
       // If we can't read config, just log the operation anyway
     }
 
-    console.info(
-      '[Registry] Would add server to config:',
-      JSON.stringify(server, null, 2),
-    );
-    console.info(
-      `[Registry] To persist, manually add to your ${this.configPath}`,
-    );
+    console.info('[Registry] Would add server to config:', JSON.stringify(server, null, 2));
+    console.info(`[Registry] To persist, manually add to your ${this.configPath}`);
   }
 
   /**
@@ -126,9 +117,7 @@ export class ReadOnlyConfigManager implements IConfigManager {
       const currentConfig = await this.readConfig();
 
       if (!this.serverExists(currentConfig, serverName)) {
-        throw new Error(
-          `Server with name '${serverName}' does not exist in configuration`,
-        );
+        throw new Error(`Server with name '${serverName}' does not exist in configuration`);
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('does not exist')) {
@@ -138,9 +127,7 @@ export class ReadOnlyConfigManager implements IConfigManager {
     }
 
     console.info(`[Registry] Would remove server '${serverName}' from config`);
-    console.info(
-      `[Registry] To persist, manually remove from your ${this.configPath}`,
-    );
+    console.info(`[Registry] To persist, manually remove from your ${this.configPath}`);
   }
 
   /**
@@ -153,45 +140,33 @@ export class ReadOnlyConfigManager implements IConfigManager {
    * @throws if server does not exist (simulated validation)
    * @throws if updates would create invalid configuration (simulated validation)
    */
-  public async updateServer(
-    serverName: string,
-    updates: Partial<ServerConfig>,
-  ): Promise<void> {
+  public async updateServer(serverName: string, updates: Partial<ServerConfig>): Promise<void> {
     // Simulate validation by checking if server exists
     try {
       const currentConfig = await this.readConfig();
 
       if (!this.serverExists(currentConfig, serverName)) {
-        throw new Error(
-          `Server with name '${serverName}' does not exist in configuration`,
-        );
+        throw new Error(`Server with name '${serverName}' does not exist in configuration`);
       }
 
       // Simulate validation: if trying to update name, check for conflicts
       if (updates.name && updates.name !== serverName) {
         if (this.serverExists(currentConfig, updates.name)) {
-          throw new Error(
-            `Server with name '${updates.name}' already exists in configuration`,
-          );
+          throw new Error(`Server with name '${updates.name}' already exists in configuration`);
         }
       }
     } catch (error) {
       if (
         error instanceof Error &&
-        (error.message.includes('does not exist') ||
-          error.message.includes('already exists'))
+        (error.message.includes('does not exist') || error.message.includes('already exists'))
       ) {
         throw error; // Re-throw validation errors
       }
       // If we can't read config, just log the operation anyway
     }
 
-    console.info(
-      `[Registry] Would update server '${serverName}' with changes:`,
-    );
+    console.info(`[Registry] Would update server '${serverName}' with changes:`);
     console.info(JSON.stringify(updates, null, 2));
-    console.info(
-      `[Registry] To persist, manually update in your ${this.configPath}`,
-    );
+    console.info(`[Registry] To persist, manually update in your ${this.configPath}`);
   }
 }

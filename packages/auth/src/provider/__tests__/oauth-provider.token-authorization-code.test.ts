@@ -16,10 +16,7 @@ describe('OAuthProvider - Token Request (Authorization Code Grant)', () => {
       redirect_uris: ['http://localhost:8080/callback'],
     });
 
-    await consentService.recordUserConsent('user123', testClient.client_id, [
-      'read',
-      'write',
-    ]);
+    await consentService.recordUserConsent('user123', testClient.client_id, ['read', 'write']);
 
     const authResult = await oauthProvider.handleAuthorizationRequest(
       {
@@ -80,9 +77,7 @@ describe('OAuthProvider - Token Request (Authorization Code Grant)', () => {
 
     expect(refreshTokenData!.expires_at).toBeGreaterThan(currentTime);
     expect(refreshTokenData!.expires_at).toBeLessThan(thirtyDaysFromNow + 60);
-    expect(refreshTokenData!.expires_at).toBeGreaterThan(
-      thirtyDaysFromNow - 60,
-    );
+    expect(refreshTokenData!.expires_at).toBeGreaterThan(thirtyDaysFromNow - 60);
   });
 
   it('rejects an invalid authorization code', async () => {

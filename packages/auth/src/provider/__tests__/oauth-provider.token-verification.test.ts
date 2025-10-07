@@ -14,9 +14,7 @@ describe('OAuthProvider - Token Verification', () => {
       redirect_uris: ['http://localhost:8080/callback'],
     });
 
-    await consentService.recordUserConsent('user123', testClient.client_id, [
-      'read',
-    ]);
+    await consentService.recordUserConsent('user123', testClient.client_id, ['read']);
 
     const authResult = await oauthProvider.handleAuthorizationRequest(
       {

@@ -43,9 +43,7 @@ describe('config-loader two-level merge', () => {
   });
 
   it('loads project-only config', async () => {
-    const { resolveMergedProxyConfig } = await import(
-      '../../src/config-loader.js'
-    );
+    const { resolveMergedProxyConfig } = await import('../../src/config-loader.js');
     const projectConfigPath = join(projectDir, '.mcp-funnel.json');
     writeJson(projectConfigPath, {
       servers: {
@@ -63,9 +61,7 @@ describe('config-loader two-level merge', () => {
   });
 
   it('loads user-only config', async () => {
-    const { resolveMergedProxyConfig } = await import(
-      '../../src/config-loader.js'
-    );
+    const { resolveMergedProxyConfig } = await import('../../src/config-loader.js');
     const userBasePath = join(fakeHome, '.mcp-funnel', '.mcp-funnel.json');
     writeJson(userBasePath, {
       servers: {
@@ -76,18 +72,14 @@ describe('config-loader two-level merge', () => {
       },
     });
 
-    const { config, sources } = resolveMergedProxyConfig(
-      join(projectDir, '.mcp-funnel.json'),
-    );
+    const { config, sources } = resolveMergedProxyConfig(join(projectDir, '.mcp-funnel.json'));
     expect(sources).toContain(userBasePath);
     expect(Array.isArray(config.servers)).toBe(false);
     expect((config.servers as Record<string, unknown>).fs).toBeDefined();
   });
 
   it('project overrides user for arrays (replace)', async () => {
-    const { resolveMergedProxyConfig } = await import(
-      '../../src/config-loader.js'
-    );
+    const { resolveMergedProxyConfig } = await import('../../src/config-loader.js');
     const userBasePath = join(fakeHome, '.mcp-funnel', '.mcp-funnel.json');
     writeJson(userBasePath, {
       servers: {},
@@ -104,9 +96,7 @@ describe('config-loader two-level merge', () => {
   });
 
   it('deep merges objects across levels', async () => {
-    const { resolveMergedProxyConfig } = await import(
-      '../../src/config-loader.js'
-    );
+    const { resolveMergedProxyConfig } = await import('../../src/config-loader.js');
     const userBasePath = join(fakeHome, '.mcp-funnel', '.mcp-funnel.json');
     writeJson(userBasePath, { servers: {}, alwaysVisibleTools: ['tool1'] });
     const projectConfigPath = join(projectDir, '.mcp-funnel.json');
@@ -118,9 +108,7 @@ describe('config-loader two-level merge', () => {
   });
 
   it('project servers override user servers when both provided', async () => {
-    const { resolveMergedProxyConfig } = await import(
-      '../../src/config-loader.js'
-    );
+    const { resolveMergedProxyConfig } = await import('../../src/config-loader.js');
     const userBasePath = join(fakeHome, '.mcp-funnel', '.mcp-funnel.json');
     writeJson(userBasePath, {
       servers: {

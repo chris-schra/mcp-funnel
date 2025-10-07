@@ -43,13 +43,7 @@ export function sendMessageToSingleConnection(
   if (!connection.isActive) return;
 
   try {
-    sendSSEMessage(
-      connection.response,
-      message.data,
-      message.event,
-      message.id,
-      message.retry,
-    );
+    sendSSEMessage(connection.response, message.data, message.event, message.id, message.retry);
   } catch (_error) {
     connection.isActive = false;
     onError(connection.id);
@@ -102,9 +96,7 @@ export function validateAuthToken(
   expectedToken: string,
   shouldSimulateAuthFailure: boolean,
 ): boolean {
-  const providedToken = authHeader
-    ? authHeader.replace(/^Bearer\s+/i, '')
-    : null;
+  const providedToken = authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null;
   if (shouldSimulateAuthFailure || providedToken !== expectedToken) {
     return false;
   }

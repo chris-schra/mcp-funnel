@@ -71,10 +71,7 @@ export function createOAuth2Error(
       errorCode = OAuth2ErrorCode.TEMPORARILY_UNAVAILABLE;
       break;
     default:
-      errorCode =
-        statusCode >= 500
-          ? OAuth2ErrorCode.SERVER_ERROR
-          : AuthErrorCode.UNKNOWN_ERROR;
+      errorCode = statusCode >= 500 ? OAuth2ErrorCode.SERVER_ERROR : AuthErrorCode.UNKNOWN_ERROR;
   }
 
   return new AuthenticationError(message, errorCode);

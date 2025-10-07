@@ -3,11 +3,7 @@ import { MCPProxy } from '../index.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
-import {
-  createMockServer,
-  createMockClient,
-  findListToolsHandler,
-} from './test-utils.js';
+import { createMockServer, createMockClient, findListToolsHandler } from './test-utils.js';
 import type { MockServer, MockClient } from './test-utils.js';
 
 // Create hoisted mock for execAsync (needed for keychain-token-storage)

@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  generateInstallInstructions,
-  type RegistryServer,
-} from './test-utils.js';
+import { generateInstallInstructions, type RegistryServer } from './test-utils.js';
 
 describe('Config Generation', () => {
   describe('generateInstallInstructions', () => {

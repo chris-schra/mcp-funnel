@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  getDefaultPassthroughEnv,
-  WINDOWS_REQUIRED_ENV,
-} from './env-filter.js';
+import { getDefaultPassthroughEnv, WINDOWS_REQUIRED_ENV } from './env-filter.js';
 
 describe('env-filter', () => {
   it('includes core defaults on non-Windows platforms', () => {

@@ -28,12 +28,7 @@ export function createMockContext(): CoreToolContext {
  * @param statusText - HTTP status text (default: 'OK')
  * @returns Mock response object with ok, status, statusText, and json method
  */
-export function createMockFetchResponse(
-  data: unknown,
-  ok = true,
-  status = 200,
-  statusText = 'OK',
-) {
+export function createMockFetchResponse(data: unknown, ok = true, status = 200, statusText = 'OK') {
   return {
     ok,
     status,

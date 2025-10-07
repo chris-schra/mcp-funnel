@@ -14,20 +14,14 @@ import type { ReconnectionConfig } from '@mcp-funnel/models';
  * @public
  */
 export function validateReconnectConfig(reconnect: ReconnectionConfig): void {
-  const { maxAttempts, initialDelayMs, maxDelayMs, backoffMultiplier } =
-    reconnect;
+  const { maxAttempts, initialDelayMs, maxDelayMs, backoffMultiplier } = reconnect;
 
-  if (
-    maxAttempts !== undefined &&
-    (maxAttempts < 0 || !Number.isInteger(maxAttempts))
-  ) {
+  if (maxAttempts !== undefined && (maxAttempts < 0 || !Number.isInteger(maxAttempts))) {
     throw TransportError.protocolError('maxAttempts must be a positive number');
   }
 
   if (initialDelayMs !== undefined && initialDelayMs < 0) {
-    throw TransportError.protocolError(
-      'initialDelayMs must be a positive number',
-    );
+    throw TransportError.protocolError('initialDelayMs must be a positive number');
   }
 
   if (maxDelayMs !== undefined && maxDelayMs < 0) {
@@ -35,8 +29,6 @@ export function validateReconnectConfig(reconnect: ReconnectionConfig): void {
   }
 
   if (backoffMultiplier !== undefined && backoffMultiplier <= 1) {
-    throw TransportError.protocolError(
-      'backoffMultiplier must be greater than 1',
-    );
+    throw TransportError.protocolError('backoffMultiplier must be greater than 1');
   }
 }

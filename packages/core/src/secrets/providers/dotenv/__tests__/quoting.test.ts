@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DotEnvProvider } from '../index.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('DotEnvProvider - Quoting', () => {
   let testDir: string;
@@ -54,11 +50,7 @@ describe('DotEnvProvider - Quoting', () => {
       "multiline'",
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.multiline',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.multiline', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act

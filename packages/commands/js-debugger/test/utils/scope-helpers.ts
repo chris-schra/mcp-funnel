@@ -65,9 +65,7 @@ export async function getScopeVars(
   sessionId: string,
   callFrameId: string,
   scopeNumber: number,
-  options: Partial<
-    Omit<ScopeQuery, 'sessionId' | 'callFrameId' | 'scopeNumber'>
-  > = {},
+  options: Partial<Omit<ScopeQuery, 'sessionId' | 'callFrameId' | 'scopeNumber'>> = {},
 ): Promise<ScopeQueryResult> {
   return manager.getScopeVariables({
     sessionId,

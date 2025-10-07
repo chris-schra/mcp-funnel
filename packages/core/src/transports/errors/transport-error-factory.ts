@@ -19,10 +19,7 @@ export { createErrorFromHttpStatus } from './transport-error-http-utils.js';
  * @returns TransportError with CONNECTION_FAILED code and retryable=true
  * @public
  */
-export function createConnectionFailedError(
-  message: string,
-  cause?: Error,
-): TransportError {
+export function createConnectionFailedError(message: string, cause?: Error): TransportError {
   return new TransportError(
     `Connection failed: ${message}`,
     TransportErrorCode.CONNECTION_FAILED,
@@ -38,10 +35,7 @@ export function createConnectionFailedError(
  * @returns TransportError with CONNECTION_TIMEOUT code and retryable=true
  * @public
  */
-export function createConnectionTimeoutError(
-  timeout: number,
-  cause?: Error,
-): TransportError {
+export function createConnectionTimeoutError(timeout: number, cause?: Error): TransportError {
   return new TransportError(
     `Connection timeout after ${timeout}ms`,
     TransportErrorCode.CONNECTION_TIMEOUT,
@@ -94,10 +88,7 @@ export function createConnectionResetError(cause?: Error): TransportError {
  * @returns TransportError with DNS_LOOKUP_FAILED code and retryable=true
  * @public
  */
-export function createDnsLookupFailedError(
-  hostname: string,
-  cause?: Error,
-): TransportError {
+export function createDnsLookupFailedError(hostname: string, cause?: Error): TransportError {
   return new TransportError(
     `DNS lookup failed for ${hostname}`,
     TransportErrorCode.DNS_LOOKUP_FAILED,
@@ -128,10 +119,7 @@ export function createSslHandshakeFailedError(cause?: Error): TransportError {
  * @returns TransportError with PROTOCOL_ERROR code and retryable=false
  * @public
  */
-export function createProtocolError(
-  message: string,
-  cause?: Error,
-): TransportError {
+export function createProtocolError(message: string, cause?: Error): TransportError {
   return new TransportError(
     `Protocol error: ${message}`,
     TransportErrorCode.PROTOCOL_ERROR,
@@ -147,10 +135,7 @@ export function createProtocolError(
  * @returns TransportError with INVALID_RESPONSE code and retryable=false
  * @public
  */
-export function createInvalidResponseError(
-  message: string,
-  cause?: Error,
-): TransportError {
+export function createInvalidResponseError(message: string, cause?: Error): TransportError {
   return new TransportError(
     `Invalid response: ${message}`,
     TransportErrorCode.INVALID_RESPONSE,
@@ -166,10 +151,7 @@ export function createInvalidResponseError(
  * @returns TransportError with REQUEST_TIMEOUT code and retryable=true
  * @public
  */
-export function createRequestTimeoutError(
-  timeout: number,
-  cause?: Error,
-): TransportError {
+export function createRequestTimeoutError(timeout: number, cause?: Error): TransportError {
   return new TransportError(
     `Request timeout after ${timeout}ms`,
     TransportErrorCode.REQUEST_TIMEOUT,
@@ -185,19 +167,9 @@ export function createRequestTimeoutError(
  * @returns TransportError with RATE_LIMITED code and retryable=true
  * @public
  */
-export function createRateLimitedError(
-  retryAfter?: number,
-  cause?: Error,
-): TransportError {
-  const message = retryAfter
-    ? `Rate limited, retry after ${retryAfter}s`
-    : 'Rate limited';
-  return new TransportError(
-    message,
-    TransportErrorCode.RATE_LIMITED,
-    true,
-    cause,
-  );
+export function createRateLimitedError(retryAfter?: number, cause?: Error): TransportError {
+  const message = retryAfter ? `Rate limited, retry after ${retryAfter}s` : 'Rate limited';
+  return new TransportError(message, TransportErrorCode.RATE_LIMITED, true, cause);
 }
 
 /**
@@ -267,10 +239,7 @@ export function createNetworkUnreachableError(cause?: Error): TransportError {
  * @returns TransportError with HOST_UNREACHABLE code and retryable=true
  * @public
  */
-export function createHostUnreachableError(
-  host: string,
-  cause?: Error,
-): TransportError {
+export function createHostUnreachableError(host: string, cause?: Error): TransportError {
   return new TransportError(
     `Host ${host} is unreachable`,
     TransportErrorCode.HOST_UNREACHABLE,
@@ -286,10 +255,7 @@ export function createHostUnreachableError(
  * @returns TransportError with TOO_MANY_REDIRECTS code and retryable=false
  * @public
  */
-export function createTooManyRedirectsError(
-  maxRedirects: number,
-  cause?: Error,
-): TransportError {
+export function createTooManyRedirectsError(maxRedirects: number, cause?: Error): TransportError {
   return new TransportError(
     `Too many redirects (max: ${maxRedirects})`,
     TransportErrorCode.TOO_MANY_REDIRECTS,
@@ -305,16 +271,8 @@ export function createTooManyRedirectsError(
  * @returns TransportError with INVALID_URL code and retryable=false
  * @public
  */
-export function createInvalidUrlError(
-  url: string,
-  cause?: Error,
-): TransportError {
-  return new TransportError(
-    `Invalid URL: ${url}`,
-    TransportErrorCode.INVALID_URL,
-    false,
-    cause,
-  );
+export function createInvalidUrlError(url: string, cause?: Error): TransportError {
+  return new TransportError(`Invalid URL: ${url}`, TransportErrorCode.INVALID_URL, false, cause);
 }
 
 /**
@@ -324,10 +282,7 @@ export function createInvalidUrlError(
  * @returns TransportError with AUTHENTICATION_FAILED code and retryable=false
  * @public
  */
-export function createAuthenticationFailedError(
-  message: string,
-  cause?: Error,
-): TransportError {
+export function createAuthenticationFailedError(message: string, cause?: Error): TransportError {
   return new TransportError(
     `Authentication failed: ${message}`,
     TransportErrorCode.AUTHENTICATION_FAILED,
@@ -343,10 +298,7 @@ export function createAuthenticationFailedError(
  * @returns TransportError with SERVER_ERROR code and retryable=true
  * @public
  */
-export function createServerError(
-  message: string,
-  cause?: Error,
-): TransportError {
+export function createServerError(message: string, cause?: Error): TransportError {
   return new TransportError(
     `Server error: ${message}`,
     TransportErrorCode.SERVER_ERROR,

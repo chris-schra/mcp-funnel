@@ -109,9 +109,7 @@ export class TestWebSocketServer {
 
     // Close HTTP server
     return new Promise((resolve, reject) => {
-      this.httpServer.close((error?: Error) =>
-        error ? reject(error) : resolve(),
-      );
+      this.httpServer.close((error?: Error) => (error ? reject(error) : resolve()));
     });
   }
 
@@ -168,8 +166,7 @@ export class TestWebSocketServer {
    */
   getClientCount(): number {
     for (const [clientId, client] of this.clients.entries()) {
-      if (client.ws.readyState === WebSocket.CLOSED)
-        this.clients.delete(clientId);
+      if (client.ws.readyState === WebSocket.CLOSED) this.clients.delete(clientId);
     }
     return this.clients.size;
   }
@@ -217,11 +214,7 @@ export class TestWebSocketServer {
    * @param reason - Human-readable close reason
    * @returns True if client was found and disconnected
    */
-  disconnectClient(
-    clientId: string,
-    code = 1000,
-    reason = 'Server disconnect',
-  ): boolean {
+  disconnectClient(clientId: string, code = 1000, reason = 'Server disconnect'): boolean {
     const client = this.clients.get(clientId);
     if (!client) {
       return false;
@@ -237,11 +230,7 @@ export class TestWebSocketServer {
    * @param info - Connection verification info with origin, security status, and HTTP request
    * @returns True if client is authorized to connect
    */
-  private verifyClient(info: {
-    origin: string;
-    secure: boolean;
-    req: IncomingMessage;
-  }): boolean {
+  private verifyClient(info: { origin: string; secure: boolean; req: IncomingMessage }): boolean {
     if (!this.requireAuth) {
       return true;
     }
@@ -257,57 +246,51 @@ export class TestWebSocketServer {
 
   /** Sets up WebSocket connection handlers */
   private setupWebSocketHandlers(): void {
-    this.wsServer.on(
-      'connection',
-      (ws: WebSocket, _request: IncomingMessage) => {
-        const clientId = randomUUID();
-        if (this.clients.size >= this.maxConnections) {
-          ws.close(1013, 'Server overloaded');
-          return;
-        }
+    this.wsServer.on('connection', (ws: WebSocket, _request: IncomingMessage) => {
+      const clientId = randomUUID();
+      if (this.clients.size >= this.maxConnections) {
+        ws.close(1013, 'Server overloaded');
+        return;
+      }
 
-        const client: WebSocketClient = {
-          id: clientId,
-          ws,
-          connectedAt: new Date(),
-        };
-        this.clients.set(clientId, client);
-        ws.send(JSON.stringify(createWelcomeMessage(clientId)));
-        ws.on('message', (data: Buffer) => {
-          try {
-            const message = JSON.parse(data.toString('utf8')) as JSONRPCMessage;
-            recordMessage(this.messageHistory, clientId, message, 'incoming');
-            if ('method' in message && 'id' in message) {
-              ws.send(JSON.stringify(createEchoResponse(message)));
-            }
-          } catch (error) {
-            console.error(
-              `Error processing message from client ${clientId}:`,
-              error,
-            );
-            ws.send(JSON.stringify(createParseErrorResponse()));
+      const client: WebSocketClient = {
+        id: clientId,
+        ws,
+        connectedAt: new Date(),
+      };
+      this.clients.set(clientId, client);
+      ws.send(JSON.stringify(createWelcomeMessage(clientId)));
+      ws.on('message', (data: Buffer) => {
+        try {
+          const message = JSON.parse(data.toString('utf8')) as JSONRPCMessage;
+          recordMessage(this.messageHistory, clientId, message, 'incoming');
+          if ('method' in message && 'id' in message) {
+            ws.send(JSON.stringify(createEchoResponse(message)));
           }
-        });
+        } catch (error) {
+          console.error(`Error processing message from client ${clientId}:`, error);
+          ws.send(JSON.stringify(createParseErrorResponse()));
+        }
+      });
 
-        ws.on('ping', (data: Buffer) => {
-          client.lastPing = new Date();
-          ws.pong(data);
-        });
+      ws.on('ping', (data: Buffer) => {
+        client.lastPing = new Date();
+        ws.pong(data);
+      });
 
-        ws.on('pong', () => {
-          client.lastPong = new Date();
-        });
+      ws.on('pong', () => {
+        client.lastPong = new Date();
+      });
 
-        ws.on('close', (_code: number, _reason: Buffer) => {
-          this.clients.delete(clientId);
-        });
+      ws.on('close', (_code: number, _reason: Buffer) => {
+        this.clients.delete(clientId);
+      });
 
-        ws.on('error', (error: Error) => {
-          console.error(`WebSocket error for client ${clientId}:`, error);
-          this.clients.delete(clientId);
-        });
-      },
-    );
+      ws.on('error', (error: Error) => {
+        console.error(`WebSocket error for client ${clientId}:`, error);
+        this.clients.delete(clientId);
+      });
+    });
 
     this.wsServer.on('error', (error: Error) => {
       console.error('WebSocket server error:', error);
@@ -319,18 +302,12 @@ export class TestWebSocketServer {
    * @param req - Incoming HTTP request
    * @param res - HTTP response object
    */
-  private async handleHttpRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<void> {
+  private async handleHttpRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const url = new URL(req.url!, `http://localhost:${this.port}`);
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, Cache-Control',
-      );
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
 
       if (req.method === 'OPTIONS') {
         res.writeHead(200);
@@ -367,9 +344,7 @@ export class TestWebSocketServer {
  * @param config - Optional server configuration
  * @returns Promise resolving to server instance and connection details
  */
-export async function createTestWebSocketServer(
-  config?: TestWebSocketServerConfig,
-): Promise<{
+export async function createTestWebSocketServer(config?: TestWebSocketServerConfig): Promise<{
   server: TestWebSocketServer;
   port: number;
   url: string;

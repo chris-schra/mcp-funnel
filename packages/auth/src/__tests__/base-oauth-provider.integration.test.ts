@@ -73,11 +73,7 @@ describe('BaseOAuthProvider - Integration Scenarios', () => {
     });
 
     // Start multiple concurrent requests
-    const headerPromises = [
-      provider.getHeaders(),
-      provider.getHeaders(),
-      provider.getHeaders(),
-    ];
+    const headerPromises = [provider.getHeaders(), provider.getHeaders(), provider.getHeaders()];
 
     // Give a small delay to allow promises to start
     await new Promise((resolve) => setTimeout(resolve, 10));

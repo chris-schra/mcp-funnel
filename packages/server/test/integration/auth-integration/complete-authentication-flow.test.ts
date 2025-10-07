@@ -50,77 +50,56 @@ describe('Complete Authentication Flow Verification', () => {
     testPort = address.port;
 
     // 1. Verify protected endpoint rejects without auth
-    const rejectedResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-    );
+    const rejectedResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`);
     expect(rejectedResponse.status).toBe(401);
-    expect(rejectedResponse.headers.get('WWW-Authenticate')).toBe(
-      'Bearer realm="MCP Proxy API"',
-    );
+    expect(rejectedResponse.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
 
     // 2. Verify protected endpoint accepts env-resolved token
-    const envTokenResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-      {
-        headers: {
-          Authorization: 'Bearer end-to-end-test-token',
-        },
+    const envTokenResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
+      headers: {
+        Authorization: 'Bearer end-to-end-test-token',
       },
-    );
+    });
     expect(envTokenResponse.status).toBe(200);
 
     // 3. Verify protected endpoint accepts static token
-    const staticTokenResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-      {
-        headers: {
-          Authorization: 'Bearer static-e2e-token',
-        },
+    const staticTokenResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
+      headers: {
+        Authorization: 'Bearer static-e2e-token',
       },
-    );
+    });
     expect(staticTokenResponse.status).toBe(200);
 
     // 4. Verify MCP endpoint authentication
-    const mcpUnauthResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/mcp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 1 }),
+    const mcpUnauthResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 1 }),
+    });
     expect(mcpUnauthResponse.status).toBe(401);
 
-    const mcpAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/mcp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer end-to-end-test-token',
-        },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 1 }),
+    const mcpAuthResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer end-to-end-test-token',
       },
-    );
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 1 }),
+    });
     // Authentication should pass (not 401), even if MCP layer has issues
     expect(mcpAuthResponse.status).not.toBe(401);
 
     // 5. Verify health endpoint now requires authentication too
-    const healthNoAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-    );
+    const healthNoAuthResponse = await fetch(`http://localhost:${testPort}/api/health`);
     expect(healthNoAuthResponse.status).toBe(401);
 
-    const healthAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-      {
-        headers: {
-          Authorization: 'Bearer end-to-end-test-token',
-        },
+    const healthAuthResponse = await fetch(`http://localhost:${testPort}/api/health`, {
+      headers: {
+        Authorization: 'Bearer end-to-end-test-token',
       },
-    );
+    });
     expect(healthAuthResponse.status).toBe(200);
 
     // 6. Verify WebSocket authentication

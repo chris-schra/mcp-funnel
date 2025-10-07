@@ -49,9 +49,7 @@ describe('LoadToolset', () => {
       // Should not have duplicates
       const uniqueTools = [...new Set(enabledTools)];
       expect(enabledTools).toEqual(uniqueTools);
-      expect(
-        enabledTools.filter((t) => t === 'github__create_pull_request'),
-      ).toHaveLength(1);
+      expect(enabledTools.filter((t) => t === 'github__create_pull_request')).toHaveLength(1);
     });
   });
 });

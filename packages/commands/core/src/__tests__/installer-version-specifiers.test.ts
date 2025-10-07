@@ -17,34 +17,22 @@ describe('CommandInstaller - version specifier handling', () => {
   });
 
   it('should match package names with version specifiers', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'weather-tool@1.2.3',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'weather-tool@1.2.3');
     expect(result?.package).toBe('weather-tool');
   });
 
   it('should match scoped packages with version specifiers', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      '@myorg/weather-helper@3.0.0',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, '@myorg/weather-helper@3.0.0');
     expect(result?.package).toBe('@myorg/weather-helper');
   });
 
   it('should match packages with complex version specifiers', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'lodash@^4.17.0',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'lodash@^4.17.0');
     expect(result?.package).toBe('lodash');
   });
 
   it('should match packages with pre-release versions', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'weather-tool@1.0.0-beta.1',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'weather-tool@1.0.0-beta.1');
     expect(result?.package).toBe('weather-tool');
   });
 });

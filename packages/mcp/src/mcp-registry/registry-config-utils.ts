@@ -6,15 +6,9 @@
  * @public
  */
 
-import type {
-  RegistryServer,
-  RegistryInstallInfo,
-} from './types/registry.types.js';
+import type { RegistryServer, RegistryInstallInfo } from './types/registry.types.js';
 import type { ServerConfig } from './types/config.types.js';
-import {
-  generateConfigSnippet,
-  generateInstallInstructions,
-} from './config-generator.js';
+import { generateConfigSnippet, generateInstallInstructions } from './config-generator.js';
 import { convertHeaders } from './registry-utils.js';
 
 /**
@@ -37,9 +31,7 @@ import { convertHeaders } from './registry-utils.js';
 export async function generateServerConfigFromRegistry(
   server: RegistryServer,
 ): Promise<ServerConfig> {
-  console.info(
-    `[RegistryConfigUtils] Generating config for server: ${server.name}`,
-  );
+  console.info(`[RegistryConfigUtils] Generating config for server: ${server.name}`);
 
   const configEntry = generateConfigSnippet(server);
 
@@ -77,9 +69,7 @@ export async function generateServerConfigFromRegistry(
 export async function generateInstallInfoFromRegistry(
   server: RegistryServer,
 ): Promise<RegistryInstallInfo> {
-  console.info(
-    `[RegistryConfigUtils] Generating install info for server: ${server.name}`,
-  );
+  console.info(`[RegistryConfigUtils] Generating install info for server: ${server.name}`);
 
   const registryConfigEntry = generateConfigSnippet(server);
   const installInstructions = generateInstallInstructions(server);

@@ -32,9 +32,6 @@ export async function getAuthHeaders(
     logEvent('error', `${logPrefix}:auth-error`, {
       error: String(error),
     });
-    throw TransportError.connectionFailed(
-      `Authentication failed: ${error}`,
-      error as Error,
-    );
+    throw TransportError.connectionFailed(`Authentication failed: ${error}`, error as Error);
   }
 }

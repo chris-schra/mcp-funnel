@@ -16,9 +16,7 @@ import { validateReconnectConfig } from './validateReconnectConfig';
  */
 function validateStdioConfig(config: StdioTransportConfig): void {
   if (!config.command) {
-    throw TransportError.protocolError(
-      'Command is required for stdio transport',
-    );
+    throw TransportError.protocolError('Command is required for stdio transport');
   }
 }
 
@@ -38,10 +36,7 @@ function validateSSEConfig(config: SSETransportConfig): void {
   try {
     ValidationUtils.validateUrl(config.url, 'SSE URL');
   } catch (error) {
-    throw TransportError.invalidUrl(
-      config.url,
-      error instanceof Error ? error : undefined,
-    );
+    throw TransportError.invalidUrl(config.url, error instanceof Error ? error : undefined);
   }
 
   // Validate reconnect configuration
@@ -61,9 +56,7 @@ function validateSSEConfig(config: SSETransportConfig): void {
  */
 function validateWebSocketConfig(config: WebSocketTransportConfig): void {
   if (!config.url) {
-    throw TransportError.protocolError(
-      'URL is required for WebSocket transport',
-    );
+    throw TransportError.protocolError('URL is required for WebSocket transport');
   }
 
   // Validate URL format and protocol
@@ -74,16 +67,11 @@ function validateWebSocketConfig(config: WebSocketTransportConfig): void {
     if (!validProtocols.includes(url.protocol)) {
       throw TransportError.invalidUrl(
         config.url,
-        new Error(
-          'WebSocket URL must use ws:, wss:, http:, or https: protocol',
-        ),
+        new Error('WebSocket URL must use ws:, wss:, http:, or https: protocol'),
       );
     }
   } catch (error) {
-    throw TransportError.invalidUrl(
-      config.url,
-      error instanceof Error ? error : undefined,
-    );
+    throw TransportError.invalidUrl(config.url, error instanceof Error ? error : undefined);
   }
 
   // Validate reconnect configuration
@@ -106,13 +94,9 @@ function validateWebSocketConfig(config: WebSocketTransportConfig): void {
  * @throws TransportError when reconnect config fails validation
  * @internal
  */
-function validateStreamableHTTPConfig(
-  config: StreamableHTTPTransportConfig,
-): void {
+function validateStreamableHTTPConfig(config: StreamableHTTPTransportConfig): void {
   if (!config.url) {
-    throw TransportError.protocolError(
-      'URL is required for StreamableHTTP transport',
-    );
+    throw TransportError.protocolError('URL is required for StreamableHTTP transport');
   }
 
   // Validate URL format and protocol
@@ -127,10 +111,7 @@ function validateStreamableHTTPConfig(
       );
     }
   } catch (error) {
-    throw TransportError.invalidUrl(
-      config.url,
-      error instanceof Error ? error : undefined,
-    );
+    throw TransportError.invalidUrl(config.url, error instanceof Error ? error : undefined);
   }
 
   // Validate reconnect configuration

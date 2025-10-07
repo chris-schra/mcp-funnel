@@ -13,21 +13,13 @@ export { SecretProviderConfigSchema } from './SecretProviders.js';
 export { BearerAuthConfigSchema } from './BearerAuthConfigSchema.js';
 export { NoAuthConfigSchema } from './NoAuthConfigSchema.js';
 
-export type TargetServerWithoutName = z.infer<
-  typeof TargetServerWithoutNameSchema
->;
+export type TargetServerWithoutName = z.infer<typeof TargetServerWithoutNameSchema>;
 export type ServersRecord = Record<string, TargetServerWithoutName>;
 export type ExtendedServersRecord = Record<string, TargetServerWithoutNameZod>;
 
 export type AuthConfigZod = z.infer<typeof AuthConfigSchema>;
-export type StdioTransportConfigZod = z.infer<
-  typeof StdioTransportConfigSchema
->;
+export type StdioTransportConfigZod = z.infer<typeof StdioTransportConfigSchema>;
 export type SSETransportConfigZod = z.infer<typeof SSETransportConfigSchema>;
-export type WebSocketTransportConfigZod = z.infer<
-  typeof WebSocketTransportConfigSchema
->;
+export type WebSocketTransportConfigZod = z.infer<typeof WebSocketTransportConfigSchema>;
 export type TargetServerZod = z.infer<typeof TargetServerSchema>;
-export type TargetServerWithoutNameZod = z.infer<
-  typeof TargetServerWithoutNameSchema
->;
+export type TargetServerWithoutNameZod = z.infer<typeof TargetServerWithoutNameSchema>;

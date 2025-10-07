@@ -30,8 +30,7 @@ import {
  */
 export class JsDebuggerCommand extends BaseCommand {
   public readonly name = 'js-debugger';
-  public readonly description =
-    'Debug JavaScript applications using the Chrome DevTools Protocol.';
+  public readonly description = 'Debug JavaScript applications using the Chrome DevTools Protocol.';
   private readonly manager = new DebuggerSessionManager();
 
   /**
@@ -41,11 +40,8 @@ export class JsDebuggerCommand extends BaseCommand {
   public getMCPDefinitions(): Tool[] {
     // Create schema definitions
     const breakpointLocationSchema = createBreakpointLocationSchema();
-    const breakpointSpecSchema = createBreakpointSpecSchema(
-      breakpointLocationSchema,
-    );
-    const breakpointMutationSchema =
-      createBreakpointMutationSchema(breakpointSpecSchema);
+    const breakpointSpecSchema = createBreakpointSpecSchema(breakpointLocationSchema);
+    const breakpointMutationSchema = createBreakpointMutationSchema(breakpointSpecSchema);
 
     return [
       {
@@ -68,8 +64,7 @@ export class JsDebuggerCommand extends BaseCommand {
       },
       {
         name: 'js-debugger_queryOutput',
-        description:
-          'Retrieve buffered stdout, stderr, console, and exception output.',
+        description: 'Retrieve buffered stdout, stderr, console, and exception output.',
         inputSchema: createOutputQuerySchema(),
       },
     ];
@@ -102,9 +97,7 @@ export class JsDebuggerCommand extends BaseCommand {
           return errorResponse(`Unknown tool: ${toolName}`);
       }
     } catch (error) {
-      return errorResponse(
-        error instanceof Error ? error.message : String(error),
-      );
+      return errorResponse(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -198,25 +191,15 @@ Note: Full debugging capabilities are available through the MCP protocol tools:
    */
   private async handleDebuggerCommandCLI(args: string[]): Promise<void> {
     if (args.length < 2) {
-      throw new Error(
-        'Action and session ID are required for command subcommand',
-      );
+      throw new Error('Action and session ID are required for command subcommand');
     }
 
     const [action, sessionId] = args;
     // Simple commands that don't require additional parameters
-    const simpleActions = [
-      'continue',
-      'pause',
-      'stepInto',
-      'stepOver',
-      'stepOut',
-    ];
+    const simpleActions = ['continue', 'pause', 'stepInto', 'stepOver', 'stepOut'];
 
     if (!simpleActions.includes(action)) {
-      throw new Error(
-        `CLI only supports simple actions: ${simpleActions.join(', ')}`,
-      );
+      throw new Error(`CLI only supports simple actions: ${simpleActions.join(', ')}`);
     }
 
     const command = {
@@ -238,9 +221,7 @@ Note: Full debugging capabilities are available through the MCP protocol tools:
    * @param args - Request arguments
    * @returns Session start response
    */
-  private async handleStartSession(
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> {
+  private async handleStartSession(args: Record<string, unknown>): Promise<CallToolResult> {
     const config = parseDebugSessionConfig(args);
     const response = await this.manager.startSession(config);
     return jsonResponse(response);
@@ -251,9 +232,7 @@ Note: Full debugging capabilities are available through the MCP protocol tools:
    * @param args - Request arguments
    * @returns Command execution response
    */
-  private async handleDebuggerCommand(
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> {
+  private async handleDebuggerCommand(args: Record<string, unknown>): Promise<CallToolResult> {
     const command = parseDebuggerCommand(args);
     const result = await this.manager.runCommand(command);
     return jsonResponse(result);
@@ -264,9 +243,7 @@ Note: Full debugging capabilities are available through the MCP protocol tools:
    * @param args - Request arguments
    * @returns Scope variables response
    */
-  private async handleScopeQuery(
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> {
+  private async handleScopeQuery(args: Record<string, unknown>): Promise<CallToolResult> {
     const query = parseScopeQuery(args);
     const result = await this.manager.getScopeVariables(query);
     return jsonResponse(result);
@@ -277,9 +254,7 @@ Note: Full debugging capabilities are available through the MCP protocol tools:
    * @param args - Request arguments
    * @returns Output query response
    */
-  private async handleOutputQuery(
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> {
+  private async handleOutputQuery(args: Record<string, unknown>): Promise<CallToolResult> {
     const query = parseOutputQuery(args);
     const result = await this.manager.queryOutput(query);
     return jsonResponse(result);

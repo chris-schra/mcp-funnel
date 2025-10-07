@@ -19,10 +19,7 @@
  */
 
 import type { Context } from 'hono';
-import type {
-  IInboundAuthValidator,
-  AuthResult,
-} from '../interfaces/inbound-auth.interface.js';
+import type { IInboundAuthValidator, AuthResult } from '../interfaces/inbound-auth.interface.js';
 
 /**
  * No-authentication validator.
@@ -30,9 +27,7 @@ import type {
  */
 export class NoAuthValidator implements IInboundAuthValidator {
   public constructor() {
-    console.info(
-      'Initialized no-auth validator - all requests will be allowed',
-    );
+    console.info('Initialized no-auth validator - all requests will be allowed');
   }
 
   public async validateRequest(_context: Context): Promise<AuthResult> {

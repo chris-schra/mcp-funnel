@@ -15,9 +15,7 @@ vi.mock('@mcp-funnel/core', async (importOriginal) => {
 // Mock implementation of BaseOAuthProvider for testing
 export class TestOAuthProvider extends BaseOAuthProvider {
   public acquireTokenMock = vi.fn(() => Promise.resolve());
-  public makeTokenRequestMock = vi.fn(() =>
-    Promise.resolve({} as OAuth2TokenResponse),
-  );
+  public makeTokenRequestMock = vi.fn(() => Promise.resolve({} as OAuth2TokenResponse));
 
   constructor(storage: ITokenStorage) {
     super(storage);
@@ -44,17 +42,10 @@ export class TestOAuthProvider extends BaseOAuthProvider {
     requestId: string,
     validateAudience?: (audience: string) => boolean,
   ): Promise<void> {
-    return this.processTokenResponse(
-      tokenResponse,
-      requestId,
-      validateAudience,
-    );
+    return this.processTokenResponse(tokenResponse, requestId, validateAudience);
   }
 
-  public async testHandleTokenRequestError(
-    error: unknown,
-    response?: Response,
-  ): Promise<never> {
+  public async testHandleTokenRequestError(error: unknown, response?: Response): Promise<never> {
     return this.handleTokenRequestError(error, response);
   }
 
@@ -123,8 +114,7 @@ export class MockTokenStorage implements ITokenStorage {
  */
 export function createTestToken(expiresInMs: number = 3600000): TokenData {
   return {
-    accessToken:
-      'test-access-token-' + Math.random().toString(36).substring(2, 11),
+    accessToken: 'test-access-token-' + Math.random().toString(36).substring(2, 11),
     expiresAt: new Date(Date.now() + expiresInMs),
     tokenType: 'Bearer',
     scope: 'read write',

@@ -120,9 +120,7 @@ describe('Security: Auth Token Exposure Prevention', () => {
 
           // Verify headers contain auth information instead
           expect(result.headers).toBeDefined();
-          expect(result.headers.Authorization).toBe(
-            'Bearer secret-token-12345',
-          );
+          expect(result.headers.Authorization).toBe('Bearer secret-token-12345');
         } else {
           // Fallback: at least verify no EventSource was created with tokens in URL
           expect(eventSourceConstructorCalls.length).toBeGreaterThanOrEqual(0);

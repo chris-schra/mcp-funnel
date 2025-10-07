@@ -74,10 +74,7 @@ describe('Core Tools Configuration', () => {
 
     // Now discover it
     const discoverTool = proxy['coreTools'].get('discover_tools_by_words');
-    const result = await discoverTool?.handle(
-      { words: 'example test' },
-      context,
-    );
+    const result = await discoverTool?.handle({ words: 'example test' }, context);
 
     const text = (result?.content[0] as { text: string }).text;
     expect(text).toContain('test__example');
@@ -137,10 +134,7 @@ describe('Core Tools Configuration', () => {
 
     // Now try to discover hidden tools
     const discoverTool = proxy['coreTools'].get('discover_tools_by_words');
-    const result = await discoverTool?.handle(
-      { words: 'secret private' },
-      context,
-    );
+    const result = await discoverTool?.handle({ words: 'secret private' }, context);
 
     const text = (result?.content[0] as { text: string }).text;
 
@@ -149,10 +143,7 @@ describe('Core Tools Configuration', () => {
     expect(text).not.toContain('testserver__private_tool');
 
     // But public tools should still be discoverable
-    const publicResult = await discoverTool?.handle(
-      { words: 'public' },
-      context,
-    );
+    const publicResult = await discoverTool?.handle({ words: 'public' }, context);
 
     const publicText = (publicResult?.content[0] as { text: string }).text;
     expect(publicText).toContain('testserver__public_tool');

@@ -43,93 +43,74 @@ describe('Streamable MCP Endpoint Authentication', () => {
     // with Hono's response object. The important part is that auth enforcement works.
 
     // Test authenticated MCP JSON-RPC request (POST) - auth should pass
-    const authJsonRpcResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/mcp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer test-mcp-token-123',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'tools/list',
-          id: 1,
-        }),
+    const authJsonRpcResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-mcp-token-123',
       },
-    );
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    });
 
     // Authentication passed (not 401), even if MCP layer has issues
     expect(authJsonRpcResponse.status).not.toBe(401);
 
     // Test authenticated SSE stream (GET) - auth should pass
-    const authSseResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/mcp`,
-      {
-        headers: {
-          Accept: 'text/event-stream',
-          Authorization: 'Bearer test-mcp-token-123',
-        },
+    const authSseResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+      headers: {
+        Accept: 'text/event-stream',
+        Authorization: 'Bearer test-mcp-token-123',
       },
-    );
+    });
 
     // Authentication passed (not 401), even if MCP layer has issues
     expect(authSseResponse.status).not.toBe(401);
 
     // Test unauthenticated MCP request
-    const noAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/mcp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'tools/list',
-          id: 1,
-        }),
+    const noAuthResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    });
 
     expect(noAuthResponse.status).toBe(401);
     const noAuthData = await noAuthResponse.json();
     expect(noAuthData.error).toBe('Unauthorized');
-    expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe(
-      'Bearer realm="MCP Proxy API"',
-    );
+    expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
 
     // Test unauthenticated SSE request
-    const noAuthSseResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/mcp`,
-      {
-        headers: {
-          Accept: 'text/event-stream',
-        },
+    const noAuthSseResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+      headers: {
+        Accept: 'text/event-stream',
       },
-    );
+    });
 
     expect(noAuthSseResponse.status).toBe(401);
-    expect(noAuthSseResponse.headers.get('WWW-Authenticate')).toBe(
-      'Bearer realm="MCP Proxy API"',
-    );
+    expect(noAuthSseResponse.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
 
     // Test invalid token on MCP endpoint
-    const invalidAuthResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/mcp`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer invalid-mcp-token',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'tools/list',
-          id: 1,
-        }),
+    const invalidAuthResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer invalid-mcp-token',
       },
-    );
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    });
 
     expect(invalidAuthResponse.status).toBe(401);
     const invalidAuthData = await invalidAuthResponse.json();
@@ -194,9 +175,7 @@ describe('Streamable MCP Endpoint Authentication', () => {
 
       // All should fail (401) when not authenticated
       expect(noAuthResponse.status).toBe(401);
-      expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe(
-        'Bearer realm="MCP Proxy API"',
-      );
+      expect(noAuthResponse.headers.get('WWW-Authenticate')).toBe('Bearer realm="MCP Proxy API"');
     }
   });
 });

@@ -30,8 +30,7 @@ export const handleAuthorizationCodeGrant = async (
   tokenResponse?: TokenResponse;
   error?: OAuthError;
 }> => {
-  const { code, redirect_uri, client_id, client_secret, code_verifier } =
-    params;
+  const { code, redirect_uri, client_id, client_secret, code_verifier } = params;
 
   // Get client
   const client = await storage.getClient(client_id);

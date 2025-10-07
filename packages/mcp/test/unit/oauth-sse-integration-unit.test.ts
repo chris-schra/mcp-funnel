@@ -20,21 +20,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { SSEClientTransport } from '@mcp-funnel/core';
-import {
-  MemoryTokenStorage,
-  OAuth2ClientCredentialsProvider,
-} from '@mcp-funnel/auth';
-import {
-  createMockSSEServer,
-  MockSSEServer,
-} from '../mocks/mock-sse-server.js';
+import { MemoryTokenStorage, OAuth2ClientCredentialsProvider } from '@mcp-funnel/auth';
+import { createMockSSEServer, MockSSEServer } from '../mocks/mock-sse-server.js';
 import type { MockEventSource } from '../mocks/mock-eventsource.js';
 
 // Mock EventSource globally - must be before SSE imports
 vi.mock('eventsource', async () => {
-  const importActual = (await vi.importActual(
-    '../mocks/mock-eventsource.js',
-  )) as { MockEventSource: typeof MockEventSource };
+  const importActual = (await vi.importActual('../mocks/mock-eventsource.js')) as {
+    MockEventSource: typeof MockEventSource;
+  };
   return {
     EventSource: importActual.MockEventSource,
   };
@@ -54,55 +48,51 @@ class MockOAuthServer {
   public tokenRefreshCount = 0;
 
   setupMockResponses(): void {
-    mockFetch.mockImplementation(
-      async (url: string, options: RequestInit = {}) => {
-        const urlObj = new URL(url);
+    mockFetch.mockImplementation(async (url: string, options: RequestInit = {}) => {
+      const urlObj = new URL(url);
 
-        // Token endpoint for client credentials
-        if (urlObj.pathname === '/oauth/token') {
-          if (this.shouldFailAuth) {
-            return new Response(
-              JSON.stringify({
-                error: 'invalid_client',
-                error_description: 'Invalid client credentials',
-              }),
-              {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' },
-              },
-            );
-          }
-
-          this.tokenRefreshCount++;
-
+      // Token endpoint for client credentials
+      if (urlObj.pathname === '/oauth/token') {
+        if (this.shouldFailAuth) {
           return new Response(
             JSON.stringify({
-              access_token: this.authToken,
-              token_type: 'Bearer',
-              expires_in: 3600,
-              scope: 'read write',
+              error: 'invalid_client',
+              error_description: 'Invalid client credentials',
             }),
             {
-              status: 200,
+              status: 401,
               headers: { 'Content-Type': 'application/json' },
             },
           );
         }
 
-        // SSE endpoint with auth check
-        if (urlObj.pathname.includes('/sse')) {
-          const authHeader = (options.headers as Record<string, string>)?.[
-            'Authorization'
-          ];
-          if (!authHeader || !authHeader.includes(this.authToken)) {
-            return new Response('Unauthorized', { status: 401 });
-          }
-          return new Response('OK', { status: 200 });
-        }
+        this.tokenRefreshCount++;
 
-        return new Response('Not Found', { status: 404 });
-      },
-    );
+        return new Response(
+          JSON.stringify({
+            access_token: this.authToken,
+            token_type: 'Bearer',
+            expires_in: 3600,
+            scope: 'read write',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+
+      // SSE endpoint with auth check
+      if (urlObj.pathname.includes('/sse')) {
+        const authHeader = (options.headers as Record<string, string>)?.['Authorization'];
+        if (!authHeader || !authHeader.includes(this.authToken)) {
+          return new Response('Unauthorized', { status: 401 });
+        }
+        return new Response('OK', { status: 200 });
+      }
+
+      return new Response('Not Found', { status: 404 });
+    });
   }
 
   expireToken(): void {
@@ -200,9 +190,7 @@ describe('OAuth + SSE Integration Unit Tests (Mocked)', () => {
       await authProvider.refresh();
 
       // Should have refreshed token
-      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(
-        initialRefreshCount,
-      );
+      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(initialRefreshCount);
     }, 15000);
 
     it('should handle authentication failures gracefully', async () => {
@@ -298,9 +286,7 @@ describe('OAuth + SSE Integration Unit Tests (Mocked)', () => {
       // Next auth request should trigger refresh
       await authProvider.getHeaders();
 
-      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(
-        initialRefreshCount,
-      );
+      expect(mockOAuthServer.tokenRefreshCount).toBeGreaterThan(initialRefreshCount);
     }, 15000);
   });
 });

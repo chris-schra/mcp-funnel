@@ -81,17 +81,8 @@ export async function waitForResumed(
  * @param text - Instruction text to display
  * @returns void
  */
-export function emitInstructions(
-  outputBuffer: OutputBuffer,
-  text: string,
-): void {
-  const entry = buildConsoleEntry(
-    'info',
-    'log-entry',
-    [],
-    Date.now(),
-    undefined,
-  );
+export function emitInstructions(outputBuffer: OutputBuffer, text: string): void {
+  const entry = buildConsoleEntry('info', 'log-entry', [], Date.now(), undefined);
   entry.text = text;
   outputBuffer.addConsole(entry);
 }
@@ -102,10 +93,7 @@ export function emitInstructions(
  * @returns Promise that resolves when debugger runs or expected error is suppressed
  */
 export async function tryRunIfWaitingForDebugger(
-  sendCommand: <T = unknown>(
-    method: string,
-    params?: Record<string, unknown>,
-  ) => Promise<T>,
+  sendCommand: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>,
 ): Promise<void> {
   try {
     await sendCommand('Runtime.runIfWaitingForDebugger');

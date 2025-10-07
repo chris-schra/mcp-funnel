@@ -18,19 +18,9 @@ export class ToolRegistry {
     // Core tools bypass hideTools filtering
     if (!params.isCoreTool) {
       // Check if tool is hidden - if so, don't register it at all (unless alwaysVisible)
-      if (
-        ToolRegistryUtils.matchesPatterns(
-          params.fullName,
-          this.config.hideTools,
-        )
-      ) {
+      if (ToolRegistryUtils.matchesPatterns(params.fullName, this.config.hideTools)) {
         // But alwaysVisibleTools overrides hideTools
-        if (
-          !ToolRegistryUtils.matchesPatterns(
-            params.fullName,
-            this.config.alwaysVisibleTools,
-          )
-        ) {
+        if (!ToolRegistryUtils.matchesPatterns(params.fullName, this.config.alwaysVisibleTools)) {
           // Tool is hidden and not alwaysVisible, act as a firewall - don't register it
           return;
         }
@@ -53,10 +43,7 @@ export class ToolRegistry {
   }
 
   // Enable tools dynamically
-  public enableTools(
-    toolNames: string[],
-    source: 'discovery' | 'toolset',
-  ): void {
+  public enableTools(toolNames: string[], source: 'discovery' | 'toolset'): void {
     for (const name of toolNames) {
       const tool = this.tools.get(name);
       if (tool) {
@@ -124,9 +111,7 @@ export class ToolRegistry {
 
     for (const mcpDef of mcpDefs) {
       const useCompact = singleMatchesCommand && mcpDef.name === command.name;
-      const displayName = useCompact
-        ? `${command.name}`
-        : `${command.name}_${mcpDef.name}`;
+      const displayName = useCompact ? `${command.name}` : `${command.name}_${mcpDef.name}`;
 
       if (!mcpDef.description) {
         throw new Error(
@@ -143,9 +128,7 @@ export class ToolRegistry {
       });
     }
 
-    console.info(
-      `[registry] Hot-reloaded command '${command.name}' with ${mcpDefs.length} tools`,
-    );
+    console.info(`[registry] Hot-reloaded command '${command.name}' with ${mcpDefs.length} tools`);
   }
 
   // Compatibility alias for older callers
@@ -176,10 +159,7 @@ export class ToolRegistry {
 
   private isAutoEnabled(name: string): boolean {
     // Tools that should be enabled on discovery
-    return ToolRegistryUtils.matchesPatterns(
-      name,
-      this.config.alwaysVisibleTools,
-    );
+    return ToolRegistryUtils.matchesPatterns(name, this.config.alwaysVisibleTools);
   }
 
   // Query methods
@@ -206,26 +186,13 @@ export class ToolRegistry {
     return Array.from(this.tools.values());
   }
 
-  public searchTools(
-    keywords: string[],
-    mode: 'and' | 'or' = 'and',
-  ): ToolState[] {
-    return ToolRegistryUtils.searchTools(
-      Array.from(this.tools.values()),
-      keywords,
-      mode,
-    );
+  public searchTools(keywords: string[], mode: 'and' | 'or' = 'and'): ToolState[] {
+    return ToolRegistryUtils.searchTools(Array.from(this.tools.values()), keywords, mode);
   }
 
   // Get tool descriptions for backward compatibility
-  public getToolDescriptions(): Map<
-    string,
-    { serverName: string; description: string }
-  > {
-    const descriptions = new Map<
-      string,
-      { serverName: string; description: string }
-    >();
+  public getToolDescriptions(): Map<string, { serverName: string; description: string }> {
+    const descriptions = new Map<string, { serverName: string; description: string }>();
     for (const [name, tool] of this.tools) {
       if (tool.discovered) {
         descriptions.set(name, {

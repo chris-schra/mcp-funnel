@@ -12,9 +12,7 @@
  * resolve other paths (e.g. Windows expands %SystemRoot%).
  * @public
  */
-export type PlatformEnvAllowlist = Partial<
-  Record<NodeJS.Platform, readonly string[]>
->;
+export type PlatformEnvAllowlist = Partial<Record<NodeJS.Platform, readonly string[]>>;
 
 /**
  * Core environment variables that are safe to pass through on every platform.
@@ -65,14 +63,9 @@ const PLATFORM_ENV_ALLOWLIST: PlatformEnvAllowlist = {
  * @returns Array of environment variable names to preserve
  * @public
  */
-export function getDefaultPassthroughEnv(
-  platform: NodeJS.Platform = process.platform,
-): string[] {
+export function getDefaultPassthroughEnv(platform: NodeJS.Platform = process.platform): string[] {
   const platformAllowlist = PLATFORM_ENV_ALLOWLIST[platform] ?? [];
-  const combined = new Set<string>([
-    ...COMMON_ENV_ALLOWLIST,
-    ...platformAllowlist,
-  ]);
+  const combined = new Set<string>([...COMMON_ENV_ALLOWLIST, ...platformAllowlist]);
   return Array.from(combined);
 }
 

@@ -1,9 +1,5 @@
 import type { Handler } from 'hono';
-import {
-  createConsentPageData,
-  OAuthUtils,
-  renderConsentPage,
-} from '@mcp-funnel/auth';
+import { createConsentPageData, OAuthUtils, renderConsentPage } from '@mcp-funnel/auth';
 
 export const GetConsentHandler: Handler = async (c) => {
   try {
@@ -55,15 +51,10 @@ export const GetConsentHandler: Handler = async (c) => {
       oauthConfig.supportedScopes.includes(requestedScope),
     );
 
-    const hasConsented = await consentService.hasUserConsented(
-      userId,
-      clientId,
-      validScopes,
-    );
+    const hasConsented = await consentService.hasUserConsented(userId, clientId, validScopes);
 
     const redirectUri =
-      redirectUriParam &&
-      OAuthUtils.validateRedirectUri(client, redirectUriParam)
+      redirectUriParam && OAuthUtils.validateRedirectUri(client, redirectUriParam)
         ? redirectUriParam
         : client.redirect_uris[0];
 

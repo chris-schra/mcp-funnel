@@ -50,10 +50,7 @@ describe('OAuth Utils - parseTokenResponse', () => {
     const customExpiry = 7200;
     const result = parseTokenResponse(tokenResponse, customExpiry);
 
-    expect(result.expiresAt.getTime()).toBeCloseTo(
-      Date.now() + customExpiry * 1000,
-      -3,
-    );
+    expect(result.expiresAt.getTime()).toBeCloseTo(Date.now() + customExpiry * 1000, -3);
   });
 
   it('should default token type to Bearer', () => {
@@ -96,10 +93,7 @@ describe('OAuth Utils - parseTokenResponse', () => {
 
     const result = parseTokenResponse(tokenResponse);
 
-    expect(result.expiresAt.getTime()).toBeCloseTo(
-      Date.now() - 3600 * 1000,
-      -3,
-    );
+    expect(result.expiresAt.getTime()).toBeCloseTo(Date.now() - 3600 * 1000, -3);
   });
 
   it('should preserve undefined scope', () => {

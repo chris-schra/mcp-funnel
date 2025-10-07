@@ -32,9 +32,6 @@ export function classifyAndLogError(
   }
 
   // All other errors
-  console.error(
-    `[MCPRegistryClient] Unexpected error during ${operation}${contextStr}:`,
-    error,
-  );
+  console.error(`[MCPRegistryClient] Unexpected error during ${operation}${contextStr}:`, error);
   return 'unexpected';
 }

@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DotEnvProvider } from '../index.js';
-import {
-  createTestDirectory,
-  createTestEnvFile,
-  cleanupTestDirectory,
-} from './test-utils.js';
+import { createTestDirectory, createTestEnvFile, cleanupTestDirectory } from './test-utils.js';
 
 describe('DotEnvProvider - Basic Parsing', () => {
   let testDir: string;
@@ -19,8 +15,7 @@ describe('DotEnvProvider - Basic Parsing', () => {
 
   it('should read a valid .env file and parse key-value pairs', async () => {
     // Arrange
-    const envContent =
-      'API_KEY=secret123\nDATABASE_URL=postgres://localhost:5432/test\n';
+    const envContent = 'API_KEY=secret123\nDATABASE_URL=postgres://localhost:5432/test\n';
     const envFilePath = createTestEnvFile(testDir, '.env', envContent);
 
     const provider = new DotEnvProvider({ path: envFilePath });

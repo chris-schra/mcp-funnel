@@ -1,10 +1,6 @@
 /* eslint-disable max-lines */
 import { describe, expect, test } from 'vitest';
-import {
-  query,
-  type SDKUserMessage,
-  type SDKMessage,
-} from '@anthropic-ai/claude-code';
+import { query, type SDKUserMessage, type SDKMessage } from '@anthropic-ai/claude-code';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,12 +8,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Negotiation controls (configurable via env)
-const NEGOTIATION_MAX_ATTEMPTS = Number.parseInt(
-  process.env.NEGOTIATION_MAX_ATTEMPTS ?? '2',
-);
-const NEGOTIATION_TIMEOUT_MS = Number.parseInt(
-  process.env.NEGOTIATION_TIMEOUT_MS ?? '40000',
-);
+const NEGOTIATION_MAX_ATTEMPTS = Number.parseInt(process.env.NEGOTIATION_MAX_ATTEMPTS ?? '2');
+const NEGOTIATION_TIMEOUT_MS = Number.parseInt(process.env.NEGOTIATION_TIMEOUT_MS ?? '40000');
 
 // Helper to check strict YES/NO responses
 const expectStrictResponse = (response: string, expected: 'YES' | 'NO') => {
@@ -148,8 +140,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
      */
     async function startConversation(configFile: string) {
       const messages: SDKMessage[] = [];
-      const toolCalls: Array<{ name: string; input: Record<string, unknown> }> =
-        [];
+      const toolCalls: Array<{ name: string; input: Record<string, unknown> }> = [];
       const { messageGenerator, sendMessage, responseResolvers, shutdown } =
         createConversationManager();
 
@@ -220,8 +211,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
             ) {
               if (disallowedAttempts > NEGOTIATION_MAX_ATTEMPTS) {
                 negotiationReason =
-                  negotiationReason ??
-                  'Negotiation detected: Read permission flow';
+                  negotiationReason ?? 'Negotiation detected: Read permission flow';
 
                 try {
                   abortController.abort();
@@ -259,17 +249,13 @@ const expectStrictNumber = (response: string, expected?: number) => {
         try {
           for await (const message of queryInstance) {
             if (message.type === 'system' && message.subtype === 'init') {
-              const mcpServerInfo = message.mcp_servers.find(
-                (it) => it.name === 'mcp-funnel',
-              );
+              const mcpServerInfo = message.mcp_servers.find((it) => it.name === 'mcp-funnel');
               if (!mcpServerInfo) {
                 throw new Error('MCP Funnel server not found in init message');
               }
 
               if (mcpServerInfo.status !== 'connected') {
-                throw new Error(
-                  `MCP Funnel server failed to start: ${mcpServerInfo.status}`,
-                );
+                throw new Error(`MCP Funnel server failed to start: ${mcpServerInfo.status}`);
               }
             }
             messages.push(message);
@@ -373,18 +359,12 @@ const expectStrictNumber = (response: string, expected?: number) => {
             await Promise.race([
               processingPromise,
               new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error('Test timeout after 5 seconds')),
-                  5000,
-                ),
+                setTimeout(() => reject(new Error('Test timeout after 5 seconds')), 5000),
               ),
             ]);
           } catch (error) {
             // If there was an error during processing, it's okay - we're finishing anyway
-            if (
-              error instanceof Error &&
-              error.message !== 'Test timeout after 5 seconds'
-            ) {
+            if (error instanceof Error && error.message !== 'Test timeout after 5 seconds') {
               console.error('Error during finish:', error.message);
             }
           } finally {
@@ -400,9 +380,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
       };
     }
 
-    const maxRuns = process.env.E2E_AGENT_RUNS
-      ? parseInt(process.env.E2E_AGENT_RUNS)
-      : 1;
+    const maxRuns = process.env.E2E_AGENT_RUNS ? parseInt(process.env.E2E_AGENT_RUNS) : 1;
 
     const times = (n: number) => [...Array(n).keys()];
 
@@ -457,9 +435,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
           async () => {
             let conversation;
             try {
-              conversation = await startConversation(
-                'config.with-mock-server.json',
-              );
+              conversation = await startConversation('config.with-mock-server.json');
 
               const response = await conversation.sendMessage(
                 'First discover tools with word "echo", then use mcp__mcp-funnel__get_tool_schema for "mockserver__echo". Does it have a parameter named "message"? After any analysis, output a final line containing EXACTLY YES or NO with no quotes or punctuation. The last line will be parsed.',
@@ -515,9 +491,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
         }, 60000);
 
         test('should expose server tools directly when configured', async () => {
-          const conversation = await startConversation(
-            'config.with-mock-server.json',
-          );
+          const conversation = await startConversation('config.with-mock-server.json');
 
           const response = await conversation.sendMessage(
             'Count how many tools start with "mockserver__". You **MUST** reply ONLY with a number.',
@@ -533,9 +507,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
 
       describe.concurrent(`Tool Filtering (Run ${i})`, () => {
         test('should respect hideTools configuration', async () => {
-          const conversation = await startConversation(
-            'config.with-hidden-tools.json',
-          );
+          const conversation = await startConversation('config.with-hidden-tools.json');
 
           const response = await conversation.sendMessage(
             'Is the tool "mockserver__hidden_tool" available? Output the final line as EXACTLY YES or NO with no quotes. The last line will be parsed.',
@@ -547,9 +519,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
         }, 60000);
 
         test('should respect exposeTools allowlist', async () => {
-          const conversation = await startConversation(
-            'config.with-exposed-tools.json',
-          );
+          const conversation = await startConversation('config.with-exposed-tools.json');
 
           const response = await conversation.sendMessage(
             'Is the tool "mcp__mcp-funnel__mockserver__exposed_tool" OR "mockserver__exposed_tool" available? If available, you **MUST** reply with YES, any **ONLY** ELSE IF not available, you **MUST** list the tools available via mcp-funnel.',
@@ -584,9 +554,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
 
       describe.concurrent(`Multi-Server Aggregation (Run ${i})`, () => {
         test('should aggregate tools from multiple servers with proper namespacing', async () => {
-          const conversation = await startConversation(
-            'config.multi-server.json',
-          );
+          const conversation = await startConversation('config.multi-server.json');
 
           const response1 = await conversation.sendMessage(
             'Use mcp__mcp-funnel__discover_tools_by_words with words="github". After getting the results, check: Are there any tools that start with "github__"? If YES, reply only with yes - otherwise list ALL available tools from MCP server mcp-funnel.',
@@ -605,9 +573,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
 
       describe.concurrent(`Tool Execution via Bridge (Run ${i})`, () => {
         test('should execute tools through bridge_tool_request', async () => {
-          const conversation = await startConversation(
-            'config.with-mock-server.json',
-          );
+          const conversation = await startConversation('config.with-mock-server.json');
 
           const response = await conversation.sendMessage(
             'Use mcp__mcp-funnel__bridge_tool_request to execute "mockserver__echo" with arguments {"message": "test"}. What was the response? You **MUST** reply ONLY with the echoed message.',

@@ -30,12 +30,10 @@ describe('MemoryUserConsentService', () => {
 
     await consentService.recordUserConsent(USER_ID, CLIENT_ID, ['read']);
 
-    await expect(
-      consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read']),
-    ).resolves.toBe(true);
-    await expect(
-      consentService.hasUserConsented(USER_ID, CLIENT_ID, ['write']),
-    ).resolves.toBe(false);
+    await expect(consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read'])).resolves.toBe(true);
+    await expect(consentService.hasUserConsented(USER_ID, CLIENT_ID, ['write'])).resolves.toBe(
+      false,
+    );
 
     await consentService.recordUserConsent(USER_ID, CLIENT_ID, ['write']);
 
@@ -49,15 +47,13 @@ describe('MemoryUserConsentService', () => {
     const consentService = createService({ defaultTtlSeconds: 60 });
 
     await consentService.recordUserConsent(USER_ID, CLIENT_ID, ['read']);
-    await expect(
-      consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read']),
-    ).resolves.toBe(true);
+    await expect(consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read'])).resolves.toBe(true);
 
     vi.advanceTimersByTime(61_000);
 
-    await expect(
-      consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read']),
-    ).resolves.toBe(false);
+    await expect(consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read'])).resolves.toBe(
+      false,
+    );
   });
 
   it('honours remember flag to persist consent beyond the default TTL', async () => {
@@ -73,25 +69,18 @@ describe('MemoryUserConsentService', () => {
 
     vi.advanceTimersByTime(24 * 60 * 60 * 1000);
 
-    await expect(
-      consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read']),
-    ).resolves.toBe(true);
+    await expect(consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read'])).resolves.toBe(true);
   });
 
   it('revokes specific scopes without affecting remaining approvals', async () => {
     const consentService = createService();
 
-    await consentService.recordUserConsent(USER_ID, CLIENT_ID, [
-      'read',
-      'write',
-    ]);
+    await consentService.recordUserConsent(USER_ID, CLIENT_ID, ['read', 'write']);
     await consentService.revokeUserConsent(USER_ID, CLIENT_ID, ['write']);
 
-    await expect(
-      consentService.hasUserConsented(USER_ID, CLIENT_ID, ['write']),
-    ).resolves.toBe(false);
-    await expect(
-      consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read']),
-    ).resolves.toBe(true);
+    await expect(consentService.hasUserConsented(USER_ID, CLIENT_ID, ['write'])).resolves.toBe(
+      false,
+    );
+    await expect(consentService.hasUserConsented(USER_ID, CLIENT_ID, ['read'])).resolves.toBe(true);
   });
 });

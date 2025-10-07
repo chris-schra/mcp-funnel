@@ -9,11 +9,7 @@ import { PostTokenHandler } from './oauth/token.js';
 import ClientRoute from './oauth/clients/index.js';
 import { MergeDeep } from 'type-fest';
 import type { OAuthEnv } from './oauth/types.js';
-import {
-  MemoryOAuthStorage,
-  MemoryUserConsentService,
-  OAuthProvider,
-} from '@mcp-funnel/auth';
+import { MemoryOAuthStorage, MemoryUserConsentService, OAuthProvider } from '@mcp-funnel/auth';
 import type { OAuthProviderConfig } from '@mcp-funnel/models';
 type Variables = MergeDeep<
   {

@@ -57,20 +57,15 @@ describe('Server Authentication Integration - Error Handling', () => {
       testPort = address.port;
 
       // Test with malformed header
-      const malformedResponse = await fetch(
-        `http://localhost:${testPort}/api/streamable/health`,
-        {
-          headers: {
-            Authorization: 'Basic dXNlcjpwYXNz', // Basic auth instead of Bearer
-          },
+      const malformedResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`, {
+        headers: {
+          Authorization: 'Basic dXNlcjpwYXNz', // Basic auth instead of Bearer
         },
-      );
+      });
 
       expect(malformedResponse.status).toBe(401);
       const data = await malformedResponse.json();
-      expect(data.message).toBe(
-        'Invalid Authorization header format. Expected: Bearer <token>',
-      );
+      expect(data.message).toBe('Invalid Authorization header format. Expected: Bearer <token>');
     });
 
     it('should handle authentication errors gracefully on MCP endpoint', async () => {
@@ -91,21 +86,18 @@ describe('Server Authentication Integration - Error Handling', () => {
       testPort = address.port;
 
       // Test empty Bearer token (just spaces after Bearer)
-      const emptyTokenResponse = await fetch(
-        `http://localhost:${testPort}/api/streamable/mcp`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer    ', // Multiple spaces - will be trimmed to empty
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'tools/list',
-            id: 1,
-          }),
+      const emptyTokenResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer    ', // Multiple spaces - will be trimmed to empty
         },
-      );
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/list',
+          id: 1,
+        }),
+      });
 
       expect(emptyTokenResponse.status).toBe(401);
       const emptyTokenData = await emptyTokenResponse.json();
@@ -118,21 +110,18 @@ describe('Server Authentication Integration - Error Handling', () => {
       ]).toContain(emptyTokenData.message);
 
       // Test malformed Bearer header (missing Bearer prefix)
-      const malformedResponse = await fetch(
-        `http://localhost:${testPort}/api/streamable/mcp`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Token valid-token',
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'tools/list',
-            id: 1,
-          }),
+      const malformedResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Token valid-token',
         },
-      );
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/list',
+          id: 1,
+        }),
+      });
 
       expect(malformedResponse.status).toBe(401);
       const malformedData = await malformedResponse.json();
@@ -141,21 +130,18 @@ describe('Server Authentication Integration - Error Handling', () => {
       );
 
       // Test valid auth should still work (authentication passes)
-      const validResponse = await fetch(
-        `http://localhost:${testPort}/api/streamable/mcp`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer valid-token',
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'tools/list',
-            id: 1,
-          }),
+      const validResponse = await fetch(`http://localhost:${testPort}/api/streamable/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer valid-token',
         },
-      );
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'tools/list',
+          id: 1,
+        }),
+      });
 
       // Authentication should pass (not 401), even if MCP layer has issues
       expect(validResponse.status).not.toBe(401);

@@ -58,14 +58,10 @@ describe('Mandatory Authentication (Security Fix)', () => {
       testPort = address.port;
 
       // All endpoints should be accessible when auth is explicitly disabled
-      const streamableResponse = await fetch(
-        `http://localhost:${testPort}/api/streamable/health`,
-      );
+      const streamableResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`);
       expect(streamableResponse.status).toBe(200);
 
-      const healthResponse = await fetch(
-        `http://localhost:${testPort}/api/health`,
-      );
+      const healthResponse = await fetch(`http://localhost:${testPort}/api/health`);
       expect(healthResponse.status).toBe(200);
 
       // WebSocket connections should work without auth when disabled
@@ -114,14 +110,10 @@ describe('Mandatory Authentication (Security Fix)', () => {
     testPort = address.port;
 
     // All endpoints should be accessible
-    const streamableResponse = await fetch(
-      `http://localhost:${testPort}/api/streamable/health`,
-    );
+    const streamableResponse = await fetch(`http://localhost:${testPort}/api/streamable/health`);
     expect(streamableResponse.status).toBe(200);
 
-    const healthResponse = await fetch(
-      `http://localhost:${testPort}/api/health`,
-    );
+    const healthResponse = await fetch(`http://localhost:${testPort}/api/health`);
     expect(healthResponse.status).toBe(200);
   });
 });

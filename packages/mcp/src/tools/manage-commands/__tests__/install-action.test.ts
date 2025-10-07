@@ -29,9 +29,7 @@ describe('ManageCommands', () => {
       const mockCommand = createMockCommand('test-command', 'A test command');
 
       mockInstaller.install = vi.fn().mockResolvedValue(installedCommand);
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
 
       const result = await tool.handle(
         {
@@ -48,9 +46,7 @@ describe('ManageCommands', () => {
       const response = JSON.parse(content.text);
       expect(response.success).toBe(true);
       expect(response.action).toBe('installed');
-      expect(response.message).toContain(
-        'Successfully installed command: test-command',
-      );
+      expect(response.message).toContain('Successfully installed command: test-command');
       expect(response.command).toBeDefined();
       expect(response.command.name).toBe('test-command');
       expect(response.hint).toContain('Command installed and hot-reloaded');
@@ -77,9 +73,7 @@ describe('ManageCommands', () => {
       // Mock the install method to throw "already installed" error
       mockInstaller.install = vi
         .fn()
-        .mockRejectedValue(
-          new Error("Command package 'existing-package' is already installed"),
-        );
+        .mockRejectedValue(new Error("Command package 'existing-package' is already installed"));
 
       const result = await tool.handle(
         {
@@ -103,9 +97,7 @@ describe('ManageCommands', () => {
       const { tool, mockContext, mockInstaller } = getContext();
 
       const mockCommand = createMockCommand('test-command', 'A test command');
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
 
       // Mock successful install with force
       mockInstaller.install = vi.fn().mockResolvedValue({
@@ -137,9 +129,7 @@ describe('ManageCommands', () => {
       const { tool, mockContext, mockInstaller } = getContext();
 
       const mockCommand = createMockCommand('test-command', 'A test command');
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
 
       mockInstaller.install = vi.fn().mockResolvedValue({
         name: 'test-command',
@@ -192,9 +182,7 @@ describe('ManageCommands', () => {
       const { tool, mockContext, mockInstaller } = getContext();
 
       const mockCommand = createMockCommand('test-command', 'A test command');
-      mockInstaller.loadInstalledCommand = vi
-        .fn()
-        .mockResolvedValue(mockCommand);
+      mockInstaller.loadInstalledCommand = vi.fn().mockResolvedValue(mockCommand);
       mockInstaller.install = vi.fn().mockResolvedValue({
         name: 'test-command',
         package: 'test-package',
@@ -204,11 +192,9 @@ describe('ManageCommands', () => {
       });
 
       // Mock hot-reload failure
-      mockContext.toolRegistry!.hotReloadCommand = vi
-        .fn()
-        .mockImplementation(() => {
-          throw new Error('Hot-reload failed');
-        });
+      mockContext.toolRegistry!.hotReloadCommand = vi.fn().mockImplementation(() => {
+        throw new Error('Hot-reload failed');
+      });
 
       const result = await tool.handle(
         {

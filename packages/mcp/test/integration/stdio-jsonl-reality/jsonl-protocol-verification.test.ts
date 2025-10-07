@@ -151,10 +151,7 @@ describe('JSONL Protocol Verification', () => {
       ],
     });
 
-    const client = new Client(
-      { name: 'test', version: '1.0.0' },
-      { capabilities: {} },
-    );
+    const client = new Client({ name: 'test', version: '1.0.0' }, { capabilities: {} });
 
     await client.connect(transport);
 
@@ -303,10 +300,7 @@ describe('JSONL Protocol Verification', () => {
       ],
     });
 
-    const client = new Client(
-      { name: 'test', version: '1.0.0' },
-      { capabilities: {} },
-    );
+    const client = new Client({ name: 'test', version: '1.0.0' }, { capabilities: {} });
 
     await client.connect(transport);
 

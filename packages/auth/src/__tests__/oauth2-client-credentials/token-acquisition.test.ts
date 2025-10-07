@@ -44,18 +44,15 @@ describe('OAuth2ClientCredentialsProvider - Token Acquisition', () => {
     const headers = await provider.getHeaders();
 
     // Verify token request was made with correct parameters
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://auth.example.com/oauth/token',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${Buffer.from('test-client-id:test-client-secret').toString('base64')}`,
-          'X-Request-ID': expect.stringMatching(/^\d{13}_[a-f0-9]{8}$/),
-        },
-        body: 'grant_type=client_credentials&scope=api%3Aread+api%3Awrite&audience=https%3A%2F%2Fapi.example.com',
+    expect(mockFetch).toHaveBeenCalledWith('https://auth.example.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from('test-client-id:test-client-secret').toString('base64')}`,
+        'X-Request-ID': expect.stringMatching(/^\d{13}_[a-f0-9]{8}$/),
       },
-    );
+      body: 'grant_type=client_credentials&scope=api%3Aread+api%3Awrite&audience=https%3A%2F%2Fapi.example.com',
+    });
 
     // Verify token was stored
     expect(mockStorage.store).toHaveBeenCalledWith({
@@ -84,18 +81,15 @@ describe('OAuth2ClientCredentialsProvider - Token Acquisition', () => {
     await provider.getHeaders();
 
     // Should not include scope or audience in request body
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://auth.example.com/oauth/token',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${Buffer.from('test-client-id:test-client-secret').toString('base64')}`,
-          'X-Request-ID': expect.stringMatching(/^\d{13}_[a-f0-9]{8}$/), // UUID pattern
-        },
-        body: 'grant_type=client_credentials',
+    expect(mockFetch).toHaveBeenCalledWith('https://auth.example.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from('test-client-id:test-client-secret').toString('base64')}`,
+        'X-Request-ID': expect.stringMatching(/^\d{13}_[a-f0-9]{8}$/), // UUID pattern
       },
-    );
+      body: 'grant_type=client_credentials',
+    });
   });
 
   it('should handle token acquisition failure', async () => {
@@ -134,18 +128,16 @@ describe('OAuth2ClientCredentialsProvider - Token Acquisition', () => {
     vi.mocked(mockStorage.isExpired).mockResolvedValue(true);
 
     // Mock transient error followed by success
-    mockFetch
-      .mockRejectedValueOnce(new Error('ECONNRESET'))
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            access_token: 'retry-token',
-            token_type: 'Bearer',
-            expires_in: 3600,
-          } as OAuth2TokenResponse),
-      });
+    mockFetch.mockRejectedValueOnce(new Error('ECONNRESET')).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          access_token: 'retry-token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+        } as OAuth2TokenResponse),
+    });
 
     provider = new OAuth2ClientCredentialsProvider(mockConfig, mockStorage);
     const headers = await provider.getHeaders();

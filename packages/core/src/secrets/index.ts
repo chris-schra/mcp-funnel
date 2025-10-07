@@ -21,11 +21,7 @@
  * @public
  */
 
-export type {
-  ISecretProvider,
-  ISecretProviderRegistry,
-  SecretResolutionResult,
-} from './types.js';
+export type { ISecretProvider, ISecretProviderRegistry, SecretResolutionResult } from './types.js';
 export { filterEnvVars, getDefaultPassthroughEnv } from './env-filter.js';
 export { BaseSecretProvider } from './base-provider.js';
 export { SecretManager } from './secret-manager.js';

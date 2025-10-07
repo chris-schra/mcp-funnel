@@ -83,10 +83,7 @@ describe('GetServerInstallInfo', () => {
         throw new Error(`Unexpected URL: ${url}`);
       });
 
-      const result = await tool.handle(
-        { registryId: 'test-server-id' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'test-server-id' }, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };
@@ -94,9 +91,7 @@ describe('GetServerInstallInfo', () => {
 
       const installInfo: RegistryInstallInfo = JSON.parse(content.text);
       expect(installInfo.name).toBe('test-server-id');
-      expect(installInfo.description).toBe(
-        'A test MCP server for unit testing',
-      );
+      expect(installInfo.description).toBe('A test MCP server for unit testing');
       expect(installInfo.configSnippet).toBeDefined();
       expect(installInfo.installInstructions).toBeDefined();
       expect(installInfo.tools).toEqual(['test_tool_1', 'test_tool_2']);
@@ -111,10 +106,7 @@ describe('GetServerInstallInfo', () => {
         json: async () => ({}),
       });
 
-      const result = await tool.handle(
-        { registryId: 'nonexistent-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'nonexistent-server' }, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };
@@ -143,10 +135,7 @@ describe('GetServerInstallInfo', () => {
     it('should handle registry context errors gracefully', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Registry connection failed'));
 
-      const result = await tool.handle(
-        { registryId: 'test-server' },
-        mockContext,
-      );
+      const result = await tool.handle({ registryId: 'test-server' }, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0] as { type: string; text: string };

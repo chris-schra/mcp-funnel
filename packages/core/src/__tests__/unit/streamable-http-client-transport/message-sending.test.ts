@@ -3,16 +3,9 @@
  */
 
 // IMPORTANT: Import test-utils first to set up mocks before other imports
-import {
-  setupTestEnvironment,
-  mockSDKTransport,
-  type MockAuthProvider,
-} from './test-utils.js';
+import { setupTestEnvironment, mockSDKTransport, type MockAuthProvider } from './test-utils.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type {
-  JSONRPCRequest,
-  JSONRPCResponse,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCRequest, JSONRPCResponse } from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPClientTransport } from '../../../transports/implementations/streamable-http-client-transport.js';
 import { TransportError } from '../../../transports/errors/transport-error.js';
 
@@ -94,9 +87,7 @@ describe('StreamableHTTPClientTransport - Message Sending', () => {
       method: 'test/method',
     };
 
-    await expect(notStartedTransport.send(request)).rejects.toThrow(
-      'Transport not started',
-    );
+    await expect(notStartedTransport.send(request)).rejects.toThrow('Transport not started');
   });
 
   it('should throw error when transport closed', async () => {
@@ -109,9 +100,7 @@ describe('StreamableHTTPClientTransport - Message Sending', () => {
       method: 'test/method',
     };
 
-    await expect(transport.send(request)).rejects.toThrow(
-      'Transport is closed',
-    );
+    await expect(transport.send(request)).rejects.toThrow('Transport is closed');
   });
 
   it('should handle send failure', async () => {

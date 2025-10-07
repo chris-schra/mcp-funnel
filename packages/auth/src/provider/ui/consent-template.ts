@@ -49,12 +49,8 @@ export function renderConsentPage(data: ConsentPageData): string {
   const templatePath = join(__dirname, 'consent.html');
   let template: string;
 
-  const {
-    generateScopeInfo,
-    generateClientInitial,
-    escapeHtml,
-    escapeAttribute,
-  } = ConsentTemplateUtils;
+  const { generateScopeInfo, generateClientInitial, escapeHtml, escapeAttribute } =
+    ConsentTemplateUtils;
 
   try {
     template = readFileSync(templatePath, 'utf-8');
@@ -74,19 +70,13 @@ export function renderConsentPage(data: ConsentPageData): string {
   const escaped = {
     clientId: escapeAttribute(data.clientId),
     clientName: escapeHtml(data.clientName),
-    clientInitial: escapeHtml(
-      data.clientInitial || generateClientInitial(data.clientName),
-    ),
+    clientInitial: escapeHtml(data.clientInitial || generateClientInitial(data.clientName)),
     userEmail: escapeHtml(data.userEmail),
     redirectUri: escapeAttribute(data.redirectUri),
     state: data.state ? escapeAttribute(data.state) : '',
     scopeString: escapeAttribute(data.scopeString),
-    codeChallenge: data.codeChallenge
-      ? escapeAttribute(data.codeChallenge)
-      : '',
-    codeChallengeMethod: data.codeChallengeMethod
-      ? escapeAttribute(data.codeChallengeMethod)
-      : '',
+    codeChallenge: data.codeChallenge ? escapeAttribute(data.codeChallenge) : '',
+    codeChallengeMethod: data.codeChallengeMethod ? escapeAttribute(data.codeChallengeMethod) : '',
     actionUrl: escapeAttribute(data.actionUrl),
   };
 
@@ -258,9 +248,7 @@ export function createConsentPageData(params: {
   return {
     clientId: params.clientId,
     clientName: params.clientName,
-    clientInitial: ConsentTemplateUtils.generateClientInitial(
-      params.clientName,
-    ),
+    clientInitial: ConsentTemplateUtils.generateClientInitial(params.clientName),
     userEmail: params.userEmail,
     scopes: ConsentTemplateUtils.generateScopeInfo(params.requestedScopes),
     redirectUri: params.redirectUri,

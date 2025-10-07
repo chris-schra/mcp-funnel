@@ -43,9 +43,7 @@ let initializationPromise: Promise<StreamableHTTPBridge> | null = null;
  * @throws When transport connection fails (e.g., another transport already connected)
  * @internal
  */
-async function initializeStreamableBridge(
-  mcpProxy: MCPProxy,
-): Promise<StreamableHTTPBridge> {
+async function initializeStreamableBridge(mcpProxy: MCPProxy): Promise<StreamableHTTPBridge> {
   // Return existing bridge if connected
   if (globalStreamableBridge && globalStreamableBridge.isConnected) {
     return globalStreamableBridge;
@@ -170,9 +168,7 @@ streamableRoute.all('/mcp', async (c) => {
     ) {
       // Log the chunk being written
       if (chunk) {
-        const buffer = Buffer.isBuffer(chunk)
-          ? chunk
-          : Buffer.from(chunk as ArrayLike<number>);
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as ArrayLike<number>);
         responseChunks.push(buffer);
       }
       return originalWrite.call(this, chunk, encodingOrCallback, callback);

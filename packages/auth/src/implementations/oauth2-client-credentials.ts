@@ -1,13 +1,6 @@
 import type { OAuth2ClientCredentialsConfigZod } from '../schemas.js';
-import {
-  AuthenticationError,
-  OAuth2ErrorCode,
-} from '../errors/authentication-error.js';
-import {
-  type ITokenStorage,
-  logEvent,
-  ValidationUtils,
-} from '@mcp-funnel/core';
+import { AuthenticationError, OAuth2ErrorCode } from '../errors/authentication-error.js';
+import { type ITokenStorage, logEvent, ValidationUtils } from '@mcp-funnel/core';
 import type { OAuth2TokenResponse } from '../utils/oauth-types.js';
 import { BaseOAuthProvider } from './base-oauth-provider.js';
 import { resolveOAuth2ClientCredentialsConfig } from '../utils/oauth-utils.js';
@@ -55,10 +48,7 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
    * @param storage - Token storage implementation for persisting tokens
    * @throws \{AuthenticationError\} When required configuration fields are missing or invalid
    */
-  public constructor(
-    config: OAuth2ClientCredentialsConfigZod,
-    storage: ITokenStorage,
-  ) {
+  public constructor(config: OAuth2ClientCredentialsConfigZod, storage: ITokenStorage) {
     super(storage);
     this.config = resolveOAuth2ClientCredentialsConfig(config);
 
@@ -108,9 +98,7 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
    * @throws \{AuthenticationError\} When request fails, response is invalid, or server returns error
    * @internal
    */
-  private async makeTokenRequest(
-    requestId: string,
-  ): Promise<OAuth2TokenResponse> {
+  private async makeTokenRequest(requestId: string): Promise<OAuth2TokenResponse> {
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
     });
@@ -123,9 +111,9 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
       body.append('audience', this.config.audience);
     }
 
-    const credentials = Buffer.from(
-      `${this.config.clientId}:${this.config.clientSecret}`,
-    ).toString('base64');
+    const credentials = Buffer.from(`${this.config.clientId}:${this.config.clientSecret}`).toString(
+      'base64',
+    );
 
     try {
       const response = await fetch(this.config.tokenEndpoint, {
@@ -172,15 +160,10 @@ export class OAuth2ClientCredentialsProvider extends BaseOAuthProvider {
       );
 
       // Validate URL format
-      ValidationUtils.validateUrl(
-        this.config.tokenEndpoint,
-        'OAuth2 token URL',
-      );
+      ValidationUtils.validateUrl(this.config.tokenEndpoint, 'OAuth2 token URL');
     } catch (error) {
       throw new AuthenticationError(
-        error instanceof Error
-          ? error.message
-          : 'Configuration validation failed',
+        error instanceof Error ? error.message : 'Configuration validation failed',
         OAuth2ErrorCode.INVALID_REQUEST,
       );
     }

@@ -18,9 +18,7 @@ import { DebuggerSession } from './session.js';
 export class DebuggerSessionManager {
   private readonly sessions = new Map<DebugSessionId, DebuggerSession>();
 
-  public async startSession(
-    config: DebugSessionConfig,
-  ): Promise<StartDebugSessionResponse> {
+  public async startSession(config: DebugSessionConfig): Promise<StartDebugSessionResponse> {
     const sessionId = config.id ?? randomUUID();
     if (this.sessions.has(sessionId)) {
       throw new Error(`Session with id ${sessionId} already exists.`);
@@ -39,10 +37,7 @@ export class DebuggerSessionManager {
     }
   }
 
-  public async terminateSession(
-    sessionId: DebugSessionId,
-    timeoutMs = 5000,
-  ): Promise<void> {
+  public async terminateSession(sessionId: DebugSessionId, timeoutMs = 5000): Promise<void> {
     const session = this.requireSession(sessionId);
     const descriptor = session.getDescriptor();
 
@@ -58,11 +53,7 @@ export class DebuggerSessionManager {
       new Promise<void>((_, reject) =>
         setTimeout(
           () =>
-            reject(
-              new Error(
-                `Session ${sessionId} termination timed out after ${timeoutMs}ms`,
-              ),
-            ),
+            reject(new Error(`Session ${sessionId} termination timed out after ${timeoutMs}ms`)),
           timeoutMs,
         ),
       ),
@@ -81,9 +72,7 @@ export class DebuggerSessionManager {
     return this.requireSession(sessionId).getSnapshot();
   }
 
-  public async runCommand(
-    command: DebuggerCommand,
-  ): Promise<DebuggerCommandResult> {
+  public async runCommand(command: DebuggerCommand): Promise<DebuggerCommandResult> {
     const session = this.requireSession(command.sessionId);
     return session.runCommand(command);
   }
@@ -120,9 +109,7 @@ export class DebuggerSessionManager {
     const snapshot = session.getSnapshot();
     const state = snapshot.session.state;
     const isStable =
-      state.status === 'paused' ||
-      state.status === 'running' ||
-      state.status === 'terminated';
+      state.status === 'paused' || state.status === 'running' || state.status === 'terminated';
 
     if (isStable) {
       // Already stable, return result with pause details if paused
@@ -137,10 +124,7 @@ export class DebuggerSessionManager {
 
     // Wait for stable state
     const timeoutMs = options.timeoutMs ?? 5000;
-    const stableSnapshot = await this.waitForStableState(
-      command.sessionId,
-      timeoutMs,
-    );
+    const stableSnapshot = await this.waitForStableState(command.sessionId, timeoutMs);
 
     // Extract pause details from stable state if paused
     let pauseDetails = result.pause;

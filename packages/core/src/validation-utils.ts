@@ -24,9 +24,7 @@ function validateUrl(url: string, context?: string): void {
   try {
     new URL(url);
   } catch {
-    throw new Error(
-      `${context ? context + ': ' : ''}Invalid URL format: ${url}`,
-    );
+    throw new Error(`${context ? context + ': ' : ''}Invalid URL format: ${url}`);
   }
 }
 
@@ -90,16 +88,10 @@ export const ValidationUtils = {
    * @param context - Optional context string for error messages
    * @throws \{Error\} When any required field is missing
    */
-  validateRequired: <T>(
-    config: T,
-    requiredFields: (keyof T)[],
-    context?: string,
-  ): void => {
+  validateRequired: <T>(config: T, requiredFields: (keyof T)[], context?: string): void => {
     for (const field of requiredFields) {
       if (!config[field]) {
-        throw new Error(
-          `${context ? context + ': ' : ''}Missing required field: ${String(field)}`,
-        );
+        throw new Error(`${context ? context + ': ' : ''}Missing required field: ${String(field)}`);
       }
     }
   },

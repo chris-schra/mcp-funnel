@@ -24,11 +24,7 @@ export function createTestDirectory(): string {
  * @param content - Content to write to the file
  * @returns Absolute path to the created file
  */
-export function createTestEnvFile(
-  dir: string,
-  filename: string,
-  content: string,
-): string {
+export function createTestEnvFile(dir: string, filename: string, content: string): string {
   const filePath = join(dir, filename);
   writeFileSync(filePath, content, 'utf-8');
   return filePath;

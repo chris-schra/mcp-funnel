@@ -1,15 +1,7 @@
 import { SimpleCache } from './cache.js';
-import type {
-  PackageInfo,
-  SearchResults,
-  NPMPackageResponse,
-  NPMSearchResponse,
-} from './types.js';
+import type { PackageInfo, SearchResults, NPMPackageResponse, NPMSearchResponse } from './types.js';
 import { MAX_SEARCH_RESULTS } from './types.js';
-import {
-  transformPackageResponse,
-  transformSearchResponse,
-} from './util/index.js';
+import { transformPackageResponse, transformSearchResponse } from './util/index.js';
 
 /**
  * Configuration options for NPMClient
@@ -96,10 +88,7 @@ export class NPMClient {
 
       return packageInfo;
     } catch (error) {
-      if (
-        error instanceof PackageNotFoundError ||
-        error instanceof NPMRegistryError
-      ) {
+      if (error instanceof PackageNotFoundError || error instanceof NPMRegistryError) {
         throw error;
       }
 
@@ -117,10 +106,7 @@ export class NPMClient {
    * @returns Search results
    * @throws NPMRegistryError When registry returns an error
    */
-  public async searchPackages(
-    query: string,
-    limit: number = 20,
-  ): Promise<SearchResults> {
+  public async searchPackages(query: string, limit: number = 20): Promise<SearchResults> {
     const clampedLimit = Math.min(Math.max(1, limit), MAX_SEARCH_RESULTS);
 
     // Check cache first

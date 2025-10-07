@@ -66,10 +66,7 @@ export const handleRefreshTokenGrant = async (
   }
 
   // Check if refresh token is expired
-  if (
-    refreshTokenData.expires_at > 0 &&
-    isExpired(refreshTokenData.expires_at)
-  ) {
+  if (refreshTokenData.expires_at > 0 && isExpired(refreshTokenData.expires_at)) {
     await storage.deleteRefreshToken(refresh_token!);
     return {
       success: false,

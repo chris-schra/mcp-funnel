@@ -26,11 +26,7 @@ function createTestDirectory(): string {
  * @param content - Content to write to the file
  * @returns Path to the created file
  */
-function createTestEnvFile(
-  dir: string,
-  filename: string,
-  content: string,
-): string {
+function createTestEnvFile(dir: string, filename: string, content: string): string {
   const filePath = join(dir, filename);
   writeFileSync(filePath, content, 'utf-8');
   return filePath;
@@ -61,8 +57,7 @@ describe('DotEnvProvider (Real Files)', () => {
 
   it('should read a valid .env file and parse key-value pairs', async () => {
     // Arrange
-    const envContent =
-      'API_KEY=secret123\nDATABASE_URL=postgres://localhost:5432/test\n';
+    const envContent = 'API_KEY=secret123\nDATABASE_URL=postgres://localhost:5432/test\n';
     const envFilePath = createTestEnvFile(testDir, '.env', envContent);
 
     const provider = new DotEnvProvider({ path: envFilePath });
@@ -228,11 +223,7 @@ describe('DotEnvProvider (Real Files)', () => {
       "multiline'",
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.multiline',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.multiline', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
@@ -277,11 +268,7 @@ describe('DotEnvProvider (Real Files)', () => {
       "BACKSLASH='Value with \\\\ literal backslashes'",
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.single-escape',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.single-escape', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
@@ -330,11 +317,7 @@ describe('DotEnvProvider (Real Files)', () => {
       'NORMAL=simple_value',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.continuation',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.continuation', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
@@ -358,11 +341,7 @@ describe('DotEnvProvider (Real Files)', () => {
       'PATH=/usr/bin:/bin',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.interpolation',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.interpolation', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
@@ -387,11 +366,7 @@ describe('DotEnvProvider (Real Files)', () => {
       'MIXED="$DEFINED_VAR and $UNDEFINED_VAR"',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.undefined',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.undefined', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act
@@ -476,11 +451,7 @@ describe('DotEnvProvider (Real Files)', () => {
       'ANOTHER_VALID=another_value',
     ].join('\n');
 
-    const envFilePath = createTestEnvFile(
-      testDir,
-      '.env.malformed',
-      envContent,
-    );
+    const envFilePath = createTestEnvFile(testDir, '.env.malformed', envContent);
     const provider = new DotEnvProvider({ path: envFilePath });
 
     // Act

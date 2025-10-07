@@ -38,15 +38,11 @@ export class OutputBuffer {
   public snapshot(): OutputBufferSnapshot {
     return {
       stdio: this.entries
-        .filter(
-          (entry): entry is Extract<OutputEntry, { kind: 'stdio' }> =>
-            entry.kind === 'stdio',
-        )
+        .filter((entry): entry is Extract<OutputEntry, { kind: 'stdio' }> => entry.kind === 'stdio')
         .map((entry) => entry.entry),
       console: this.entries
         .filter(
-          (entry): entry is Extract<OutputEntry, { kind: 'console' }> =>
-            entry.kind === 'console',
+          (entry): entry is Extract<OutputEntry, { kind: 'console' }> => entry.kind === 'console',
         )
         .map((entry) => entry.entry),
       exceptions: this.entries
@@ -74,9 +70,7 @@ export class OutputBuffer {
         continue;
       }
 
-      if (
-        !this.matchesFilters(entry, streams, levels, includeExceptions, search)
-      ) {
+      if (!this.matchesFilters(entry, streams, levels, includeExceptions, search)) {
         continue;
       }
 
@@ -96,8 +90,7 @@ export class OutputBuffer {
 
     return {
       entries: results,
-      nextCursor:
-        results.length > 0 ? results[results.length - 1].cursor : since,
+      nextCursor: results.length > 0 ? results[results.length - 1].cursor : since,
       hasMore,
     };
   }
@@ -148,9 +141,7 @@ export class OutputBuffer {
         if (entry.entry.text.toLowerCase().includes(search)) {
           return true;
         }
-        return entry.entry.arguments.some((arg) =>
-          arg.text.toLowerCase().includes(search),
-        );
+        return entry.entry.arguments.some((arg) => arg.text.toLowerCase().includes(search));
       case 'exception':
         return entry.entry.text.toLowerCase().includes(search);
       default:

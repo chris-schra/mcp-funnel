@@ -17,26 +17,17 @@ describe('CommandInstaller - exact package name matches', () => {
   });
 
   it('should match exact package names', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'weather-tool',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'weather-tool');
     expect(result?.package).toBe('weather-tool');
   });
 
   it('should match exact scoped package names', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      '@myorg/weather-helper',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, '@myorg/weather-helper');
     expect(result?.package).toBe('@myorg/weather-helper');
   });
 
   it('should return undefined for non-existent packages', () => {
-    const result = installer.testFindMatchingCommand(
-      mockManifest,
-      'non-existent-package',
-    );
+    const result = installer.testFindMatchingCommand(mockManifest, 'non-existent-package');
     expect(result).toBeUndefined();
   });
 });

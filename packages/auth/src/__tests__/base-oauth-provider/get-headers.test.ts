@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  TestOAuthProvider,
-  MockTokenStorage,
-  createTestToken,
-} from './test-utils.js';
+import { TestOAuthProvider, MockTokenStorage, createTestToken } from './test-utils.js';
 
 describe('BaseOAuthProvider - getHeaders', () => {
   let provider: TestOAuthProvider;

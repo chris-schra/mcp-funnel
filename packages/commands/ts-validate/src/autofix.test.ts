@@ -76,12 +76,9 @@ describe('MCP autoFix behavior', () => {
     const txt = res.content![0].text as string;
     const payload = JSON.parse(txt);
     expect(Array.isArray(payload.fileResults[file])).toBe(true);
-    const msgs: { tool: string; message: string; severity: string }[] =
-      payload.fileResults[file];
+    const msgs: { tool: string; message: string; severity: string }[] = payload.fileResults[file];
     const prettierEntry = msgs.find((m) => m.tool === 'prettier');
-    expect(prettierEntry?.message.toLowerCase()).toContain(
-      'file needs formatting',
-    );
+    expect(prettierEntry?.message.toLowerCase()).toContain('file needs formatting');
     const content = await fs.readFile(file, 'utf8');
     expect(content.includes('const y=2')).toBe(true);
   });

@@ -15,14 +15,8 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-import {
-  createMockSSEServer,
-  type MockSSEServer,
-} from '../mocks/mock-sse-server.js';
-import {
-  createMockEventSourceConstructor,
-  MockEventSource,
-} from '../mocks/mock-eventsource.js';
+import { createMockSSEServer, type MockSSEServer } from '../mocks/mock-sse-server.js';
+import { createMockEventSourceConstructor, MockEventSource } from '../mocks/mock-eventsource.js';
 
 // Mock the EventSource constructor
 const MockEventSourceConstructor = createMockEventSourceConstructor();

@@ -21,11 +21,7 @@ describe('OAuthProvider - Authorization Request', () => {
     const userId = 'user123';
     const scopes = ['read'];
 
-    await consentService.recordUserConsent(
-      userId,
-      testClient.client_id,
-      scopes,
-    );
+    await consentService.recordUserConsent(userId, testClient.client_id, scopes);
 
     const params = {
       response_type: 'code',
@@ -37,10 +33,7 @@ describe('OAuthProvider - Authorization Request', () => {
       code_challenge_method: 'S256',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      userId,
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, userId);
 
     expect(result.success).toBe(true);
     expect(result.authorizationCode).toBeDefined();
@@ -56,10 +49,7 @@ describe('OAuthProvider - Authorization Request', () => {
       redirect_uri: 'http://localhost:8080/callback',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      'user123',
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, 'user123');
 
     expect(result.success).toBe(false);
     expect(result.error?.error).toBe(OAuthErrorCodes.INVALID_REQUEST);
@@ -74,10 +64,7 @@ describe('OAuthProvider - Authorization Request', () => {
       redirect_uri: 'http://localhost:8080/callback',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      'user123',
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, 'user123');
 
     expect(result.success).toBe(false);
     expect(result.error?.error).toBe(OAuthErrorCodes.UNSUPPORTED_RESPONSE_TYPE);
@@ -91,10 +78,7 @@ describe('OAuthProvider - Authorization Request', () => {
       redirect_uri: 'http://localhost:8080/callback',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      'user123',
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, 'user123');
 
     expect(result.success).toBe(false);
     expect(result.error?.error).toBe(OAuthErrorCodes.INVALID_CLIENT);
@@ -108,10 +92,7 @@ describe('OAuthProvider - Authorization Request', () => {
       redirect_uri: 'http://evil.com/callback',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      'user123',
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, 'user123');
 
     expect(result.success).toBe(false);
     expect(result.error?.error).toBe(OAuthErrorCodes.INVALID_REQUEST);
@@ -127,10 +108,7 @@ describe('OAuthProvider - Authorization Request', () => {
       scope: 'invalid-scope',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      'user123',
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, 'user123');
 
     expect(result.success).toBe(false);
     expect(result.error?.error).toBe(OAuthErrorCodes.INVALID_SCOPE);
@@ -155,10 +133,7 @@ describe('OAuthProvider - Authorization Request', () => {
       scope: 'read',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      'user123',
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, 'user123');
 
     expect(result.success).toBe(false);
     expect(result.error?.error).toBe(OAuthErrorCodes.INVALID_REQUEST);
@@ -179,10 +154,7 @@ describe('OAuthProvider - Authorization Request', () => {
 
     await consentService.clear();
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      'new-user-789',
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, 'new-user-789');
 
     expect(result.success).toBe(false);
     expect(result.error?.error).toBe(OAuthErrorCodes.CONSENT_REQUIRED);
@@ -191,17 +163,12 @@ describe('OAuthProvider - Authorization Request', () => {
     );
     expect(result.error?.consent_uri).toBeDefined();
 
-    const consentUrl = new URL(
-      result.error?.consent_uri ?? '',
-      'http://localhost',
-    );
+    const consentUrl = new URL(result.error?.consent_uri ?? '', 'http://localhost');
     expect(consentUrl.pathname).toBe('/api/oauth/consent');
     expect(consentUrl.searchParams.get('client_id')).toBe(testClient.client_id);
     expect(consentUrl.searchParams.get('scope')).toBe('read write');
     expect(consentUrl.searchParams.get('state')).toBe('test-state-456');
-    expect(consentUrl.searchParams.get('redirect_uri')).toBe(
-      'http://localhost:8080/callback',
-    );
+    expect(consentUrl.searchParams.get('redirect_uri')).toBe('http://localhost:8080/callback');
     expect(consentUrl.searchParams.get('code_challenge')).toBe(
       'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
     );
@@ -213,11 +180,7 @@ describe('OAuthProvider - Authorization Request', () => {
     const userId = 'consented-user-123';
     const scopes = ['read'];
 
-    await consentService.recordUserConsent(
-      userId,
-      testClient.client_id,
-      scopes,
-    );
+    await consentService.recordUserConsent(userId, testClient.client_id, scopes);
 
     const params = {
       response_type: 'code',
@@ -229,10 +192,7 @@ describe('OAuthProvider - Authorization Request', () => {
       code_challenge_method: 'S256',
     };
 
-    const result = await oauthProvider.handleAuthorizationRequest(
-      params,
-      userId,
-    );
+    const result = await oauthProvider.handleAuthorizationRequest(params, userId);
 
     expect(result.success).toBe(true);
     expect(result.authorizationCode).toBeDefined();

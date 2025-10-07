@@ -16,10 +16,7 @@ import type { ServerStatus } from '@mcp-funnel/models';
 export function getServerStatus(
   name: string,
   connectedServers: Map<string, TargetServer | TargetServerZod>,
-  disconnectedServers: Map<
-    string,
-    (TargetServer | TargetServerZod) & { error?: string }
-  >,
+  disconnectedServers: Map<string, (TargetServer | TargetServerZod) & { error?: string }>,
   connectionTimestamps: Map<string, string>,
 ): ServerStatus {
   // Check if server is connected
@@ -72,10 +69,7 @@ export function isServerConnected(
  */
 export function getTargetServers(
   connectedServers: Map<string, TargetServer | TargetServerZod>,
-  disconnectedServers: Map<
-    string,
-    (TargetServer | TargetServerZod) & { error?: string }
-  >,
+  disconnectedServers: Map<string, (TargetServer | TargetServerZod) & { error?: string }>,
 ) {
   return {
     connected: Array.from(connectedServers),

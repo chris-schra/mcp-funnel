@@ -12,17 +12,11 @@ const { validateRedirectUri } = OAuthUtils;
 describe('Redirect URI Validation', () => {
   const client: ClientRegistration = {
     client_id: 'test-client',
-    redirect_uris: [
-      'http://localhost:8080/callback',
-      'https://app.example.com/oauth/callback',
-    ],
+    redirect_uris: ['http://localhost:8080/callback', 'https://app.example.com/oauth/callback'],
   };
 
   it('should validate registered redirect URI', () => {
-    const result = validateRedirectUri(
-      client,
-      'http://localhost:8080/callback',
-    );
+    const result = validateRedirectUri(client, 'http://localhost:8080/callback');
     expect(result).toBe(true);
   });
 

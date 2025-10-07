@@ -55,13 +55,8 @@ describe('DebuggerSessionManager - Commands', () => {
   beforeEach(async () => {
     manager = new DebuggerSessionManager();
 
-    const { DebuggerSession } = vi.mocked(
-      await import('../src/debugger/session.js'),
-    );
-    mockSessionInstance = new DebuggerSession(
-      'test-id',
-      createMockConfig(),
-    ) as DebuggerSession;
+    const { DebuggerSession } = vi.mocked(await import('../src/debugger/session.js'));
+    mockSessionInstance = new DebuggerSession('test-id', createMockConfig()) as DebuggerSession;
 
     vi.clearAllMocks();
   });
@@ -84,12 +79,8 @@ describe('DebuggerSessionManager - Commands', () => {
         commandAck: { command: 'continue', sent: true },
       };
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.runCommand).mockResolvedValueOnce(
-        commandResult,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.runCommand).mockResolvedValueOnce(commandResult);
 
       await manager.startSession(config);
       const result = await manager.runCommand(command);
@@ -115,12 +106,8 @@ describe('DebuggerSessionManager - Commands', () => {
         },
       };
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.runCommand).mockResolvedValueOnce(
-        commandResult,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.runCommand).mockResolvedValueOnce(commandResult);
 
       await manager.startSession(config);
       const result = await manager.runCommand(command);
@@ -139,9 +126,7 @@ describe('DebuggerSessionManager - Commands', () => {
         'stepOut',
       ];
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
 
       await manager.startSession(config);
 
@@ -153,9 +138,7 @@ describe('DebuggerSessionManager - Commands', () => {
           pause: { reason: action, callFrames: [] },
         };
 
-        vi.mocked(mockSessionInstance.runCommand).mockResolvedValueOnce(
-          commandResult,
-        );
+        vi.mocked(mockSessionInstance.runCommand).mockResolvedValueOnce(commandResult);
 
         const result = await manager.runCommand(command);
         expect(result.pause).toBeDefined();
@@ -188,12 +171,8 @@ describe('DebuggerSessionManager - Commands', () => {
         hasMore: false,
       };
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.queryOutput).mockResolvedValueOnce(
-        queryResult,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.queryOutput).mockResolvedValueOnce(queryResult);
 
       await manager.startSession(config);
       const result = await manager.queryOutput(query);
@@ -218,12 +197,8 @@ describe('DebuggerSessionManager - Commands', () => {
         hasMore: false,
       };
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.queryOutput).mockResolvedValueOnce(
-        queryResult,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.queryOutput).mockResolvedValueOnce(queryResult);
 
       await manager.startSession(config);
       const result = await manager.queryOutput(query);
@@ -259,12 +234,8 @@ describe('DebuggerSessionManager - Commands', () => {
         truncated: false,
       };
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.getScopeVariables).mockResolvedValueOnce(
-        scopeResult,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.getScopeVariables).mockResolvedValueOnce(scopeResult);
 
       await manager.startSession(config);
       const result = await manager.getScopeVariables(query);
@@ -294,12 +265,8 @@ describe('DebuggerSessionManager - Commands', () => {
         truncated: false,
       };
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.getScopeVariables).mockResolvedValueOnce(
-        scopeResult,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.getScopeVariables).mockResolvedValueOnce(scopeResult);
 
       await manager.startSession(config);
       const result = await manager.getScopeVariables(query);
@@ -325,12 +292,8 @@ describe('DebuggerSessionManager - Commands', () => {
         truncated: false,
       };
 
-      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(
-        mockResponse,
-      );
-      vi.mocked(mockSessionInstance.getScopeVariables).mockResolvedValueOnce(
-        scopeResult,
-      );
+      vi.mocked(mockSessionInstance.initialize).mockResolvedValueOnce(mockResponse);
+      vi.mocked(mockSessionInstance.getScopeVariables).mockResolvedValueOnce(scopeResult);
 
       await manager.startSession(config);
       const result = await manager.getScopeVariables(query);
