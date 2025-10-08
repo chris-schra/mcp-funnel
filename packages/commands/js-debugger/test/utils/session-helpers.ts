@@ -1,9 +1,5 @@
 import type { DebuggerSessionManager } from '../../src/debugger/session-manager.js';
-import type {
-  NodeDebugTargetConfig,
-  DebugSessionId,
-  PauseDetails,
-} from '../../src/types/index.js';
+import type { NodeDebugTargetConfig, DebugSessionId, PauseDetails } from '../../src/types/index.js';
 import type { SessionStateStatus } from '../../src/types/session/session-state.js';
 import { waitFor, sleep, type WaitOptions } from './async-helpers.js';
 
