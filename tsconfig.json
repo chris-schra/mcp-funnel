@@ -22,11 +22,15 @@
       "@mcp-funnel/models": ["./packages/models/src/index.ts"],
       "@mcp-funnel/schemas": ["./packages/schemas/src/index.ts"],
       "@mcp-funnel/commands-core": ["./packages/commands/core/src/index.ts"],
-      "@mcp-funnel/command-ts-validate": [
-        "./packages/commands/ts-validate/src/index.ts"
-      ]
+      "@mcp-funnel/command-ts-validate": ["./packages/commands/ts-validate/src/index.ts"]
     }
   },
   "include": ["./src/**/*.ts", "./test/**/*.ts", "./packages/**/*"],
-  "exclude": ["**/node_modules/**/*", "**/dist/**/*", "docs/**/*", "**/*.md", "**/test/fixtures/**/*"]
+  "exclude": [
+    "**/node_modules/**/*",
+    "**/dist/**/*",
+    "docs/**/*",
+    "**/*.md",
+    "**/test/fixtures/**/*"
+  ]
 }

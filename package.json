@@ -27,7 +27,8 @@
     "dev:npm-lookup": "tsx packages/mcp/src/cli.ts run npm lookup \"vitest\"",
     "dev:mcp": "tsx packages/mcp/src/cli.ts",
     "debug": "npx @modelcontextprotocol/inspector tsx packages/mcp/src/cli.ts",
-    "clean": "yarn workspaces foreach -Atp exec rimraf dist"
+    "clean": "yarn workspaces foreach -Atp exec rimraf dist",
+    "vitest:runner": "tsx vitest-runner.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
@@ -36,6 +37,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@hono/zod-validator": "^0.7.2",
+    "@types/micromatch": "^4.0.9",
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",

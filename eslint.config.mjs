@@ -21,6 +21,7 @@ export default tseslint.config(
       '**/coverage/*',
       'docs/**/*',
       '**/.react-router/**',
+      '**/fixtures/**',
     ],
   },
   {

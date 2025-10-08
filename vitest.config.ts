@@ -11,6 +11,19 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: './vitest.setup.ts',
+    // Use forks pool with reasonable concurrency limits
+    // This prevents process explosion from nested vitest sessions
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: false,
+        maxForks: 8, // Max 8 test files in parallel (reasonable for multi-core)
+      },
+    },
+    // Limit concurrent tests within each file (prevents nested vitest explosion)
+    maxConcurrency: 5,
+    // Exclude fixture test files from being run as actual tests
+    exclude: ['**/test/fixtures/**','**/node_modules/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
