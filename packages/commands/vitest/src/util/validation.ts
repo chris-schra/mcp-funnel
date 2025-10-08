@@ -99,9 +99,11 @@ export function expectBoolean(value: unknown, label: string): boolean {
  * @throws Error if value is invalid
  */
 export function expectRecord(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== 'object') {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} must be an object.`);
   }
+  // Type assertion necessary: TypeScript cannot narrow unknown to Record after runtime checks
+  // This is a safe assertion because we've validated: non-null, object type, and not an array
   return value as Record<string, unknown>;
 }
 

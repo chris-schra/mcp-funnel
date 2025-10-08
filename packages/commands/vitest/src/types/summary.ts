@@ -5,7 +5,11 @@ export interface SummaryStats {
     string,
     Array<{
       testName: string;
-      errors?: string[]; // readonly StrippedError[];
+      /**
+       * Error stack traces as strings (file:line location included in stack).
+       * Simplified from structured error objects for token efficiency in AI responses.
+       */
+      errors?: string[];
     }>
   >;
   skipped: number;

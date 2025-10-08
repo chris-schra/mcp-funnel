@@ -5,6 +5,12 @@ import type { TestSummary, TestFileResult, TestCaseResult } from '../types/index
 import type { ConsoleStorage } from '../console/console-storage.js';
 
 /**
+ * Extracted type for a test case from vitest's TestModule
+ */
+type TestCase =
+  ReturnType<TestModule['children']['allTests']> extends Iterable<infer T> ? T : never;
+
+/**
  * Format options for test results
  */
 export interface FormatOptions {
@@ -19,7 +25,7 @@ export interface FormatOptions {
   sessionId?: string;
 
   /**
-   * Glob pattern to filter test files (e.g., "** /*.spec.ts" without the space)
+   * Glob pattern to filter test files (e.g., "**\/*.spec.ts")
    */
   testFile?: string;
 
@@ -143,11 +149,7 @@ export function formatResults(
  * @param options - Format options containing filter patterns
  * @returns True if test case matches all filters
  */
-function matchesFilters(
-  testCase: ReturnType<TestModule['children']['allTests']> extends Iterable<infer T> ? T : never,
-  moduleId: string,
-  options: FormatOptions,
-): boolean {
+function matchesFilters(testCase: TestCase, moduleId: string, options: FormatOptions): boolean {
   if (options.testFile && !micromatch.isMatch(moduleId, options.testFile)) {
     return false;
   }
@@ -169,7 +171,7 @@ function matchesFilters(
  * @returns Test case result object or null if filtered out
  */
 function processTestCase(
-  testCase: ReturnType<TestModule['children']['allTests']> extends Iterable<infer T> ? T : never,
+  testCase: TestCase,
   moduleId: string,
   includeStackTraces: boolean,
   hasExplicitFilters: boolean,
