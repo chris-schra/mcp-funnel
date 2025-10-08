@@ -27,8 +27,7 @@
     "dev:npm-lookup": "tsx packages/mcp/src/cli.ts run npm lookup \"vitest\"",
     "dev:mcp": "tsx packages/mcp/src/cli.ts",
     "debug": "npx @modelcontextprotocol/inspector tsx packages/mcp/src/cli.ts",
-    "clean": "yarn workspaces foreach -Atp exec rimraf dist",
-    "vitest:runner": "tsx vitest-runner.ts"
+    "clean": "yarn workspaces foreach -Atp exec rimraf dist"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",

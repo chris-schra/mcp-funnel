@@ -86,7 +86,7 @@ function createMockTestModule(
  * @returns Mock console storage instance
  */
 function createMockConsoleStorage(): ConsoleStorage {
-  const mockQuery = vi.fn().mockReturnValue([]);
+  const mockQuery = vi.fn().mockReturnValue({ entries: [], totalMatches: 0 });
   const mockGetStats = vi.fn().mockReturnValue({
     total: 0,
     byStream: { stdout: 0, stderr: 0 },
@@ -280,11 +280,19 @@ describe('formatResults', () => {
       const mockStorage = createMockConsoleStorage();
       (mockStorage.query as ReturnType<typeof vi.fn>).mockImplementation(
         (_sessionId: string, query: { taskId?: string; testFile?: string }) => {
-          if (query.taskId === 'test-1')
-            return Array.from({ length: 3 }, (_, i) => ({ id: i + 1 })) as ParsedConsoleEntry[];
-          if (query.testFile)
-            return Array.from({ length: 4 }, (_, i) => ({ id: i + 1 })) as ParsedConsoleEntry[];
-          return [];
+          if (query.taskId === 'test-1') {
+            return {
+              entries: Array.from({ length: 3 }, (_, i) => ({ id: i + 1 })) as ParsedConsoleEntry[],
+              totalMatches: 3,
+            };
+          }
+          if (query.testFile) {
+            return {
+              entries: Array.from({ length: 4 }, (_, i) => ({ id: i + 1 })) as ParsedConsoleEntry[],
+              totalMatches: 4,
+            };
+          }
+          return { entries: [], totalMatches: 0 };
         },
       );
 

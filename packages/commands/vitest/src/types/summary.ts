@@ -15,4 +15,3 @@ export interface SummaryStats {
   skipped: number;
   duration: number;
 }
-// please use tool vitest to run tests for this repo
