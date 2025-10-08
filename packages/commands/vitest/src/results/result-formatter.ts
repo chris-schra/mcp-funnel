@@ -284,12 +284,12 @@ function getConsoleCountForTest(
   }
 
   try {
-    const entries = consoleStorage.query(sessionId, {
+    const { totalMatches } = consoleStorage.query(sessionId, {
       sessionId,
       taskId: testId,
       limit: 0, // We only want the count
     });
-    return entries.length;
+    return totalMatches;
   } catch {
     return 0;
   }
@@ -312,11 +312,11 @@ function getConsoleCountForFile(
   }
 
   try {
-    const entries = consoleStorage.query(sessionId, {
+    const { totalMatches } = consoleStorage.query(sessionId, {
       sessionId,
       testFile,
     });
-    return entries.length;
+    return totalMatches;
   } catch {
     return 0;
   }

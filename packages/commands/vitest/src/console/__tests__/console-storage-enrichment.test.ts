@@ -86,13 +86,7 @@ describe('ConsoleStorage - Enrichment', () => {
       });
 
       // Enrich only task-1 entries
-      storage.enrichEntriesForTask(
-        sessionId,
-        'task-1',
-        'test-1',
-        'Test 1',
-        '/test1.ts',
-      );
+      storage.enrichEntriesForTask(sessionId, 'task-1', 'test-1', 'Test 1', '/test1.ts');
 
       // Verify only task-1 entries are enriched
       const { entries: task1Entries } = storage.query(sessionId, {
@@ -185,13 +179,7 @@ describe('ConsoleStorage - Enrichment', () => {
       });
 
       // Try to enrich with a taskId
-      storage.enrichEntriesForTask(
-        sessionId,
-        'task-1',
-        'test-1',
-        'Test 1',
-        '/test1.ts',
-      );
+      storage.enrichEntriesForTask(sessionId, 'task-1', 'test-1', 'Test 1', '/test1.ts');
 
       // Entry without taskId should not be enriched
       const { entries } = storage.query(sessionId, { sessionId });
@@ -226,13 +214,7 @@ describe('ConsoleStorage - Enrichment', () => {
       });
 
       // Enrich only session-1
-      storage.enrichEntriesForTask(
-        sessionId1,
-        taskId,
-        'test-1',
-        'Test 1',
-        '/test1.ts',
-      );
+      storage.enrichEntriesForTask(sessionId1, taskId, 'test-1', 'Test 1', '/test1.ts');
 
       // Verify only session-1 entries are enriched
       const { entries: session1Entries } = storage.query(sessionId1, {
