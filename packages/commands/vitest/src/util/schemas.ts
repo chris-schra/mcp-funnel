@@ -30,7 +30,8 @@ export function createStartSessionSchema(): Tool['inputSchema'] {
       },
       configPath: {
         type: STRING,
-        description: 'Path to vitest config file (if different from root).',
+        description:
+          'Full path to vitest config file. When omitted with root specified, disables config loading.',
       },
       timeout: {
         type: NUMBER,

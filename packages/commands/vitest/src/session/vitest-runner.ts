@@ -1,6 +1,5 @@
 import { createVitest, Reporter, TestModule, type Vitest } from 'vitest/node';
 import type { UserConsoleLog } from 'vitest';
-import path from 'path';
 import { parseTestSelection } from '../util/parsers.js';
 import type { VitestSessionConfig } from '../types/index.js';
 
@@ -58,13 +57,16 @@ export async function runVitest(
   // Set project root if specified
   if (config.root) {
     vitestConfig.root = config.root;
-    // Use explicit config path if provided (for fixture isolation)
-    // Otherwise point to config in root directory
-    if (config.configPath) {
-      vitestConfig.configFile = path.join(config.configPath, 'vitest.config.ts');
-    } else {
-      vitestConfig.configFile = path.join(config.root, 'vitest.config.ts');
-    }
+  }
+
+  // Handle config file resolution
+  if (config.configPath) {
+    // configPath is a full file path - use it directly
+    vitestConfig.configFile = config.configPath;
+  } else if (config.root) {
+    // When root is specified without configPath, disable config loading
+    // This prevents auto-discovery in directories that don't have configs
+    vitestConfig.configFile = false;
   }
 
   // Add file filters if specified

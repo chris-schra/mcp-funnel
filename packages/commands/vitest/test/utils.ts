@@ -98,10 +98,9 @@ export async function createVitestFixture(
 
     // Start vitest session with fixture paths
     // tempPath: where tests execute (temp directory)
-    // sourcePath: where config file is (has access to node_modules)
+    // Fixtures run without configs (configs are not copied to temp)
     const response = await manager.startSession({
       root: fixture.tempPath,
-      configPath: fixture.sourcePath,
       ...config,
     });
 

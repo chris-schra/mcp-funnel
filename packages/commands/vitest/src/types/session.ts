@@ -15,7 +15,7 @@ export interface VitestSessionConfig {
   /** Project root directory where tests execute */
   root?: string;
 
-  /** Path to vitest config file (if different from root, for fixture isolation) */
+  /** Full path to vitest config file. When omitted with root specified, disables config loading */
   configPath?: string;
 
   /** User-facing timeout in ms - returns partial results if hit (default: 30000) */

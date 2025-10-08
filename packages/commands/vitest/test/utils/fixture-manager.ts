@@ -69,8 +69,8 @@ async function copyRecursive(source: string, destination: string): Promise<void>
       if (entry === 'node_modules') {
         continue;
       }
-      // Skip vitest config files - they will be loaded from source via configFile option
-      // This prevents auto-discovery in temp directory and ensures proper module resolution
+      // Skip vitest config files - fixtures are designed to run WITHOUT their local configs
+      // This allows testing with vitest's default behavior and prevents config conflicts
       if (
         entry === 'vitest.config.ts' ||
         entry === 'vitest.config.js' ||
