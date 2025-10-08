@@ -64,73 +64,73 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should filter by stream type (stdout)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         streamType: 'stdout',
       });
 
-      expect(results).toHaveLength(3);
-      expect(results.every((r) => r.type === 'stdout')).toBe(true);
+      expect(entries).toHaveLength(3);
+      expect(entries.every((r) => r.type === 'stdout')).toBe(true);
     });
 
     it('should filter by stream type (stderr)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         streamType: 'stderr',
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0].message).toBe('Error: Connection timeout');
+      expect(entries).toHaveLength(1);
+      expect(entries[0].message).toBe('Error: Connection timeout');
     });
 
     it('should return all types when streamType is "both"', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         streamType: 'both',
       });
 
-      expect(results).toHaveLength(4);
+      expect(entries).toHaveLength(4);
     });
 
     it('should filter by taskId', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         taskId: 'task-1',
       });
 
-      expect(results).toHaveLength(2);
-      expect(results.every((r) => r.taskId === 'task-1')).toBe(true);
+      expect(entries).toHaveLength(2);
+      expect(entries.every((r) => r.taskId === 'task-1')).toBe(true);
     });
 
     it('should filter by testFile (substring match)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         testFile: 'auth.test',
       });
 
-      expect(results).toHaveLength(2);
-      expect(results.every((r) => r.testFile?.includes('auth.test'))).toBe(true);
+      expect(entries).toHaveLength(2);
+      expect(entries.every((r) => r.testFile?.includes('auth.test'))).toBe(true);
     });
 
     it('should filter by testName (substring match)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         testName: 'authenticate',
       });
 
-      expect(results).toHaveLength(2);
-      expect(results.every((r) => r.testName?.includes('authenticate'))).toBe(true);
+      expect(entries).toHaveLength(2);
+      expect(entries.every((r) => r.testName?.includes('authenticate'))).toBe(true);
     });
 
     it('should combine multiple filters (AND logic)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         taskId: 'task-1',
         streamType: 'stderr',
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0].message).toBe('Error: Connection timeout');
+      expect(entries).toHaveLength(1);
+      expect(entries[0].message).toBe('Error: Connection timeout');
     });
   });
 
@@ -164,78 +164,78 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should search with literal text (case insensitive by default)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         search: 'error',
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0].message).toBe('ERROR: File not found');
+      expect(entries).toHaveLength(1);
+      expect(entries[0].message).toBe('ERROR: File not found');
     });
 
     it('should search with literal text (case sensitive)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         search: 'ERROR',
         caseSensitive: true,
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0].message).toBe('ERROR: File not found');
+      expect(entries).toHaveLength(1);
+      expect(entries[0].message).toBe('ERROR: File not found');
     });
 
     it('should not match when case sensitive search does not match', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         search: 'error',
         caseSensitive: true,
       });
 
-      expect(results).toHaveLength(0);
+      expect(entries).toHaveLength(0);
     });
 
     it('should search with regex (case insensitive)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         search: 'test \\d+',
         useRegex: true,
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0].message).toBe('Test 123: Starting validation');
+      expect(entries).toHaveLength(1);
+      expect(entries[0].message).toBe('Test 123: Starting validation');
     });
 
     it('should search with regex (case sensitive)', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         search: 'Test \\d+',
         useRegex: true,
         caseSensitive: true,
       });
 
-      expect(results).toHaveLength(1);
+      expect(entries).toHaveLength(1);
     });
 
     it('should fall back to literal search on invalid regex', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         search: '[invalid(regex',
         useRegex: true,
       });
 
       // Should not throw error, but fall back to literal search
-      expect(results).toHaveLength(0);
+      expect(entries).toHaveLength(0);
     });
 
     it('should match complex regex patterns', () => {
-      const results = storage.query('session-1', {
+      const { entries } = storage.query('session-1', {
         sessionId: 'session-1',
         search: '^The.*fox',
         useRegex: true,
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0].message).toBe('The quick brown fox jumps');
+      expect(entries).toHaveLength(1);
+      expect(entries[0].message).toBe('The quick brown fox jumps');
     });
   });
 
@@ -273,7 +273,7 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should filter by after timestamp', () => {
-      const results = storage.query('session-1', {
+      const { entries: results } = storage.query('session-1', {
         sessionId: 'session-1',
         after: baseTimestamp + 3000,
       });
@@ -284,7 +284,7 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should filter by before timestamp', () => {
-      const results = storage.query('session-1', {
+      const { entries: results } = storage.query('session-1', {
         sessionId: 'session-1',
         before: baseTimestamp + 7000,
       });
@@ -295,7 +295,7 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should filter by time range (after and before)', () => {
-      const results = storage.query('session-1', {
+      const { entries: results } = storage.query('session-1', {
         sessionId: 'session-1',
         after: baseTimestamp + 3000,
         before: baseTimestamp + 7000,
@@ -328,7 +328,7 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should limit results', () => {
-      const results = paginationStorage.query('session-1', {
+      const { entries: results } = paginationStorage.query('session-1', {
         sessionId: 'session-1',
         limit: 5,
       });
@@ -339,7 +339,7 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should skip results', () => {
-      const results = paginationStorage.query('session-1', {
+      const { entries: results } = paginationStorage.query('session-1', {
         sessionId: 'session-1',
         skip: 10,
       });
@@ -350,7 +350,7 @@ describe('ConsoleStorage - Filtering', () => {
     });
 
     it('should combine skip and limit', () => {
-      const results = paginationStorage.query('session-1', {
+      const { entries: results } = paginationStorage.query('session-1', {
         sessionId: 'session-1',
         skip: 5,
         limit: 10,

@@ -16,6 +16,16 @@ export interface ConsoleStorageConfig {
 }
 
 /**
+ * Result from ConsoleStorage.query()
+ */
+export interface ConsoleStorageQueryResult {
+  /** Matching entries (paginated) */
+  entries: ParsedConsoleEntry[];
+  /** Total number of matches before pagination */
+  totalMatches: number;
+}
+
+/**
  * Storage for console entries with LRU+TTL eviction
  *
  * Features:
@@ -52,11 +62,16 @@ export class ConsoleStorage {
    * @param entry - Console entry to add
    */
   public add(sessionId: string, entry: ParsedConsoleEntry): void {
-    // Enforce per-session limit
-    const currentCount = this.sessionCounts.get(sessionId) || 0;
-    if (currentCount >= this.config.maxEntriesPerSession) {
+    // Enforce per-session limit - evict multiple entries if needed
+    let currentCount = this.sessionCounts.get(sessionId) || 0;
+    while (currentCount >= this.config.maxEntriesPerSession && currentCount > 0) {
       // Evict oldest entry for this session
-      this.evictOldestForSession(sessionId);
+      const evicted = this.evictOldestForSession(sessionId);
+      if (!evicted) {
+        // Safety: break if eviction fails to prevent infinite loop
+        break;
+      }
+      currentCount = this.sessionCounts.get(sessionId) || 0;
     }
 
     // Add new entry
@@ -72,9 +87,9 @@ export class ConsoleStorage {
    *
    * @param sessionId - Session to query
    * @param filter - Query filters
-   * @returns Matching entries (sorted by timestamp ascending)
+   * @returns Object with matching entries (sorted by timestamp ascending) and total count before pagination
    */
-  public query(sessionId: string, filter: ConsoleQuery): ParsedConsoleEntry[] {
+  public query(sessionId: string, filter: ConsoleQuery): ConsoleStorageQueryResult {
     const entries: ParsedConsoleEntry[] = [];
 
     // Iterate all entries and filter
@@ -94,11 +109,17 @@ export class ConsoleStorage {
     // Sort by timestamp ascending
     entries.sort((a, b) => a.timestamp - b.timestamp);
 
+    // Capture total matches BEFORE pagination
+    const totalMatches = entries.length;
+
     // Apply pagination
     const skip = filter.skip || 0;
     const limit = filter.limit || entries.length;
 
-    return entries.slice(skip, skip + limit);
+    return {
+      entries: entries.slice(skip, skip + limit),
+      totalMatches,
+    };
   }
 
   /**
@@ -148,6 +169,36 @@ export class ConsoleStorage {
     this.sessionCounts.delete(sessionId);
   }
 
+  /**
+   * Enrich console entries with test context after tests complete
+   *
+   * Retroactively updates entries that have a matching taskId with test metadata.
+   * This allows console logs captured during test execution to be enriched
+   * with test context after the test run completes.
+   *
+   * @param sessionId - Session identifier
+   * @param taskId - Task ID to match
+   * @param testId - Test ID to set
+   * @param testName - Test name to set
+   * @param testFile - Test file to set
+   */
+  public enrichEntriesForTask(
+    sessionId: string,
+    taskId: string,
+    testId: string,
+    testName: string,
+    testFile: string,
+  ): void {
+    for (const entry of this.cache.values()) {
+      if (entry.sessionId === sessionId && entry.taskId === taskId) {
+        // Mutate entry in place to add test context
+        entry.testId = testId;
+        entry.testName = testName;
+        entry.testFile = testFile;
+      }
+    }
+  }
+
   // --- Private methods ---
 
   private makeKey(sessionId: string, entryId: number): string {
@@ -165,7 +216,7 @@ export class ConsoleStorage {
     }
   }
 
-  private evictOldestForSession(sessionId: string): void {
+  private evictOldestForSession(sessionId: string): boolean {
     let oldestEntry: ParsedConsoleEntry | undefined;
     let oldestKey: string | undefined;
 
@@ -180,7 +231,9 @@ export class ConsoleStorage {
 
     if (oldestKey) {
       this.cache.delete(oldestKey);
+      return true;
     }
+    return false;
   }
 
   private matchesFilter(entry: ParsedConsoleEntry, filter: ConsoleQuery): boolean {

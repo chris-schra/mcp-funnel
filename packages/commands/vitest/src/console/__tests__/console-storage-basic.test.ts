@@ -25,7 +25,7 @@ describe('ConsoleStorage - Basic Operations', () => {
 
       storage.add('session-1', entry);
 
-      const results = storage.query('session-1', { sessionId: 'session-1' });
+      const { entries: results } = storage.query('session-1', { sessionId: 'session-1' });
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual(entry);
     });
@@ -50,8 +50,12 @@ describe('ConsoleStorage - Basic Operations', () => {
       storage.add('session-1', entry1);
       storage.add('session-2', entry2);
 
-      const session1Results = storage.query('session-1', { sessionId: 'session-1' });
-      const session2Results = storage.query('session-2', { sessionId: 'session-2' });
+      const { entries: session1Results } = storage.query('session-1', {
+        sessionId: 'session-1',
+      });
+      const { entries: session2Results } = storage.query('session-2', {
+        sessionId: 'session-2',
+      });
 
       expect(session1Results).toHaveLength(1);
       expect(session1Results[0].message).toBe('session 1 message');
@@ -170,8 +174,12 @@ describe('ConsoleStorage - Basic Operations', () => {
     it('should clear all entries for a session', () => {
       storage.clearSession('session-1');
 
-      const session1Results = storage.query('session-1', { sessionId: 'session-1' });
-      const session2Results = storage.query('session-2', { sessionId: 'session-2' });
+      const { entries: session1Results } = storage.query('session-1', {
+        sessionId: 'session-1',
+      });
+      const { entries: session2Results } = storage.query('session-2', {
+        sessionId: 'session-2',
+      });
 
       expect(session1Results).toEqual([]);
       expect(session2Results).toHaveLength(3);

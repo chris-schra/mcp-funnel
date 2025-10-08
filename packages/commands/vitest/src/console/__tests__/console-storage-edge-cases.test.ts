@@ -42,7 +42,7 @@ describe('ConsoleStorage - Edge Cases', () => {
         message: 'Second',
       });
 
-      const results = storage.query('session-1', { sessionId: 'session-1' });
+      const { entries: results } = storage.query('session-1', { sessionId: 'session-1' });
 
       expect(results).toHaveLength(3);
       expect(results[0].message).toBe('First');
@@ -53,7 +53,7 @@ describe('ConsoleStorage - Edge Cases', () => {
 
   describe('query edge cases', () => {
     it('should return empty array when no entries exist', () => {
-      const results = storage.query('session-1', { sessionId: 'session-1' });
+      const { entries: results } = storage.query('session-1', { sessionId: 'session-1' });
 
       expect(results).toEqual([]);
     });
@@ -67,7 +67,7 @@ describe('ConsoleStorage - Edge Cases', () => {
         message: 'Test message',
       });
 
-      const results = storage.query('session-1', {
+      const { entries: results } = storage.query('session-1', {
         sessionId: 'session-1',
         taskId: 'non-existent-task',
       });
@@ -84,7 +84,7 @@ describe('ConsoleStorage - Edge Cases', () => {
         message: 'Session 1 message',
       });
 
-      const results = storage.query('session-2', { sessionId: 'session-2' });
+      const { entries: results } = storage.query('session-2', { sessionId: 'session-2' });
 
       expect(results).toEqual([]);
     });
@@ -100,7 +100,7 @@ describe('ConsoleStorage - Edge Cases', () => {
 
       storage.add('session-1', entry);
 
-      const results = storage.query('session-1', {
+      const { entries: results } = storage.query('session-1', {
         sessionId: 'session-1',
         testFile: 'some-file',
       });
@@ -126,7 +126,7 @@ describe('ConsoleStorage - Edge Cases', () => {
         });
       }
 
-      const results = storage.query('session-1', {
+      const { entries: results } = storage.query('session-1', {
         sessionId: 'session-1',
         streamType: 'stdout',
         search: 'ERROR',
@@ -161,7 +161,7 @@ describe('ConsoleStorage - Edge Cases', () => {
       }
 
       // Query
-      let results = storage.query('session-1', { sessionId: 'session-1' });
+      let { entries: results } = storage.query('session-1', { sessionId: 'session-1' });
       expect(results).toHaveLength(5);
 
       // Add more entries
@@ -176,7 +176,7 @@ describe('ConsoleStorage - Edge Cases', () => {
       }
 
       // Query again
-      results = storage.query('session-1', { sessionId: 'session-1' });
+      ({ entries: results } = storage.query('session-1', { sessionId: 'session-1' }));
       expect(results).toHaveLength(10);
 
       // Get stats
@@ -190,7 +190,7 @@ describe('ConsoleStorage - Edge Cases', () => {
       storage.clearSession('session-1');
 
       // Verify cleared
-      results = storage.query('session-1', { sessionId: 'session-1' });
+      ({ entries: results } = storage.query('session-1', { sessionId: 'session-1' }));
       expect(results).toEqual([]);
     });
 
@@ -210,23 +210,23 @@ describe('ConsoleStorage - Edge Cases', () => {
       }
 
       // Query with various filters should still work
-      const stdoutResults = storage.query('session-1', {
+      const { entries: stdoutResults } = storage.query('session-1', {
         sessionId: 'session-1',
         streamType: 'stdout',
       });
 
-      const stderrResults = storage.query('session-1', {
+      const { entries: stderrResults } = storage.query('session-1', {
         sessionId: 'session-1',
         streamType: 'stderr',
       });
 
-      const task0Results = storage.query('session-1', {
+      const { entries: task0Results } = storage.query('session-1', {
         sessionId: 'session-1',
         taskId: 'task-0',
       });
 
       // Should only have maxEntriesPerSession (50) total entries
-      const allResults = storage.query('session-1', { sessionId: 'session-1' });
+      const { entries: allResults } = storage.query('session-1', { sessionId: 'session-1' });
       expect(allResults).toHaveLength(50);
 
       // Stdout and stderr should add up to total
@@ -256,7 +256,7 @@ describe('ConsoleStorage - Edge Cases', () => {
 
       // Verify each session has correct entries
       sessions.forEach((sessionId) => {
-        const results = storage.query(sessionId, { sessionId });
+        const { entries: results } = storage.query(sessionId, { sessionId });
         expect(results).toHaveLength(10);
         expect(results.every((r) => r.sessionId === sessionId)).toBe(true);
       });
@@ -264,9 +264,9 @@ describe('ConsoleStorage - Edge Cases', () => {
       // Clear one session shouldn't affect others
       storage.clearSession('session-2');
 
-      const session1Results = storage.query('session-1', { sessionId: 'session-1' });
-      const session2Results = storage.query('session-2', { sessionId: 'session-2' });
-      const session3Results = storage.query('session-3', { sessionId: 'session-3' });
+      const { entries: session1Results } = storage.query('session-1', { sessionId: 'session-1' });
+      const { entries: session2Results } = storage.query('session-2', { sessionId: 'session-2' });
+      const { entries: session3Results } = storage.query('session-3', { sessionId: 'session-3' });
 
       expect(session1Results).toHaveLength(10);
       expect(session2Results).toHaveLength(0);

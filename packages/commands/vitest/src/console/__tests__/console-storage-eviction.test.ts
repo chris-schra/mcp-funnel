@@ -25,7 +25,7 @@ describe('ConsoleStorage - Eviction', () => {
         storage.add('session-1', entry);
       }
 
-      const results = storage.query('session-1', { sessionId: 'session-1' });
+      const { entries: results } = storage.query('session-1', { sessionId: 'session-1' });
 
       // Should only have maxEntriesPerSession (10) entries
       expect(results).toHaveLength(10);
@@ -66,11 +66,45 @@ describe('ConsoleStorage - Eviction', () => {
         });
       }
 
-      const session1Results = storage.query('session-1', { sessionId: 'session-1' });
-      const session2Results = storage.query('session-2', { sessionId: 'session-2' });
+      const { entries: session1Results } = storage.query('session-1', { sessionId: 'session-1' });
+      const { entries: session2Results } = storage.query('session-2', { sessionId: 'session-2' });
 
       expect(session1Results).toHaveLength(10);
       expect(session2Results).toHaveLength(5);
+    });
+
+    it('should handle multiple evictions when adding many entries beyond limit', () => {
+      const storage = new ConsoleStorage({
+        maxEntries: 200,
+        ttl: 60000,
+        maxEntriesPerSession: 10,
+      });
+
+      const baseTimestamp = Date.now();
+
+      // Add 100 entries (far exceeding the limit of 10)
+      for (let i = 0; i < 100; i++) {
+        storage.add('session-1', {
+          id: i,
+          sessionId: 'session-1',
+          type: 'stdout',
+          timestamp: baseTimestamp + i,
+          message: `message ${i}`,
+        });
+      }
+
+      const { entries: results } = storage.query('session-1', { sessionId: 'session-1' });
+
+      // Should only have maxEntriesPerSession (10) entries
+      expect(results).toHaveLength(10);
+
+      // Should have the last 10 entries (90-99)
+      expect(results[0].id).toBe(90);
+      expect(results[9].id).toBe(99);
+
+      // Verify stats also reflect the correct count
+      const stats = storage.getStats('session-1');
+      expect(stats.total).toBe(10);
     });
   });
 
@@ -95,7 +129,7 @@ describe('ConsoleStorage - Eviction', () => {
         });
       }
 
-      const results = smallStorage.query('session-1', { sessionId: 'session-1' });
+      const { entries: results } = smallStorage.query('session-1', { sessionId: 'session-1' });
 
       // Should only have 5 entries
       expect(results).toHaveLength(5);
@@ -136,8 +170,12 @@ describe('ConsoleStorage - Eviction', () => {
         });
       }
 
-      const session1Results = smallStorage.query('session-1', { sessionId: 'session-1' });
-      const session2Results = smallStorage.query('session-2', { sessionId: 'session-2' });
+      const { entries: session1Results } = smallStorage.query('session-1', {
+        sessionId: 'session-1',
+      });
+      const { entries: session2Results } = smallStorage.query('session-2', {
+        sessionId: 'session-2',
+      });
 
       // Total should be 10, with oldest entries from session-1 evicted
       expect(session1Results.length + session2Results.length).toBe(10);
@@ -170,14 +208,16 @@ describe('ConsoleStorage - Eviction', () => {
       shortTtlStorage.add('session-1', entry);
 
       // Entry should exist immediately
-      let results = shortTtlStorage.query('session-1', { sessionId: 'session-1' });
+      let { entries: results } = shortTtlStorage.query('session-1', {
+        sessionId: 'session-1',
+      });
       expect(results).toHaveLength(1);
 
       // Wait for TTL to expire (add buffer time for autopurge)
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Entry should be expired
-      results = shortTtlStorage.query('session-1', { sessionId: 'session-1' });
+      ({ entries: results } = shortTtlStorage.query('session-1', { sessionId: 'session-1' }));
       expect(results).toHaveLength(0);
     });
 
@@ -224,7 +264,7 @@ describe('ConsoleStorage - Eviction', () => {
       // Wait less than TTL
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      const results = shortTtlStorage.query('session-1', { sessionId: 'session-1' });
+      const { entries: results } = shortTtlStorage.query('session-1', { sessionId: 'session-1' });
       expect(results).toHaveLength(1);
     });
   });
