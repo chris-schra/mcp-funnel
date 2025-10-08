@@ -23,7 +23,17 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', '**/test/*', '*.config.ts', 'src/cli.ts', "**/*.test.ts", "**/build.ts", "**/build/*", "**/dist/*", "**/.react-router/*", "**/*.config.ts"],
+      exclude: [
+        'node_modules/',
+        '**/test/*',
+        'src/cli.ts',
+        '**/*.test.ts',
+        '**/build.ts',
+        '**/build/*',
+        '**/dist/*',
+        '**/.react-router/*',
+        '**/*.config.ts',
+      ],
     },
     testTimeout: 10000,
     hookTimeout: 10000,
