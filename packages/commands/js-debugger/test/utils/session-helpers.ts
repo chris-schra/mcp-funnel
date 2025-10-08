@@ -1,5 +1,9 @@
 import type { DebuggerSessionManager } from '../../src/debugger/session-manager.js';
-import type { NodeDebugTargetConfig, DebugSessionId } from '../../src/types/index.js';
+import type {
+  NodeDebugTargetConfig,
+  DebugSessionId,
+  PauseDetails,
+} from '../../src/types/index.js';
 import type { SessionStateStatus } from '../../src/types/session/session-state.js';
 import { waitFor, sleep, type WaitOptions } from './async-helpers.js';
 
@@ -54,10 +58,11 @@ export async function waitForSessionStatus(
 }
 
 /**
- * Waits for a debug session to reach paused state.
+ * Waits for a debug session to reach paused state and returns pause details.
  * @param manager - The session manager instance
  * @param sessionId - ID of the session to wait for
  * @param options - Optional wait configuration (defaults to 5000ms timeout)
+ * @returns The pause details including reason, call frames, and hit breakpoints
  * @throws When the timeout is exceeded without pausing
  * @internal
  */
@@ -65,8 +70,13 @@ export const waitForPause = async (
   manager: DebuggerSessionManager,
   sessionId: DebugSessionId,
   options?: WaitOptions,
-): Promise<void> => {
+): Promise<PauseDetails> => {
   await waitForSessionStatus(manager, sessionId, 'paused', options);
+  const snapshot = manager.getSnapshot(sessionId);
+  if (snapshot.session.state.status !== 'paused') {
+    throw new Error('Session is not paused after waitForPause completed');
+  }
+  return snapshot.session.state.pause;
 };
 
 /**
