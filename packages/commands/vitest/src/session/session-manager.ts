@@ -11,7 +11,6 @@ import type {
   VitestSession,
   ConsoleQuery,
   ConsoleQueryResult,
-  TestContext,
 } from '../types/index.js';
 import type { ResultQueryOptions, GetResultsResponse } from '../util/parsers.js';
 import { hasFilters } from '../util/parsers.js';
@@ -77,31 +76,31 @@ export class VitestSessionManager {
     // Store session
     this.sessions.set(sessionId, sessionData);
 
-    // Track test context for console enrichment and completion state
-    const testContextMap = new Map<string, TestContext>();
+    // Track completion state
     let completed = false;
     let testModules: readonly TestModule[] | undefined;
 
     // Create callbacks for vitest runner
     const callbacks: RunnerCallbacks = {
       onConsoleLog: (log: UserConsoleLog) => {
-        // Get test context if available
-        const testContext = log.taskId ? testContextMap.get(log.taskId) : undefined;
-
-        // Parse and store console entry
-        const entry = this.parser.parse(sessionId, log, testContext);
+        // Parse and store console entry without test context
+        // Context will be enriched after tests complete
+        const entry = this.parser.parse(sessionId, log, undefined);
         consoleStorage.add(sessionId, entry);
       },
 
       onComplete: (modules: readonly TestModule[]) => {
-        // Build test context map from completed modules
+        // Enrich console entries with test context after tests complete
         for (const module of modules) {
           for (const test of module.children.allTests()) {
-            testContextMap.set(test.id, {
-              id: test.id,
-              name: test.name,
-              file: module.moduleId,
-            });
+            // Retroactively add test context to console entries for this task
+            consoleStorage.enrichEntriesForTask(
+              sessionId,
+              test.id,
+              test.id,
+              test.name,
+              module.moduleId,
+            );
           }
         }
 
@@ -217,11 +216,10 @@ export class VitestSessionManager {
   public queryConsole(query: ConsoleQuery): ConsoleQueryResult {
     const session = this.getSession(query.sessionId);
 
-    // Delegate to console storage
-    const entries = session.consoleStorage.query(query.sessionId, query);
+    // Delegate to console storage - now returns { entries, totalMatches }
+    const { entries, totalMatches } = session.consoleStorage.query(query.sessionId, query);
 
     // Check if results are truncated
-    const totalMatches = entries.length;
     const limit = query.limit ?? totalMatches;
     const truncated = totalMatches > limit;
 
@@ -234,7 +232,7 @@ export class VitestSessionManager {
     }
 
     return {
-      entries: entries.slice(0, limit),
+      entries,
       totalMatches,
       truncated,
       suggestions: suggestions.length > 0 ? suggestions : undefined,
