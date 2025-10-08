@@ -285,27 +285,17 @@ async function finalizeInitialization(
   internalBreakpoints: string[],
   context: InitializationContext,
 ): Promise<void> {
-  // Cleanup logic: if we didn't handle user breakpoints, clean up internal breakpoints
-  const hasUserBreakpoints = createdBreakpoints && createdBreakpoints.length > 0;
-
-  if (!hasUserBreakpoints) {
-    if (context.config.resumeAfterConfigure) {
-      // Clear internal breakpoints immediately before resuming
-      await clearInternalBreakpoints(
-        internalBreakpoints,
-        context.processManager,
-        context.sessionId,
-      );
-    } else {
-      // Clear internal breakpoints after a delay if we're paused and not resuming
-      setTimeout(() => {
-        void clearInternalBreakpoints(
-          internalBreakpoints,
-          context.processManager,
-          context.sessionId,
-        );
-      }, BREAKPOINT_CLEAR_DELAY_MS);
-    }
+  // Cleanup logic: always clean up internal breakpoints in finalizeInitialization.
+  // If we reached this function, we either had no user breakpoints OR had user breakpoints
+  // but no initial pause (meaning handleUserBreakpointHit wasn't called and didn't clean up).
+  if (context.config.resumeAfterConfigure) {
+    // Clear internal breakpoints immediately before resuming
+    await clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
+  } else {
+    // Clear internal breakpoints after a delay if we're paused and not resuming
+    setTimeout(() => {
+      void clearInternalBreakpoints(internalBreakpoints, context.processManager, context.sessionId);
+    }, BREAKPOINT_CLEAR_DELAY_MS);
   }
 
   // Emit instructions based on configuration
