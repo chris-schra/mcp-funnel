@@ -86,7 +86,7 @@ function createMockTestModule(
  * @returns Mock console storage instance
  */
 function createMockConsoleStorage(): ConsoleStorage {
-  const mockQuery = vi.fn().mockReturnValue([]);
+  const mockQuery = vi.fn().mockReturnValue({ entries: [], totalMatches: 0 });
   const mockGetStats = vi.fn().mockReturnValue({
     total: 0,
     byStream: { stdout: 0, stderr: 0 },
