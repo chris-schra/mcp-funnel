@@ -21,6 +21,84 @@ export function processValue(rawValue: string): string {
 }
 
 /**
+ * Result of processing an escape sequence.
+ */
+interface EscapeSequenceResult {
+  char: string;
+  newIndex: number;
+}
+
+/**
+ * Processes a unicode escape sequence (uXXXX format) in a double-quoted string.
+ *
+ * @param str - The input string containing the escape sequence
+ * @param index - Current position (at the backslash character)
+ * @returns Object with the processed character and new index, or null if invalid
+ */
+function processUnicodeEscape(str: string, index: number): EscapeSequenceResult | null {
+  if (index + 5 >= str.length) {
+    return null;
+  }
+
+  const hexCode = str.substring(index + 2, index + 6);
+  if (!/^[0-9a-fA-F]{4}$/.test(hexCode)) {
+    return null;
+  }
+
+  return {
+    char: String.fromCharCode(parseInt(hexCode, 16)),
+    newIndex: index + 6,
+  };
+}
+
+/**
+ * Processes an escape sequence in a double-quoted string.
+ *
+ * @param str - The input string containing the escape sequence
+ * @param index - Current position (at the backslash character)
+ * @returns Object with the processed character(s) and new index
+ */
+function processEscapeSequence(str: string, index: number): EscapeSequenceResult {
+  const nextChar = str[index + 1];
+
+  switch (nextChar) {
+    case 'n':
+      return { char: '\n', newIndex: index + 2 };
+    case 't':
+      return { char: '\t', newIndex: index + 2 };
+    case 'r':
+      return { char: '\r', newIndex: index + 2 };
+    case '\\':
+      return { char: '\\', newIndex: index + 2 };
+    case '"':
+      return { char: '"', newIndex: index + 2 };
+    case "'":
+      return { char: "'", newIndex: index + 2 };
+    case 'u': {
+      const unicodeResult = processUnicodeEscape(str, index);
+      if (unicodeResult) {
+        return unicodeResult;
+      }
+      return { char: str[index] + nextChar, newIndex: index + 2 };
+    }
+    default:
+      return { char: str[index] + nextChar, newIndex: index + 2 };
+  }
+}
+
+/**
+ * Handles unclosed double-quoted value by truncating at newline.
+ *
+ * @param result - The parsed content so far
+ * @returns Truncated result with leading quote
+ */
+function handleUnclosedQuote(result: string): string {
+  const newlineIndex = result.indexOf('\n');
+  const truncated = newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
+  return `"${truncated}`;
+}
+
+/**
  * Parses a double-quoted dotenv value with escape sequence processing.
  *
  * Handles standard escape sequences (newline, tab, carriage return, backslash, quotes) and Unicode escapes.
@@ -44,43 +122,9 @@ export function parseDoubleQuotedValue(value: string): string {
     }
 
     if (char === '\\' && i + 1 < trimmed.length) {
-      const nextChar = trimmed[i + 1];
-      switch (nextChar) {
-        case 'n':
-          result += '\n';
-          break;
-        case 't':
-          result += '\t';
-          break;
-        case 'r':
-          result += '\r';
-          break;
-        case '\\':
-          result += '\\';
-          break;
-        case '"':
-          result += '"';
-          break;
-        case "'":
-          result += "'";
-          break;
-        case 'u': {
-          if (i + 5 < trimmed.length) {
-            const hexCode = trimmed.substring(i + 2, i + 6);
-            if (/^[0-9a-fA-F]{4}$/.test(hexCode)) {
-              result += String.fromCharCode(parseInt(hexCode, 16));
-              i += 6;
-              continue;
-            }
-          }
-          result += char + nextChar;
-          break;
-        }
-        default:
-          result += char + nextChar;
-          break;
-      }
-      i += 2;
+      const escapeResult = processEscapeSequence(trimmed, i);
+      result += escapeResult.char;
+      i = escapeResult.newIndex;
       continue;
     }
 
@@ -89,9 +133,7 @@ export function parseDoubleQuotedValue(value: string): string {
   }
 
   if (!closed) {
-    const newlineIndex = result.indexOf('\n');
-    const truncated = newlineIndex !== -1 ? result.slice(0, newlineIndex) : result;
-    return `"${truncated}`;
+    return handleUnclosedQuote(result);
   }
 
   return result;

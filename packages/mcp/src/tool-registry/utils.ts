@@ -1,4 +1,4 @@
-import type { ToolState } from './types.js';
+import type { ToolState, VisibilityResult } from './types.js';
 import { matchesPattern } from '../utils/pattern-matcher.js';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 
@@ -122,14 +122,7 @@ function matchesPatterns(name: string, patterns?: string[]): boolean {
  *
  * @internal
  */
-function computeVisibility(
-  config: ProxyConfig,
-  name: string,
-  tool: ToolState,
-): {
-  exposed: boolean;
-  reason?: 'always' | 'enabled' | 'allowlist' | 'default' | 'core';
-} {
+function computeVisibility(config: ProxyConfig, name: string, tool: ToolState): VisibilityResult {
   // 1. Core tools - only controlled by their own registration, not by exposeTools
   if (tool.isCoreTool) {
     return { exposed: true, reason: 'core' };

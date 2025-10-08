@@ -8,6 +8,32 @@
 import { MAX_SEARCH_RESULTS } from '../types.js';
 
 /**
+ * Result of parsing the --limit flag from CLI arguments.
+ * @internal
+ */
+type ParsedLimitResult = {
+  /** The validated and clamped limit value, or undefined if not specified */
+  limit: number | undefined;
+  /** Arguments array with the --limit flag and its value removed */
+  remainingArgs: string[];
+};
+
+/**
+ * Result of parsing CLI arguments for npm-lookup command.
+ * @public
+ */
+export type ParsedCLIArgs = {
+  /** The subcommand to execute ('lookup' or 'search'), or undefined */
+  subcommand: string | undefined;
+  /** Package name for 'lookup' subcommand */
+  packageName?: string;
+  /** Search query for 'search' subcommand */
+  query?: string;
+  /** Maximum number of search results (only for 'search' subcommand) */
+  limit?: number;
+};
+
+/**
  * Parses the --limit flag from CLI arguments and clamps it to valid range.
  *
  * Extracts the --limit flag and its value from the arguments array, validates it,
@@ -17,10 +43,7 @@ import { MAX_SEARCH_RESULTS } from '../types.js';
  * @returns Object containing the validated limit and remaining arguments
  * @internal
  */
-function parseLimitFlag(args: string[]): {
-  limit: number | undefined;
-  remainingArgs: string[];
-} {
+function parseLimitFlag(args: string[]): ParsedLimitResult {
   const limitIndex = args.indexOf('--limit');
   if (limitIndex === -1 || limitIndex >= args.length - 1) {
     return { limit: undefined, remainingArgs: args };
@@ -58,12 +81,7 @@ function parseLimitFlag(args: string[]): {
  * @public
  * @see file:../../command.ts:152 - Usage in CLI execution
  */
-export function parseCLIArgs(args: string[]): {
-  subcommand: string | undefined;
-  packageName?: string;
-  query?: string;
-  limit?: number;
-} {
+export function parseCLIArgs(args: string[]): ParsedCLIArgs {
   if (args.length === 0) {
     return { subcommand: undefined };
   }

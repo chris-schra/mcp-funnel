@@ -3,6 +3,8 @@ import { handleRefreshTokenGrant } from './handleRefreshTokenGrant.js';
 import { generateRefreshTokenRecord } from './generateRefreshTokenRecord.js';
 import { handleAuthorizationCodeGrant } from './handleAuthorizationCodeGrant.js';
 import { handleAuthorizationRequest } from './handleAuthorizationRequest.js';
+
+export { type Result, ok, err } from './result.js';
 import type {
   AuthorizationRequest,
   IOAuthProviderStorage,

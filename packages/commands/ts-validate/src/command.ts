@@ -3,10 +3,24 @@ import {
   FileValidationResults,
   MonorepoValidator,
   ValidateOptions,
+  ValidationResult,
   ValidationSummary,
+  ToolRunStatus,
 } from './validator.js';
 import path from 'path';
 import chalk from 'chalk';
+
+interface ParsedCliArgs {
+  flags: {
+    fix: boolean;
+    json: boolean;
+    cache: boolean;
+    showActions: boolean;
+    help: boolean;
+  };
+  files?: string[];
+  globPattern?: string;
+}
 
 /*
 import { setupConsoleLogging, rootLogger } from '@mcp-funnel/core';
@@ -86,8 +100,7 @@ export class TsValidateCommand implements ICommand {
     };
   }
 
-  public async executeViaCLI(args: string[]): Promise<void> {
-    // Parse CLI args similar to original validate.ts
+  private parseCliArgs(args: string[]): ParsedCliArgs {
     const flags: string[] = [];
     const positional: string[] = [];
 
@@ -99,9 +112,25 @@ export class TsValidateCommand implements ICommand {
       }
     }
 
-    // Handle help flag
-    if (flags.includes('--help')) {
-      console.info(`
+    const hasMultipleFiles = positional.length > 1;
+    const files = hasMultipleFiles ? positional : undefined;
+    const globPattern = !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
+
+    return {
+      flags: {
+        fix: flags.includes('--fix'),
+        json: flags.includes('--json'),
+        cache: flags.includes('--cache'),
+        showActions: flags.includes('--show-actions'),
+        help: flags.includes('--help'),
+      },
+      files,
+      globPattern,
+    };
+  }
+
+  private showHelp(): never {
+    console.info(`
 ${chalk.bold('Usage:')} validate [options] [glob-pattern]
 
 ${chalk.bold('Options:')}
@@ -118,126 +147,135 @@ ${chalk.bold('Examples:')}
   validate --fix --json "packages/bus/**/*"  # Fix and validate bus package
   validate file1.ts file2.ts file3.ts   # Validate specific files
 `);
-      process.exit(0);
+    process.exit(0);
+  }
+
+  private formatToolStatus(toolStatuses: ToolRunStatus[] | undefined): string {
+    const failed = toolStatuses?.filter((s) => s.status === 'failed') || [];
+    const skipped = toolStatuses?.filter((s) => s.status === 'skipped') || [];
+
+    if (failed.length === 0 && skipped.length === 0) {
+      return '';
     }
 
-    // Use all positional arguments as files if multiple are provided,
-    // otherwise treat single argument as a glob pattern
-    const hasMultipleFiles = positional.length > 1;
-    const files = hasMultipleFiles ? positional : undefined;
-    const globPattern = !hasMultipleFiles && positional.length === 1 ? positional[0] : undefined;
+    const lines: string[] = [chalk.blue.bold('\n🛠 Tool Status:')];
+    for (const s of [...failed, ...skipped]) {
+      const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
+      const reason = s.reason ? ` (${s.reason})` : '';
+      const err = s.error ? `: ${s.error}` : '';
+      lines.push(`  - ${s.tool}: ${label}${reason}${err}`);
+    }
+    return lines.join('\n');
+  }
+
+  private formatFileResults(file: string, results: ValidationResult[]): string {
+    const lines: string[] = [];
+    const relativePath = process.env.VALIDATE_FULL_FILE_PATH
+      ? `file:///${file}`
+      : path.relative(process.cwd(), file);
+    lines.push(chalk.yellow(`\n${relativePath}:`));
+
+    for (const result of results) {
+      const icon = result.severity === 'error' ? '❌' : result.severity === 'warning' ? '⚠️' : 'ℹ️';
+      const location = result.line ? `:${result.line}:${result.column}` : '';
+      const ruleInfo = result.ruleId ? ` (${result.ruleId})` : '';
+
+      lines.push(`  ${icon} [${result.tool}${location}] ${result.message}${ruleInfo}`);
+
+      if (result.fixable && !result.fixedAutomatically) {
+        lines.push(chalk.green(`     💡 Fixable: ${result.suggestedFix || 'auto-fix available'}`));
+      }
+    }
+    return lines.join('\n');
+  }
+
+  private formatSummary(summary: ValidationSummary, showActions: boolean): string {
+    const lines: string[] = [
+      chalk.blue.bold('\n📊 Summary:'),
+      `  Total files checked: ${summary.totalFiles}`,
+      `  Files with issues: ${summary.filesWithErrors}`,
+    ];
+
+    if (summary.fixableFiles.length > 0) {
+      lines.push(chalk.yellow(`  Auto-fixable files: ${summary.fixableFiles.length}`));
+    }
+
+    if (summary.unfixableFiles.length > 0) {
+      lines.push(chalk.red(`  Manual fixes needed: ${summary.unfixableFiles.length}`));
+    }
+
+    if (showActions && summary.suggestedActions.length > 0) {
+      lines.push(chalk.blue.bold('\n🤖 Suggested Actions:'));
+      for (const action of summary.suggestedActions) {
+        const relativePath = path.relative(process.cwd(), action.file);
+        lines.push(`  • ${relativePath}: ${action.description}`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  private formatNoIssuesOutput(summary: ValidationSummary, isEmpty: boolean): string {
+    const message = isEmpty
+      ? chalk.green('✨ No issues found')
+      : chalk.green('✅ All files passed validation!');
+
+    const toolStatus = this.formatToolStatus(summary.toolStatuses);
+    return toolStatus ? `${message}${toolStatus}` : message;
+  }
+
+  private formatIssuesOutput(summary: ValidationSummary, showActions: boolean): string {
+    const lines: string[] = [chalk.blue.bold('\nValidation Results:\n')];
+
+    for (const [file, results] of Object.entries(summary.fileResults)) {
+      if (results.length > 0) {
+        lines.push(this.formatFileResults(file, results));
+      }
+    }
+
+    lines.push(this.formatSummary(summary, showActions));
+    return lines.join('\n');
+  }
+
+  public async executeViaCLI(args: string[]): Promise<void> {
+    const parsed = this.parseCliArgs(args);
+
+    if (parsed.flags.help) {
+      this.showHelp();
+    }
 
     const options: ValidateOptions = {
-      files: files,
-      glob: globPattern,
-      fix: flags.includes('--fix'),
-      cache: flags.includes('--cache'), // Default to false, enable with --cache
+      files: parsed.files,
+      glob: parsed.globPattern,
+      fix: parsed.flags.fix,
+      cache: parsed.flags.cache,
     };
 
     try {
       const validator = new MonorepoValidator();
       const summary = await validator.validate(options);
 
-      // Output for AI consumption (JSON) or human (formatted)
-      if (flags.includes('--json')) {
+      if (parsed.flags.json) {
         console.info(JSON.stringify(summary, null, 2));
-      } else {
-        // Human-readable output
-        if (Object.keys(summary.fileResults).length === 0) {
-          console.info(chalk.green('✨ No issues found'));
-          // Still report tool statuses if any were skipped/failed
-          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
-          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
-          if (failed.length > 0 || skipped.length > 0) {
-            console.info(chalk.blue.bold('\n🛠 Tool Status:'));
-            for (const s of [...failed, ...skipped]) {
-              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
-              const reason = s.reason ? ` (${s.reason})` : '';
-              const err = s.error ? `: ${s.error}` : '';
-              console.info(`  - ${s.tool}: ${label}${reason}${err}`);
-            }
-          }
-          const exitCode = failed.length > 0 ? 2 : 0;
-          process.exit(exitCode);
-        }
-
-        const hasIssues = Object.values(summary.fileResults).some((r) => r.length > 0);
-
-        const anyFailed = summary.toolStatuses?.some((s) => s.status === 'failed');
-        if (!hasIssues) {
-          console.info(chalk.green('✅ All files passed validation!'));
-          // Report tool statuses if any skipped/failed
-          const failed = summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
-          const skipped = summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
-          if (failed.length > 0 || skipped.length > 0) {
-            console.info(chalk.blue.bold('\n🛠 Tool Status:'));
-            for (const s of [...failed, ...skipped]) {
-              const label = s.status === 'failed' ? chalk.red('failed') : chalk.yellow('skipped');
-              const reason = s.reason ? ` (${s.reason})` : '';
-              const err = s.error ? `: ${s.error}` : '';
-              console.info(`  - ${s.tool}: ${label}${reason}${err}`);
-            }
-          }
-          process.exit(anyFailed ? 2 : 0);
-        }
-
-        console.info(chalk.blue.bold('\nValidation Results:\n'));
-
-        for (const [file, results] of Object.entries(summary.fileResults)) {
-          if (results.length > 0) {
-            const relativePath = process.env.VALIDATE_FULL_FILE_PATH
-              ? `file:///${file}`
-              : path.relative(process.cwd(), file);
-            console.error(chalk.yellow(`\n${relativePath}:`));
-
-            for (const result of results) {
-              const icon =
-                result.severity === 'error' ? '❌' : result.severity === 'warning' ? '⚠️' : 'ℹ️';
-              const location = result.line ? `:${result.line}:${result.column}` : '';
-              const ruleInfo = result.ruleId ? ` (${result.ruleId})` : '';
-
-              const logFn =
-                result.severity === 'error'
-                  ? console.error
-                  : result.severity === 'warning'
-                    ? console.warn
-                    : console.info;
-              logFn(`  ${icon} [${result.tool}${location}] ${result.message}${ruleInfo}`);
-
-              if (result.fixable && !result.fixedAutomatically) {
-                console.info(
-                  chalk.green(`     💡 Fixable: ${result.suggestedFix || 'auto-fix available'}`),
-                );
-              }
-            }
-          }
-        }
-
-        // Summary
-        console.info(chalk.blue.bold('\n📊 Summary:'));
-        console.info(`  Total files checked: ${summary.totalFiles}`);
-        console.info(`  Files with issues: ${summary.filesWithErrors}`);
-
-        if (summary.fixableFiles.length > 0) {
-          console.warn(chalk.yellow(`  Auto-fixable files: ${summary.fixableFiles.length}`));
-        }
-
-        if (summary.unfixableFiles.length > 0) {
-          console.error(chalk.red(`  Manual fixes needed: ${summary.unfixableFiles.length}`));
-        }
-
-        // Suggested actions for AI
-        if (flags.includes('--show-actions') && summary.suggestedActions.length > 0) {
-          console.info(chalk.blue.bold('\n🤖 Suggested Actions:'));
-          for (const action of summary.suggestedActions) {
-            const relativePath = path.relative(process.cwd(), action.file);
-            console.info(`  • ${relativePath}: ${action.description}`);
-          }
-        }
-
-        // Exit code
-        process.exit(summary.filesWithErrors > 0 ? 1 : anyFailed ? 2 : 0);
+        return;
       }
+
+      const isEmpty = Object.keys(summary.fileResults).length === 0;
+      const hasIssues = Object.values(summary.fileResults).some((r) => r.length > 0);
+      const anyFailed = summary.toolStatuses?.some((s) => s.status === 'failed');
+
+      if (isEmpty || !hasIssues) {
+        const output = this.formatNoIssuesOutput(summary, isEmpty);
+        console.info(output);
+        const exitCode = anyFailed ? 2 : 0;
+        process.exit(exitCode);
+      }
+
+      const output = this.formatIssuesOutput(summary, parsed.flags.showActions);
+      console.info(output);
+
+      const exitCode = summary.filesWithErrors > 0 ? 1 : anyFailed ? 2 : 0;
+      process.exit(exitCode);
     } catch (error: Error | unknown) {
       console.error(
         chalk.red('Validation failed:'),

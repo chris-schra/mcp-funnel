@@ -3,6 +3,7 @@ import { OAuthUtils } from '../../utils/index.js';
 import { generateRefreshTokenRecord } from './generateRefreshTokenRecord.js';
 import {
   type AccessToken,
+  type AuthorizationCode,
   type IOAuthProviderStorage,
   type OAuthError,
   OAuthErrorCodes,
@@ -21,22 +22,16 @@ const {
   validatePkceChallenge,
 } = OAuthUtils;
 
-export const handleAuthorizationCodeGrant = async (
-  config: OAuthProviderConfig,
-  storage: IOAuthProviderStorage,
-  params: TokenRequest,
-): Promise<{
-  success: boolean;
-  tokenResponse?: TokenResponse;
-  error?: OAuthError;
-}> => {
-  const { code, redirect_uri, client_id, client_secret, code_verifier } = params;
+type ValidationResult = { error?: OAuthError };
 
-  // Get client
+const validateClient = async (
+  storage: IOAuthProviderStorage,
+  client_id: string,
+  client_secret?: string,
+): Promise<ValidationResult> => {
   const client = await storage.getClient(client_id);
   if (!client) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_CLIENT,
         error_description: 'Invalid client_id',
@@ -44,10 +39,8 @@ export const handleAuthorizationCodeGrant = async (
     };
   }
 
-  // Validate client credentials
   if (!validateClientCredentials(client, client_secret)) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_CLIENT,
         error_description: 'Invalid client credentials',
@@ -55,11 +48,18 @@ export const handleAuthorizationCodeGrant = async (
     };
   }
 
-  // Get authorization code
-  const authCode = await storage.getAuthorizationCode(code!);
+  return {};
+};
+
+const validateAuthCode = async (
+  storage: IOAuthProviderStorage,
+  code: string,
+  client_id: string,
+  redirect_uri: string,
+): Promise<{ authCode?: AuthorizationCode; error?: OAuthError }> => {
+  const authCode = await storage.getAuthorizationCode(code);
   if (!authCode) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_GRANT,
         error_description: 'Invalid authorization code',
@@ -67,11 +67,9 @@ export const handleAuthorizationCodeGrant = async (
     };
   }
 
-  // Check if code is expired
   if (isExpired(authCode.expires_at)) {
-    await storage.deleteAuthorizationCode(code!);
+    await storage.deleteAuthorizationCode(code);
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_GRANT,
         error_description: 'Authorization code expired',
@@ -79,10 +77,8 @@ export const handleAuthorizationCodeGrant = async (
     };
   }
 
-  // Validate client matches
   if (authCode.client_id !== client_id) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_GRANT,
         error_description: 'Authorization code was not issued to this client',
@@ -90,10 +86,8 @@ export const handleAuthorizationCodeGrant = async (
     };
   }
 
-  // Validate redirect URI matches
   if (authCode.redirect_uri !== redirect_uri) {
     return {
-      success: false,
       error: {
         error: OAuthErrorCodes.INVALID_GRANT,
         error_description: 'Invalid redirect_uri',
@@ -101,39 +95,47 @@ export const handleAuthorizationCodeGrant = async (
     };
   }
 
-  // Validate PKCE if present
-  if (authCode.code_challenge) {
-    if (!code_verifier) {
-      return {
-        success: false,
-        error: {
-          error: OAuthErrorCodes.INVALID_REQUEST,
-          error_description: 'code_verifier is required',
-        },
-      };
-    }
+  return { authCode };
+};
 
-    if (
-      !validatePkceChallenge(
-        code_verifier,
-        authCode.code_challenge,
-        authCode.code_challenge_method || 'plain',
-      )
-    ) {
-      return {
-        success: false,
-        error: {
-          error: OAuthErrorCodes.INVALID_GRANT,
-          error_description: 'Invalid PKCE code verifier',
-        },
-      };
-    }
+const validatePkce = (authCode: AuthorizationCode, code_verifier?: string): ValidationResult => {
+  if (!authCode.code_challenge) {
+    return {};
   }
 
-  // Delete authorization code (single use)
-  await storage.deleteAuthorizationCode(code!);
+  if (!code_verifier) {
+    return {
+      error: {
+        error: OAuthErrorCodes.INVALID_REQUEST,
+        error_description: 'code_verifier is required',
+      },
+    };
+  }
 
-  // Generate access token
+  if (
+    !validatePkceChallenge(
+      code_verifier,
+      authCode.code_challenge,
+      authCode.code_challenge_method || 'plain',
+    )
+  ) {
+    return {
+      error: {
+        error: OAuthErrorCodes.INVALID_GRANT,
+        error_description: 'Invalid PKCE code verifier',
+      },
+    };
+  }
+
+  return {};
+};
+
+const generateTokens = async (
+  storage: IOAuthProviderStorage,
+  config: OAuthProviderConfig,
+  authCode: AuthorizationCode,
+  client_id: string,
+): Promise<{ accessToken: AccessToken; refreshToken?: RefreshToken }> => {
   const accessToken: AccessToken = {
     token: generateAccessToken(),
     client_id,
@@ -146,7 +148,6 @@ export const handleAuthorizationCodeGrant = async (
 
   await storage.saveAccessToken(accessToken);
 
-  // Generate refresh token if enabled
   let refreshToken: RefreshToken | undefined;
   if (config.issueRefreshTokens) {
     refreshToken = generateRefreshTokenRecord(
@@ -155,10 +156,18 @@ export const handleAuthorizationCodeGrant = async (
       authCode.scopes,
       config.defaultRefreshTokenExpiry,
     );
-
     await storage.saveRefreshToken(refreshToken);
   }
 
+  return { accessToken, refreshToken };
+};
+
+const buildTokenResponse = (
+  accessToken: AccessToken,
+  config: OAuthProviderConfig,
+  authCode: AuthorizationCode,
+  refreshToken?: RefreshToken,
+): TokenResponse => {
   const tokenResponse: TokenResponse = {
     access_token: accessToken.token,
     token_type: 'Bearer',
@@ -169,6 +178,43 @@ export const handleAuthorizationCodeGrant = async (
   if (refreshToken) {
     tokenResponse.refresh_token = refreshToken.token;
   }
+
+  return tokenResponse;
+};
+
+export const handleAuthorizationCodeGrant = async (
+  config: OAuthProviderConfig,
+  storage: IOAuthProviderStorage,
+  params: TokenRequest,
+): Promise<{
+  success: boolean;
+  tokenResponse?: TokenResponse;
+  error?: OAuthError;
+}> => {
+  const { code, redirect_uri, client_id, client_secret, code_verifier } = params;
+
+  const clientValidation = await validateClient(storage, client_id, client_secret);
+  if (clientValidation.error) {
+    return { success: false, error: clientValidation.error };
+  }
+
+  const authCodeValidation = await validateAuthCode(storage, code!, client_id, redirect_uri!);
+  if (authCodeValidation.error) {
+    return { success: false, error: authCodeValidation.error };
+  }
+
+  const authCode = authCodeValidation.authCode!;
+
+  const pkceValidation = validatePkce(authCode, code_verifier);
+  if (pkceValidation.error) {
+    return { success: false, error: pkceValidation.error };
+  }
+
+  await storage.deleteAuthorizationCode(code!);
+
+  const { accessToken, refreshToken } = await generateTokens(storage, config, authCode, client_id);
+
+  const tokenResponse = buildTokenResponse(accessToken, config, authCode, refreshToken);
 
   return { success: true, tokenResponse };
 };

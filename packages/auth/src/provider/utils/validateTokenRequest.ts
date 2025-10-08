@@ -1,6 +1,17 @@
 import { type OAuthError, OAuthErrorCodes, type TokenRequest } from '@mcp-funnel/models';
 
 /**
+ * Result of token request validation.
+ * @public
+ */
+export type TokenRequestValidationResult = {
+  /** Whether the token request is valid */
+  valid: boolean;
+  /** Error details if validation failed */
+  error?: OAuthError;
+};
+
+/**
  * Validates OAuth 2.0 token request parameters according to RFC 6749.
  *
  * Performs comprehensive validation including:
@@ -35,10 +46,7 @@ import { type OAuthError, OAuthErrorCodes, type TokenRequest } from '@mcp-funnel
  * @see file:../oauth-provider.ts:206 - Usage in token endpoint
  * @public
  */
-export function validateTokenRequest(params: Partial<TokenRequest>): {
-  valid: boolean;
-  error?: OAuthError;
-} {
+export function validateTokenRequest(params: Partial<TokenRequest>): TokenRequestValidationResult {
   // Check required parameters
   if (!params.grant_type) {
     return {

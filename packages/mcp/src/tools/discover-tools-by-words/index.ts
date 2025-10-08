@@ -4,12 +4,18 @@ import { BaseCoreTool } from '../base-core-tool.js';
 import { RegistryContext } from '../../mcp-registry/index.js';
 
 export interface ToolMatch {
-  name: string;
+  fullName: string;
+  originalName: string;
   serverName: string;
-  description: string;
-  score: number;
-  exposed?: boolean;
-  enabled?: boolean;
+  description?: string;
+  exposed: boolean;
+  enabled: boolean;
+  definition?: Tool;
+}
+
+interface ParsedWordsParameter {
+  keywords: string[];
+  searchMode: 'and' | 'or';
 }
 
 /**
@@ -113,23 +119,24 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     return description;
   }
 
-  public async handle(
-    args: Record<string, unknown>,
-    context: CoreToolContext,
-  ): Promise<CallToolResult> {
-    // Parse the words parameter which can be string or object
+  /**
+   * Parses the words parameter into keywords and search mode.
+   * @param words - String or object with and/or arrays
+   * @returns Keywords array and search mode
+   * @internal
+   */
+  private parseWordsParameter(words: unknown): ParsedWordsParameter {
     let keywords: string[] = [];
-    let searchMode: 'and' | 'or' = 'and'; // Default to AND logic
+    let searchMode: 'and' | 'or' = 'and';
 
-    if (typeof args.words === 'string') {
-      // Legacy string format - use AND logic
-      keywords = args.words.toLowerCase().split(/\s+/).filter(Boolean);
-    } else if (typeof args.words === 'object' && args.words !== null) {
-      if ('and' in args.words && Array.isArray(args.words.and)) {
-        keywords = args.words.and.map((k) => k.toLowerCase());
+    if (typeof words === 'string') {
+      keywords = words.toLowerCase().split(/\s+/).filter(Boolean);
+    } else if (typeof words === 'object' && words !== null) {
+      if ('and' in words && Array.isArray(words.and)) {
+        keywords = words.and.map((k) => k.toLowerCase());
         searchMode = 'and';
-      } else if ('or' in args.words && Array.isArray(args.words.or)) {
-        keywords = args.words.or.map((k) => k.toLowerCase());
+      } else if ('or' in words && Array.isArray(words.or)) {
+        keywords = words.or.map((k) => k.toLowerCase());
         searchMode = 'or';
       } else {
         throw new Error('Invalid words format - use string, {and: [...]}, or {or: [...]}');
@@ -138,77 +145,99 @@ export class DiscoverToolsByWords extends BaseCoreTool {
       throw new Error('Missing or invalid "words" parameter');
     }
 
-    const enable = typeof args.enable === 'boolean' ? args.enable : false;
+    return { keywords, searchMode };
+  }
 
-    // Use registry's search capability with the appropriate mode
-    const matches = context.toolRegistry.searchTools(keywords, searchMode);
+  /**
+   * Formats a single tool with its arguments for display.
+   * @param match - Tool match to format
+   * @returns Formatted tool string
+   * @internal
+   */
+  private formatToolWithArgs(match: ToolMatch): string {
+    const inputSchema = match.definition?.inputSchema;
 
-    if (enable && matches.length > 0) {
-      // Enable the discovered tools
-      const toolNames = matches.map((m) => m.fullName);
-      context.toolRegistry.enableTools(toolNames, 'discovery');
-      await context.sendNotification?.('tools/list_changed');
-
-      const enabledList = matches
-        .map((m) => {
-          const inputSchema = m.definition?.inputSchema;
-
-          const args = Object.entries(inputSchema?.properties || {}).map(([argName, prop]) => {
-            const def = prop as { type: string; description?: string };
-            let retVal = `${argName}: ${def.type}`;
-            if (m.definition?.inputSchema?.required?.includes(argName)) {
-              retVal += ' [required]';
-            }
-            return retVal;
-          });
-
-          // Use full description when enabling (contains usage instructions)
-          // Use truncated description for discovery listing
-          const desc = enable ? m.description : this.truncateDescription(m.description);
-          let retVal = `- ${m.fullName}: ${desc}`;
-          if (args.length) {
-            retVal += `\n  args:`;
-            for (const arg of args) {
-              retVal += `\n    - ${arg}`;
-            }
-          }
-          return retVal;
-        })
-        .join('\n');
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found and enabled ${matches.length} tools:\n${enabledList}\n\nNote: Always call tools using the fully prefixed name exactly as listed. To run a tool next, use bridge_tool_request with {"tool":"<full_name>","arguments":{...}} and consult get_tool_schema first for required arguments.`,
-          },
-        ],
-      };
-    }
-
-    if (matches.length === 0) {
-      // Check if registries are configured to suggest registry search
-      const registryContext = RegistryContext.getInstance(context.config, {
-        configPath: context.configPath || './.mcp-funnel.json',
-      });
-      const hasRegistries = registryContext.hasRegistries();
-
-      let message = `No local tools found matching keywords: ${keywords.join(' ')}`;
-      if (hasRegistries) {
-        message += `\n\nTip: Try searching MCP registries for additional tools:\nsearch_registry_tools "${keywords.join(' ')}"`;
+    const args = Object.entries(inputSchema?.properties || {}).map(([argName, prop]) => {
+      const def = prop as { type: string; description?: string };
+      let retVal = `${argName}: ${def.type}`;
+      if (match.definition?.inputSchema?.required?.includes(argName)) {
+        retVal += ' [required]';
       }
+      return retVal;
+    });
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: message,
-          },
-        ],
-      };
+    let retVal = `- ${match.fullName}: ${match.description}`;
+    if (args.length) {
+      retVal += `\n  args:`;
+      for (const arg of args) {
+        retVal += `\n    - ${arg}`;
+      }
+    }
+    return retVal;
+  }
+
+  /**
+   * Handles enabling discovered tools and returns formatted result.
+   * @param matches - Tool matches to enable
+   * @param context - Core tool context
+   * @returns Call tool result
+   * @internal
+   */
+  private async handleEnableTools(
+    matches: ToolMatch[],
+    context: CoreToolContext,
+  ): Promise<CallToolResult> {
+    const toolNames = matches.map((m) => m.fullName);
+    context.toolRegistry.enableTools(toolNames, 'discovery');
+    await context.sendNotification?.('tools/list_changed');
+
+    const enabledList = matches.map((m) => this.formatToolWithArgs(m)).join('\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Found and enabled ${matches.length} tools:\n${enabledList}\n\nNote: Always call tools using the fully prefixed name exactly as listed. To run a tool next, use bridge_tool_request with {"tool":"<full_name>","arguments":{...}} and consult get_tool_schema first for required arguments.`,
+        },
+      ],
+    };
+  }
+
+  /**
+   * Handles case when no tools match the search criteria.
+   * @param keywords - Search keywords used
+   * @param context - Core tool context
+   * @returns Call tool result
+   * @internal
+   */
+  private handleNoMatches(keywords: string[], context: CoreToolContext): CallToolResult {
+    const registryContext = RegistryContext.getInstance(context.config, {
+      configPath: context.configPath || './.mcp-funnel.json',
+    });
+    const hasRegistries = registryContext.hasRegistries();
+
+    let message = `No local tools found matching keywords: ${keywords.join(' ')}`;
+    if (hasRegistries) {
+      message += `\n\nTip: Try searching MCP registries for additional tools:\nsearch_registry_tools "${keywords.join(' ')}"`;
     }
 
-    // Show discovered tools with their current state
+    return {
+      content: [
+        {
+          type: 'text',
+          text: message,
+        },
+      ],
+    };
+  }
+
+  /**
+   * Formats discovered tools with their current state.
+   * @param matches - Tool matches to format
+   * @returns Call tool result
+   * @internal
+   */
+  private formatDiscoveredTools(matches: ToolMatch[]): CallToolResult {
     const matchList = matches
       .map((m) => {
         const status = m.exposed ? '✓' : m.enabled ? '◐' : '○';
@@ -228,5 +257,24 @@ export class DiscoverToolsByWords extends BaseCoreTool {
         },
       ],
     };
+  }
+
+  public async handle(
+    args: Record<string, unknown>,
+    context: CoreToolContext,
+  ): Promise<CallToolResult> {
+    const { keywords, searchMode } = this.parseWordsParameter(args.words);
+    const enable = typeof args.enable === 'boolean' ? args.enable : false;
+    const matches = context.toolRegistry.searchTools(keywords, searchMode);
+
+    if (enable && matches.length > 0) {
+      return this.handleEnableTools(matches, context);
+    }
+
+    if (matches.length === 0) {
+      return this.handleNoMatches(keywords, context);
+    }
+
+    return this.formatDiscoveredTools(matches);
   }
 }

@@ -494,12 +494,12 @@ const expectStrictNumber = (response: string, expected?: number) => {
           const conversation = await startConversation('config.with-mock-server.json');
 
           const response = await conversation.sendMessage(
-            'Count how many tools start with "mockserver__". You **MUST** reply ONLY with a number.',
+            'Count how many tools exposed by mcp-funnel start with "mockserver__". You **MUST** reply ONLY with a number.',
           );
 
           // Should find the mock server tools
           const count = expectStrictNumber(response);
-          expect(count).toBeGreaterThan(0);
+          expect(count).toEqual(4);
 
           await conversation.finish();
         }, 60000);

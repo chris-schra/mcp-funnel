@@ -55,6 +55,56 @@ function normalizeLicense(license: string | { type?: string } | undefined): stri
 }
 
 /**
+ * Resolves the publish timestamp for a package version.
+ * @param data - NPM package response
+ * @param version - Version to resolve timestamp for
+ * @returns ISO timestamp string
+ * @internal
+ */
+function resolvePublishedAt(data: NPMPackageResponse, version: string): string {
+  return data.time[version] || data.time.created || new Date().toISOString();
+}
+
+/**
+ * Processes and truncates README content.
+ * @param readme - Raw README content
+ * @returns Truncated README or undefined
+ * @internal
+ */
+function processReadme(readme: string | undefined): string | undefined {
+  if (!readme) {
+    return undefined;
+  }
+  return truncateText(readme, 5000);
+}
+
+/**
+ * Resolves description with fallback to version-specific data.
+ * @param data - NPM package response
+ * @param versionInfo - Version-specific info
+ * @returns Truncated description
+ * @internal
+ */
+function resolveDescription(data: NPMPackageResponse, versionInfo: NPMVersionInfo): string {
+  const rawDescription = data.description || versionInfo?.description || '';
+  return truncateText(rawDescription, 500);
+}
+
+/**
+ * Resolves homepage URL with fallback to repository.
+ * @param data - NPM package response
+ * @param versionInfo - Version-specific info
+ * @returns Homepage URL or undefined
+ * @internal
+ */
+function resolveHomepage(
+  data: NPMPackageResponse,
+  versionInfo: NPMVersionInfo,
+): string | undefined {
+  return data.homepage || versionInfo?.repository?.url;
+}
+
+/**
  * Transforms raw NPM Registry package response to normalized PackageInfo format.
  *
  * Extracts and normalizes data from the NPM Registry's package endpoint response,
@@ -80,28 +130,20 @@ function normalizeLicense(license: string | { type?: string } | undefined): stri
 export function transformPackageResponse(data: NPMPackageResponse): PackageInfo {
   const latestVersion = data['dist-tags'].latest;
   const versionInfo: NPMVersionInfo = data.versions[latestVersion];
-  const publishedAt = data.time[latestVersion] || data.time.created || new Date().toISOString();
-
-  const author = normalizeAuthor(data.author);
-  const license = normalizeLicense(data.license);
-
-  // Truncate README and description
-  const readme = data.readme ? truncateText(data.readme, 5000) : undefined;
-  const description = truncateText(data.description || versionInfo?.description || '', 500);
 
   return {
     name: data.name,
     version: latestVersion,
-    description,
-    readme,
-    author,
-    license,
-    homepage: data.homepage || versionInfo?.repository?.url,
+    description: resolveDescription(data, versionInfo),
+    readme: processReadme(data.readme),
+    author: normalizeAuthor(data.author),
+    license: normalizeLicense(data.license),
+    homepage: resolveHomepage(data, versionInfo),
     repository: data.repository || versionInfo?.repository,
     keywords: data.keywords || versionInfo?.keywords,
     dependencies: versionInfo?.dependencies,
     devDependencies: versionInfo?.devDependencies,
-    publishedAt,
+    publishedAt: resolvePublishedAt(data, latestVersion),
   };
 }
 

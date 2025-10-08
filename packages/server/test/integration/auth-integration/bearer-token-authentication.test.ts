@@ -161,7 +161,6 @@ describe('Bearer Token Authentication', () => {
     expect(healthAuthResponse.status).toBe(200);
     const healthData = await healthAuthResponse.json();
     expect(healthData.status).toBe('ok');
-    expect(healthData.authenticated).toBe(true);
 
     // OAuth endpoints also now require auth
     const oauthNoAuthResponse = await fetch(

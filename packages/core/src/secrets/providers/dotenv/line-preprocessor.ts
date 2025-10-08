@@ -29,6 +29,102 @@ function isLikelyVariableDeclaration(line: string | undefined): boolean {
 }
 
 /**
+ * State tracked during quote parsing.
+ * @internal
+ */
+interface QuoteParsingState {
+  inQuotes: boolean;
+  quoteChar: string;
+  equalsIndex: number;
+  valueStart: number;
+  escapeNext: boolean;
+}
+
+/**
+ * Creates initial state for quote parsing.
+ * @returns Initial parsing state
+ * @internal
+ */
+function createInitialState(): QuoteParsingState {
+  return {
+    inQuotes: false,
+    quoteChar: '',
+    equalsIndex: -1,
+    valueStart: -1,
+    escapeNext: false,
+  };
+}
+
+/**
+ * Processes escape sequences in the line.
+ * @param char - Current character
+ * @param state - Current parsing state
+ * @returns true if character was escaped (skip further processing)
+ * @internal
+ */
+function processEscape(char: string, state: QuoteParsingState): boolean {
+  if (state.escapeNext) {
+    state.escapeNext = false;
+    return true;
+  }
+
+  if (char === '\\' && state.inQuotes) {
+    state.escapeNext = true;
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Tracks the equals sign position in the line.
+ * @param char - Current character
+ * @param i - Current position
+ * @param state - Current parsing state
+ * @internal
+ */
+function processEqualsSign(char: string, i: number, state: QuoteParsingState): void {
+  if (char === '=' && state.equalsIndex === -1 && !state.inQuotes) {
+    state.equalsIndex = i;
+  }
+}
+
+/**
+ * Tracks where the value starts after the equals sign.
+ * @param char - Current character
+ * @param i - Current position
+ * @param state - Current parsing state
+ * @internal
+ */
+function trackValueStartPosition(char: string, i: number, state: QuoteParsingState): void {
+  if (state.equalsIndex !== -1 && state.valueStart === -1) {
+    if (char !== ' ' && char !== '\t') {
+      state.valueStart = i;
+    }
+  }
+}
+
+/**
+ * Processes quote characters and tracks quote state.
+ * @param char - Current character
+ * @param state - Current parsing state
+ * @internal
+ */
+function processQuoteCharacter(char: string, state: QuoteParsingState): void {
+  if (state.equalsIndex === -1 || state.valueStart === -1) {
+    return;
+  }
+
+  if (!state.inQuotes && (char === '"' || char === "'")) {
+    state.inQuotes = true;
+    state.quoteChar = char;
+  } else if (state.inQuotes && char === state.quoteChar) {
+    state.inQuotes = false;
+    state.quoteChar = '';
+  }
+}
+
+/**
  * Determines if a line needs continuation (multiline value not yet complete).
  *
  * Returns true if there's a backslash continuation or if quotes are unclosed.
@@ -48,48 +144,21 @@ function needsContinuation(line: string, hasBackslashContinuation: boolean): boo
     return false;
   }
 
-  let inQuotes = false;
-  let quoteChar = '';
-  let equalsIndex = -1;
-  let valueStart = -1;
-  let escapeNext = false;
+  const state = createInitialState();
 
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
 
-    if (escapeNext) {
-      escapeNext = false;
+    if (processEscape(char, state)) {
       continue;
     }
 
-    if (char === '\\' && inQuotes) {
-      escapeNext = true;
-      continue;
-    }
-
-    if (char === '=' && equalsIndex === -1 && !inQuotes) {
-      equalsIndex = i;
-      continue;
-    }
-
-    if (equalsIndex !== -1 && valueStart === -1) {
-      if (char !== ' ' && char !== '\t') {
-        valueStart = i;
-      }
-    }
-
-    if (equalsIndex !== -1 && valueStart !== -1) {
-      if (!inQuotes && (char === '"' || char === "'")) {
-        inQuotes = true;
-        quoteChar = char;
-      } else if (inQuotes && char === quoteChar && !escapeNext) {
-        inQuotes = false;
-        quoteChar = '';
-      }
-    }
+    processEqualsSign(char, i, state);
+    trackValueStartPosition(char, i, state);
+    processQuoteCharacter(char, state);
   }
 
-  return inQuotes;
+  return state.inQuotes;
 }
 
 /**

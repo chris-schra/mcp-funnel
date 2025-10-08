@@ -51,8 +51,8 @@ export class ServerConnectionManager {
   ) {}
 
   /**
-   * @param servers - Target server configurations
-   * @public
+   * Initializes disconnected servers map from configuration. @public
+   * @param servers - Array of target server configurations to track as disconnected
    */
   public initializeDisconnectedServers(servers: (TargetServer | TargetServerZod)[]): void {
     servers.forEach((server) => {
@@ -102,8 +102,8 @@ export class ServerConnectionManager {
   };
 
   /**
-   * @param targetServer - Server to set up automatic reconnection for
-   * @internal
+   * Sets up automatic reconnection for a disconnected server. @internal
+   * @param targetServer - Server configuration to set up automatic reconnection for
    */
   private setupAutoReconnection(targetServer: TargetServer | TargetServerZod): void {
     const serverName = targetServer.name;
@@ -129,8 +129,8 @@ export class ServerConnectionManager {
   }
 
   /**
-   * @param targetServer - Server to attempt reconnection to
-   * @internal
+   * Attempts automatic reconnection to a server with backoff. @internal
+   * @param targetServer - Server configuration to attempt reconnection for
    */
   private async attemptAutoReconnection(
     targetServer: TargetServer | TargetServerZod,
@@ -304,42 +304,27 @@ export class ServerConnectionManager {
     }
   }
 
-  /**
-   * @returns Map of currently connected servers
-   * @public
-   */
+  /** @returns Map of currently connected servers @public */
   public getConnectedServers() {
     return this.connectedServers;
   }
 
-  /**
-   * @returns Map of disconnected servers
-   * @public
-   */
+  /** @returns Map of disconnected servers with optional error messages @public */
   public getDisconnectedServers() {
     return this.disconnectedServers;
   }
 
-  /**
-   * @returns Map of connection timestamps
-   * @public
-   */
+  /** @returns Map of server connection timestamps @public */
   public getConnectionTimestamps() {
     return this.connectionTimestamps;
   }
 
-  /**
-   * @returns Map of active transports
-   * @public
-   */
+  /** @returns Map of active server transports @public */
   public getTransports() {
     return this.transports;
   }
 
-  /**
-   * @returns Map of reconnection managers
-   * @public
-   */
+  /** @returns Map of server reconnection managers @public */
   public getReconnectionManagers() {
     return this.reconnectionManagers;
   }

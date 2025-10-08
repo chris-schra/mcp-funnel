@@ -5,6 +5,25 @@ import { deepmergeCustom } from 'deepmerge-ts';
 import { type ProxyConfig, ProxyConfigSchema } from '@mcp-funnel/schemas';
 
 /**
+ * Configuration file paths used in proxy config resolution.
+ * @public
+ */
+export type ConfigPaths = {
+  userBasePath: string;
+  projectConfigPath: string;
+};
+
+/**
+ * Result of resolving and merging proxy configuration.
+ * @public
+ */
+export type MergedProxyConfigResult = {
+  config: ProxyConfig;
+  sources: string[];
+  paths: ConfigPaths;
+};
+
+/**
  * Reads and parses a JSON file if it exists.
  * @param path - Absolute path to JSON file
  * @returns Parsed JSON content or undefined if file doesn't exist
@@ -72,11 +91,7 @@ export function getDefaultProjectConfigPath(cwd = process.cwd()): string {
  * @public
  * @see {@link ProxyConfigSchema} - Configuration schema definition
  */
-export function resolveMergedProxyConfig(projectConfigPath?: string): {
-  config: ProxyConfig;
-  sources: string[];
-  paths: { userBasePath: string; projectConfigPath: string };
-} {
+export function resolveMergedProxyConfig(projectConfigPath?: string): MergedProxyConfigResult {
   const userBasePath = getUserBasePath();
   const projectPath = projectConfigPath ?? getDefaultProjectConfigPath();
 

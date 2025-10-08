@@ -11,6 +11,93 @@ import type { IAuthProvider } from '../../../auth/index.js';
 import { logEvent } from '../../../logger.js';
 
 /**
+ * Builds request headers with optional authentication.
+ * @param authProvider - Optional authentication provider for token management
+ * @returns Promise resolving to headers object with Content-Type and auth headers
+ * @internal
+ */
+async function getRequestHeaders(authProvider?: IAuthProvider): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (authProvider) {
+    const authHeaders = await authProvider.getHeaders();
+    Object.assign(headers, authHeaders);
+  }
+
+  return headers;
+}
+
+/**
+ * Attempts to refresh auth token and retry the request.
+ * @param url - Target URL for the HTTP request
+ * @param message - JSON-RPC message to send
+ * @param signal - AbortSignal for request cancellation
+ * @param authProvider - Authentication provider with refresh capability
+ * @param logPrefix - Prefix for logging events
+ * @returns Promise that resolves on successful retry
+ * @throws \{TransportError\} If retry fails or token refresh fails
+ * @internal
+ */
+async function attemptTokenRefreshAndRetry(
+  url: string,
+  message: JSONRPCMessage,
+  signal: AbortSignal,
+  authProvider: IAuthProvider,
+  logPrefix: string,
+): Promise<void> {
+  try {
+    await authProvider.refresh?.();
+
+    const retryHeaders = {
+      'Content-Type': 'application/json',
+      ...(await authProvider.getHeaders()),
+    };
+
+    const retryResponse = await fetch(url, {
+      method: 'POST',
+      headers: retryHeaders,
+      body: JSON.stringify(message),
+      signal,
+    });
+
+    if (!retryResponse.ok) {
+      throw TransportError.fromHttpStatus(retryResponse.status, retryResponse.statusText);
+    }
+  } catch (refreshError) {
+    logEvent('error', `${logPrefix}:token-refresh-failed`, {
+      error: String(refreshError),
+    });
+    throw TransportError.fromHttpStatus(401, 'Token refresh failed');
+  }
+}
+
+/**
+ * Handles network and other non-HTTP errors.
+ * @param error - The error to handle
+ * @param timeout - Request timeout in milliseconds
+ * @throws \{TransportError\} Always throws with appropriate error type
+ * @internal
+ */
+function handleNetworkError(error: unknown, timeout: number): never {
+  if (error instanceof TransportError) {
+    throw error;
+  }
+
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      throw TransportError.requestTimeout(timeout, error);
+    }
+    if (error.message.includes('fetch')) {
+      throw TransportError.connectionFailed(`Network error: ${error.message}`, error);
+    }
+  }
+
+  throw TransportError.connectionFailed(`HTTP request failed: ${error}`, error as Error);
+}
+
+/**
  * Executes HTTP POST request with authentication, retry logic, and error handling.
  *
  * Sends a JSON-RPC message via HTTP POST. If the request fails with 401 Unauthorized
@@ -40,17 +127,8 @@ export async function executeHttpRequest(
   const isRequest = 'method' in message;
 
   try {
-    // Get auth headers
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers = await getRequestHeaders(authProvider);
 
-    if (authProvider) {
-      const authHeaders = await authProvider.getHeaders();
-      Object.assign(headers, authHeaders);
-    }
-
-    // Send HTTP POST request
     const response = await fetch(url, {
       method: 'POST',
       headers,
@@ -58,35 +136,12 @@ export async function executeHttpRequest(
       signal,
     });
 
-    // Handle HTTP errors
     if (!response.ok) {
-      // Special handling for 401 Unauthorized
-      if (response.status === 401 && authProvider?.refresh && isRequest) {
-        try {
-          await authProvider.refresh();
-          // Retry with refreshed token
-          const retryHeaders = {
-            'Content-Type': 'application/json',
-            ...(await authProvider.getHeaders()),
-          };
+      const shouldRetryWith401 = response.status === 401 && authProvider?.refresh && isRequest;
 
-          const retryResponse = await fetch(url, {
-            method: 'POST',
-            headers: retryHeaders,
-            body: JSON.stringify(message),
-            signal,
-          });
-
-          if (!retryResponse.ok) {
-            throw TransportError.fromHttpStatus(retryResponse.status, retryResponse.statusText);
-          }
-          return;
-        } catch (refreshError) {
-          logEvent('error', `${logPrefix}:token-refresh-failed`, {
-            error: String(refreshError),
-          });
-          throw TransportError.fromHttpStatus(401, 'Token refresh failed');
-        }
+      if (shouldRetryWith401) {
+        await attemptTokenRefreshAndRetry(url, message, signal, authProvider, logPrefix);
+        return;
       }
 
       throw TransportError.fromHttpStatus(response.status, response.statusText);
@@ -97,20 +152,6 @@ export async function executeHttpRequest(
       id: 'id' in message ? message.id : 'none',
     });
   } catch (error) {
-    if (error instanceof TransportError) {
-      throw error;
-    }
-
-    // Handle network errors
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        throw TransportError.requestTimeout(timeout, error);
-      }
-      if (error.message.includes('fetch')) {
-        throw TransportError.connectionFailed(`Network error: ${error.message}`, error);
-      }
-    }
-
-    throw TransportError.connectionFailed(`HTTP request failed: ${error}`, error as Error);
+    handleNetworkError(error, timeout);
   }
 }
