@@ -10,7 +10,7 @@ import type { TargetServer } from '@mcp-funnel/schemas';
  */
 export interface TransportOptions {
   command: string;
-  args?: string[];
+  args?: string[] | readonly string[];
   env?: Record<string, string>;
 }
 
