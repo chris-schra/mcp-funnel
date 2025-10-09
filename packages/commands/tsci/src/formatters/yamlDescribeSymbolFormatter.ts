@@ -302,18 +302,46 @@ export class YAMLDescribeSymbolFormatter {
   /**
    * Generate type preview for an external reference
    *
-   * Format: "TypeName ⟶ \{ prop1: type1; prop2: type2; ... \}"
+   * Looks up the referenced symbol via symbolIndex and returns its signature.
+   * Format: "TypeName ⟶ signature"
    *
-   * Note: This is a SEAM for future enhancement.
-   * Currently returns undefined as type expansion is not available here.
+   * Returns undefined if:
+   * - symbolIndex is not available
+   * - referenced symbol is not found
+   * - symbol has no signature
    *
-   * @param _ref - External reference
+   * Note: This infrastructure is ready for when references are populated.
+   * In production, references may not yet be collected, so previews will be omitted.
+   *
+   * @param ref - External reference
    * @returns Preview string or undefined
    */
-  private generateTypePreview(_ref: ExternalReference): string | undefined {
-    // TODO: Implement type preview generation with type expander
-    // For now, return undefined to omit the field
-    return undefined;
+  private generateTypePreview(ref: ExternalReference): string | undefined {
+    // Return undefined if symbolIndex is not available
+    if (!this.symbolIndex) {
+      return undefined;
+    }
+
+    // Look up the referenced symbol by name and file
+    const matchingSymbols = this.symbolIndex.query({
+      name: ref.name,
+      filePath: ref.from,
+    });
+
+    // If no matching symbol found or multiple ambiguous matches, return undefined
+    if (matchingSymbols.length !== 1) {
+      return undefined;
+    }
+
+    const referencedSymbol = matchingSymbols[0];
+
+    // Return undefined if symbol has no signature
+    if (!referencedSymbol.signature) {
+      return undefined;
+    }
+
+    // Format as "TypeName ⟶ signature"
+    return `${ref.name} ⟶ ${referencedSymbol.signature}`;
   }
 }
 
