@@ -4,7 +4,7 @@
  * Cherry-picked from POC's engine.ts and cli.ts
  */
 
-import { Application, LogLevel, type ProjectReflection } from 'typedoc';
+import { Application, LogLevel, type ProjectReflection, type TypeDocOptions } from 'typedoc';
 import type { EngineOptions, SymbolMetadata } from '../types/index.js';
 import { SymbolCollector } from './symbolCollector.js';
 
@@ -35,7 +35,7 @@ export class TypeDocEngine {
 
     // Bootstrap TypeDoc application with minimal configuration
     // If entryPoints are specified, use them; otherwise TypeDoc uses tsconfig's include patterns
-    const bootstrapOptions: any = {
+    const bootstrapOptions: TypeDocOptions = {
       tsconfig: this.options.tsconfig,
       entryPointStrategy: 'expand',
       excludePrivate: this.options.excludePrivate ?? false,
