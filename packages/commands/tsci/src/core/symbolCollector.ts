@@ -13,6 +13,7 @@ import {
   ReflectionKind,
 } from 'typedoc';
 import { normalize, relative, isAbsolute } from 'path';
+import { createHash } from 'crypto';
 import type { SymbolMetadata } from '../types/index.js';
 
 /**
@@ -321,12 +322,14 @@ export class SymbolCollector {
   }
 
   /**
-   * Generate a stable ID for a reflection.
-   * Format: path.to.symbol:kind:file:line
-   * Note: file path is relative to project root to reduce token usage
+   * Generate a stable hashed ID for a reflection.
+   * Uses SHA-256 hash of symbolPath:kind:relativeFilePath (without line number)
+   * and returns 8-char base64url encoding of first 6 bytes (48 bits).
+   *
+   * Token savings: ~58 chars → 8 chars (e.g., "aB3xYz9p")
    *
    * @param reflection - Reflection to generate ID for
-   * @returns Stable identifier string
+   * @returns Stable 8-character hash identifier
    */
   private generateStableId(reflection: Reflection): string {
     const parts: string[] = [];
@@ -339,17 +342,21 @@ export class SymbolCollector {
       current = current.parent;
     }
 
-    const path = parts.join('.');
+    const symbolPath = parts.join('.');
     const kind = reflection.kind;
     const declReflection = reflection as DeclarationReflection;
     const sourceFile: SourceReference | undefined = declReflection.sources?.[0];
 
-    // Use relative path in ID to reduce token usage
+    // Use relative path (without line number) for deterministic hashing
     const filePath = sourceFile?.fullFileName || sourceFile?.fileName;
     const relativeFilePath = filePath ? this.makeRelativePath(filePath) : '';
-    const location = sourceFile ? `${relativeFilePath}:${sourceFile.line}` : '';
 
-    return `${path}:${kind}:${location}`;
+    // Hash input: symbolPath:kind:relativeFilePath (WITHOUT line number for stability)
+    const hashInput = `${symbolPath}:${kind}:${relativeFilePath}`;
+
+    // Generate 48-bit hash (6 bytes) and encode as base64url (8 chars)
+    const hash = createHash('sha256').update(hashInput).digest();
+    return hash.subarray(0, 6).toString('base64url'); // First 6 bytes = 48 bits, URL-safe
   }
 
   /**
