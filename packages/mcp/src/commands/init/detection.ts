@@ -8,6 +8,8 @@ export interface AggregatedServer {
   }[];
 }
 
+const MCP_FUNNEL_PATH_PATTERN = /^[./].*mcp-funnel(?:\/|$)/;
+
 /**
  * Checks if an argument is an mcp-funnel reference
  * @param arg - The argument to check
@@ -21,7 +23,7 @@ function isMcpFunnelArg(arg: string): boolean {
   if (normalized === '@mcp/funnel') return true;
   if (normalized.startsWith('mcp-funnel@')) return true; // e.g., mcp-funnel@1.0.0
   // Path patterns - check if it's a path to mcp-funnel
-  if (normalized.match(/^[./].*mcp-funnel(?:\/|$)/)) return true;
+  if (MCP_FUNNEL_PATH_PATTERN.test(normalized)) return true;
   return false;
 }
 

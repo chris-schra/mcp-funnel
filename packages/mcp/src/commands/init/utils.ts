@@ -235,16 +235,6 @@ export function formatServerConfig(config: ServerConfig): string {
 }
 
 /**
- * Creates a deep clone of a server configuration.
- *
- * @param config - The server configuration to clone
- * @returns A deep clone of the configuration
- */
-export function cloneServerConfig(config: ServerConfig): ServerConfig {
-  return deepClone(config);
-}
-
-/**
  * Creates a default funnel configuration object.
  *
  * @returns A new default configuration object with empty servers and core tools exposed
@@ -313,7 +303,7 @@ export function orderRecord(
   const ordered: Record<string, ServerConfig> = {};
   const entries = Object.entries(servers).sort((a, b) => a[0].localeCompare(b[0]));
   for (const [name, config] of entries) {
-    ordered[name] = cloneServerConfig(config);
+    ordered[name] = deepClone(config);
   }
   return ordered;
 }

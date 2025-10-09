@@ -138,6 +138,8 @@ async function startProxy(configPathArg: string): Promise<void> {
   const configPath = configPathArg ?? '.mcp-funnel.json';
   const resolvedPath = resolve(process.cwd(), configPath);
 
+  proxyInstance = undefined;
+
   const projectExists = existsSync(resolvedPath);
   const userBasePath = getUserBasePath();
   const userBaseExists = existsSync(userBasePath);
@@ -158,17 +160,16 @@ async function startProxy(configPathArg: string): Promise<void> {
   });
 
   const proxy = new MCPProxy(config, actualConfigPath);
+  proxyInstance = proxy;
+
   logEvent('info', 'cli:proxy_starting');
   await proxy.start();
   logEvent('info', 'cli:proxy_started');
-
-  // Attach shutdown handlers for this proxy instance
-  process.on('SIGINT', () => handleShutdown('SIGINT', proxy));
-  process.on('SIGTERM', () => handleShutdown('SIGTERM', proxy));
 }
 
 // Setup shutdown handlers
 let isShuttingDown = false;
+let proxyInstance: MCPProxy | undefined;
 /**
  * Handles graceful shutdown of the MCP proxy server.
  *
@@ -202,6 +203,10 @@ async function bootstrap(): Promise<void> {
 
   await program.parseAsync(process.argv);
 }
+
+// Register signal handlers at module level to prevent memory leaks
+process.once('SIGINT', () => handleShutdown('SIGINT', proxyInstance));
+process.once('SIGTERM', () => handleShutdown('SIGTERM', proxyInstance));
 
 bootstrap().catch((error) => {
   console.error('Fatal error:', error);

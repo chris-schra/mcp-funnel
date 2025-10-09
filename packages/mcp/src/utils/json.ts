@@ -11,7 +11,8 @@ import stringify from 'safe-stable-stringify';
  * @returns JSON string representation of the value
  */
 export function safeStringify(value: unknown): string {
-  return stringify(value) || '{}';
+  const result = stringify(value);
+  return result !== undefined ? result : '{}';
 }
 
 /**
@@ -21,7 +22,8 @@ export function safeStringify(value: unknown): string {
  * @returns Pretty-printed JSON string representation of the value
  */
 export function safeStringifyPretty(value: unknown, indent = 2): string {
-  return stringify(value, null, indent) || '{}';
+  const result = stringify(value, null, indent);
+  return result !== undefined ? result : '{}';
 }
 
 /**
