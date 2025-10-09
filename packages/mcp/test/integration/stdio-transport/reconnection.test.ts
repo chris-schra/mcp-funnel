@@ -21,7 +21,6 @@ import {
   TEST_SERVER_CONFIG,
   TEST_RECONNECTION_CONFIG,
   createCleanup,
-  waitForState,
   waitFor,
 } from './utils.js';
 
