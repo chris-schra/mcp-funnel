@@ -12,7 +12,7 @@ import { resolve } from 'path';
 
 describe('SymbolCollector', () => {
   describe('generateStableId', () => {
-    it('should generate correct ID format for top-level symbol (class)', async () => {
+    it('should generate hash-based ID for top-level symbol (class)', async () => {
       // Project root is the directory containing tsconfig.json
       const projectRoot = resolve(process.cwd());
 
@@ -46,23 +46,22 @@ describe('SymbolCollector', () => {
       const collector = new SymbolCollector(projectRoot);
       const metadata: SymbolMetadata = collector.collect(symbolCollectorClass);
 
-      // Verify ID format: path.to.symbol:kind:file:line
-      // For top-level class: ClassName:kind:file:line
+      // Verify ID is 8-character base64url hash
       expect(metadata.id).toBeDefined();
+      expect(metadata.id).toMatch(/^[A-Za-z0-9_-]{8}$/);
 
-      // Parse the ID to verify structure
-      const idParts = metadata.id.split(':');
-      expect(idParts.length).toBe(4); // path, kind, file, line
+      // Test determinism: same reflection should produce same ID
+      const metadata2 = collector.collect(symbolCollectorClass);
+      expect(metadata2.id).toBe(metadata.id);
 
-      // Verify components with exact matches
-      expect(idParts[0]).toBe('@mcp-funnel/command-tsci.SymbolCollector'); // Symbol path with package name
-      expect(idParts[1]).toBe(String(ReflectionKind.Class)); // Kind should be Class
-      // File path should be relative to project root
-      expect(idParts[2]).toBe('packages/commands/tsci/src/core/symbolCollector.ts');
-      expect(idParts[3]).toMatch(/^\d+$/); // Line number should be numeric
+      // Verify other metadata is still correct
+      expect(metadata.name).toBe('SymbolCollector');
+      expect(metadata.kind).toBe(ReflectionKind.Class);
+      expect(metadata.filePath).toMatch(/symbolCollector\.ts$/);
+      expect(metadata.line).toBeGreaterThan(0);
     });
 
-    it('should generate correct ID format for nested symbol (method with parent chain)', async () => {
+    it('should generate unique hash-based ID for nested symbol (method with parent chain)', async () => {
       // Project root is the directory containing tsconfig.json
       const projectRoot = resolve(process.cwd());
 
@@ -100,23 +99,32 @@ describe('SymbolCollector', () => {
 
       // Collect metadata for the method with project root
       const collector = new SymbolCollector(projectRoot);
-      const metadata: SymbolMetadata = collector.collect(collectMethod);
+      const methodMetadata: SymbolMetadata = collector.collect(collectMethod);
 
-      // Verify ID format includes parent chain: ParentClass.methodName:kind:file:line
-      expect(metadata.id).toBeDefined();
+      // Verify ID is 8-character base64url hash
+      expect(methodMetadata.id).toBeDefined();
+      expect(methodMetadata.id).toMatch(/^[A-Za-z0-9_-]{8}$/);
 
-      const idParts = metadata.id.split(':');
-      expect(idParts.length).toBe(4); // path, kind, file, line
+      // Test determinism: same reflection should produce same ID
+      const methodMetadata2 = collector.collect(collectMethod);
+      expect(methodMetadata2.id).toBe(methodMetadata.id);
 
-      // Verify the hierarchical path includes parent with exact match
-      expect(idParts[0]).toBe('@mcp-funnel/command-tsci.SymbolCollector.collect'); // Package.Class.method format
-      expect(idParts[1]).toBe(String(ReflectionKind.Method)); // Kind should be Method
-      // File path should be relative to project root
-      expect(idParts[2]).toBe('packages/commands/tsci/src/core/symbolCollector.ts');
-      expect(idParts[3]).toMatch(/^\d+$/); // Line number should be numeric
+      // Test uniqueness: parent and child should have different IDs
+      if (!symbolCollectorClass) {
+        throw new Error('SymbolCollector class not found for parent comparison');
+      }
+      const parentMetadata = collector.collect(symbolCollectorClass);
+      expect(methodMetadata.id).not.toBe(parentMetadata.id);
+
+      // Verify other metadata is still correct
+      expect(methodMetadata.name).toBe('collect');
+      expect(methodMetadata.kind).toBe(ReflectionKind.Method);
+      expect(methodMetadata.filePath).toMatch(/symbolCollector\.ts$/);
+      expect(methodMetadata.line).toBeGreaterThan(0);
+      expect(methodMetadata.parentId).toBe(parentMetadata.id);
     });
 
-    it('should generate correct ID format for symbol with missing source information', async () => {
+    it('should generate hash-based ID for symbol with missing source information', async () => {
       // Project root is the directory containing tsconfig.json
       const projectRoot = resolve(process.cwd());
 
@@ -152,19 +160,20 @@ describe('SymbolCollector', () => {
       const collector = new SymbolCollector(projectRoot);
       const metadata: SymbolMetadata = collector.collect(testReflection);
 
-      // Verify ID format with empty location: path.to.symbol:kind::
-      // (note the double colon indicating missing file:line)
+      // Verify ID is still 8-character base64url hash even without source
       expect(metadata.id).toBeDefined();
+      expect(metadata.id).toMatch(/^[A-Za-z0-9_-]{8}$/);
 
-      const idParts = metadata.id.split(':');
+      // Test determinism even for symbols without source
+      const metadata2 = collector.collect(testReflection);
+      expect(metadata2.id).toBe(metadata.id);
 
-      // Should still have the parts structure, but file and line should be empty
-      // Format: name:kind::
-      expect(idParts.length).toBeGreaterThanOrEqual(3);
-      expect(idParts[0]).toBeTruthy(); // Name should exist
-      expect(idParts[1]).toMatch(/^\d+$/); // Kind should be numeric
-      // Last part (after final colon) should be empty when no source
-      expect(metadata.id).toMatch(/:$/); // Should end with colon when location is empty
+      // Verify metadata properties
+      expect(metadata.name).toBeTruthy();
+      expect(typeof metadata.kind).toBe('number');
+      // filePath and line should be undefined for symbols without source
+      expect(metadata.filePath).toBeUndefined();
+      expect(metadata.line).toBeUndefined();
     });
   });
 });
