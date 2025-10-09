@@ -63,7 +63,7 @@ Commands:
       tsci describe-file src/command.ts --verbosity normal
       tsci describe-file src/command.ts --verbosity detailed
 
-  describe-symbol <symbolId> [--verbosity <level>]
+  describe-symbol <symbolId> [--verbosity <level>] [--file <path>]
     Get detailed information about a specific symbol
 
     Arguments:
@@ -72,10 +72,12 @@ Commands:
     Options:
       --verbosity <level>     Output detail level: minimal | normal | detailed
                               (default: minimal)
+      --file <path>           File from target project (for cross-project lookups)
 
     Examples:
-      tsci describe-symbol "TSCICommand:128:src/command.ts:65"
-      tsci describe-symbol "TSCICommand:128:src/command.ts:65" --verbosity detailed
+      tsci describe-symbol "c2uyN-Xd"
+      tsci describe-symbol "c2uyN-Xd" --file /path/to/project/src/foo.ts
+      tsci describe-symbol "c2uyN-Xd" --verbosity detailed
 
   understand-context <file1> [file2...] [--focus <file>] [--max-depth <n>] [--ignore-node-modules]
     Generate Mermaid diagram showing file relationships with automatic import discovery
@@ -184,18 +186,18 @@ Commands:
     if (parsed.positional.length === 0) {
       console.error('Error: symbolId is required');
       console.error('');
-      console.error('Usage: tsci describe-symbol <symbolId> [--verbosity <level>]');
+      console.error('Usage: tsci describe-symbol <symbolId> [--verbosity <level>] [--file <path>]');
       console.error('');
       console.error('Examples:');
-      console.error('  tsci describe-symbol "TSCICommand:128:src/command.ts:65"');
-      console.error(
-        '  tsci describe-symbol "TSCICommand:128:src/command.ts:65" --verbosity detailed',
-      );
+      console.error('  tsci describe-symbol "c2uyN-Xd"');
+      console.error('  tsci describe-symbol "c2uyN-Xd" --file /path/to/project/src/foo.ts');
+      console.error('  tsci describe-symbol "c2uyN-Xd" --verbosity detailed');
       process.exit(1);
     }
 
     const symbolId = parsed.positional[0];
     const verbosity = (parsed.flags.get('verbosity') || 'minimal') as 'minimal';
+    const file = parsed.flags.get('file');
 
     // Validate verbosity value
     if (!['minimal', 'normal', 'detailed'].includes(verbosity)) {
@@ -204,7 +206,12 @@ Commands:
       process.exit(1);
     }
 
-    const result = await this.command.executeHandler('describe-symbol', { symbolId, verbosity });
+    const requestArgs: CommandArgs = { symbolId, verbosity };
+    if (file) {
+      requestArgs.file = file;
+    }
+
+    const result = await this.command.executeHandler('describe-symbol', requestArgs);
 
     this.outputResult(result);
   }

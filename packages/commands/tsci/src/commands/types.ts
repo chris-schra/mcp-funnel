@@ -40,6 +40,11 @@ export interface DescribeFileArgs {
 export interface DescribeSymbolArgs {
   symbolId: string;
   verbosity?: 'minimal' | 'normal' | 'detailed';
+  /**
+   * Optional file path from target project for cross-project symbol lookups.
+   * When provided, TSCI will detect and use the tsconfig.json for that file's project.
+   */
+  file?: string;
 }
 
 /**
