@@ -176,4 +176,126 @@ describe('SymbolCollector', () => {
       expect(metadata.line).toBeUndefined();
     });
   });
+
+  describe('extractJSDocSummary', () => {
+    it('should extract JSDoc summary from class with documentation', async () => {
+      const projectRoot = resolve(process.cwd());
+
+      const app = await Application.bootstrapWithPlugins({
+        entryPoints: ['packages/commands/tsci/src/core/symbolCollector.ts'],
+        tsconfig: 'tsconfig.json',
+        excludeExternals: true,
+        excludeReferences: true,
+        skipErrorChecking: true,
+      });
+
+      const project = await app.convert();
+      expect(project).toBeDefined();
+
+      if (!project) {
+        throw new Error('Project conversion failed');
+      }
+
+      // Get the SymbolCollector class reflection
+      const classes = project.getReflectionsByKind(ReflectionKind.Class) as DeclarationReflection[];
+      const symbolCollectorClass = classes.find((c) => c.name === 'SymbolCollector');
+
+      expect(symbolCollectorClass).toBeDefined();
+
+      if (!symbolCollectorClass) {
+        throw new Error('SymbolCollector class not found in reflections');
+      }
+
+      // Collect metadata using SymbolCollector with project root
+      const collector = new SymbolCollector(projectRoot);
+      const metadata: SymbolMetadata = collector.collect(symbolCollectorClass);
+
+      // Verify JSDoc summary is extracted
+      expect(metadata.summary).toBeDefined();
+      expect(metadata.summary).toBeTruthy();
+      expect(typeof metadata.summary).toBe('string');
+      expect((metadata.summary || '').length).toBeGreaterThan(0);
+    });
+
+    it('should extract JSDoc summary from method with documentation', async () => {
+      const projectRoot = resolve(process.cwd());
+
+      const app = await Application.bootstrapWithPlugins({
+        entryPoints: ['packages/commands/tsci/src/core/symbolCollector.ts'],
+        tsconfig: 'tsconfig.json',
+        excludeExternals: true,
+        excludeReferences: true,
+        skipErrorChecking: true,
+      });
+
+      const project = await app.convert();
+      expect(project).toBeDefined();
+
+      if (!project) {
+        throw new Error('Project conversion failed');
+      }
+
+      // Get the SymbolCollector class
+      const classes = project.getReflectionsByKind(ReflectionKind.Class) as DeclarationReflection[];
+      const symbolCollectorClass = classes.find((c) => c.name === 'SymbolCollector');
+
+      expect(symbolCollectorClass).toBeDefined();
+      expect(symbolCollectorClass?.children).toBeDefined();
+
+      // Find the collect method (a public method with JSDoc)
+      const collectMethod = symbolCollectorClass?.children?.find((m) => m.name === 'collect');
+
+      expect(collectMethod).toBeDefined();
+
+      if (!collectMethod) {
+        throw new Error('collect method not found in SymbolCollector class');
+      }
+
+      // Collect metadata for the method
+      const collector = new SymbolCollector(projectRoot);
+      const methodMetadata: SymbolMetadata = collector.collect(collectMethod);
+
+      // Verify JSDoc summary is extracted
+      expect(methodMetadata.summary).toBeDefined();
+      expect(methodMetadata.summary).toBeTruthy();
+      expect(typeof methodMetadata.summary).toBe('string');
+      expect((methodMetadata.summary || '').length).toBeGreaterThan(0);
+    });
+
+    it('should return undefined for symbols without JSDoc comments', async () => {
+      const projectRoot = resolve(process.cwd());
+
+      const app = await Application.bootstrapWithPlugins({
+        entryPoints: ['packages/commands/tsci/src/core/symbolCollector.ts'],
+        tsconfig: 'tsconfig.json',
+        excludeExternals: true,
+        excludeReferences: true,
+        skipErrorChecking: true,
+      });
+
+      const project = await app.convert();
+      expect(project).toBeDefined();
+
+      if (!project) {
+        throw new Error('Project conversion failed');
+      }
+
+      // Get all reflections and find one without JSDoc (if any)
+      const allReflections = project.getReflectionsByKind(ReflectionKind.All);
+
+      // Find a reflection without comment
+      const reflectionWithoutComment = allReflections.find((r) => {
+        const decl = r as DeclarationReflection;
+        return !decl.comment || !decl.comment.summary || decl.comment.summary.length === 0;
+      });
+
+      // If we found one, verify summary is undefined
+      if (reflectionWithoutComment) {
+        const collector = new SymbolCollector(projectRoot);
+        const metadata: SymbolMetadata = collector.collect(reflectionWithoutComment);
+
+        expect(metadata.summary).toBeUndefined();
+      }
+    });
+  });
 });

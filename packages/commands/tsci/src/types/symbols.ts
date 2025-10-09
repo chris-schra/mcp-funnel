@@ -51,6 +51,8 @@ export interface SymbolMetadata {
   column?: number;
   /** Inline type signature (for quick display) */
   signature?: string;
+  /** JSDoc summary text extracted from comments */
+  summary?: string;
   /** Whether the symbol is exported */
   isExported: boolean;
   /** Usage locations (optional, for cross-reference analysis) */
