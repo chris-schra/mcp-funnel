@@ -182,16 +182,40 @@ export class SessionScopeInspector {
     return JSON.stringify(result).length <= MAX_SCOPE_OUTPUT_CHARS;
   }
 
-  public async getPropertyDescriptor(
+  /**
+   * Fetches properties from CDP with retry logic to handle race conditions.
+   * During tsx compilation on first run, there's a timing window where the debugger
+   * pauses at the breakpoint but CDP's Runtime.getProperties hasn't fully populated
+   * the scope object's properties yet. This retry mechanism handles that case.
+   * @param objectId - The CDP remote object ID to fetch properties from
+   * @param attempt - Current retry attempt number (0 = first attempt, 1 = retry)
+   * @returns CDP property descriptors response with result array
+   */
+  private async getPropertiesWithRetry(
     objectId: string,
-    name: string,
-  ): Promise<CdpPropertyDescriptor | undefined> {
+    attempt = 0,
+  ): Promise<{ result: CdpPropertyDescriptor[] }> {
     const response = (await this.sendCommand('Runtime.getProperties', {
       objectId,
       ownProperties: true,
       accessorPropertiesOnly: false,
       generatePreview: false,
     })) as { result: CdpPropertyDescriptor[] };
+
+    // If suspiciously empty on first attempt, retry once after brief delay
+    if (attempt === 0 && response.result.length < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return this.getPropertiesWithRetry(objectId, attempt + 1);
+    }
+
+    return response;
+  }
+
+  public async getPropertyDescriptor(
+    objectId: string,
+    name: string,
+  ): Promise<CdpPropertyDescriptor | undefined> {
+    const response = await this.getPropertiesWithRetry(objectId);
     return response.result.find((descriptor) => descriptor.name === name);
   }
 
@@ -201,12 +225,7 @@ export class SessionScopeInspector {
     maxProperties: number,
     seen: Set<string>,
   ): Promise<{ variables: ScopeVariable[]; truncated: boolean }> {
-    const response = (await this.sendCommand('Runtime.getProperties', {
-      objectId,
-      ownProperties: true,
-      accessorPropertiesOnly: false,
-      generatePreview: false,
-    })) as { result: CdpPropertyDescriptor[] };
+    const response = await this.getPropertiesWithRetry(objectId);
 
     const descriptors = response.result.filter((descriptor) => descriptor.value);
     const truncated = descriptors.length > maxProperties;
