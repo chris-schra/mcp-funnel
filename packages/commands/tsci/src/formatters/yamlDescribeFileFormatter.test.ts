@@ -13,10 +13,11 @@ describe('YAMLDescribeFileFormatter', () => {
   it('should format reflections as YAML with all required fields', async () => {
     // Create a minimal TypeDoc application
     const app = await Application.bootstrapWithPlugins({
-      entryPoints: ['src/formatters/yamlDescribeFileFormatter.ts'],
+      entryPoints: ['packages/commands/tsci/src/formatters/yamlDescribeFileFormatter.ts'],
       tsconfig: 'tsconfig.json',
       excludeExternals: true,
       excludeReferences: true,
+      skipErrorChecking: true,
     });
 
     // Convert the project
@@ -58,10 +59,11 @@ describe('YAMLDescribeFileFormatter', () => {
 
   it('should include docLines when JSDoc comment exists', async () => {
     const app = await Application.bootstrapWithPlugins({
-      entryPoints: ['src/core/summaryExtractor.ts'],
+      entryPoints: ['packages/commands/tsci/src/core/summaryExtractor.ts'],
       tsconfig: 'tsconfig.json',
       excludeExternals: true,
       excludeReferences: true,
+      skipErrorChecking: true,
     });
 
     const project = await app.convert();
@@ -87,10 +89,11 @@ describe('YAMLDescribeFileFormatter', () => {
 
   it('should include members for interfaces and classes', async () => {
     const app = await Application.bootstrapWithPlugins({
-      entryPoints: ['src/core/summaryExtractor.ts'],
+      entryPoints: ['packages/commands/tsci/src/core/summaryExtractor.ts'],
       tsconfig: 'tsconfig.json',
       excludeExternals: true,
       excludeReferences: true,
+      skipErrorChecking: true,
     });
 
     const project = await app.convert();
@@ -122,10 +125,11 @@ describe('YAMLDescribeFileFormatter', () => {
 
   it('should exclude members when includeMembers is false', async () => {
     const app = await Application.bootstrapWithPlugins({
-      entryPoints: ['src/core/summaryExtractor.ts'],
+      entryPoints: ['packages/commands/tsci/src/core/summaryExtractor.ts'],
       tsconfig: 'tsconfig.json',
       excludeExternals: true,
       excludeReferences: true,
+      skipErrorChecking: true,
     });
 
     const project = await app.convert();

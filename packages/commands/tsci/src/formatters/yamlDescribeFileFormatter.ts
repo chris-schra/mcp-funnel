@@ -66,9 +66,11 @@ export interface YAMLFormatOptions {
  */
 export class YAMLDescribeFileFormatter {
   private summaryExtractor: SummaryExtractor;
+  private includeMembers: boolean;
 
   public constructor(options: YAMLFormatOptions = {}) {
     this.summaryExtractor = options.summaryExtractor || new PassthroughSummaryExtractor();
+    this.includeMembers = options.includeMembers ?? true;
   }
 
   /**
@@ -79,7 +81,7 @@ export class YAMLDescribeFileFormatter {
    * @returns YAML formatted string
    */
   public format(reflections: DeclarationReflection[], options: YAMLFormatOptions = {}): string {
-    const includeMembers = options.includeMembers ?? true;
+    const includeMembers = options.includeMembers ?? this.includeMembers;
 
     const symbols: YAMLSymbol[] = reflections
       .filter((reflection) => this.shouldIncludeSymbol(reflection))
