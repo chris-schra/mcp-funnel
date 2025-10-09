@@ -42,7 +42,8 @@ export async function describeSymbol(
 
   // Format output as YAML
   // Note: verbosity parameter is ignored for now as YAML formatter includes all details by default
-  const output = context.yamlSymbolFormatter.format(symbol);
+  // Pass symbolIndex to enable member extraction for classes/interfaces/types
+  const output = context.yamlSymbolFormatter.format(symbol, { symbolIndex: context.symbolIndex });
 
   return createTextResponse(output);
 }

@@ -31,6 +31,7 @@
 
 import { stringify as yamlStringify } from 'yaml';
 import type { SymbolMetadata, SymbolUsage, ExternalReference } from '../types/symbols.js';
+import type { SymbolIndex } from '../core/symbolIndex.js';
 
 /**
  * YAML usage data structure
@@ -89,6 +90,11 @@ export interface YAMLSymbolFormatOptions {
    * Include summary/documentation (default: true)
    */
   includeSummary?: boolean;
+
+  /**
+   * Symbol index for looking up child symbols (optional)
+   */
+  symbolIndex?: SymbolIndex;
 }
 
 /**
@@ -101,12 +107,14 @@ export class YAMLDescribeSymbolFormatter {
   private includeReferences: boolean;
   private includeMembers: boolean;
   private includeSummary: boolean;
+  private symbolIndex?: SymbolIndex;
 
   public constructor(options: YAMLSymbolFormatOptions = {}) {
     this.includeUsages = options.includeUsages ?? true;
     this.includeReferences = options.includeReferences ?? true;
     this.includeMembers = options.includeMembers ?? true;
     this.includeSummary = options.includeSummary ?? true;
+    this.symbolIndex = options.symbolIndex;
   }
 
   /**
@@ -161,12 +169,8 @@ export class YAMLDescribeSymbolFormatter {
     };
 
     // Add summary if available and requested
-    if (includeSummary && symbol.signature) {
-      // Extract summary from signature or use a generated one
-      const summary = this.generateSummary(symbol);
-      if (summary) {
-        yamlSymbol.summary = summary;
-      }
+    if (includeSummary && symbol.summary) {
+      yamlSymbol.summary = symbol.summary;
     }
 
     // Add usages if requested
@@ -244,17 +248,45 @@ export class YAMLDescribeSymbolFormatter {
   /**
    * Format members for a symbol
    *
-   * Note: This is a SEAM for future enhancement.
-   * Currently returns empty array as member information is not directly
-   * available in SymbolMetadata without additional context.
+   * Looks up child symbols from symbolIndex and formats them as strings.
+   * Returns undefined if symbolIndex is not available or symbol has no children.
    *
-   * @param _symbol - Symbol metadata
-   * @returns Array of member strings
+   * @param symbol - Symbol metadata
+   * @returns Array of member strings or undefined
    */
-  private formatMembers(_symbol: SymbolMetadata): string[] | undefined {
-    // TODO: Implement member extraction when child symbol access is available
-    // For now, return undefined to omit the field entirely
-    return undefined;
+  private formatMembers(symbol: SymbolMetadata): string[] | undefined {
+    if (!this.symbolIndex || !symbol.childrenIds || symbol.childrenIds.length === 0) {
+      return undefined;
+    }
+
+    const members: string[] = [];
+    for (const childId of symbol.childrenIds) {
+      const childSymbol = this.symbolIndex.getById(childId);
+      if (childSymbol) {
+        const memberStr = this.formatMember(childSymbol);
+        if (memberStr) {
+          members.push(memberStr);
+        }
+      }
+    }
+
+    return members.length > 0 ? members : undefined;
+  }
+
+  /**
+   * Format a single member symbol
+   *
+   * Uses the symbol's signature if available, otherwise formats from metadata.
+   * Appends line number reference in #L<line> format.
+   *
+   * @param symbol - Child symbol metadata
+   * @returns Formatted member string (e.g., "expand(type: Type): TypeExpansionResult #L155")
+   */
+  private formatMember(symbol: SymbolMetadata): string {
+    const line = symbol.line || 0;
+    // Use signature if available, otherwise format from metadata
+    const signature = symbol.signature || `${symbol.name}`;
+    return `${signature} #L${line}`;
   }
 
   /**
@@ -265,21 +297,6 @@ export class YAMLDescribeSymbolFormatter {
    */
   private formatLineArray(lines: number[]): string {
     return `[${lines.join(',')}]`;
-  }
-
-  /**
-   * Generate summary for a symbol
-   *
-   * @param symbol - Symbol metadata
-   * @returns Summary string or undefined
-   */
-  private generateSummary(symbol: SymbolMetadata): string | undefined {
-    // Use signature as summary if available
-    if (symbol.signature) {
-      return `${symbol.name} - ${symbol.signature}`;
-    }
-
-    return undefined;
   }
 
   /**

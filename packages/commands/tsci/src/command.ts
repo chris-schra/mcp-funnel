@@ -70,6 +70,8 @@ export class TSCICommand implements ICommand<CommandArgs> {
    *
    * Formatters and diagram generator are initialized eagerly (lightweight),
    * but TypeDoc engine is initialized lazily on first tool call.
+   * Note: yamlSymbolFormatter is initialized without symbolIndex as it's not yet available.
+   * The symbolIndex will be passed via format() options when needed.
    */
   public constructor() {
     this.fileFormatter = new DescribeFileFormatter();

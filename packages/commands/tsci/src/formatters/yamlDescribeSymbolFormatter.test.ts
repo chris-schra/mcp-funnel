@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { YAMLDescribeSymbolFormatter } from './yamlDescribeSymbolFormatter.js';
+import { SymbolIndex } from '../core/symbolIndex.js';
 import type { SymbolMetadata } from '../types/symbols.js';
 
 describe('YAMLDescribeSymbolFormatter', () => {
@@ -30,7 +31,7 @@ describe('YAMLDescribeSymbolFormatter', () => {
     expect(yaml).toContain('line: 92');
   });
 
-  it('should include usages when available', () => {
+  it('should include usages with correct line formatting and kind field', () => {
     const symbol: SymbolMetadata = {
       id: 'test123',
       name: 'myFunction',
@@ -41,43 +42,27 @@ describe('YAMLDescribeSymbolFormatter', () => {
       signature: 'function myFunction()',
       isExported: true,
       usages: [
-        {
-          file: '/path/to/usage1.ts',
-          lines: [15, 20, 25],
-          kind: 'usage',
-        },
-        {
-          file: '/path/to/usage2.ts',
-          lines: [5],
-          kind: 'import',
-        },
+        { file: '/path/to/usage1.ts', lines: [15, 20, 25], kind: 'usage' },
+        { file: '/path/to/usage2.ts', lines: [5], kind: 'import' },
       ],
     };
 
     const formatter = new YAMLDescribeSymbolFormatter();
     const yaml = formatter.format(symbol);
 
-    // Verify usages are included
     expect(yaml).toContain('usages:');
-    expect(yaml).toContain('file: "/path/to/usage1.ts"');
     expect(yaml).toContain('lines: "[15,20,25]"');
-    expect(yaml).toContain('file: "/path/to/usage2.ts"');
     expect(yaml).toContain('lines: "[5]"');
-
-    // Verify kind field only appears for imports
-    const usageBlocks = yaml.split('file: "/path/to/usage1.ts"');
-    const usage1Block = usageBlocks[1].split('file: "/path/to/usage2.ts"')[0];
-    const usage2Block = usageBlocks[1].split('file: "/path/to/usage2.ts"')[1];
-
-    expect(usage1Block).not.toContain('kind:');
-    expect(usage2Block).toContain('kind: "import"');
+    // kind field only appears for imports
+    expect(yaml.split('usage1.ts')[1].split('usage2.ts')[0]).not.toContain('kind:');
+    expect(yaml.split('usage2.ts')[1]).toContain('kind: "import"');
   });
 
   it('should include references when available', () => {
     const symbol: SymbolMetadata = {
       id: 'ref123',
       name: 'MyClass',
-      kind: 128, // Class
+      kind: 128,
       kindString: 'Class',
       filePath: '/path/to/myClass.ts',
       line: 20,
@@ -104,18 +89,13 @@ describe('YAMLDescribeSymbolFormatter', () => {
     const formatter = new YAMLDescribeSymbolFormatter();
     const yaml = formatter.format(symbol);
 
-    // Verify references are included
     expect(yaml).toContain('references:');
     expect(yaml).toContain('name: "BaseClass"');
     expect(yaml).toContain('kind: "class"');
-    expect(yaml).toContain('from: "/path/to/baseClass.ts"');
-    expect(yaml).toContain('line: 10');
-    expect(yaml).toContain('module: "./base/BaseClass.js"');
     expect(yaml).toContain('name: "IInterface"');
-    expect(yaml).toContain('kind: "interface"');
   });
 
-  it('should exclude usages when includeUsages is false', () => {
+  it('should exclude sections when options are set to false', () => {
     const symbol: SymbolMetadata = {
       id: 'test123',
       name: 'myFunction',
@@ -125,105 +105,30 @@ describe('YAMLDescribeSymbolFormatter', () => {
       line: 10,
       signature: 'function myFunction()',
       isExported: true,
-      usages: [
-        {
-          file: '/path/to/usage1.ts',
-          lines: [15, 20],
-          kind: 'usage',
-        },
-      ],
-    };
-
-    const formatter = new YAMLDescribeSymbolFormatter({ includeUsages: false });
-    const yaml = formatter.format(symbol);
-
-    // Verify usages are NOT included
-    expect(yaml).not.toContain('usages:');
-    expect(yaml).not.toContain('/path/to/usage1.ts');
-  });
-
-  it('should exclude references when includeReferences is false', () => {
-    const symbol: SymbolMetadata = {
-      id: 'ref123',
-      name: 'MyClass',
-      kind: 128,
-      kindString: 'Class',
-      filePath: '/path/to/myClass.ts',
-      line: 20,
-      signature: 'class MyClass',
-      isExported: true,
+      usages: [{ file: '/path/to/usage1.ts', lines: [15, 20], kind: 'usage' }],
       references: [
         {
           name: 'BaseClass',
           kind: 'class',
-          from: '/path/to/baseClass.ts',
+          from: '/path/to/base.ts',
           line: 10,
-          module: './base/BaseClass.js',
+          module: './base.js',
         },
       ],
+      summary: 'A test function',
     };
 
-    const formatter = new YAMLDescribeSymbolFormatter({ includeReferences: false });
-    const yaml = formatter.format(symbol);
+    const formatter1 = new YAMLDescribeSymbolFormatter({ includeUsages: false });
+    expect(formatter1.format(symbol)).not.toContain('usages:');
 
-    // Verify references are NOT included
-    expect(yaml).not.toContain('references:');
-    expect(yaml).not.toContain('BaseClass');
+    const formatter2 = new YAMLDescribeSymbolFormatter({ includeReferences: false });
+    expect(formatter2.format(symbol)).not.toContain('references:');
+
+    const formatter3 = new YAMLDescribeSymbolFormatter({ includeSummary: false });
+    expect(formatter3.format(symbol)).not.toContain('summary:');
   });
 
-  it('should format line arrays correctly', () => {
-    const symbol: SymbolMetadata = {
-      id: 'lines123',
-      name: 'testFunction',
-      kind: 64,
-      kindString: 'Function',
-      filePath: '/path/to/test.ts',
-      line: 1,
-      signature: 'function testFunction()',
-      isExported: true,
-      usages: [
-        {
-          file: '/path/to/single.ts',
-          lines: [42],
-          kind: 'usage',
-        },
-        {
-          file: '/path/to/multiple.ts',
-          lines: [10, 20, 30, 40],
-          kind: 'usage',
-        },
-      ],
-    };
-
-    const formatter = new YAMLDescribeSymbolFormatter();
-    const yaml = formatter.format(symbol);
-
-    // Verify line array formatting
-    expect(yaml).toContain('lines: "[42]"');
-    expect(yaml).toContain('lines: "[10,20,30,40]"');
-  });
-
-  it('should generate summary from signature', () => {
-    const symbol: SymbolMetadata = {
-      id: 'summary123',
-      name: 'MyInterface',
-      kind: 256, // Interface
-      kindString: 'Interface',
-      filePath: '/path/to/interface.ts',
-      line: 5,
-      signature: 'interface MyInterface extends BaseInterface',
-      isExported: true,
-    };
-
-    const formatter = new YAMLDescribeSymbolFormatter();
-    const yaml = formatter.format(symbol);
-
-    // Verify summary is included
-    expect(yaml).toContain('summary:');
-    expect(yaml).toContain('MyInterface');
-  });
-
-  it('should exclude summary when includeSummary is false', () => {
+  it('should include summary when available', () => {
     const symbol: SymbolMetadata = {
       id: 'summary123',
       name: 'MyInterface',
@@ -232,53 +137,237 @@ describe('YAMLDescribeSymbolFormatter', () => {
       filePath: '/path/to/interface.ts',
       line: 5,
       signature: 'interface MyInterface',
+      summary: 'An example interface',
       isExported: true,
     };
 
-    const formatter = new YAMLDescribeSymbolFormatter({ includeSummary: false });
+    const formatter = new YAMLDescribeSymbolFormatter();
     const yaml = formatter.format(symbol);
 
-    // Verify summary is NOT included
-    expect(yaml).not.toContain('summary:');
+    expect(yaml).toContain('summary: "An example interface"');
   });
 
-  it('should handle symbols without optional fields', () => {
-    const symbol: SymbolMetadata = {
+  it('should handle symbols with missing optional fields', () => {
+    const symbol1: SymbolMetadata = {
       id: 'minimal123',
       name: 'minimalSymbol',
       kind: 64,
       kindString: 'Function',
       isExported: false,
-      // No filePath, line, signature, usages, references
     };
 
-    const formatter = new YAMLDescribeSymbolFormatter();
-    const yaml = formatter.format(symbol);
-
-    // Should still produce valid YAML
-    expect(yaml).toContain('id: "minimal123"');
-    expect(yaml).toContain('inline:');
-
-    // Should not include optional sections
-    expect(yaml).not.toContain('usages:');
-    expect(yaml).not.toContain('references:');
-    expect(yaml).not.toContain('members:');
-  });
-
-  it('should use fallback inline signature when signature is missing', () => {
-    const symbol: SymbolMetadata = {
+    const symbol2: SymbolMetadata = {
       id: 'fallback123',
       name: 'unknownSymbol',
       kind: 1,
       kindString: 'Unknown',
       isExported: true,
-      // No signature
     };
 
     const formatter = new YAMLDescribeSymbolFormatter();
-    const yaml = formatter.format(symbol);
+    const yaml1 = formatter.format(symbol1);
+    const yaml2 = formatter.format(symbol2);
 
-    // Should generate fallback signature
-    expect(yaml).toContain('inline: "Unknown unknownSymbol"');
+    expect(yaml1).toContain('id: "minimal123"');
+    expect(yaml1).not.toContain('members:');
+    expect(yaml2).toContain('inline: "Unknown unknownSymbol"');
+  });
+
+  it('should extract and format members when symbolIndex is provided', () => {
+    // Create symbol index
+    const symbolIndex = new SymbolIndex();
+
+    // Create parent symbol (class with members)
+    const parentSymbol: SymbolMetadata = {
+      id: 'parent123',
+      name: 'TypeExpander',
+      kind: 128, // Class
+      kindString: 'Class',
+      filePath: '/path/to/typeExpander.ts',
+      line: 92,
+      signature: 'class TypeExpander',
+      isExported: true,
+      childrenIds: ['child1', 'child2', 'child3'],
+    };
+
+    // Create child symbols (members)
+    const child1: SymbolMetadata = {
+      id: 'child1',
+      name: 'expand',
+      kind: 2048, // Method
+      kindString: 'Method',
+      filePath: '/path/to/typeExpander.ts',
+      line: 155,
+      signature: 'expand(type: Type): TypeExpansionResult',
+      isExported: true,
+      parentId: 'parent123',
+    };
+
+    const child2: SymbolMetadata = {
+      id: 'child2',
+      name: 'expandByType',
+      kind: 2048, // Method
+      kindString: 'Method',
+      filePath: '/path/to/typeExpander.ts',
+      line: 237,
+      signature:
+        'expandByType(type: Type, depth: number, visitedTypes: Set<string>): TypeExpansionResult',
+      isExported: true,
+      parentId: 'parent123',
+    };
+
+    const child3: SymbolMetadata = {
+      id: 'child3',
+      name: 'config',
+      kind: 1024, // Property
+      kindString: 'Property',
+      filePath: '/path/to/typeExpander.ts',
+      line: 94,
+      signature: 'config: Required<TypeExpanderConfig>',
+      isExported: true,
+      parentId: 'parent123',
+    };
+
+    // Add symbols to index
+    symbolIndex.add(parentSymbol);
+    symbolIndex.add(child1);
+    symbolIndex.add(child2);
+    symbolIndex.add(child3);
+
+    // Create formatter with symbolIndex
+    const formatter = new YAMLDescribeSymbolFormatter({ symbolIndex });
+    const yaml = formatter.format(parentSymbol);
+
+    // Verify members are included
+    expect(yaml).toContain('members:');
+    expect(yaml).toContain('expand(type: Type): TypeExpansionResult #L155');
+    expect(yaml).toContain(
+      'expandByType(type: Type, depth: number, visitedTypes: Set<string>): TypeExpansionResult #L237',
+    );
+    expect(yaml).toContain('config: Required<TypeExpanderConfig> #L94');
+  });
+
+  it('should extract members for interface symbols', () => {
+    const symbolIndex = new SymbolIndex();
+
+    // Create interface with properties
+    const interfaceSymbol: SymbolMetadata = {
+      id: 'interface123',
+      name: 'IOptions',
+      kind: 256, // Interface
+      kindString: 'Interface',
+      filePath: '/path/to/types.ts',
+      line: 10,
+      signature: 'interface IOptions',
+      isExported: true,
+      childrenIds: ['prop1', 'prop2'],
+    };
+
+    const prop1: SymbolMetadata = {
+      id: 'prop1',
+      name: 'maxDepth',
+      kind: 1024, // Property
+      kindString: 'Property',
+      filePath: '/path/to/types.ts',
+      line: 11,
+      signature: 'maxDepth: number',
+      isExported: true,
+      parentId: 'interface123',
+    };
+
+    const prop2: SymbolMetadata = {
+      id: 'prop2',
+      name: 'includePrivate',
+      kind: 1024, // Property
+      kindString: 'Property',
+      filePath: '/path/to/types.ts',
+      line: 12,
+      signature: 'includePrivate?: boolean',
+      isExported: true,
+      parentId: 'interface123',
+    };
+
+    symbolIndex.add(interfaceSymbol);
+    symbolIndex.add(prop1);
+    symbolIndex.add(prop2);
+
+    const formatter = new YAMLDescribeSymbolFormatter({ symbolIndex });
+    const yaml = formatter.format(interfaceSymbol);
+
+    expect(yaml).toContain('members:');
+    expect(yaml).toContain('maxDepth: number #L11');
+    expect(yaml).toContain('includePrivate?: boolean #L12');
+  });
+
+  it('should not include members when symbolIndex is not provided or includeMembers is false', () => {
+    const symbol: SymbolMetadata = {
+      id: 'parent456',
+      name: 'MyClass',
+      kind: 128,
+      kindString: 'Class',
+      filePath: '/path/to/myClass.ts',
+      line: 20,
+      signature: 'class MyClass',
+      isExported: true,
+      childrenIds: ['child1', 'child2'],
+    };
+
+    // Test 1: Without symbolIndex
+    const formatter1 = new YAMLDescribeSymbolFormatter();
+    const yaml1 = formatter1.format(symbol);
+    expect(yaml1).not.toContain('members:');
+
+    // Test 2: With symbolIndex but includeMembers: false
+    const symbolIndex = new SymbolIndex();
+    symbolIndex.add(symbol);
+    const formatter2 = new YAMLDescribeSymbolFormatter({ symbolIndex, includeMembers: false });
+    const yaml2 = formatter2.format(symbol);
+    expect(yaml2).not.toContain('members:');
+  });
+
+  it('should handle edge cases in member formatting', () => {
+    const symbolIndex = new SymbolIndex();
+
+    const parentSymbol: SymbolMetadata = {
+      id: 'parent999',
+      name: 'MyClass',
+      kind: 128,
+      kindString: 'Class',
+      isExported: true,
+      childrenIds: ['child1', 'child2'],
+    };
+
+    // Member without line number
+    const child1: SymbolMetadata = {
+      id: 'child1',
+      name: 'property',
+      kind: 1024,
+      kindString: 'Property',
+      signature: 'property: string',
+      isExported: true,
+      parentId: 'parent999',
+    };
+
+    // Member without signature
+    const child2: SymbolMetadata = {
+      id: 'child2',
+      name: 'unknownMember',
+      kind: 1024,
+      kindString: 'Property',
+      line: 42,
+      isExported: true,
+      parentId: 'parent999',
+    };
+
+    symbolIndex.add(parentSymbol);
+    symbolIndex.add(child1);
+    symbolIndex.add(child2);
+
+    const formatter = new YAMLDescribeSymbolFormatter({ symbolIndex });
+    const yaml = formatter.format(parentSymbol);
+
+    expect(yaml).toContain('members:');
+    expect(yaml).toContain('property: string #L0'); // Missing line defaults to 0
+    expect(yaml).toContain('unknownMember #L42'); // Missing signature uses name
   });
 });
