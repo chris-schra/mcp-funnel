@@ -63,7 +63,7 @@ export function needsParentheses(type: Type): boolean {
     return type.needsParenthesis(TypeContext.arrayElement);
   } catch {
     // Fallback for test mocks or types without needsParenthesis method
-    const typeWithMethod = type as { needsParenthesis?: (context: string) => boolean };
-    return typeWithMethod.needsParenthesis?.('arrayElement') ?? false;
+    const typeWithMethod = type as { needsParenthesis?: (context: TypeContext) => boolean };
+    return typeWithMethod.needsParenthesis?.(TypeContext.arrayElement) ?? false;
   }
 }

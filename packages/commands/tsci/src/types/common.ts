@@ -1,7 +1,13 @@
 /**
  * Core types for tsci command
  */
+import type {
+  DescribeFileArgs,
+  DescribeSymbolArgs,
+  UnderstandContextArgs,
+} from '../commands/types.js';
 
+export type CommandArgs = DescribeFileArgs | DescribeSymbolArgs | UnderstandContextArgs;
 /**
  * TypeScript configuration file resolution result
  */

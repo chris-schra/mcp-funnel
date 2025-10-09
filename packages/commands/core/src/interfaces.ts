@@ -5,7 +5,7 @@ import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
  * Commands implementing this interface can be called via the MCP protocol by AI assistants
  * or executed directly from the command line.
  */
-export interface ICommand {
+export interface ICommand<Args = Record<string, unknown>> {
   /** Unique command name used for identification */
   readonly name: string;
 
@@ -19,7 +19,7 @@ export interface ICommand {
    * @param args - Arguments passed from the MCP client as a JSON object
    * @returns MCP-compliant tool result containing text or resource content
    */
-  executeToolViaMCP(toolName: string, args: Record<string, unknown>): Promise<CallToolResult>;
+  executeToolViaMCP(toolName: string, args: Args): Promise<CallToolResult>;
 
   /**
    * Execute the command via CLI interface.

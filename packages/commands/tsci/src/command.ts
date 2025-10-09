@@ -23,13 +23,7 @@
  * @see file:./formatters/describeSymbolFormatter.ts - Symbol output formatter
  */
 
-/* eslint-disable max-lines */
-// TODO: Consider extracting CLI handlers to separate file if file grows beyond 700 lines
-
-import { resolve, normalize } from 'node:path';
-import { readFileSync } from 'node:fs';
 import type { ICommand, Tool, CallToolResult } from '@mcp-funnel/commands-core';
-import { ReflectionKind, type DeclarationReflection } from 'typedoc';
 import { TypeDocEngine } from './core/engine.js';
 import { SymbolIndex } from './core/symbolIndex.js';
 import { DescribeFileFormatter, DescribeSymbolFormatter } from './formatters/index.js';
@@ -37,23 +31,18 @@ import { YAMLDescribeFileFormatter } from './formatters/yamlDescribeFileFormatte
 import { DiagramGenerator } from './services/diagramGenerator.js';
 import { resolveTsConfig } from './util/tsconfig.js';
 import { findNearestTsconfig } from './util/findNearestTsconfig.js';
-import { generateReceiptToken } from './util/receiptToken.js';
-import {
-  validateFilePath,
-  validateSymbolId,
-  validateVerbosity,
-  validateFileArray,
-} from './util/validation.js';
-import { createErrorResponse, createTextResponse } from './util/responses.js';
-import type { VerbosityLevel } from './formatters/types.js';
-
-/**
- * Parsed CLI arguments structure
- */
-interface ParsedCliArgs {
-  positional: string[];
-  flags: Map<string, string>;
-}
+import { createErrorResponse } from './util/responses.js';
+import { CLIHandlers } from './cliHandlers.js';
+import { describeFile } from './commands/describeFile.js';
+import { describeSymbol } from './commands/describeSymbol.js';
+import { understandContext } from './commands/understandContext.js';
+import type {
+  CommandContext,
+  DescribeFileArgs,
+  DescribeSymbolArgs,
+  UnderstandContextArgs,
+} from './commands/types.js';
+import type { CommandArgs } from './types/common.js';
 
 /**
  * TSCI Command implementation.
@@ -61,7 +50,7 @@ interface ParsedCliArgs {
  * Implements ICommand interface for MCP Funnel integration.
  * Lazily initializes TypeDoc engine on first tool call for performance.
  */
-export class TSCICommand implements ICommand {
+export class TSCICommand implements ICommand<CommandArgs> {
   public readonly name = 'tsci';
   public readonly description = 'TypeScript Code Intelligence - AI-optimized codebase exploration';
 
@@ -69,7 +58,9 @@ export class TSCICommand implements ICommand {
   private symbolIndex?: SymbolIndex;
   private readonly fileFormatter: DescribeFileFormatter;
   private readonly symbolFormatter: DescribeSymbolFormatter;
+  private readonly yamlFormatter: YAMLDescribeFileFormatter;
   private readonly diagramGenerator: DiagramGenerator;
+  private readonly cliHandlers: CLIHandlers;
 
   /**
    * Creates TSCI command instance.
@@ -80,7 +71,9 @@ export class TSCICommand implements ICommand {
   public constructor() {
     this.fileFormatter = new DescribeFileFormatter();
     this.symbolFormatter = new DescribeSymbolFormatter();
+    this.yamlFormatter = new YAMLDescribeFileFormatter();
     this.diagramGenerator = new DiagramGenerator();
+    this.cliHandlers = new CLIHandlers(this);
   }
 
   /**
@@ -155,6 +148,43 @@ export class TSCICommand implements ICommand {
   }
 
   /**
+   * Routes tool/command name to appropriate handler.
+   *
+   * Supports both MCP tool names (read_file, describe_symbol, understand_context)
+   * and CLI command names (describe-file, describe-symbol, understand-context).
+   *
+   * Exposed publicly for CLI handlers to use.
+   *
+   * @param name - Tool or command name
+   * @param args - Tool arguments
+   * @returns CallToolResult with formatted data or error
+   */
+  public async executeHandler(name: string, args: CommandArgs): Promise<CallToolResult> {
+    const context = this.getContext();
+
+    switch (name) {
+      case 'read_file':
+      case 'describe-file':
+        return await describeFile(args as DescribeFileArgs, context, (file) =>
+          this.ensureEngine(file),
+        );
+
+      case 'describe_symbol':
+      case 'describe-symbol':
+        await this.ensureEngine();
+        return await describeSymbol(args as DescribeSymbolArgs, context);
+
+      case 'understand_context':
+      case 'understand-context':
+        await this.ensureEngine();
+        return await understandContext(args as UnderstandContextArgs, context);
+
+      default:
+        return createErrorResponse(`Error: Unknown tool: ${name}`);
+    }
+  }
+
+  /**
    * Executes a tool via MCP protocol.
    *
    * Validates parameters, ensures engine is initialized, and routes to
@@ -164,30 +194,9 @@ export class TSCICommand implements ICommand {
    * @returns CallToolResult with formatted data or error message
    * @throws Never throws - all errors are returned as CallToolResult
    */
-  public async executeToolViaMCP(
-    toolName: string,
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> {
+  public async executeToolViaMCP(toolName: string, args: CommandArgs): Promise<CallToolResult> {
     try {
-      // Route to appropriate handler
-      // Each handler manages engine initialization as needed
-      switch (toolName) {
-        case 'read_file':
-          return await this.handleDescribeFile(args);
-
-        case 'describe_symbol':
-          // Ensure engine is initialized (uses last tsconfig)
-          await this.ensureEngine();
-          return await this.handleDescribeSymbol(args);
-
-        case 'understand_context':
-          // Ensure engine is initialized (uses last tsconfig)
-          await this.ensureEngine();
-          return await this.handleUnderstandContext(args);
-
-        default:
-          return createErrorResponse(`Error: Unknown tool: ${toolName}`);
-      }
+      return await this.executeHandler(toolName, args);
     } catch (error) {
       return createErrorResponse(
         `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
@@ -210,7 +219,7 @@ export class TSCICommand implements ICommand {
     const subcommand = args[0];
 
     if (!subcommand || subcommand === 'help' || subcommand === '--help' || subcommand === '-h') {
-      this.showCliHelp();
+      this.cliHandlers.showHelp();
       process.exit(subcommand ? 0 : 1);
     }
 
@@ -218,25 +227,21 @@ export class TSCICommand implements ICommand {
       // Each command handler manages engine initialization as needed
       switch (subcommand) {
         case 'describe-file':
-          await this.cliDescribeFile(args.slice(1));
+          await this.cliHandlers.handleDescribeFile(args.slice(1));
           break;
 
         case 'describe-symbol':
-          // Ensure engine is initialized (uses last tsconfig or CWD)
-          await this.ensureEngine();
-          await this.cliDescribeSymbol(args.slice(1));
+          await this.cliHandlers.handleDescribeSymbol(args.slice(1));
           break;
 
         case 'understand-context':
-          // Ensure engine is initialized (uses last tsconfig or CWD)
-          await this.ensureEngine();
-          await this.cliUnderstandContext(args.slice(1));
+          await this.cliHandlers.handleUnderstandContext(args.slice(1));
           break;
 
         default:
           console.error(`Error: Unknown command: ${subcommand}`);
           console.error('');
-          this.showCliHelp();
+          this.cliHandlers.showHelp();
           process.exit(1);
       }
     } catch (error) {
@@ -246,259 +251,30 @@ export class TSCICommand implements ICommand {
   }
 
   /**
-   * Shows CLI help information.
-   * Displays usage, available commands, and examples.
+   * Cleans up engine resources.
+   * Should be called when command execution is complete.
    */
-  private showCliHelp(): void {
-    console.info(`
-TypeScript Code Intelligence - AI-optimized codebase exploration
-
-Usage:
-  tsci <command> [options]
-
-Commands:
-  describe-file <file> [--verbosity <level>]
-    Get symbols and type information from a TypeScript file
-
-    Arguments:
-      file                    File path relative to project root
-
-    Options:
-      --verbosity <level>     Output detail level: minimal | normal | detailed
-                              (default: minimal)
-
-    Examples:
-      tsci describe-file src/command.ts
-      tsci describe-file src/command.ts --verbosity normal
-      tsci describe-file src/command.ts --verbosity detailed
-
-  describe-symbol <symbolId> [--verbosity <level>]
-    Get detailed information about a specific symbol
-
-    Arguments:
-      symbolId                Symbol ID from describe-file output
-
-    Options:
-      --verbosity <level>     Output detail level: minimal | normal | detailed
-                              (default: minimal)
-
-    Examples:
-      tsci describe-symbol "TSCICommand:128:src/command.ts:65"
-      tsci describe-symbol "TSCICommand:128:src/command.ts:65" --verbosity detailed
-
-  understand-context <file1> [file2...] [--focus <file>]
-    Generate Mermaid diagram showing file relationships
-
-    Arguments:
-      file1, file2...         Files to include in diagram (relative to project root)
-
-    Options:
-      --focus <file>          File to highlight in the diagram (optional)
-
-    Examples:
-      tsci understand-context src/command.ts src/core/engine.ts
-      tsci understand-context src/command.ts src/core/engine.ts --focus src/command.ts
-
-  help, --help, -h
-    Show this help message
-`);
-  }
-
-  /**
-   * Parses CLI arguments into positional args and flags.
-   *
-   * Supports both --flag=value and --flag value syntax.
-   * @param args - Raw CLI arguments
-   * @returns Parsed positional arguments and flags map
-   */
-  private parseCliArgs(args: string[]): ParsedCliArgs {
-    const positional: string[] = [];
-    const flags = new Map<string, string>();
-
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
-
-      if (arg.startsWith('--')) {
-        // Handle --flag=value syntax
-        const eqIdx = arg.indexOf('=');
-        if (eqIdx > 0) {
-          const key = arg.slice(2, eqIdx);
-          const value = arg.slice(eqIdx + 1);
-          flags.set(key, value);
-        } else {
-          // Handle --flag value syntax
-          const key = arg.slice(2);
-          if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
-            flags.set(key, args[++i]);
-          } else {
-            // Flag without value
-            flags.set(key, 'true');
-          }
-        }
-      } else {
-        positional.push(arg);
-      }
-    }
-
-    return { positional, flags };
-  }
-
-  /**
-   * Handles describe-file CLI command.
-   *
-   * Parses arguments, calls handleDescribeFile, and formats output.
-   * @param args - CLI arguments after subcommand
-   */
-  private async cliDescribeFile(args: string[]): Promise<void> {
-    const parsed = this.parseCliArgs(args);
-
-    if (parsed.positional.length === 0) {
-      console.error('Error: file path is required');
-      console.error('');
-      console.error('Usage: tsci describe-file <file> [--verbosity <level>]');
-      console.error('');
-      console.error('Examples:');
-      console.error('  tsci describe-file src/command.ts');
-      console.error('  tsci describe-file src/command.ts --verbosity normal');
-      process.exit(1);
-    }
-
-    const file = parsed.positional[0];
-    const verbosity = parsed.flags.get('verbosity') || 'minimal';
-
-    // Validate verbosity value
-    if (!['minimal', 'normal', 'detailed'].includes(verbosity)) {
-      console.error(`Error: Invalid verbosity level: ${verbosity}`);
-      console.error('Valid values: minimal, normal, detailed');
-      process.exit(1);
-    }
-
-    const result = await this.handleDescribeFile({ file, verbosity });
-
-    if (result.isError) {
-      console.error(result.content[0].text);
-      this.engine?.cleanup();
-      process.exit(1);
-    }
-
-    // Print main response
-    console.info(result.content[0].text);
-
-    // Print hint if present
-    if (result.content.length > 1) {
-      console.info('');
-      console.info('Hint:', result.content[1].text);
-    }
-
-    // Cleanup and exit successfully
+  public cleanup(): void {
     this.engine?.cleanup();
-    process.exit(0);
   }
 
   /**
-   * Handles describe-symbol CLI command.
-   *
-   * Parses arguments, calls handleDescribeSymbol, and formats output.
-   * @param args - CLI arguments after subcommand
+   * Gets command execution context for handlers.
+   * @returns CommandContext with all required resources
    */
-  private async cliDescribeSymbol(args: string[]): Promise<void> {
-    const parsed = this.parseCliArgs(args);
-
-    if (parsed.positional.length === 0) {
-      console.error('Error: symbolId is required');
-      console.error('');
-      console.error('Usage: tsci describe-symbol <symbolId> [--verbosity <level>]');
-      console.error('');
-      console.error('Examples:');
-      console.error('  tsci describe-symbol "TSCICommand:128:src/command.ts:65"');
-      console.error(
-        '  tsci describe-symbol "TSCICommand:128:src/command.ts:65" --verbosity detailed',
-      );
-      process.exit(1);
+  private getContext(): CommandContext {
+    if (!this.engine || !this.symbolIndex) {
+      throw new Error('Engine not initialized. Call ensureEngine() first.');
     }
 
-    const symbolId = parsed.positional[0];
-    const verbosity = parsed.flags.get('verbosity') || 'minimal';
-
-    // Validate verbosity value
-    if (!['minimal', 'normal', 'detailed'].includes(verbosity)) {
-      console.error(`Error: Invalid verbosity level: ${verbosity}`);
-      console.error('Valid values: minimal, normal, detailed');
-      process.exit(1);
-    }
-
-    const result = await this.handleDescribeSymbol({ symbolId, verbosity });
-
-    if (result.isError) {
-      console.error(result.content[0].text);
-      this.engine?.cleanup();
-      process.exit(1);
-    }
-
-    // Print main response
-    console.info(result.content[0].text);
-
-    // Print hint if present
-    if (result.content.length > 1) {
-      console.info('');
-      console.info('Hint:', result.content[1].text);
-    }
-
-    // Cleanup and exit successfully
-    this.engine?.cleanup();
-    process.exit(0);
-  }
-
-  /**
-   * Handles understand-context CLI command.
-   *
-   * Parses arguments, calls handleUnderstandContext, and formats output.
-   * @param args - CLI arguments after subcommand
-   */
-  private async cliUnderstandContext(args: string[]): Promise<void> {
-    const parsed = this.parseCliArgs(args);
-
-    if (parsed.positional.length === 0) {
-      console.error('Error: at least one file path is required');
-      console.error('');
-      console.error('Usage: tsci understand-context <file1> [file2...] [--focus <file>]');
-      console.error('');
-      console.error('Examples:');
-      console.error('  tsci understand-context src/command.ts src/core/engine.ts');
-      console.error(
-        '  tsci understand-context src/command.ts src/core/engine.ts --focus src/command.ts',
-      );
-      process.exit(1);
-    }
-
-    const files = parsed.positional;
-    const focus = parsed.flags.get('focus');
-
-    const requestArgs: Record<string, unknown> = { files };
-    if (focus) {
-      requestArgs.focus = focus;
-    }
-
-    const result = await this.handleUnderstandContext(requestArgs);
-
-    if (result.isError) {
-      console.error(result.content[0].text);
-      this.engine?.cleanup();
-      process.exit(1);
-    }
-
-    // For understand-context, output the Mermaid diagram directly (no JSON wrapping)
-    console.info(result.content[0].text);
-
-    // Print hint if present
-    if (result.content.length > 1) {
-      console.info('');
-      console.info('Hint:', result.content[1].text);
-    }
-
-    // Cleanup and exit successfully
-    this.engine?.cleanup();
-    process.exit(0);
+    return {
+      engine: this.engine,
+      symbolIndex: this.symbolIndex,
+      fileFormatter: this.fileFormatter,
+      symbolFormatter: this.symbolFormatter,
+      yamlFormatter: this.yamlFormatter,
+      diagramGenerator: this.diagramGenerator,
+    };
   }
 
   /**
@@ -511,10 +287,12 @@ Commands:
    * tsconfig.json. If the detected tsconfig differs from the current engine's,
    * the engine is reinitialized.
    *
+   * Exposed publicly for CLI handlers to use.
+   *
    * @param forFile - Optional file path to detect nearest tsconfig.json for (also used as entry point)
    * @throws Error if tsconfig.json cannot be found or initialization fails
    */
-  private async ensureEngine(forFile?: string): Promise<void> {
+  public async ensureEngine(forFile?: string): Promise<void> {
     let tsconfigPath: string;
 
     // Detect tsconfig for the specific file if provided
@@ -566,207 +344,5 @@ Commands:
     const symbols = this.engine.getSymbols();
     this.symbolIndex = new SymbolIndex();
     this.symbolIndex.addMany(symbols);
-  }
-
-  /**
-   * Handles read_file tool execution.
-   *
-   * For small files (\<300 lines): Returns full content with strategy='full'
-   * For large files (≥300 lines): Returns YAML structure with receiptToken for deferred reading
-   *
-   * @param args - Tool arguments (file, verbosity)
-   * @returns CallToolResult with file content or YAML structure
-   */
-  private async handleDescribeFile(args: Record<string, unknown>): Promise<CallToolResult> {
-    // Validate file path
-    const fileValidation = validateFilePath(args.file);
-    if (!fileValidation.valid) {
-      return createErrorResponse(fileValidation.error);
-    }
-
-    // Validate verbosity (optional, defaults to minimal)
-    // Note: verbosity is validated for API consistency but not currently used in YAML output
-    const verbosityValidation = validateVerbosity(args.verbosity);
-    if (!verbosityValidation.valid) {
-      return createErrorResponse(verbosityValidation.error);
-    }
-
-    // Normalize to absolute path
-    const absolutePath = resolve(process.cwd(), fileValidation.value);
-
-    // Read file content to determine strategy
-    let content: string;
-    try {
-      content = readFileSync(absolutePath, 'utf-8');
-    } catch (error) {
-      return createErrorResponse(
-        `Failed to read file: ${fileValidation.value}. ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    const lines = content.split('\n').length;
-    const tokenEstimate = lines * 5;
-
-    // Small file: return full content as YAML
-    if (lines < 300) {
-      const { stringify: yamlStringify } = await import('yaml');
-      const response = {
-        strategy: 'full',
-        file: absolutePath,
-        lines,
-        tokenEstimate,
-        content,
-      };
-
-      return createTextResponse(yamlStringify(response, { lineWidth: 0 }));
-    }
-
-    // Large file: return YAML structure with receiptToken
-    // Ensure engine is initialized with the correct tsconfig for this file
-    await this.ensureEngine(absolutePath);
-
-    // Get DeclarationReflection objects from project for this file
-    const project = this.engine!.getProject();
-    if (!project) {
-      return createErrorResponse('TypeDoc project not available. Engine initialization failed.');
-    }
-
-    // Query only top-level declarations (not their child signatures/members)
-    // Children are still accessible via reflection.children for member extraction
-    const topLevelKinds =
-      ReflectionKind.Function |
-      ReflectionKind.Class |
-      ReflectionKind.Interface |
-      ReflectionKind.TypeAlias |
-      ReflectionKind.Enum |
-      ReflectionKind.Variable |
-      ReflectionKind.Namespace;
-
-    const allReflections = project.getReflectionsByKind(topLevelKinds) as DeclarationReflection[];
-    const fileReflections = allReflections.filter((reflection) => {
-      const sourceFile = reflection.sources?.[0];
-      const filePath = sourceFile?.fullFileName || sourceFile?.fileName;
-      return filePath && normalize(filePath) === absolutePath;
-    });
-
-    if (fileReflections.length === 0) {
-      return createErrorResponse(
-        `No symbols found in file: ${fileValidation.value}. ` +
-          `File may not exist or may not be part of the TypeScript project.`,
-      );
-    }
-
-    // Format reflections as YAML
-    const yamlFormatter = new YAMLDescribeFileFormatter();
-    const yaml = yamlFormatter.format(fileReflections);
-
-    // Generate receiptToken
-    const token = generateReceiptToken(absolutePath);
-
-    // Build complete YAML response with metadata
-    // Parse the symbols YAML, add metadata fields, re-serialize as complete YAML
-    const { parse: yamlParse, stringify: yamlStringify } = await import('yaml');
-    const symbolsData = yamlParse(yaml);
-
-    const completeResponse = {
-      strategy: 'structure_only',
-      file: absolutePath,
-      receiptToken: token,
-      lines,
-      tokenEstimate,
-      hint: `File has ${lines} lines. Use Read tool with receiptToken for full content, or read specific line ranges`,
-      ...symbolsData, // Merge in symbols array
-    };
-
-    return createTextResponse(yamlStringify(completeResponse, { lineWidth: 0 }));
-  }
-
-  /**
-   * Handles describe_symbol tool execution.
-   *
-   * Validates symbol ID, looks up symbol, formats output with requested verbosity.
-   * @param args - Tool arguments (symbolId, verbosity)
-   * @returns CallToolResult with formatted symbol description or error
-   */
-  private async handleDescribeSymbol(args: Record<string, unknown>): Promise<CallToolResult> {
-    // Validate symbol ID
-    const symbolIdValidation = validateSymbolId(args.symbolId);
-    if (!symbolIdValidation.valid) {
-      return createErrorResponse(symbolIdValidation.error);
-    }
-
-    // Validate verbosity (optional, defaults to minimal)
-    const verbosityValidation = validateVerbosity(args.verbosity);
-    if (!verbosityValidation.valid) {
-      return createErrorResponse(verbosityValidation.error);
-    }
-    const verbosity: VerbosityLevel = verbosityValidation.value || 'minimal';
-
-    // Get symbol by ID
-    const symbol = this.symbolIndex!.getById(symbolIdValidation.value);
-    if (!symbol) {
-      return createErrorResponse(
-        `Symbol not found: ${symbolIdValidation.value}. ` +
-          `Use read_file to get valid symbol IDs from YAML structure.`,
-      );
-    }
-
-    // Format output
-    const output = this.symbolFormatter.format(symbol, { verbosity });
-
-    // Return with optional hint for more detail
-    const hint =
-      verbosity === 'minimal'
-        ? 'Use verbosity: "normal" or "detailed" to see usage locations and external references'
-        : undefined;
-
-    return createTextResponse(JSON.stringify(output, null, 2), hint);
-  }
-
-  /**
-   * Handles understand_context tool execution.
-   *
-   * Validates files array and optional focus file, generates Mermaid diagram.
-   * @param args - Tool arguments (files, focus)
-   * @returns CallToolResult with Mermaid diagram or error
-   */
-  private async handleUnderstandContext(args: Record<string, unknown>): Promise<CallToolResult> {
-    // Validate files array
-    const filesValidation = validateFileArray(args.files);
-    if (!filesValidation.valid) {
-      return createErrorResponse(filesValidation.error);
-    }
-
-    // Validate focus (optional)
-    let focus: string | undefined;
-    if (args.focus !== undefined) {
-      const focusValidation = validateFilePath(args.focus);
-      if (!focusValidation.valid) {
-        return createErrorResponse(focusValidation.error);
-      }
-      focus = resolve(process.cwd(), focusValidation.value);
-    }
-
-    // Get all symbols for requested files
-    // Normalize all file paths to absolute
-    const allSymbols = filesValidation.value.flatMap((file) => {
-      const absolutePath = resolve(process.cwd(), file);
-      return this.symbolIndex!.getByFile(absolutePath);
-    });
-
-    if (allSymbols.length === 0) {
-      return createErrorResponse(
-        'No symbols found for the specified files. ' +
-          'Files may not exist or may not be part of the TypeScript project.',
-      );
-    }
-
-    // Generate diagram
-    const diagram = this.diagramGenerator.generate(allSymbols, { focus });
-
-    return createTextResponse(
-      diagram,
-      'Render this Mermaid diagram to visualize file relationships and dependencies',
-    );
   }
 }
