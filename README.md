@@ -409,6 +409,23 @@ command = "npx"
 args = ["-y", "mcp-funnel"]
 ```
 
+### CLI Onboarding
+
+Kick off the guided migration flow to consolidate existing CLI configs:
+
+```
+npx mcp-funnel init
+```
+
+This command:
+
+- Scans typical configuration files for Claude Code/Gemini (`.mcp.json`, `.gemini/settings.json`), Claude Desktop (`~/.claude.json`), and Codex (`~/.codex/config.toml`).
+- Lists every MCP server it finds and lets you pick which ones should move into `.mcp-funnel.json`.
+- Merges the selected servers into `.mcp-funnel.json`, creating the file with recommended defaults when needed.
+- Rewrites each client config so that only a single `mcp-funnel` entry remains, pointing at the merged configuration.
+
+Every write is gated behind an explicit confirmation, so you can review the proposed changes before they land.
+
 ### Example Prompts
 
 Once configured, you can use natural language to interact with your aggregated tools:

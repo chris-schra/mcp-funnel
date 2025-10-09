@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "tsx watch src/dev.ts",
     "build": "tsx build.ts && tsc --emitDeclarationOnly --declaration --project tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run"
   },

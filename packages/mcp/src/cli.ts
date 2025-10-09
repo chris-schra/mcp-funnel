@@ -1,3 +1,4 @@
+import { Command } from 'commander';
 import { MCPProxy, getUserBasePath, resolveMergedProxyConfig } from './index.js';
 import { mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -26,33 +27,6 @@ process.on('unhandledRejection', (reason, promise) => {
   logError('unhandled-rejection', reason);
   process.exit(1);
 });
-
-/**
- * Initializes the MCP Funnel run ID for request correlation.
- */
-function initializeRunId(): void {
-  if (!process.env.MCP_FUNNEL_RUN_ID) {
-    process.env.MCP_FUNNEL_RUN_ID = `${Date.now()}-${process.pid}`;
-  }
-}
-
-/**
- * Handles the 'run' command routing.
- * @returns Promise that resolves when command completes
- */
-async function handleRunCommand(): Promise<void> {
-  const { runCommand } = await import('./commands/run.js');
-  const commandName = process.argv[3];
-
-  if (!commandName) {
-    console.error('Usage: npx mcp-funnel run <command> [...args]');
-    console.error('Example: npx mcp-funnel run validate --fix');
-    process.exit(1);
-  }
-
-  const commandArgs = process.argv.slice(4);
-  await runCommand(commandName, commandArgs);
-}
 
 /**
  * Displays usage information and example configuration, then exits.
@@ -123,33 +97,48 @@ function loadConfiguration(configPath: string): LoadedConfiguration {
   }
 }
 
+const program = new Command();
+
+program
+  .name('mcp-funnel')
+  .description('MCP Funnel CLI that proxies and manages multiple MCP servers')
+  .showHelpAfterError();
+
+program.enablePositionalOptions(true);
+
+program
+  .command('run <commandName> [commandArgs...]')
+  .description('Run a CLI command from the MCP Funnel command suite')
+  .allowUnknownOption(true)
+  .passThroughOptions()
+  .action(async (commandName: string, commandArgs: string[] = []) => {
+    const { runCommand } = await import('./commands/run.js');
+    await runCommand(commandName, commandArgs);
+  });
+
+program
+  .command('init')
+  .description('Interactive onboarding to migrate existing MCP configs into MCP Funnel')
+  .action(async () => {
+    const { runInit } = await import('./commands/init.js');
+    await runInit();
+  });
+
+program
+  .argument('[configPath]', 'Path to MCP Funnel configuration file', '.mcp-funnel.json')
+  .action(async (configPathArg: string) => {
+    await startProxy(configPathArg);
+  });
+
 /**
- * Main entry point for the MCP Funnel CLI.
- *
- * Handles command routing and proxy initialization:
- * - Routes to command execution if 'run' subcommand is provided
- * - Otherwise loads configuration and starts the MCP proxy server
- * - Merges user-level (~/.mcp-funnel/.mcp-funnel.json) and project-level config
- * - Project config takes precedence over user config
- * @returns Promise that resolves to an MCPProxy instance when started in proxy mode, or void when running commands
- * @throws \{Error\} When configuration loading fails
- * @throws \{Error\} When proxy initialization fails
- * @internal
- * @see {@link runCommand} - Command execution handler
- * @see {@link resolveMergedProxyConfig} - Configuration merging logic
+ * Starts the MCP proxy server with the specified configuration.
+ * @param configPathArg - Path to the MCP Funnel configuration file
  */
-async function main(): Promise<MCPProxy | void> {
-  initializeRunId();
-  logEvent('info', 'cli:start', { argv: process.argv, cwd: process.cwd() });
-
-  // Check for 'run' command
-  if (process.argv[2] === 'run') {
-    await handleRunCommand();
-    return;
-  }
-
-  const configPath = process.argv[2] || '.mcp-funnel.json';
+async function startProxy(configPathArg: string): Promise<void> {
+  const configPath = configPathArg ?? '.mcp-funnel.json';
   const resolvedPath = resolve(process.cwd(), configPath);
+
+  proxyInstance = undefined;
 
   const projectExists = existsSync(resolvedPath);
   const userBasePath = getUserBasePath();
@@ -171,15 +160,16 @@ async function main(): Promise<MCPProxy | void> {
   });
 
   const proxy = new MCPProxy(config, actualConfigPath);
+  proxyInstance = proxy;
+
   logEvent('info', 'cli:proxy_starting');
   await proxy.start();
   logEvent('info', 'cli:proxy_started');
-
-  return proxy;
 }
 
 // Setup shutdown handlers
 let isShuttingDown = false;
+let proxyInstance: MCPProxy | undefined;
 /**
  * Handles graceful shutdown of the MCP proxy server.
  *
@@ -201,15 +191,25 @@ async function handleShutdown(signal: string, proxy?: MCPProxy) {
   process.exit(0);
 }
 
-main()
-  .then((proxy) => {
-    if (proxy) {
-      process.on('SIGINT', () => handleShutdown('SIGINT', proxy));
-      process.on('SIGTERM', () => handleShutdown('SIGTERM', proxy));
-    }
-  })
-  .catch((error) => {
-    console.error('Fatal error:', error);
-    logError('main-fatal', error);
-    process.exit(1);
-  });
+/**
+ * Initializes the CLI application and parses command-line arguments.
+ */
+async function bootstrap(): Promise<void> {
+  if (!process.env.MCP_FUNNEL_RUN_ID) {
+    process.env.MCP_FUNNEL_RUN_ID = `${Date.now()}-${process.pid}`;
+  }
+
+  logEvent('info', 'cli:start', { argv: process.argv, cwd: process.cwd() });
+
+  await program.parseAsync(process.argv);
+}
+
+// Register signal handlers at module level to prevent memory leaks
+process.once('SIGINT', () => handleShutdown('SIGINT', proxyInstance));
+process.once('SIGTERM', () => handleShutdown('SIGTERM', proxyInstance));
+
+bootstrap().catch((error) => {
+  console.error('Fatal error:', error);
+  logError('main-fatal', error);
+  process.exit(1);
+});

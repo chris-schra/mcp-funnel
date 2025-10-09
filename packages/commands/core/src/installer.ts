@@ -29,10 +29,29 @@ import type {
   InstalledCommand,
   InstallOptions,
   UninstallOptions,
+  CommandManifest,
 } from './types/index.js';
-import { getPackagePath, install, loadCommand, uninstall, update } from './util/index.js';
+import {
+  getPackagePath,
+  install,
+  loadCommand,
+  uninstall,
+  update,
+  readManifest,
+  findMatchingCommand,
+} from './util/index.js';
 
-export class CommandInstaller {
+export interface ICommandInstaller {
+  install(packageSpec: string, options?: InstallOptions): Promise<InstalledCommand>;
+  uninstall(commandName: string, options?: UninstallOptions): Promise<void>;
+  update(commandName: string): Promise<InstalledCommand>;
+  isInstalled(packageNameOrCommandName: string): Promise<boolean>;
+  getCommandsPath(): string;
+  loadInstalledCommand(packageName: string): Promise<ICommand | null>;
+  getManifestPath(): string;
+}
+
+export class CommandInstaller implements ICommandInstaller {
   private readonly context: CommandInstallerContext;
 
   /**
@@ -153,6 +172,46 @@ export class CommandInstaller {
   }
 
   /**
+   * Checks if a command is installed by package name or command name.
+   *
+   * Searches the manifest to determine if the specified command is installed.
+   * @param packageNameOrCommandName - Package name (e.g., '\@org/package') or command name to check
+   * @returns True if the command is installed, false otherwise
+   * @example
+   * ```typescript
+   * const installed = await installer.isInstalled('@mcp-funnel/commands-js-debugger');
+   * if (installed) {
+   *   console.log('Command is already installed');
+   * }
+   * ```
+   */
+  public async isInstalled(packageNameOrCommandName: string): Promise<boolean> {
+    const manifest = await this.readManifest();
+    const matchByPackage = findMatchingCommand(manifest, packageNameOrCommandName);
+    if (matchByPackage) {
+      return true;
+    }
+    // Also check by command name
+    return manifest.commands.some((cmd) => cmd.name === packageNameOrCommandName);
+  }
+
+  /**
+   * Returns the path to the installed commands directory (node_modules).
+   *
+   * This is where command packages are installed after running install().
+   * @returns Absolute path to the node_modules directory containing installed commands
+   * @example
+   * ```typescript
+   * const commandsPath = installer.getCommandsPath();
+   * console.log(`Commands installed at: ${commandsPath}`);
+   * // Output: Commands installed at: /Users/username/.mcp-funnel/packages/node_modules
+   * ```
+   */
+  public getCommandsPath(): string {
+    return join(this.context.packagesDir, 'node_modules');
+  }
+
+  /**
    * Loads and returns an installed command instance by package name.
    *
    * Attempts to dynamically import the command package and extract an object
@@ -174,5 +233,16 @@ export class CommandInstaller {
   public async loadInstalledCommand(packageName: string): Promise<ICommand | null> {
     const commandPath = getPackagePath(this.context.packagesDir, packageName);
     return loadCommand(commandPath);
+  }
+
+  /**
+   * Reads the command manifest containing all installed commands.
+   *
+   * Returns an empty manifest if the file doesn't exist yet.
+   * @returns The command manifest with list of installed commands
+   * @internal
+   */
+  private async readManifest(): Promise<CommandManifest> {
+    return readManifest(this.context.manifestPath);
   }
 }
