@@ -54,8 +54,8 @@ describe('SymbolCollector', () => {
       const idParts = metadata.id.split(':');
       expect(idParts.length).toBe(4); // path, kind, file, line
 
-      // Verify components
-      expect(idParts[0]).toContain('SymbolCollector'); // Symbol path
+      // Verify components with exact matches
+      expect(idParts[0]).toBe('@mcp-funnel/command-tsci.SymbolCollector'); // Symbol path with package name
       expect(idParts[1]).toBe(String(ReflectionKind.Class)); // Kind should be Class
       // File path should be relative to project root
       expect(idParts[2]).toBe('packages/commands/tsci/src/core/symbolCollector.ts');
@@ -108,8 +108,8 @@ describe('SymbolCollector', () => {
       const idParts = metadata.id.split(':');
       expect(idParts.length).toBe(4); // path, kind, file, line
 
-      // Verify the hierarchical path includes parent
-      expect(idParts[0]).toContain('SymbolCollector.collect'); // Should have parent.child format
+      // Verify the hierarchical path includes parent with exact match
+      expect(idParts[0]).toBe('@mcp-funnel/command-tsci.SymbolCollector.collect'); // Package.Class.method format
       expect(idParts[1]).toBe(String(ReflectionKind.Method)); // Kind should be Method
       // File path should be relative to project root
       expect(idParts[2]).toBe('packages/commands/tsci/src/core/symbolCollector.ts');
