@@ -127,18 +127,29 @@ export class TSCICommand implements ICommand<CommandArgs> {
       },
       {
         name: 'understand_context',
-        description: 'Generate Mermaid diagram showing file relationships and dependencies',
+        description:
+          'Generate Mermaid diagram showing file relationships and dependencies with automatic import discovery',
         inputSchema: {
           type: 'object',
           properties: {
             files: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Files to include in diagram (relative to project root)',
+              description:
+                'Entry point files to analyze (relative to project root). Imports are automatically discovered.',
             },
             focus: {
               type: 'string',
               description: 'File to highlight in the diagram (optional)',
+            },
+            maxDepth: {
+              type: 'number',
+              description:
+                'Maximum depth for import traversal (default: 3). Total levels: maxDepth incoming + focus + maxDepth outgoing.',
+            },
+            ignoreNodeModules: {
+              type: 'boolean',
+              description: 'Ignore imports from node_modules (default: false)',
             },
           },
           required: ['files'],
@@ -177,10 +188,10 @@ export class TSCICommand implements ICommand<CommandArgs> {
 
       case 'understand_context':
       case 'understand-context': {
-        // Initialize engine with first file to detect correct tsconfig
+        // Initialize engine with first file to detect tsconfig, but analyze full project
         const contextArgs = args as UnderstandContextArgs;
         const firstFile = contextArgs.files?.[0];
-        await this.ensureEngine(firstFile);
+        await this.ensureEngine(firstFile, { fullProject: true });
         return await understandContext(contextArgs, this.getContext());
       }
 
@@ -311,10 +322,11 @@ export class TSCICommand implements ICommand<CommandArgs> {
    *
    * Exposed publicly for CLI handlers to use.
    *
-   * @param forFile - Optional file path to detect nearest tsconfig.json for (also used as entry point)
+   * @param forFile - Optional file path to detect nearest tsconfig.json for
+   * @param options - Engine initialization options. Set fullProject:true to analyze entire project instead of just forFile (default: false)
    * @throws Error if tsconfig.json cannot be found or initialization fails
    */
-  public async ensureEngine(forFile?: string): Promise<void> {
+  public async ensureEngine(forFile?: string, options?: { fullProject?: boolean }): Promise<void> {
     let tsconfigPath: string;
 
     // Detect tsconfig for the specific file if provided
@@ -353,10 +365,22 @@ export class TSCICommand implements ICommand<CommandArgs> {
     }
 
     // Create and initialize engine with detected tsconfig
-    // If a file is specified, use it as the entry point for TypeDoc analysis
+    // If fullProject mode, analyze entire project. Otherwise use forFile as targeted entrypoint.
+    let entryPoints: string[] | undefined;
+    if (forFile && !options?.fullProject) {
+      // Targeted mode: analyze specific file
+      entryPoints = [forFile];
+    } else if (options?.fullProject) {
+      // Full project mode: analyze all files in tsconfig directory
+      // TypeDoc needs at least one entry point to start discovery with entryPointStrategy: 'expand'
+      const tsconfigDir = tsconfigPath.replace(/\/tsconfig\.json$/, '');
+      entryPoints = [tsconfigDir];
+    }
+    // else: undefined, TypeDoc will use tsconfig includes (might not work in all setups)
+
     this.engine = new TypeDocEngine({
       tsconfig: tsconfigPath,
-      entryPoints: forFile ? [forFile] : undefined,
+      entryPoints,
     });
 
     await this.engine.initialize();

@@ -77,18 +77,21 @@ Commands:
       tsci describe-symbol "TSCICommand:128:src/command.ts:65"
       tsci describe-symbol "TSCICommand:128:src/command.ts:65" --verbosity detailed
 
-  understand-context <file1> [file2...] [--focus <file>]
-    Generate Mermaid diagram showing file relationships
+  understand-context <file1> [file2...] [--focus <file>] [--max-depth <n>] [--ignore-node-modules]
+    Generate Mermaid diagram showing file relationships with automatic import discovery
 
     Arguments:
-      file1, file2...         Files to include in diagram (relative to project root)
+      file1, file2...         Entry point files to analyze (relative to project root)
 
     Options:
       --focus <file>          File to highlight in the diagram (optional)
+      --max-depth <n>         Maximum import depth to traverse (default: 3)
+      --ignore-node-modules   Exclude imports from node_modules (default: include)
 
     Examples:
-      tsci understand-context src/command.ts src/core/engine.ts
-      tsci understand-context src/command.ts src/core/engine.ts --focus src/command.ts
+      tsci understand-context src/command.ts
+      tsci understand-context src/command.ts --max-depth 2
+      tsci understand-context src/command.ts --focus src/command.ts --ignore-node-modules
 
   help, --help, -h
     Show this help message
@@ -218,22 +221,35 @@ Commands:
     if (parsed.positional.length === 0) {
       console.error('Error: at least one file path is required');
       console.error('');
-      console.error('Usage: tsci understand-context <file1> [file2...] [--focus <file>]');
+      console.error(
+        'Usage: tsci understand-context <file1> [file2...] [--focus <file>] [--max-depth <n>] [--ignore-node-modules]',
+      );
       console.error('');
       console.error('Examples:');
-      console.error('  tsci understand-context src/command.ts src/core/engine.ts');
+      console.error('  tsci understand-context src/command.ts');
+      console.error('  tsci understand-context src/command.ts --max-depth 2');
       console.error(
-        '  tsci understand-context src/command.ts src/core/engine.ts --focus src/command.ts',
+        '  tsci understand-context src/command.ts --focus src/command.ts --ignore-node-modules',
       );
       process.exit(1);
     }
 
     const files = parsed.positional;
     const focus = parsed.flags.get('focus');
+    const maxDepth = parsed.flags.get('max-depth')
+      ? parseInt(parsed.flags.get('max-depth')!, 10)
+      : undefined;
+    const ignoreNodeModules = parsed.flags.has('ignore-node-modules');
 
     const requestArgs: CommandArgs = { files };
     if (focus) {
       requestArgs.focus = focus;
+    }
+    if (maxDepth !== undefined) {
+      requestArgs.maxDepth = maxDepth;
+    }
+    if (ignoreNodeModules) {
+      requestArgs.ignoreNodeModules = ignoreNodeModules;
     }
 
     const result = await this.command.executeHandler('understand-context', requestArgs);

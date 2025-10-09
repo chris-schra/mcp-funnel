@@ -46,4 +46,14 @@ export interface DescribeSymbolArgs {
 export interface UnderstandContextArgs {
   files: string[];
   focus?: string;
+  /**
+   * Maximum depth for import graph traversal (default: 3)
+   * Total levels shown: maxDepth (incoming) + focus file + maxDepth (outgoing) = up to 2*maxDepth + 1 levels
+   */
+  maxDepth?: number;
+  /**
+   * Ignore imports from node_modules (default: false)
+   * When false, external dependencies are included in the diagram
+   */
+  ignoreNodeModules?: boolean;
 }
