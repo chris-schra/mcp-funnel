@@ -296,8 +296,6 @@ class ClaudeDesktopLocator implements ConfigLocator {
   }
 }
 
-const homeDirectory = homedir();
-
 /**
  * Registry of all available configuration locators
  */
@@ -318,8 +316,8 @@ export const locators: readonly ConfigLocator[] = [
     (root) => extractMcpServers(root),
     (root, next, context) => updateMcpServers(root, next, context),
   ),
-  new ClaudeDesktopLocator('Claude Desktop', () => resolve(homeDirectory, '.claude.json')),
+  new ClaudeDesktopLocator('Claude Desktop', () => resolve(homedir(), '.claude.json')),
   new TomlFileLocator('codex', 'user', 'Codex CLI (~/.codex/config.toml)', () =>
-    resolve(homeDirectory, '.codex', 'config.toml'),
+    resolve(homedir(), '.codex', 'config.toml'),
   ),
 ];

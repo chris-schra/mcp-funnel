@@ -2,6 +2,7 @@ import { homedir } from 'os';
 import { resolve } from 'path';
 import { promises as fs } from 'fs';
 import readline from 'node:readline/promises';
+import { isEnoentError } from './utils.js';
 
 /**
  * Analysis of .mcp-funnel.json locations
@@ -23,7 +24,7 @@ async function fileExists(path: string): Promise<boolean> {
     await fs.access(path);
     return true;
   } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+    if (isEnoentError(error)) {
       return false;
     }
     throw error;

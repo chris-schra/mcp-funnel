@@ -184,6 +184,15 @@ export function updateMcpServers(
 }
 
 /**
+ * Type guard to check if an error is a Node.js ENOENT error.
+ * @param error - The error to check
+ * @returns True if the error is an ENOENT error
+ */
+export function isEnoentError(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+}
+
+/**
  * Checks if a file exists at the specified path.
  *
  * @param path - The file path to check
@@ -194,7 +203,7 @@ export async function fileExists(path: string): Promise<boolean> {
     await fs.access(path);
     return true;
   } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+    if (isEnoentError(error)) {
       return false;
     }
     throw error;

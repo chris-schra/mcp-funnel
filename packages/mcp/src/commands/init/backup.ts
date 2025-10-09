@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import { isEnoentError } from './utils.js';
 
 /**
  * Check if a file exists at the given path
@@ -10,7 +11,7 @@ async function fileExists(filepath: string): Promise<boolean> {
     await fs.access(filepath);
     return true;
   } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+    if (isEnoentError(error)) {
       return false;
     }
     throw error;
