@@ -257,7 +257,7 @@ export class SymbolCollector {
 
   /**
    * Generate signature for a method
-   * Example: "(x: number) => string"
+   * Example: "(x: number) =\> string"
    *
    * @param reflection - Method reflection
    * @returns Method signature string

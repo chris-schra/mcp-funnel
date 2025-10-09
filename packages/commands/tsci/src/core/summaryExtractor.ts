@@ -35,7 +35,7 @@ export interface SummaryExtractor {
  * of redundancy or value.
  */
 export class PassthroughSummaryExtractor implements SummaryExtractor {
-  extract(reflection: Reflection): string | undefined {
+  public extract(reflection: Reflection): string | undefined {
     // TypeDoc stores JSDoc comments in reflection.comment
     // summary is a CommentDisplayPart array that needs to be concatenated
     const summaryParts = reflection.comment?.summary;
@@ -57,7 +57,7 @@ export class PassthroughSummaryExtractor implements SummaryExtractor {
  * - Keep architectural/contextual information
  */
 export class SmartSummaryExtractor implements SummaryExtractor {
-  extract(reflection: Reflection): string | undefined {
+  public extract(reflection: Reflection): string | undefined {
     // TODO Phase 2: Implement smart filtering
     // For now, delegate to passthrough
     const passthrough = new PassthroughSummaryExtractor();
