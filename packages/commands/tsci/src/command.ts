@@ -28,6 +28,7 @@ import { TypeDocEngine } from './core/engine.js';
 import { SymbolIndex } from './core/symbolIndex.js';
 import { DescribeFileFormatter, DescribeSymbolFormatter } from './formatters/index.js';
 import { YAMLDescribeFileFormatter } from './formatters/yamlDescribeFileFormatter.js';
+import { YAMLDescribeSymbolFormatter } from './formatters/yamlDescribeSymbolFormatter.js';
 import { DiagramGenerator } from './services/diagramGenerator.js';
 import { resolveTsConfig } from './util/tsconfig.js';
 import { findNearestTsconfig } from './util/findNearestTsconfig.js';
@@ -59,6 +60,7 @@ export class TSCICommand implements ICommand<CommandArgs> {
   private readonly fileFormatter: DescribeFileFormatter;
   private readonly symbolFormatter: DescribeSymbolFormatter;
   private readonly yamlFormatter: YAMLDescribeFileFormatter;
+  private readonly yamlSymbolFormatter: YAMLDescribeSymbolFormatter;
   private readonly diagramGenerator: DiagramGenerator;
   private readonly cliHandlers: CLIHandlers;
 
@@ -72,6 +74,7 @@ export class TSCICommand implements ICommand<CommandArgs> {
     this.fileFormatter = new DescribeFileFormatter();
     this.symbolFormatter = new DescribeSymbolFormatter();
     this.yamlFormatter = new YAMLDescribeFileFormatter();
+    this.yamlSymbolFormatter = new YAMLDescribeSymbolFormatter();
     this.diagramGenerator = new DiagramGenerator();
     this.cliHandlers = new CLIHandlers(this);
   }
@@ -290,6 +293,7 @@ export class TSCICommand implements ICommand<CommandArgs> {
       fileFormatter: this.fileFormatter,
       symbolFormatter: this.symbolFormatter,
       yamlFormatter: this.yamlFormatter,
+      yamlSymbolFormatter: this.yamlSymbolFormatter,
       diagramGenerator: this.diagramGenerator,
     };
   }
@@ -306,6 +310,7 @@ export class TSCICommand implements ICommand<CommandArgs> {
       fileFormatter: this.fileFormatter,
       symbolFormatter: this.symbolFormatter,
       yamlFormatter: this.yamlFormatter,
+      yamlSymbolFormatter: this.yamlSymbolFormatter,
       diagramGenerator: this.diagramGenerator,
     };
   }

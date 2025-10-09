@@ -50,3 +50,11 @@ export {
   createDescribeSymbolFormatter,
   formatSymbol,
 } from './describeSymbolFormatter.js';
+
+// YAML symbol formatter
+export {
+  YAMLDescribeSymbolFormatter,
+  createYAMLDescribeSymbolFormatter,
+  formatSymbolAsYAML,
+  type YAMLSymbolFormatOptions,
+} from './yamlDescribeSymbolFormatter.js';

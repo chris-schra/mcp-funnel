@@ -6,6 +6,7 @@ import type { TypeDocEngine } from '../core/engine.js';
 import type { SymbolIndex } from '../core/symbolIndex.js';
 import type { DescribeFileFormatter, DescribeSymbolFormatter } from '../formatters/index.js';
 import type { YAMLDescribeFileFormatter } from '../formatters/yamlDescribeFileFormatter.js';
+import type { YAMLDescribeSymbolFormatter } from '../formatters/yamlDescribeSymbolFormatter.js';
 import type { DiagramGenerator } from '../services/diagramGenerator.js';
 
 /**
@@ -21,6 +22,7 @@ export interface CommandContext {
   fileFormatter: DescribeFileFormatter;
   symbolFormatter: DescribeSymbolFormatter;
   yamlFormatter: YAMLDescribeFileFormatter;
+  yamlSymbolFormatter: YAMLDescribeSymbolFormatter;
   diagramGenerator: DiagramGenerator;
 }
 
