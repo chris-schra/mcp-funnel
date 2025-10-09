@@ -98,6 +98,15 @@ export class TypeDocEngine {
   }
 
   /**
+   * Get the tsconfig path used by this engine
+   *
+   * @returns Absolute path to tsconfig.json
+   */
+  public getTsconfigPath(): string {
+    return this.options.tsconfig;
+  }
+
+  /**
    * Cleanup resources
    *
    * @returns void

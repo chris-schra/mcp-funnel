@@ -55,6 +55,12 @@ function findNodeAtPosition(
   // Convert 1-based line to 0-based for TS API
   const position = sourceFile.getPositionOfLineAndCharacter(line - 1, character);
 
+  /**
+   * Recursively visit nodes to find the node at target position
+   *
+   * @param node - TypeScript AST node to visit
+   * @returns The node at the target position, or undefined
+   */
   function visit(node: ts.Node): ts.Node | undefined {
     if (node.pos <= position && position < node.end) {
       // Check children first (more specific match)

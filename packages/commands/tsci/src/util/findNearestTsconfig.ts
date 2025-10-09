@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { dirname, join, parse, resolve } from "node:path";
+import { existsSync } from 'node:fs';
+import { dirname, join, parse, resolve } from 'node:path';
 
 /**
  * Find the nearest tsconfig.json by walking up the directory tree.
@@ -22,7 +22,7 @@ export function findNearestTsconfig(filePath: string): string | null {
   const root = parse(currentDir).root;
 
   while (currentDir !== root) {
-    const tsconfigPath = join(currentDir, "tsconfig.json");
+    const tsconfigPath = join(currentDir, 'tsconfig.json');
     if (existsSync(tsconfigPath)) {
       return tsconfigPath;
     }

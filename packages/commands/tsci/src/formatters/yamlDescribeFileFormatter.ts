@@ -16,11 +16,10 @@
  * ```
  */
 
-import type {
-  DeclarationReflection,
-  ReflectionKind as ReflectionKindType,
-  Reflection,
-} from 'typedoc';
+/* eslint-disable max-lines */
+// Complex formatter with multiple signature builders for different TypeDoc reflection kinds
+
+import type { DeclarationReflection, ParameterReflection, Reflection } from 'typedoc';
 import { ReflectionKind } from 'typedoc';
 import { stringify as yamlStringify } from 'yaml';
 import type { SummaryExtractor } from '../core/summaryExtractor.js';
@@ -32,7 +31,7 @@ import { getSymbolEndLine } from '../util/astPositions.js';
  */
 interface YAMLSymbol {
   inline: string;
-  lines: string;  // Line range: "42" or "42-50"
+  lines: string; // Line range: "42" or "42-50"
   docLines?: string;
   summary?: string;
   members?: string[];
@@ -167,7 +166,7 @@ export class YAMLDescribeFileFormatter {
 
       // Return single line number or range
       return startLine === endLine ? `${startLine}` : `${startLine}-${endLine}`;
-    } catch (error) {
+    } catch (_error) {
       // Fallback: just return start line if AST parsing fails
       return `${startLine}`;
     }
@@ -373,7 +372,8 @@ export class YAMLDescribeFileFormatter {
     // Get full comment text (summary + block tags)
     const summaryText = comment.summary.map((part) => part.text).join('');
     const blockText =
-      comment.blockTags?.map((tag) => tag.content.map((part) => part.text).join('')).join('\n') || '';
+      comment.blockTags?.map((tag) => tag.content.map((part) => part.text).join('')).join('\n') ||
+      '';
     const fullCommentText = summaryText + (blockText ? '\n' + blockText : '');
 
     // Count newlines in comment (including opening /** and closing */)
@@ -411,36 +411,97 @@ export class YAMLDescribeFileFormatter {
       return [];
     }
 
-    return reflection.children.map((child) => {
-      const line = child.sources?.[0]?.line || 0;
-      const lineRef = `#L${line}`;
+    return reflection.children.map((child) => this.formatMember(child));
+  }
 
-      // Handle constructors and methods (both have signatures)
-      if (
-        (child.kind === ReflectionKind.Constructor || child.kind === ReflectionKind.Method) &&
-        child.signatures
-      ) {
-        const sig = child.signatures[0];
-        const params =
-          sig.parameters
-            ?.map((p) => `${p.name}${p.flags?.isOptional ? '?' : ''}: ${p.type?.toString() || 'any'}`)
-            .join(', ') || '';
+  /**
+   * Format a single member (property, method, or constructor)
+   *
+   * @param child - Child reflection representing a member
+   * @returns Formatted member string
+   */
+  private formatMember(child: DeclarationReflection): string {
+    const lineRef = this.getLineReference(child);
 
-        // Constructors don't have return types in member list
-        if (child.kind === ReflectionKind.Constructor) {
-          return `${child.name}(${params}) ${lineRef}`;
-        }
+    // Handle constructors and methods (both have signatures)
+    if (this.isCallableMethod(child)) {
+      return this.formatCallableMember(child, lineRef);
+    }
 
-        // Methods include return type
-        const returnType = sig.type?.toString() || 'void';
-        return `${child.name}(${params}): ${returnType} ${lineRef}`;
-      }
+    // Handle properties
+    return this.formatPropertyMember(child, lineRef);
+  }
 
-      // Handle properties
-      const optional = child.flags?.isOptional ? '?' : '';
-      const type = child.type?.toString() || 'any';
-      return `${child.name}${optional}: ${type} ${lineRef}`;
-    });
+  /**
+   * Get line reference for a member
+   *
+   * @param child - Child reflection
+   * @returns Line reference string (e.g., "#L42")
+   */
+  private getLineReference(child: DeclarationReflection): string {
+    const line = child.sources?.[0]?.line || 0;
+    return `#L${line}`;
+  }
+
+  /**
+   * Check if a member is a callable (constructor or method with signatures)
+   *
+   * @param child - Child reflection
+   * @returns true if callable
+   */
+  private isCallableMethod(child: DeclarationReflection): boolean {
+    return (
+      (child.kind === ReflectionKind.Constructor || child.kind === ReflectionKind.Method) &&
+      !!child.signatures
+    );
+  }
+
+  /**
+   * Format a callable member (constructor or method)
+   *
+   * @param child - Child reflection
+   * @param lineRef - Line reference string
+   * @returns Formatted callable member string
+   */
+  private formatCallableMember(child: DeclarationReflection, lineRef: string): string {
+    const sig = child.signatures![0];
+    const params = this.formatParameters(sig.parameters);
+
+    // Constructors don't have return types in member list
+    if (child.kind === ReflectionKind.Constructor) {
+      return `${child.name}(${params}) ${lineRef}`;
+    }
+
+    // Methods include return type
+    const returnType = sig.type?.toString() || 'void';
+    return `${child.name}(${params}): ${returnType} ${lineRef}`;
+  }
+
+  /**
+   * Format a property member
+   *
+   * @param child - Child reflection
+   * @param lineRef - Line reference string
+   * @returns Formatted property member string
+   */
+  private formatPropertyMember(child: DeclarationReflection, lineRef: string): string {
+    const optional = child.flags?.isOptional ? '?' : '';
+    const type = child.type?.toString() || 'any';
+    return `${child.name}${optional}: ${type} ${lineRef}`;
+  }
+
+  /**
+   * Format parameters for a callable member
+   *
+   * @param parameters - Array of parameter reflections
+   * @returns Formatted parameters string
+   */
+  private formatParameters(parameters: ParameterReflection[] | undefined): string {
+    return (
+      parameters
+        ?.map((p) => `${p.name}${p.flags?.isOptional ? '?' : ''}: ${p.type?.toString() || 'any'}`)
+        .join(', ') || ''
+    );
   }
 
   /**

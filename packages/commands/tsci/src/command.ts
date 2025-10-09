@@ -540,7 +540,7 @@ Commands:
 
     // Check if we need to reinitialize with a different tsconfig or entry point
     if (this.engine) {
-      const currentTsconfig = (this.engine as any).options?.tsconfig;
+      const currentTsconfig = this.engine.getTsconfigPath();
       if (currentTsconfig === tsconfigPath) {
         // Same tsconfig, no need to reinitialize
         return;
@@ -571,7 +571,7 @@ Commands:
   /**
    * Handles read_file tool execution.
    *
-   * For small files (<300 lines): Returns full content with strategy='full'
+   * For small files (\<300 lines): Returns full content with strategy='full'
    * For large files (≥300 lines): Returns YAML structure with receiptToken for deferred reading
    *
    * @param args - Tool arguments (file, verbosity)
@@ -585,11 +585,11 @@ Commands:
     }
 
     // Validate verbosity (optional, defaults to minimal)
+    // Note: verbosity is validated for API consistency but not currently used in YAML output
     const verbosityValidation = validateVerbosity(args.verbosity);
     if (!verbosityValidation.valid) {
       return createErrorResponse(verbosityValidation.error);
     }
-    const verbosity: VerbosityLevel = verbosityValidation.value || 'minimal';
 
     // Normalize to absolute path
     const absolutePath = resolve(process.cwd(), fileValidation.value);
@@ -675,7 +675,7 @@ Commands:
       lines,
       tokenEstimate,
       hint: `File has ${lines} lines. Use Read tool with receiptToken for full content, or read specific line ranges`,
-      ...symbolsData,  // Merge in symbols array
+      ...symbolsData, // Merge in symbols array
     };
 
     return createTextResponse(yamlStringify(completeResponse, { lineWidth: 0 }));
