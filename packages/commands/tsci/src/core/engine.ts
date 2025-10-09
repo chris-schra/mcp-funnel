@@ -7,6 +7,7 @@
 import { Application, LogLevel, type ProjectReflection, type TypeDocOptions } from 'typedoc';
 import type { EngineOptions, SymbolMetadata } from '../types/index.js';
 import { SymbolCollector } from './symbolCollector.js';
+import { dirname } from 'path';
 
 /**
  * TypeDoc engine wrapper that provides single-shot conversion
@@ -19,7 +20,9 @@ export class TypeDocEngine {
   private symbols: SymbolMetadata[] = [];
 
   public constructor(private options: EngineOptions) {
-    this.symbolCollector = new SymbolCollector();
+    // Get project root from tsconfig directory for relative path generation
+    const projectRoot = dirname(this.options.tsconfig);
+    this.symbolCollector = new SymbolCollector(projectRoot);
   }
 
   /**

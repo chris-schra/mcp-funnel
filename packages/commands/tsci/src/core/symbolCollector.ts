@@ -12,13 +12,19 @@ import {
   type SourceReference,
   ReflectionKind,
 } from 'typedoc';
-import { normalize } from 'path';
+import { normalize, relative, isAbsolute } from 'path';
 import type { SymbolMetadata } from '../types/index.js';
 
 /**
  * Collects symbol metadata from TypeDoc reflections
  */
 export class SymbolCollector {
+  /**
+   * Create a new SymbolCollector
+   *
+   * @param projectRoot - Absolute path to project root (used for making paths relative in IDs)
+   */
+  public constructor(private projectRoot?: string) {}
   /**
    * Collect a single symbol from a reflection
    *
@@ -317,6 +323,7 @@ export class SymbolCollector {
   /**
    * Generate a stable ID for a reflection.
    * Format: path.to.symbol:kind:file:line
+   * Note: file path is relative to project root to reduce token usage
    *
    * @param reflection - Reflection to generate ID for
    * @returns Stable identifier string
@@ -336,9 +343,26 @@ export class SymbolCollector {
     const kind = reflection.kind;
     const declReflection = reflection as DeclarationReflection;
     const sourceFile: SourceReference | undefined = declReflection.sources?.[0];
-    const location = sourceFile ? `${sourceFile.fileName}:${sourceFile.line}` : '';
+
+    // Use relative path in ID to reduce token usage
+    const filePath = sourceFile?.fullFileName || sourceFile?.fileName;
+    const relativeFilePath = filePath ? this.makeRelativePath(filePath) : '';
+    const location = sourceFile ? `${relativeFilePath}:${sourceFile.line}` : '';
 
     return `${path}:${kind}:${location}`;
+  }
+
+  /**
+   * Convert an absolute path to a relative path from project root
+   *
+   * @param absolutePath - Absolute file path
+   * @returns Relative path from project root, or original path if no project root set
+   */
+  private makeRelativePath(absolutePath: string): string {
+    if (!this.projectRoot || !isAbsolute(absolutePath)) {
+      return absolutePath;
+    }
+    return relative(this.projectRoot, absolutePath);
   }
 
   /**

@@ -8,10 +8,14 @@ import { describe, it, expect } from 'vitest';
 import { Application, ReflectionKind, type DeclarationReflection } from 'typedoc';
 import { SymbolCollector } from './symbolCollector.js';
 import type { SymbolMetadata } from '../types/symbols.js';
+import { resolve } from 'path';
 
 describe('SymbolCollector', () => {
   describe('generateStableId', () => {
     it('should generate correct ID format for top-level symbol (class)', async () => {
+      // Project root is the directory containing tsconfig.json
+      const projectRoot = resolve(process.cwd());
+
       // Create a TypeDoc application and convert the symbolCollector file itself
       const app = await Application.bootstrapWithPlugins({
         entryPoints: ['packages/commands/tsci/src/core/symbolCollector.ts'],
@@ -38,8 +42,8 @@ describe('SymbolCollector', () => {
         throw new Error('SymbolCollector class not found in reflections');
       }
 
-      // Collect metadata using SymbolCollector
-      const collector = new SymbolCollector();
+      // Collect metadata using SymbolCollector with project root
+      const collector = new SymbolCollector(projectRoot);
       const metadata: SymbolMetadata = collector.collect(symbolCollectorClass);
 
       // Verify ID format: path.to.symbol:kind:file:line
@@ -53,11 +57,15 @@ describe('SymbolCollector', () => {
       // Verify components
       expect(idParts[0]).toContain('SymbolCollector'); // Symbol path
       expect(idParts[1]).toBe(String(ReflectionKind.Class)); // Kind should be Class
-      expect(idParts[2]).toContain('symbolCollector.ts'); // File name
+      // File path should be relative to project root
+      expect(idParts[2]).toBe('packages/commands/tsci/src/core/symbolCollector.ts');
       expect(idParts[3]).toMatch(/^\d+$/); // Line number should be numeric
     });
 
     it('should generate correct ID format for nested symbol (method with parent chain)', async () => {
+      // Project root is the directory containing tsconfig.json
+      const projectRoot = resolve(process.cwd());
+
       const app = await Application.bootstrapWithPlugins({
         entryPoints: ['packages/commands/tsci/src/core/symbolCollector.ts'],
         tsconfig: 'tsconfig.json',
@@ -90,8 +98,8 @@ describe('SymbolCollector', () => {
         throw new Error('collect method not found in SymbolCollector class');
       }
 
-      // Collect metadata for the method
-      const collector = new SymbolCollector();
+      // Collect metadata for the method with project root
+      const collector = new SymbolCollector(projectRoot);
       const metadata: SymbolMetadata = collector.collect(collectMethod);
 
       // Verify ID format includes parent chain: ParentClass.methodName:kind:file:line
@@ -103,11 +111,15 @@ describe('SymbolCollector', () => {
       // Verify the hierarchical path includes parent
       expect(idParts[0]).toContain('SymbolCollector.collect'); // Should have parent.child format
       expect(idParts[1]).toBe(String(ReflectionKind.Method)); // Kind should be Method
-      expect(idParts[2]).toContain('symbolCollector.ts'); // File name
+      // File path should be relative to project root
+      expect(idParts[2]).toBe('packages/commands/tsci/src/core/symbolCollector.ts');
       expect(idParts[3]).toMatch(/^\d+$/); // Line number should be numeric
     });
 
     it('should generate correct ID format for symbol with missing source information', async () => {
+      // Project root is the directory containing tsconfig.json
+      const projectRoot = resolve(process.cwd());
+
       const app = await Application.bootstrapWithPlugins({
         entryPoints: ['packages/commands/tsci/src/core/symbolCollector.ts'],
         tsconfig: 'tsconfig.json',
@@ -137,7 +149,7 @@ describe('SymbolCollector', () => {
       // by using the project itself (which typically has no source location)
       const testReflection = reflectionWithoutSource || project;
 
-      const collector = new SymbolCollector();
+      const collector = new SymbolCollector(projectRoot);
       const metadata: SymbolMetadata = collector.collect(testReflection);
 
       // Verify ID format with empty location: path.to.symbol:kind::
