@@ -1,30 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CommandInstaller } from './installer.js';
 import type { CommandManifest } from './types/index.js';
-import { tmpdir } from 'os';
-import { join } from 'path';
-
-type PrivateInstaller = {
-  findMatchingCommand(
-    manifest: CommandManifest,
-    spec: string,
-  ): CommandManifest['commands'][number] | undefined;
-};
-
-const findMatchingCommand = (instance: CommandInstaller, manifest: CommandManifest, spec: string) =>
-  (instance as unknown as PrivateInstaller).findMatchingCommand(manifest, spec);
+import { findMatchingCommand } from './util/index.js';
 
 describe('CommandInstaller - packageMatchesSpec', () => {
-  let installer: CommandInstaller;
   let mockManifest: CommandManifest;
-  const match = (manifest: CommandManifest, spec: string, instance: CommandInstaller = installer) =>
-    findMatchingCommand(instance, manifest, spec);
+  const match = (manifest: CommandManifest, spec: string) => findMatchingCommand(manifest, spec);
 
   beforeEach(() => {
-    // Use a temporary directory for testing
-    const tempDir = join(tmpdir(), 'mcp-funnel-test', Math.random().toString(36));
-    installer = new CommandInstaller(tempDir);
-
     // Create a mock manifest with various package types
     mockManifest = {
       commands: [

@@ -1,16 +1,6 @@
 import type readline from 'node:readline/promises';
-import type { ServerConfig } from '../init.js';
+import type { ServerConfig, FunnelConfigState } from './types.js';
 import { warnAboutSensitiveEnvVars } from './env-detection.js';
-
-/**
- * Funnel configuration state interface
- */
-export interface FunnelConfigState {
-  readonly path: string;
-  readonly exists: boolean;
-  readonly data: Record<string, unknown>;
-  readonly servers: Record<string, ServerConfig>;
-}
 
 /**
  * Result of merging servers into funnel configuration

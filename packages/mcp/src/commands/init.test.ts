@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
-import type { ServerConfig } from './init.js';
+import type { ServerConfig } from './init/types.js';
 
 // Mock fs module for backup tests
 vi.mock('fs', () => ({

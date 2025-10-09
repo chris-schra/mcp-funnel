@@ -2,7 +2,8 @@ import { promises as fs } from 'fs';
 
 /**
  * Check if a file exists at the given path
- * @param filepath
+ * @param filepath - The path to the file to check
+ * @returns True if the file exists, false otherwise
  */
 async function fileExists(filepath: string): Promise<boolean> {
   try {

@@ -1,4 +1,4 @@
-import type { ServerConfig } from '../init.js';
+import type { ServerConfig } from './types.js';
 
 /**
  * Detect potentially sensitive environment variable keys

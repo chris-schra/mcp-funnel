@@ -3,7 +3,7 @@
  */
 
 import type { Interface } from 'node:readline/promises';
-import type { ServerConfig } from '../init.js';
+import type { ServerConfig } from './types.js';
 import type { AggregatedServer } from './detection.js';
 
 interface SelectionOption {
@@ -13,7 +13,8 @@ interface SelectionOption {
 
 /**
  * Groups occurrences by unique configuration
- * @param entry
+ * @param entry - The aggregated server entry to process
+ * @returns Array of unique configuration options with their sources
  */
 function collectUniqueConfigs(entry: AggregatedServer): SelectionOption[] {
   const uniqueConfigs = new Map<string, SelectionOption>();
@@ -38,9 +39,10 @@ function collectUniqueConfigs(entry: AggregatedServer): SelectionOption[] {
 
 /**
  * Prompts user to choose between multiple server configurations
- * @param rl
- * @param serverName
- * @param options
+ * @param rl - Readline interface for user interaction
+ * @param serverName - Name of the server being configured
+ * @param options - Array of configuration options to choose from
+ * @returns The selected server configuration, or null if skipped
  */
 async function promptForChoice(
   rl: Interface,
@@ -90,8 +92,9 @@ async function promptForChoice(
 /**
  * Select server configurations from aggregated servers
  * Prompts user when multiple configurations exist for the same server
- * @param aggregated
- * @param rl
+ * @param aggregated - Array of aggregated servers to select from
+ * @param rl - Readline interface for user interaction
+ * @returns Record of selected server configurations keyed by server name
  */
 export async function selectServerConfigs(
   aggregated: readonly AggregatedServer[],

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Interface } from 'node:readline/promises';
 import { selectServerConfigs } from './selection.js';
 import type { AggregatedServer } from './detection.js';
-import type { LocatedConfigSnapshot, ServerConfig } from '../init.js';
+import type { LocatedConfigSnapshot, ServerConfig } from './types.js';
 
 describe('selectServerConfigs', () => {
   let mockRl: Interface;

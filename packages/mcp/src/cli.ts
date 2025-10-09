@@ -131,8 +131,8 @@ program
   });
 
 /**
- *
- * @param configPathArg
+ * Starts the MCP proxy server with the specified configuration.
+ * @param configPathArg - Path to the MCP Funnel configuration file
  */
 async function startProxy(configPathArg: string): Promise<void> {
   const configPath = configPathArg ?? '.mcp-funnel.json';
@@ -191,7 +191,7 @@ async function handleShutdown(signal: string, proxy?: MCPProxy) {
 }
 
 /**
- *
+ * Initializes the CLI application and parses command-line arguments.
  */
 async function bootstrap(): Promise<void> {
   if (!process.env.MCP_FUNNEL_RUN_ID) {

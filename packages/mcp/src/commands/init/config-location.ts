@@ -15,7 +15,8 @@ export interface ConfigAnalysis {
 
 /**
  * Check if a file exists
- * @param path
+ * @param path - The path to the file to check
+ * @returns True if the file exists, false otherwise
  */
 async function fileExists(path: string): Promise<boolean> {
   try {
@@ -31,6 +32,7 @@ async function fileExists(path: string): Promise<boolean> {
 
 /**
  * Analyze existing .mcp-funnel.json config locations
+ * @returns Analysis of config locations including paths and existence status
  */
 export async function analyzeConfigs(): Promise<ConfigAnalysis> {
   const repoPath = resolve(process.cwd(), '.mcp-funnel.json');
@@ -46,8 +48,9 @@ export async function analyzeConfigs(): Promise<ConfigAnalysis> {
 
 /**
  * Determine the target path for .mcp-funnel.json based on existing configs and user preference
- * @param analysis
- * @param rl
+ * @param analysis - The analysis of existing config locations
+ * @param rl - Readline interface for user interaction
+ * @returns The selected target path for the config file
  */
 export async function determineTargetPath(
   analysis: ConfigAnalysis,

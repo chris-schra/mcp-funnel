@@ -7,7 +7,8 @@ import stringify from 'safe-stable-stringify';
 /**
  * Safely stringify a value to JSON with stable key ordering
  * Handles circular references, BigInts, and other edge cases
- * @param value
+ * @param value - The value to stringify
+ * @returns JSON string representation of the value
  */
 export function safeStringify(value: unknown): string {
   return stringify(value) || '{}';
@@ -15,8 +16,9 @@ export function safeStringify(value: unknown): string {
 
 /**
  * Safely stringify with custom indentation
- * @param value
- * @param indent
+ * @param value - The value to stringify
+ * @param indent - Number of spaces for indentation (default: 2)
+ * @returns Pretty-printed JSON string representation of the value
  */
 export function safeStringifyPretty(value: unknown, indent = 2): string {
   return stringify(value, null, indent) || '{}';
@@ -25,9 +27,10 @@ export function safeStringifyPretty(value: unknown, indent = 2): string {
 /**
  * Convert a value to a JSON-compatible format with warnings
  * This maintains compatibility with the previous toJsonValue behavior
- * @param value
- * @param warnings
- * @param path
+ * @param value - The value to convert to JSON-compatible format
+ * @param warnings - Optional array to collect warning messages about unconvertible values
+ * @param path - Optional path string for error reporting context
+ * @returns JSON-compatible representation of the value, or undefined if conversion fails
  */
 export function toJsonValue(value: unknown, warnings?: string[], path?: string): unknown {
   // Handle primitive types
