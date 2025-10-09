@@ -5,7 +5,7 @@
  * For large files (≥300 lines): Returns YAML structure with receiptToken for deferred reading
  */
 
-import { resolve, normalize } from 'node:path';
+import { resolve, normalize, dirname } from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { CallToolResult } from '@mcp-funnel/commands-core';
 import { ReflectionKind, type DeclarationReflection } from 'typedoc';
@@ -111,8 +111,11 @@ export async function describeFile(
     );
   }
 
-  // Format reflections as YAML
-  const yaml = engineContext.yamlFormatter.format(fileReflections);
+  // Get projectRoot from engine's tsconfig path
+  const projectRoot = dirname(engineContext.engine.getTsconfigPath());
+
+  // Format reflections as YAML with projectRoot for stable symbol IDs
+  const yaml = engineContext.yamlFormatter.format(fileReflections, { projectRoot });
 
   // Generate receiptToken
   const token = generateReceiptToken(absolutePath);

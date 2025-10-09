@@ -35,22 +35,31 @@ describe('YAMLDescribeFileFormatter', () => {
 
     expect(reflections.length).toBeGreaterThan(0);
 
-    // Create formatter
+    // Create formatter with projectRoot for stable IDs
     const formatter = new YAMLDescribeFileFormatter({
       summaryExtractor: new PassthroughSummaryExtractor(),
       includeMembers: true,
     });
 
-    // Format as YAML
-    const yaml = formatter.format(reflections);
+    // Format as YAML with projectRoot
+    const yaml = formatter.format(reflections, {
+      projectRoot: process.cwd(),
+    });
 
-    // Verify YAML structure
+    // Verify YAML structure includes all required fields
     expect(yaml).toContain('symbols:');
+    expect(yaml).toContain('id:');
     expect(yaml).toContain('inline:');
     expect(yaml).toContain('line:');
 
     // Verify it includes our YAMLDescribeFileFormatter class
     expect(yaml).toContain('class YAMLDescribeFileFormatter');
+
+    // Verify ID format (8-character base64url hash)
+    const idPattern = /id:\s*"?([A-Za-z0-9_-]{8})"?/;
+    const idMatch = yaml.match(idPattern);
+    expect(idMatch).toBeTruthy();
+    expect(idMatch?.[1]).toHaveLength(8);
 
     // Log the output for manual inspection
     console.log('YAML Output Sample:');
@@ -78,10 +87,14 @@ describe('YAMLDescribeFileFormatter', () => {
     ) as DeclarationReflection[];
 
     const formatter = new YAMLDescribeFileFormatter();
-    const yaml = formatter.format(reflections);
+    const yaml = formatter.format(reflections, {
+      projectRoot: process.cwd(),
+    });
 
     // Should have docLines for documented symbols
     expect(yaml).toContain('docLines:');
+    // Verify id field is present
+    expect(yaml).toContain('id:');
 
     console.log('YAML with docLines:');
     console.log(yaml);
@@ -112,8 +125,12 @@ describe('YAMLDescribeFileFormatter', () => {
     expect(summaryExtractorInterface).toBeDefined();
 
     const formatter = new YAMLDescribeFileFormatter({ includeMembers: true });
-    const yaml = formatter.format([summaryExtractorInterface!]);
+    const yaml = formatter.format([summaryExtractorInterface!], {
+      projectRoot: process.cwd(),
+    });
 
+    // Should have id field
+    expect(yaml).toContain('id:');
     // Should have members
     expect(yaml).toContain('members:');
     expect(yaml).toContain('extract');
@@ -144,8 +161,12 @@ describe('YAMLDescribeFileFormatter', () => {
     ) as DeclarationReflection[];
 
     const formatter = new YAMLDescribeFileFormatter({ includeMembers: false });
-    const yaml = formatter.format(reflections);
+    const yaml = formatter.format(reflections, {
+      projectRoot: process.cwd(),
+    });
 
+    // Should have id field
+    expect(yaml).toContain('id:');
     // Should NOT have members
     expect(yaml).not.toContain('members:');
 

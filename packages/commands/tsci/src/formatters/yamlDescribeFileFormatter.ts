@@ -25,11 +25,13 @@ import { stringify as yamlStringify } from 'yaml';
 import type { SummaryExtractor } from '../core/summaryExtractor.js';
 import { PassthroughSummaryExtractor } from '../core/summaryExtractor.js';
 import { getSymbolEndLine } from '../util/astPositions.js';
+import { SymbolCollector } from '../core/symbolCollector.js';
 
 /**
  * Symbol data structure for YAML output
  */
 interface YAMLSymbol {
+  id: string; // 8-character symbol ID hash
   inline: string;
   lines: string; // Line range: "42" or "42-50"
   docLines?: string;
@@ -57,6 +59,12 @@ export interface YAMLFormatOptions {
    * Include members for interfaces/classes/types (default: true)
    */
   includeMembers?: boolean;
+
+  /**
+   * Project root directory for generating stable symbol IDs
+   * If not provided, symbol IDs will be generated without relative paths
+   */
+  projectRoot?: string;
 }
 
 /**
@@ -83,9 +91,12 @@ export class YAMLDescribeFileFormatter {
   public format(reflections: DeclarationReflection[], options: YAMLFormatOptions = {}): string {
     const includeMembers = options.includeMembers ?? this.includeMembers;
 
+    // Create SymbolCollector for generating stable IDs
+    const symbolCollector = new SymbolCollector(options.projectRoot);
+
     const symbols: YAMLSymbol[] = reflections
       .filter((reflection) => this.shouldIncludeSymbol(reflection))
-      .map((reflection) => this.formatSymbol(reflection, includeMembers));
+      .map((reflection) => this.formatSymbol(reflection, includeMembers, symbolCollector));
 
     const output: YAMLOutput = { symbols };
 
@@ -101,13 +112,22 @@ export class YAMLDescribeFileFormatter {
    *
    * @param reflection - TypeDoc declaration reflection
    * @param includeMembers - Whether to include members for interfaces/classes/types
+   * @param symbolCollector - SymbolCollector instance for generating IDs
    * @returns YAML symbol object
    */
-  private formatSymbol(reflection: DeclarationReflection, includeMembers: boolean): YAMLSymbol {
+  private formatSymbol(
+    reflection: DeclarationReflection,
+    includeMembers: boolean,
+    symbolCollector: SymbolCollector,
+  ): YAMLSymbol {
+    // Generate stable symbol ID
+    const metadata = symbolCollector.collect(reflection);
+
     // Calculate line range using TypeScript AST parsing
     const lines = this.calculateLineRange(reflection);
 
     const symbol: YAMLSymbol = {
+      id: metadata.id,
       inline: this.createInlineSignature(reflection),
       lines,
     };
