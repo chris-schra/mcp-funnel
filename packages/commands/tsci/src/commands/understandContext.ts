@@ -37,11 +37,16 @@ export async function understandContext(
     focus = resolve(process.cwd(), focusValidation.value);
   }
 
+  // Ensure symbol index is available
+  if (!context.symbolIndex) {
+    return createErrorResponse('Engine not initialized. Internal error.');
+  }
+
   // Get all symbols for requested files
   // Normalize all file paths to absolute
   const allSymbols = filesValidation.value.flatMap((file) => {
     const absolutePath = resolve(process.cwd(), file);
-    return context.symbolIndex.getByFile(absolutePath);
+    return context.symbolIndex!.getByFile(absolutePath);
   });
 
   if (allSymbols.length === 0) {

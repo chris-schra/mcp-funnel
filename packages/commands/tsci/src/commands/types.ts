@@ -11,10 +11,13 @@ import type { DiagramGenerator } from '../services/diagramGenerator.js';
 /**
  * Context object passed to command handlers.
  * Contains all resources needed for command execution.
+ *
+ * Note: engine and symbolIndex are optional to support lazy initialization
+ * in describeFile (which doesn't need them for small files).
  */
 export interface CommandContext {
-  engine: TypeDocEngine;
-  symbolIndex: SymbolIndex;
+  engine?: TypeDocEngine;
+  symbolIndex?: SymbolIndex;
   fileFormatter: DescribeFileFormatter;
   symbolFormatter: DescribeSymbolFormatter;
   yamlFormatter: YAMLDescribeFileFormatter;

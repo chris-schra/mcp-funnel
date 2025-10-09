@@ -160,24 +160,25 @@ export class TSCICommand implements ICommand<CommandArgs> {
    * @returns CallToolResult with formatted data or error
    */
   public async executeHandler(name: string, args: CommandArgs): Promise<CallToolResult> {
-    const context = this.getContext();
-
     switch (name) {
       case 'read_file':
       case 'describe-file':
-        return await describeFile(args as DescribeFileArgs, context, (file) =>
-          this.ensureEngine(file),
+        // describeFile initializes engine as needed (lazy init for small files)
+        return await describeFile(
+          args as DescribeFileArgs,
+          () => this.getPartialContext(),
+          (file) => this.ensureEngine(file),
         );
 
       case 'describe_symbol':
       case 'describe-symbol':
         await this.ensureEngine();
-        return await describeSymbol(args as DescribeSymbolArgs, context);
+        return await describeSymbol(args as DescribeSymbolArgs, this.getContext());
 
       case 'understand_context':
       case 'understand-context':
         await this.ensureEngine();
-        return await understandContext(args as UnderstandContextArgs, context);
+        return await understandContext(args as UnderstandContextArgs, this.getContext());
 
       default:
         return createErrorResponse(`Error: Unknown tool: ${name}`);
@@ -261,12 +262,29 @@ export class TSCICommand implements ICommand<CommandArgs> {
   /**
    * Gets command execution context for handlers.
    * @returns CommandContext with all required resources
+   * @throws Error if engine is not initialized
    */
   private getContext(): CommandContext {
     if (!this.engine || !this.symbolIndex) {
       throw new Error('Engine not initialized. Call ensureEngine() first.');
     }
 
+    return {
+      engine: this.engine,
+      symbolIndex: this.symbolIndex,
+      fileFormatter: this.fileFormatter,
+      symbolFormatter: this.symbolFormatter,
+      yamlFormatter: this.yamlFormatter,
+      diagramGenerator: this.diagramGenerator,
+    };
+  }
+
+  /**
+   * Gets partial context without requiring engine initialization.
+   * Used for describeFile which initializes engine lazily.
+   * @returns CommandContext with formatters (engine/symbolIndex may be undefined)
+   */
+  private getPartialContext(): CommandContext {
     return {
       engine: this.engine,
       symbolIndex: this.symbolIndex,

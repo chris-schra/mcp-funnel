@@ -34,6 +34,11 @@ export async function describeSymbol(
   }
   const verbosity: VerbosityLevel = verbosityValidation.value || 'minimal';
 
+  // Ensure symbol index is available
+  if (!context.symbolIndex) {
+    return createErrorResponse('Engine not initialized. Internal error.');
+  }
+
   // Get symbol by ID
   const symbol = context.symbolIndex.getById(symbolIdValidation.value);
   if (!symbol) {

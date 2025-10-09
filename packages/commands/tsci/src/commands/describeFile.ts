@@ -18,13 +18,13 @@ import type { DescribeFileArgs, CommandContext } from './types.js';
  * Handles read_file tool execution.
  *
  * @param args - Validated and typed arguments
- * @param context - Command execution context
+ * @param getContext - Function to get current command context
  * @param ensureEngine - Callback to ensure engine is initialized for a file
  * @returns CallToolResult with file content or YAML structure
  */
 export async function describeFile(
   args: DescribeFileArgs,
-  context: CommandContext,
+  getContext: () => CommandContext,
   ensureEngine: (forFile?: string) => Promise<void>,
 ): Promise<CallToolResult> {
   // Validate file path
@@ -74,8 +74,14 @@ export async function describeFile(
   // Ensure engine is initialized with the correct tsconfig for this file
   await ensureEngine(absolutePath);
 
+  // Refresh context after engine initialization
+  const engineContext = getContext();
+  if (!engineContext.engine) {
+    return createErrorResponse('Engine initialization failed. Internal error.');
+  }
+
   // Get DeclarationReflection objects from project for this file
-  const project = context.engine.getProject();
+  const project = engineContext.engine.getProject();
   if (!project) {
     return createErrorResponse('TypeDoc project not available. Engine initialization failed.');
   }
@@ -106,7 +112,7 @@ export async function describeFile(
   }
 
   // Format reflections as YAML
-  const yaml = context.yamlFormatter.format(fileReflections);
+  const yaml = engineContext.yamlFormatter.format(fileReflections);
 
   // Generate receiptToken
   const token = generateReceiptToken(absolutePath);
