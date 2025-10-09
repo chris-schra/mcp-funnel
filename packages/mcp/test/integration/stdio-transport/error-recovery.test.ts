@@ -51,17 +51,19 @@ describe('STDIO Transport Error Recovery', () => {
       expect(transport.connectionState).toBe('disconnected');
     }, 5000);
 
-    it('should handle command that exits immediately', async () => {
+    it('should handle command that fails immediately with reconnection disabled', async () => {
       const resources: Parameters<typeof createCleanup>[0] = {};
       const cleanup = createCleanup(resources);
       cleanupFunctions.push(cleanup);
 
-      // Command that exits immediately without producing output
+      // Test scenario: process exits immediately, reconnection disabled
+      // This validates error handling without reconnection interference
+      // (reconnection behavior is tested separately in reconnection.test.ts)
       const transport = new ReconnectablePrefixedStdioClientTransport('test-exit', {
         command: 'node',
-        args: ['-e', 'process.exit(0)'],
+        args: ['-e', 'process.exit(1)'],
         reconnection: {
-          maxAttempts: 1, // Fail fast
+          maxAttempts: 0, // Disable reconnection to isolate error handling path
           initialDelayMs: 50,
           maxDelayMs: 100,
           backoffMultiplier: 1,
@@ -72,13 +74,10 @@ describe('STDIO Transport Error Recovery', () => {
       const client = new Client({ name: 'test-client', version: '1.0.0' }, { capabilities: {} });
       resources.client = client;
 
-      // Connection should fail as process exits before initialization
+      // Connection should fail immediately without retry
       await expect(client.connect(transport)).rejects.toThrow();
 
-      // Wait a bit for state to settle
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // Should be in disconnected state
+      // Should be in disconnected state (no reconnection attempted)
       expect(transport.connectionState).toBe('disconnected');
     }, 5000);
   });
