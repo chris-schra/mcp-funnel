@@ -176,9 +176,13 @@ export class TSCICommand implements ICommand<CommandArgs> {
         return await describeSymbol(args as DescribeSymbolArgs, this.getContext());
 
       case 'understand_context':
-      case 'understand-context':
-        await this.ensureEngine();
-        return await understandContext(args as UnderstandContextArgs, this.getContext());
+      case 'understand-context': {
+        // Initialize engine with first file to detect correct tsconfig
+        const contextArgs = args as UnderstandContextArgs;
+        const firstFile = contextArgs.files?.[0];
+        await this.ensureEngine(firstFile);
+        return await understandContext(contextArgs, this.getContext());
+      }
 
       default:
         return createErrorResponse(`Error: Unknown tool: ${name}`);
