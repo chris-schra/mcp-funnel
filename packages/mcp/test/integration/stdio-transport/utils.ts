@@ -5,7 +5,7 @@ import type { ReconnectablePrefixedStdioClientTransport } from '../../../src/pro
 /**
  * Tracked resources for cleanup
  */
-interface TransportTestResources {
+export interface TransportTestResources {
   transport?: ReconnectablePrefixedStdioClientTransport;
   client?: Client;
   additionalProcesses?: ChildProcess[];
@@ -143,7 +143,7 @@ export function simulateCrash(
  */
 export const TEST_SERVER_CONFIG = {
   command: 'uvx',
-  args: ['mcp-server-time'],
+  args: ['mcp-server-time'] as string[],
   serverName: 'time-test',
 } as const;
 
