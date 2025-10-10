@@ -15,6 +15,16 @@ export { TypeDocEngine } from './core/engine.js';
 export { SymbolCollector } from './core/symbolCollector.js';
 export { SymbolIndex } from './core/symbolIndex.js';
 
+// Enhancers
+export { EnhancementPipeline } from './enhancers/enhancementPipeline.js';
+export { ReferenceEnhancer } from './enhancers/referenceEnhancer.js';
+export type { ISymbolEnhancer, EnhancementContext } from './enhancers/ISymbolEnhancer.js';
+export type {
+  EnhancerStage,
+  EnhancementError,
+  EnhancementResult,
+} from './enhancers/enhancementPipeline.js';
+
 // Utilities
 export { resolveTsConfig, findTsConfig } from './util/tsconfig.js';
 

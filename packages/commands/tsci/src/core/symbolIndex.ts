@@ -144,6 +144,16 @@ export class SymbolIndex {
   }
 
   /**
+   * Get the internal symbols map (for enhancement context)
+   * Returns the underlying Map for efficient lookups by enhancers
+   *
+   * @returns Map of symbol IDs to SymbolMetadata
+   */
+  public getAllSymbolsMap(): Map<string, SymbolMetadata> {
+    return this.symbolsById;
+  }
+
+  /**
    * Get the total number of symbols in the index
    *
    * @returns Number of symbols

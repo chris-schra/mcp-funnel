@@ -10,15 +10,20 @@ import {
   type SourceReference,
   ReflectionKind,
 } from 'typedoc';
+import type * as ts from 'typescript';
 import { normalize, relative, isAbsolute } from 'path';
 import { createHash } from 'crypto';
-import type { SymbolMetadata } from '../types/index.js';
+import type { SymbolMetadata, EnhancementContext } from '../types/index.js';
 import { generateSignature } from './signatureGenerator.js';
 
 /**
  * Collects symbol metadata from TypeDoc reflections
  */
 export class SymbolCollector {
+  private project: ProjectReflection | null = null;
+  private program: ts.Program | null = null;
+  private checker: ts.TypeChecker | null = null;
+
   /**
    * Create a new SymbolCollector
    *
@@ -61,6 +66,46 @@ export class SymbolCollector {
       isExported: this.isExported(declReflection),
       parentId: reflection.parent ? this.generateStableId(reflection.parent) : null,
       childrenIds: declReflection.children?.map((c) => this.generateStableId(c)) || [],
+    };
+  }
+
+  /**
+   * Set TypeScript context for enhancement support
+   * Must be called before getEnhancementContext() can return valid context
+   *
+   * @param project - TypeDoc project reflection
+   * @param program - TypeScript program
+   * @param checker - TypeScript type checker
+   */
+  public setTypeScriptContext(
+    project: ProjectReflection,
+    program: ts.Program,
+    checker: ts.TypeChecker,
+  ): void {
+    this.project = project;
+    this.program = program;
+    this.checker = checker;
+  }
+
+  /**
+   * Get enhancement context for running enhancers
+   * Returns undefined if TypeScript context has not been set via setTypeScriptContext()
+   *
+   * @param symbolIndex - Map of symbol IDs to SymbolMetadata
+   * @returns Enhancement context or undefined if not available
+   */
+  public getEnhancementContext(
+    symbolIndex: Map<string, SymbolMetadata>,
+  ): EnhancementContext | undefined {
+    if (!this.project || !this.program || !this.checker) {
+      return undefined;
+    }
+
+    return {
+      project: this.project,
+      program: this.program,
+      checker: this.checker,
+      symbolIndex,
     };
   }
 

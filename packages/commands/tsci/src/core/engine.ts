@@ -5,9 +5,11 @@
  */
 
 import { Application, LogLevel, type ProjectReflection, type TypeDocOptions } from 'typedoc';
+import * as ts from 'typescript';
 import type { EngineOptions, SymbolMetadata } from '../types/index.js';
 import { SymbolCollector } from './symbolCollector.js';
 import { dirname } from 'path';
+import { readFileSync } from 'fs';
 
 /**
  * TypeDoc engine wrapper that provides single-shot conversion
@@ -18,6 +20,8 @@ export class TypeDocEngine {
   private project: ProjectReflection | null = null;
   private symbolCollector: SymbolCollector;
   private symbols: SymbolMetadata[] = [];
+  private program: ts.Program | null = null;
+  private checker: ts.TypeChecker | null = null;
 
   public constructor(private options: EngineOptions) {
     // Get project root from tsconfig directory for relative path generation
@@ -68,6 +72,14 @@ export class TypeDocEngine {
       throw new Error('Engine not initialized. Call initialize() first.');
     }
 
+    // Create TypeScript program for enhancement support
+    // We create our own program from the same tsconfig used by TypeDoc
+    // This is simpler than trying to hook into TypeDoc's internal event system
+    this.program = this.createTypeScriptProgram();
+    if (this.program) {
+      this.checker = this.program.getTypeChecker();
+    }
+
     // Run TypeDoc conversion
     const project = await this.app.convert();
     if (!project) {
@@ -76,10 +88,58 @@ export class TypeDocEngine {
 
     this.project = project;
 
+    // Pass program and checker to SymbolCollector for enhancement support
+    if (this.program && this.checker) {
+      this.symbolCollector.setTypeScriptContext(project, this.program, this.checker);
+    }
+
     // Collect symbols from the project
     this.symbols = this.symbolCollector.collectFromProject(project);
 
     return project;
+  }
+
+  /**
+   * Create TypeScript program from tsconfig
+   * This provides access to the TypeScript compiler API for enhancers
+   *
+   * @returns TypeScript program or null if creation fails
+   */
+  private createTypeScriptProgram(): ts.Program | null {
+    try {
+      // Read and parse tsconfig
+      const configFile = ts.readConfigFile(this.options.tsconfig, (path) =>
+        readFileSync(path, 'utf8'),
+      );
+
+      if (configFile.error) {
+        console.warn('Warning: Failed to read tsconfig for enhancement support');
+        return null;
+      }
+
+      // Parse compiler options
+      const parsedConfig = ts.parseJsonConfigFileContent(
+        configFile.config,
+        ts.sys,
+        dirname(this.options.tsconfig),
+      );
+
+      if (parsedConfig.errors.length > 0) {
+        console.warn('Warning: Failed to parse tsconfig for enhancement support');
+        return null;
+      }
+
+      // Create program with entry points if specified
+      const rootNames = this.options.entryPoints || parsedConfig.fileNames;
+
+      return ts.createProgram({
+        rootNames,
+        options: parsedConfig.options,
+      });
+    } catch (error) {
+      console.warn('Warning: Failed to create TypeScript program for enhancement support:', error);
+      return null;
+    }
   }
 
   /**
@@ -110,6 +170,15 @@ export class TypeDocEngine {
   }
 
   /**
+   * Get the symbol collector instance (for accessing enhancement context)
+   *
+   * @returns SymbolCollector instance
+   */
+  public getSymbolCollector(): SymbolCollector {
+    return this.symbolCollector;
+  }
+
+  /**
    * Cleanup resources
    *
    * @returns void
@@ -118,5 +187,7 @@ export class TypeDocEngine {
     this.app = null;
     this.project = null;
     this.symbols = [];
+    this.program = null;
+    this.checker = null;
   }
 }
