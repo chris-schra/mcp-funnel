@@ -170,6 +170,12 @@ export class TypeExpander {
       expect(typeof ref.from).toBe('string');
       expect(typeof ref.line).toBe('number');
       expect(typeof ref.module).toBe('string');
+
+      // Verify preview field (optional)
+      if (ref.preview !== undefined) {
+        expect(typeof ref.preview).toBe('string');
+        expect(ref.preview).toContain('⟶'); // Should have preview notation
+      }
     }
   });
 });

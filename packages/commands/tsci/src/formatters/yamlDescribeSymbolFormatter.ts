@@ -244,10 +244,14 @@ export class YAMLDescribeSymbolFormatter {
         module: ref.module,
       };
 
-      // Add preview if we can generate one
-      const preview = this.generateTypePreview(ref, symbolIndex);
-      if (preview) {
-        yamlRef.preview = preview;
+      // Add preview if available from ExternalReference or generate one
+      if (ref.preview) {
+        yamlRef.preview = ref.preview;
+      } else {
+        const preview = this.generateTypePreview(ref, symbolIndex);
+        if (preview) {
+          yamlRef.preview = preview;
+        }
       }
 
       return yamlRef;

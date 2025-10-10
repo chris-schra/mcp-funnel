@@ -25,6 +25,7 @@
 import * as ts from 'typescript';
 import type { ISymbolEnhancer, EnhancementContext } from './ISymbolEnhancer.js';
 import type { SymbolMetadata, ExternalReference } from '../types/index.js';
+import { TypePreviewGenerator } from './TypePreviewGenerator.js';
 
 /**
  * Enhancer that extracts type dependencies from symbol declarations
@@ -32,6 +33,7 @@ import type { SymbolMetadata, ExternalReference } from '../types/index.js';
  */
 export class TypeDependencyEnhancer implements ISymbolEnhancer {
   public readonly name = 'TypeDependencyEnhancer';
+  private readonly previewGenerator = new TypePreviewGenerator();
 
   /**
    * Enhance symbols with type dependency information
@@ -252,6 +254,9 @@ export class TypeDependencyEnhancer implements ISymbolEnhancer {
     // Get the import module path
     const module = this.getModulePath(symbolFilePath, declFilePath);
 
+    // Generate type preview
+    const preview = this.previewGenerator.generatePreview(typeSymbol, declaration);
+
     // Create unique key to avoid duplicates
     const key = `${typeName}:${declFilePath}`;
 
@@ -263,6 +268,7 @@ export class TypeDependencyEnhancer implements ISymbolEnhancer {
         from: declFilePath,
         line: line + 1, // Convert to 1-based
         module,
+        preview: preview ? `${typeName} ⟶ ${preview}` : undefined,
       });
     }
   }

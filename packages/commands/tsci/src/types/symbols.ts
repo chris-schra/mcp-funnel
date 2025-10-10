@@ -29,6 +29,8 @@ export interface ExternalReference {
   line: number;
   /** Module/package the reference comes from */
   module: string;
+  /** Type preview with ⟶ notation (e.g., "TypeName ⟶ \{ prop1: type1; ... \}") */
+  preview?: string;
 }
 
 /**
