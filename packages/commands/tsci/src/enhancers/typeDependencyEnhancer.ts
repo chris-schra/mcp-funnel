@@ -112,7 +112,49 @@ export class TypeDependencyEnhancer implements ISymbolEnhancer {
       return undefined;
     }
 
-    return find(sourceFile);
+    const foundNode = find(sourceFile);
+
+    // Walk up to find the containing declaration node
+    return this.findContainingDeclaration(foundNode);
+  }
+
+  /**
+   * Walk up the AST to find the containing declaration node
+   *
+   * For example, if we found an Identifier, walk up to find the ClassDeclaration,
+   * InterfaceDeclaration, FunctionDeclaration, etc. that contains it.
+   *
+   * @param node - Starting node (might be an identifier or other specific node)
+   * @returns Declaration node or the original node if no declaration found
+   */
+  private findContainingDeclaration(node: ts.Node | undefined): ts.Node | undefined {
+    if (!node) {
+      return undefined;
+    }
+
+    let current: ts.Node | undefined = node;
+
+    while (current) {
+      // Check if current node is a declaration we care about
+      if (
+        ts.isClassDeclaration(current) ||
+        ts.isInterfaceDeclaration(current) ||
+        ts.isFunctionDeclaration(current) ||
+        ts.isMethodDeclaration(current) ||
+        ts.isPropertyDeclaration(current) ||
+        ts.isTypeAliasDeclaration(current) ||
+        ts.isEnumDeclaration(current) ||
+        ts.isVariableDeclaration(current)
+      ) {
+        return current;
+      }
+
+      // Walk up to parent
+      current = current.parent;
+    }
+
+    // If no declaration found, return the original node
+    return node;
   }
 
   /**
@@ -170,9 +212,16 @@ export class TypeDependencyEnhancer implements ISymbolEnhancer {
     }
 
     // Get the symbol for this type reference
-    const typeSymbol = checker.getSymbolAtLocation(typeRef.typeName);
+    let typeSymbol = checker.getSymbolAtLocation(typeRef.typeName);
     if (!typeSymbol) {
       return;
+    }
+
+    // Resolve alias symbols (imports) to get the actual symbol
+    // When a type is imported, TypeScript creates an alias symbol
+    // We need to follow the alias to find the actual declaration
+    if (typeSymbol.flags & ts.SymbolFlags.Alias) {
+      typeSymbol = checker.getAliasedSymbol(typeSymbol);
     }
 
     // Get the declaration for the symbol
