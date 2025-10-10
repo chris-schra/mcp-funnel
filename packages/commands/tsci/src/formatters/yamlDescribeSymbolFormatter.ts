@@ -129,6 +129,8 @@ export class YAMLDescribeSymbolFormatter {
     const includeReferences = options.includeReferences ?? this.includeReferences;
     const includeMembers = options.includeMembers ?? this.includeMembers;
     const includeSummary = options.includeSummary ?? this.includeSummary;
+    // Use symbolIndex from options if provided, otherwise fall back to constructor value
+    const symbolIndex = options.symbolIndex ?? this.symbolIndex;
 
     const yamlSymbol = this.formatSymbol(
       symbol,
@@ -136,6 +138,7 @@ export class YAMLDescribeSymbolFormatter {
       includeReferences,
       includeMembers,
       includeSummary,
+      symbolIndex,
     );
 
     return yamlStringify(yamlSymbol, {
@@ -153,6 +156,7 @@ export class YAMLDescribeSymbolFormatter {
    * @param includeReferences - Whether to include external references
    * @param includeMembers - Whether to include members
    * @param includeSummary - Whether to include summary
+   * @param symbolIndex - Symbol index for looking up child symbols (optional)
    * @returns YAML symbol detail object
    */
   private formatSymbol(
@@ -161,6 +165,7 @@ export class YAMLDescribeSymbolFormatter {
     includeReferences: boolean,
     includeMembers: boolean,
     includeSummary: boolean,
+    symbolIndex?: SymbolIndex,
   ): YAMLSymbolDetail {
     const yamlSymbol: YAMLSymbolDetail = {
       id: symbol.id,
@@ -183,12 +188,12 @@ export class YAMLDescribeSymbolFormatter {
       // Note: Members formatting would require access to child symbols
       // For now, we'll skip this as it requires additional context
       // This is a SEAM for future enhancement
-      yamlSymbol.members = this.formatMembers(symbol);
+      yamlSymbol.members = this.formatMembers(symbol, symbolIndex);
     }
 
     // Add references if requested
     if (includeReferences && symbol.references && symbol.references.length > 0) {
-      yamlSymbol.references = this.formatReferences(symbol.references);
+      yamlSymbol.references = this.formatReferences(symbol.references, symbolIndex);
     }
 
     return yamlSymbol;
@@ -223,9 +228,13 @@ export class YAMLDescribeSymbolFormatter {
    * Format external references into YAML structure
    *
    * @param references - Array of external references
+   * @param symbolIndex - Symbol index for looking up referenced symbols (optional)
    * @returns Array of YAML reference objects
    */
-  private formatReferences(references: ExternalReference[]): YAMLReference[] {
+  private formatReferences(
+    references: ExternalReference[],
+    symbolIndex?: SymbolIndex,
+  ): YAMLReference[] {
     return references.map((ref) => {
       const yamlRef: YAMLReference = {
         name: ref.name,
@@ -236,7 +245,7 @@ export class YAMLDescribeSymbolFormatter {
       };
 
       // Add preview if we can generate one
-      const preview = this.generateTypePreview(ref);
+      const preview = this.generateTypePreview(ref, symbolIndex);
       if (preview) {
         yamlRef.preview = preview;
       }
@@ -252,16 +261,17 @@ export class YAMLDescribeSymbolFormatter {
    * Returns undefined if symbolIndex is not available or symbol has no children.
    *
    * @param symbol - Symbol metadata
+   * @param symbolIndex - Symbol index for looking up child symbols (optional)
    * @returns Array of member strings or undefined
    */
-  private formatMembers(symbol: SymbolMetadata): string[] | undefined {
-    if (!this.symbolIndex || !symbol.childrenIds || symbol.childrenIds.length === 0) {
+  private formatMembers(symbol: SymbolMetadata, symbolIndex?: SymbolIndex): string[] | undefined {
+    if (!symbolIndex || !symbol.childrenIds || symbol.childrenIds.length === 0) {
       return undefined;
     }
 
     const members: string[] = [];
     for (const childId of symbol.childrenIds) {
-      const childSymbol = this.symbolIndex.getById(childId);
+      const childSymbol = symbolIndex.getById(childId);
       if (childSymbol) {
         const memberStr = this.formatMember(childSymbol);
         if (memberStr) {
@@ -314,16 +324,20 @@ export class YAMLDescribeSymbolFormatter {
    * In production, references may not yet be collected, so previews will be omitted.
    *
    * @param ref - External reference
+   * @param symbolIndex - Symbol index for looking up referenced symbols (optional)
    * @returns Preview string or undefined
    */
-  private generateTypePreview(ref: ExternalReference): string | undefined {
+  private generateTypePreview(
+    ref: ExternalReference,
+    symbolIndex?: SymbolIndex,
+  ): string | undefined {
     // Return undefined if symbolIndex is not available
-    if (!this.symbolIndex) {
+    if (!symbolIndex) {
       return undefined;
     }
 
     // Look up the referenced symbol by name and file
-    const matchingSymbols = this.symbolIndex.query({
+    const matchingSymbols = symbolIndex.query({
       name: ref.name,
       filePath: ref.from,
     });

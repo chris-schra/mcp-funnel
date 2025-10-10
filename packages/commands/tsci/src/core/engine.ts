@@ -129,8 +129,12 @@ export class TypeDocEngine {
         return null;
       }
 
-      // Create program with entry points if specified
-      const rootNames = this.options.entryPoints || parsedConfig.fileNames;
+      // Create program with ALL files from tsconfig (not just targeted entryPoints)
+      // This is crucial for enhancement: we need the full program to find references
+      // across the entire codebase, not just within the targeted file.
+      // TypeDoc uses this.options.entryPoints for efficient symbol collection,
+      // but the TypeScript program needs all files to support ReferenceEnhancer.
+      const rootNames = parsedConfig.fileNames;
 
       return ts.createProgram({
         rootNames,
