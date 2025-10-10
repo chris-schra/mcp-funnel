@@ -32,6 +32,7 @@
 import { stringify as yamlStringify } from 'yaml';
 import type { SymbolMetadata, SymbolUsage, ExternalReference } from '../types/symbols.js';
 import type { SymbolIndex } from '../core/symbolIndex.js';
+import { createPathMapping } from './pathMapper.js';
 
 /**
  * YAML usage data structure
@@ -165,53 +166,71 @@ export class YAMLDescribeSymbolFormatter {
       line: symbol.line,
     };
 
-    // Add summary if available and requested
     if (includeSummary && symbol.summary) {
       yamlSymbol.summary = symbol.summary;
     }
 
-    // Add usages if requested
+    const pathMapping = this.collectPathsForMapping(symbol, includeUsages, includeReferences);
+
     if (includeUsages && symbol.usages && symbol.usages.length > 0) {
-      yamlSymbol.usages = this.formatUsages(symbol.usages);
+      yamlSymbol.usages = this.formatUsages(symbol.usages, pathMapping);
     }
 
-    // Add members if requested and symbol has children
     if (includeMembers && symbol.childrenIds && symbol.childrenIds.length > 0) {
-      // Note: Members formatting would require access to child symbols
-      // For now, we'll skip this as it requires additional context
-      // This is a SEAM for future enhancement
       yamlSymbol.members = this.formatMembers(symbol, symbolIndex);
     }
 
-    // Add references if requested
     if (includeReferences && symbol.references && symbol.references.length > 0) {
-      yamlSymbol.references = this.formatReferences(symbol.references, symbolIndex);
+      yamlSymbol.references = this.formatReferences(symbol.references, symbolIndex, pathMapping);
     }
 
     return yamlSymbol;
   }
 
   /**
+   * Collect all paths from symbol and create path mapping
+   *
+   * @param symbol - Symbol metadata
+   * @param includeUsages - Whether usages are included
+   * @param includeReferences - Whether references are included
+   * @returns Path mapping from absolute to relative paths
+   */
+  private collectPathsForMapping(
+    symbol: SymbolMetadata,
+    includeUsages: boolean,
+    includeReferences: boolean,
+  ): Map<string, string> {
+    const allPaths: string[] = [];
+
+    if (symbol.filePath) {
+      allPaths.push(symbol.filePath);
+    }
+    if (includeUsages && symbol.usages) {
+      allPaths.push(...symbol.usages.map((u) => u.file));
+    }
+    if (includeReferences && symbol.references) {
+      allPaths.push(...symbol.references.map((r) => r.from));
+    }
+
+    return createPathMapping(allPaths);
+  }
+
+  /**
    * Format usage locations into YAML structure
    *
-   * Groups usage lines by file and formats as "[8,14,23]"
-   * Only includes `kind: import` when usage is an import
-   *
    * @param usages - Array of symbol usages
-   * @returns Array of YAML usage objects
+   * @param pathMapping - Map from absolute to relative paths
+   * @returns Array of YAML usage objects with lines as "[8,14,23]"
    */
-  private formatUsages(usages: SymbolUsage[]): YAMLUsage[] {
+  private formatUsages(usages: SymbolUsage[], pathMapping: Map<string, string>): YAMLUsage[] {
     return usages.map((usage) => {
       const yamlUsage: YAMLUsage = {
-        file: usage.file, // Already absolute path from SymbolUsage
+        file: pathMapping.get(usage.file) || usage.file,
         lines: this.formatLineArray(usage.lines),
       };
-
-      // Only include kind field when it's an import
       if (usage.kind === 'import') {
         yamlUsage.kind = 'import';
       }
-
       return yamlUsage;
     });
   }
@@ -219,30 +238,26 @@ export class YAMLDescribeSymbolFormatter {
   /**
    * Format external references into compact string format
    *
-   * Format: `"\{kind\} \{name\} from \{file\}:L\{line\} module \{module\} ⟶ \{preview\}"`
-   * - If no preview: `"\{kind\} \{name\} from \{file\}:L\{line\} module \{module\}"`
-   * - If no module: `"\{kind\} \{name\} from \{file\}:L\{line\}"`
-   *
    * @param references - Array of external references
-   * @param symbolIndex - Symbol index for looking up referenced symbols (optional)
-   * @returns Array of compact reference strings
+   * @param symbolIndex - Symbol index for preview lookups (optional)
+   * @param pathMapping - Map from absolute to relative paths
+   * @returns Strings like "\{kind\} \{name\} from \{file\}:L\{line\} module \{module\} ⟶ \{preview\}"
    */
-  private formatReferences(references: ExternalReference[], symbolIndex?: SymbolIndex): string[] {
+  private formatReferences(
+    references: ExternalReference[],
+    symbolIndex?: SymbolIndex,
+    pathMapping?: Map<string, string>,
+  ): string[] {
     return references.map((ref) => {
-      // Start with base format: "{kind} {name} from {file}:L{line}"
-      let str = `${ref.kind} ${ref.name} from ${ref.from}:L${ref.line}`;
-
-      // Add module if present
+      const filePath = pathMapping?.get(ref.from) || ref.from;
+      let str = `${ref.kind} ${ref.name} from ${filePath}:L${ref.line}`;
       if (ref.module) {
         str += ` module ${ref.module}`;
       }
-
-      // Add preview if available (either from ref or generated)
       const preview = ref.preview || this.generateTypePreview(ref, symbolIndex);
       if (preview) {
-        str += ` ${preview}`; // Preview already includes ⟶ notation
+        str += ` ${preview}`;
       }
-
       return str;
     });
   }
@@ -250,18 +265,14 @@ export class YAMLDescribeSymbolFormatter {
   /**
    * Format members for a symbol
    *
-   * Looks up child symbols from symbolIndex and formats them as strings.
-   * Returns undefined if symbolIndex is not available or symbol has no children.
-   *
-   * @param symbol - Symbol metadata
-   * @param symbolIndex - Symbol index for looking up child symbols (optional)
-   * @returns Array of member strings or undefined
+   * @param symbol - Symbol metadata with childrenIds
+   * @param symbolIndex - Symbol index for child lookups (optional)
+   * @returns Member strings like "methodName(...): ReturnType #L123" or undefined
    */
   private formatMembers(symbol: SymbolMetadata, symbolIndex?: SymbolIndex): string[] | undefined {
     if (!symbolIndex || !symbol.childrenIds || symbol.childrenIds.length === 0) {
       return undefined;
     }
-
     const members: string[] = [];
     for (const childId of symbol.childrenIds) {
       const childSymbol = symbolIndex.getById(childId);
@@ -272,88 +283,62 @@ export class YAMLDescribeSymbolFormatter {
         }
       }
     }
-
     return members.length > 0 ? members : undefined;
   }
 
   /**
    * Format a single member symbol
    *
-   * Uses the symbol's signature if available, otherwise formats from metadata.
-   * Appends line number reference in #L<line> format.
-   *
    * @param symbol - Child symbol metadata
-   * @returns Formatted member string (e.g., "expand(type: Type): TypeExpansionResult #L155")
+   * @returns String like "methodName(...): ReturnType #L123"
    */
   private formatMember(symbol: SymbolMetadata): string {
     const line = symbol.line || 0;
-    // Use signature if available, otherwise format from metadata
     const signature = symbol.signature || `${symbol.name}`;
     return `${signature} #L${line}`;
   }
 
   /**
-   * Format array of line numbers as string "[8,14,23]"
+   * Format line numbers as "[8,14,23]"
    *
    * @param lines - Array of line numbers
-   * @returns Formatted line array string
+   * @returns Formatted string
    */
   private formatLineArray(lines: number[]): string {
     return `[${lines.join(',')}]`;
   }
 
   /**
-   * Generate type preview for an external reference
+   * Generate type preview for external reference by looking up in symbolIndex
    *
-   * Looks up the referenced symbol via symbolIndex and returns its signature.
-   * Format: "TypeName ⟶ signature"
-   *
-   * Returns undefined if:
-   * - symbolIndex is not available
-   * - referenced symbol is not found
-   * - symbol has no signature
-   *
-   * Note: This infrastructure is ready for when references are populated.
-   * In production, references may not yet be collected, so previews will be omitted.
-   *
-   * @param ref - External reference
-   * @param symbolIndex - Symbol index for looking up referenced symbols (optional)
-   * @returns Preview string or undefined
+   * @param ref - External reference to look up
+   * @param symbolIndex - Symbol index for lookups (optional)
+   * @returns Preview string "⟶ signature" or undefined if not found
    */
   private generateTypePreview(
     ref: ExternalReference,
     symbolIndex?: SymbolIndex,
   ): string | undefined {
-    // Return undefined if symbolIndex is not available
     if (!symbolIndex) {
       return undefined;
     }
-
-    // Look up the referenced symbol by name and file
     const matchingSymbols = symbolIndex.query({
       name: ref.name,
       filePath: ref.from,
     });
-
-    // If no matching symbol found or multiple ambiguous matches, return undefined
     if (matchingSymbols.length !== 1) {
       return undefined;
     }
-
     const referencedSymbol = matchingSymbols[0];
-
-    // Return undefined if symbol has no signature
     if (!referencedSymbol.signature) {
       return undefined;
     }
-
-    // Format as "TypeName ⟶ signature"
-    return `${ref.name} ⟶ ${referencedSymbol.signature}`;
+    return `⟶ ${referencedSymbol.signature}`;
   }
 }
 
 /**
- * Create a YAML symbol formatter instance
+ * Create YAML formatter instance
  *
  * @param options - Formatter options
  * @returns YAMLDescribeSymbolFormatter instance
@@ -365,7 +350,7 @@ export function createYAMLDescribeSymbolFormatter(
 }
 
 /**
- * Format symbol metadata as YAML (convenience function)
+ * Format symbol as YAML (convenience function)
  *
  * @param symbol - Symbol metadata to format
  * @param options - Formatting options

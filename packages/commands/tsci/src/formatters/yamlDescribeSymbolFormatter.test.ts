@@ -53,6 +53,9 @@ describe('YAMLDescribeSymbolFormatter', () => {
     expect(yaml).toContain('usages:');
     expect(yaml).toContain('lines: "[15,20,25]"');
     expect(yaml).toContain('lines: "[5]"');
+    // Paths are relative after stripping common base
+    expect(yaml).toContain('usage1.ts');
+    expect(yaml).toContain('usage2.ts');
     // kind field only appears for imports
     expect(yaml.split('usage1.ts')[1].split('usage2.ts')[0]).not.toContain('kind:');
     expect(yaml.split('usage2.ts')[1]).toContain('kind: "import"');
@@ -90,12 +93,10 @@ describe('YAMLDescribeSymbolFormatter', () => {
     const yaml = formatter.format(symbol);
 
     expect(yaml).toContain('references:');
-    // Check for compact format: "{kind} {name} from {file}:L{line} module {module}"
+    // Check for compact format with relative paths: "{kind} {name} from {file}:L{line} module {module}"
+    expect(yaml).toContain('class BaseClass from baseClass.ts:L10 module ./base/BaseClass.js');
     expect(yaml).toContain(
-      'class BaseClass from /path/to/baseClass.ts:L10 module ./base/BaseClass.js',
-    );
-    expect(yaml).toContain(
-      'interface IInterface from /path/to/interface.ts:L5 module ./interfaces/IInterface.js',
+      'interface IInterface from interface.ts:L5 module ./interfaces/IInterface.js',
     );
   });
 
@@ -368,7 +369,7 @@ describe('YAMLDescribeSymbolFormatter', () => {
           from: '/path/to/types.ts',
           line: 44,
           module: './module.js',
-          preview: 'ExpansionResult ⟶ { expanded: string; truncated: boolean; ... }',
+          preview: '⟶ { expanded: string; truncated: boolean; ... }',
         },
         {
           name: 'LocalType',
@@ -384,10 +385,11 @@ describe('YAMLDescribeSymbolFormatter', () => {
     const yaml = formatter.format(withPreview);
 
     expect(yaml).toContain('references:');
+    // Preview no longer includes redundant type name, and paths are relative
     expect(yaml).toContain(
-      'interface ExpansionResult from /path/to/types.ts:L44 module ./module.js ExpansionResult ⟶ { expanded: string; truncated: boolean; ... }',
+      'interface ExpansionResult from types.ts:L44 module ./module.js ⟶ { expanded: string; truncated: boolean; ... }',
     );
-    expect(yaml).toContain('type LocalType from /path/to/localTypes.ts:L15');
+    expect(yaml).toContain('type LocalType from localTypes.ts:L15');
     expect(yaml).not.toContain('module ""');
   });
 });
