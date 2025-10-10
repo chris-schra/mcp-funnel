@@ -39,6 +39,9 @@ export function generateSignature(reflection: DeclarationReflection): string {
     case ReflectionKind.Method:
       return generateMethodSignature(reflection);
 
+    case ReflectionKind.Constructor:
+      return generateConstructorSignature(reflection);
+
     case ReflectionKind.Property:
       return generatePropertySignature(reflection);
 
@@ -206,12 +209,51 @@ function generateNamespaceSignature(reflection: DeclarationReflection): string {
 
 /**
  * Generate signature for a method
- * Example: "(x: number) =\> string"
+ * Example: "expand(type: Type): TypeExpansionResult"
  *
  * @param reflection - Method reflection
  * @returns Method signature string
  */
 function generateMethodSignature(reflection: DeclarationReflection): string {
+  if (reflection.signatures && reflection.signatures.length > 0) {
+    const sig: SignatureReflection = reflection.signatures[0];
+
+    let signature = reflection.name;
+
+    // Add type parameters if present
+    if (sig.typeParameters && sig.typeParameters.length > 0) {
+      const params = sig.typeParameters.map((tp) => tp.name).join(', ');
+      signature += `<${params}>`;
+    }
+
+    // Build parameter list
+    const params = sig.parameters
+      ?.map(
+        (p: ParameterReflection) =>
+          `${p.name}${p.flags?.isOptional ? '?' : ''}: ${p.type?.toString() || 'any'}`,
+      )
+      .join(', ');
+
+    signature += `(${params || ''})`;
+
+    // Build return type
+    const returnType = sig.type?.toString() || 'void';
+    signature += `: ${returnType}`;
+
+    return signature;
+  }
+
+  return reflection.type?.toString() || '';
+}
+
+/**
+ * Generate signature for a constructor
+ * Example: "constructor(config: TypeExpanderConfig)"
+ *
+ * @param reflection - Constructor reflection
+ * @returns Constructor signature string
+ */
+function generateConstructorSignature(reflection: DeclarationReflection): string {
   if (reflection.signatures && reflection.signatures.length > 0) {
     const sig: SignatureReflection = reflection.signatures[0];
 
@@ -223,13 +265,10 @@ function generateMethodSignature(reflection: DeclarationReflection): string {
       )
       .join(', ');
 
-    // Build return type
-    const returnType = sig.type?.toString() || 'void';
-
-    return `(${params || ''}) => ${returnType}`;
+    return `constructor(${params || ''})`;
   }
 
-  return reflection.type?.toString() || '';
+  return 'constructor()';
 }
 
 /**
