@@ -278,7 +278,13 @@ export class ReferenceEnhancer implements ISymbolEnhancer {
 
       // Classify reference type
       const isImport = referenceType === 'import' || referenceType === 'export';
-      const isActualUsage = referenceType === 'usage';
+      // FIX: Include type-reference, extends, and implements as actual usages
+      // These are all legitimate uses of the symbol, not just imports
+      const isActualUsage =
+        referenceType === 'usage' ||
+        referenceType === 'type-reference' ||
+        referenceType === 'extends' ||
+        referenceType === 'implements';
 
       // Group imports separately
       if (isImport) {
