@@ -53,6 +53,26 @@ export class TypePreviewGenerator {
   }
 
   /**
+   * Normalize whitespace in type strings
+   *
+   * Removes newlines and excessive whitespace while preserving type syntax.
+   * Converts multi-line formatted types to single-line compact representation.
+   *
+   * @param str - Type string to normalize
+   * @returns Normalized type string with single spaces between tokens
+   */
+  private normalizeWhitespace(str: string): string {
+    return str
+      .replace(/\s+/g, ' ') // Replace all whitespace (including newlines) with single space
+      .replace(/\s*([,;:])\s*/g, '$1 ') // Add space after commas, semicolons, colons
+      .replace(/\s*([(){}[\]<>])\s*/g, '$1') // Remove all spaces around brackets/parens
+      .replace(/([,;:])\s+([(){}[\]<>])/g, '$1$2') // Remove space between punctuation and brackets
+      .replace(/=>/g, ' => ') // Ensure spaces around arrow operator
+      .replace(/\s+/g, ' ') // Clean up any double spaces
+      .trim();
+  }
+
+  /**
    * Generate preview for interface declarations
    *
    * @param declaration - Interface declaration node
@@ -79,7 +99,7 @@ export class TypePreviewGenerator {
 
         let typeStr = 'unknown';
         if (member.type) {
-          typeStr = member.type.getText();
+          typeStr = this.normalizeWhitespace(member.type.getText());
         }
 
         props.push(`${readonly}${propName}${optional}: ${typeStr}`);
@@ -117,7 +137,7 @@ export class TypePreviewGenerator {
 
         let typeStr = 'unknown';
         if (prop.type) {
-          typeStr = prop.type.getText();
+          typeStr = this.normalizeWhitespace(prop.type.getText());
         }
 
         parts.push(`${propName}${optional}: ${typeStr}`);
@@ -132,7 +152,7 @@ export class TypePreviewGenerator {
       const params = constructor.parameters
         .map((p) => {
           const paramName = p.name.getText();
-          const paramType = p.type ? p.type.getText() : 'unknown';
+          const paramType = p.type ? this.normalizeWhitespace(p.type.getText()) : 'unknown';
           return `${paramName}: ${paramType}`;
         })
         .join(', ');
@@ -176,7 +196,7 @@ export class TypePreviewGenerator {
 
           let typeStr = 'unknown';
           if (member.type) {
-            typeStr = member.type.getText();
+            typeStr = this.normalizeWhitespace(member.type.getText());
           }
 
           props.push(`${propName}${optional}: ${typeStr}`);
@@ -189,7 +209,7 @@ export class TypePreviewGenerator {
     }
 
     // For other types, use the type text directly
-    return declaration.type.getText();
+    return this.normalizeWhitespace(declaration.type.getText());
   }
 
   /**
