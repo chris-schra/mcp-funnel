@@ -43,18 +43,6 @@ interface YAMLUsage {
 }
 
 /**
- * YAML reference data structure
- */
-interface YAMLReference {
-  name: string;
-  kind: string;
-  from: string; // absolute path
-  line?: number;
-  module?: string;
-  preview?: string;
-}
-
-/**
  * YAML symbol detail structure
  */
 interface YAMLSymbolDetail {
@@ -64,7 +52,11 @@ interface YAMLSymbolDetail {
   summary?: string;
   usages?: YAMLUsage[];
   members?: string[];
-  references?: YAMLReference[];
+  /**
+   * Compact reference format:
+   * `"\{kind\} \{name\} from \{file\}:L\{line\} module \{module\} ⟶ \{preview\}"`
+   */
+  references?: string[];
 }
 
 /**
@@ -225,36 +217,33 @@ export class YAMLDescribeSymbolFormatter {
   }
 
   /**
-   * Format external references into YAML structure
+   * Format external references into compact string format
+   *
+   * Format: `"\{kind\} \{name\} from \{file\}:L\{line\} module \{module\} ⟶ \{preview\}"`
+   * - If no preview: `"\{kind\} \{name\} from \{file\}:L\{line\} module \{module\}"`
+   * - If no module: `"\{kind\} \{name\} from \{file\}:L\{line\}"`
    *
    * @param references - Array of external references
    * @param symbolIndex - Symbol index for looking up referenced symbols (optional)
-   * @returns Array of YAML reference objects
+   * @returns Array of compact reference strings
    */
-  private formatReferences(
-    references: ExternalReference[],
-    symbolIndex?: SymbolIndex,
-  ): YAMLReference[] {
+  private formatReferences(references: ExternalReference[], symbolIndex?: SymbolIndex): string[] {
     return references.map((ref) => {
-      const yamlRef: YAMLReference = {
-        name: ref.name,
-        kind: ref.kind,
-        from: ref.from, // Already absolute path from ExternalReference
-        line: ref.line,
-        module: ref.module,
-      };
+      // Start with base format: "{kind} {name} from {file}:L{line}"
+      let str = `${ref.kind} ${ref.name} from ${ref.from}:L${ref.line}`;
 
-      // Add preview if available from ExternalReference or generate one
-      if (ref.preview) {
-        yamlRef.preview = ref.preview;
-      } else {
-        const preview = this.generateTypePreview(ref, symbolIndex);
-        if (preview) {
-          yamlRef.preview = preview;
-        }
+      // Add module if present
+      if (ref.module) {
+        str += ` module ${ref.module}`;
       }
 
-      return yamlRef;
+      // Add preview if available (either from ref or generated)
+      const preview = ref.preview || this.generateTypePreview(ref, symbolIndex);
+      if (preview) {
+        str += ` ${preview}`; // Preview already includes ⟶ notation
+      }
+
+      return str;
     });
   }
 
