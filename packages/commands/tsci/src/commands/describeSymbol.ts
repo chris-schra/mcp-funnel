@@ -11,6 +11,7 @@ import { createErrorResponse, createTextResponse } from '../util/responses.js';
 import type { DescribeSymbolArgs, CommandContext } from './types.js';
 import { EnhancementPipeline } from '../enhancers/enhancementPipeline.js';
 import { ReferenceEnhancer } from '../enhancers/referenceEnhancer.js';
+import { TypeDependencyEnhancer } from '../enhancers/typeDependencyEnhancer.js';
 
 /**
  * Handles describe_symbol tool execution.
@@ -51,7 +52,12 @@ export async function describeSymbol(
   );
 
   if (enhancementContext) {
-    const pipeline = new EnhancementPipeline([new ReferenceEnhancer()]);
+    // Run enhancers in parallel:
+    // - ReferenceEnhancer: Populates usages (where symbol is used)
+    // - TypeDependencyEnhancer: Populates references (types the symbol depends on)
+    const pipeline = new EnhancementPipeline([
+      [new ReferenceEnhancer(), new TypeDependencyEnhancer()],
+    ]);
 
     const result = await pipeline.enhance([symbol], enhancementContext);
 

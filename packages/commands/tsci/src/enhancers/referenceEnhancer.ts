@@ -5,7 +5,7 @@
 
 import * as ts from 'typescript';
 import type { ISymbolEnhancer, EnhancementContext } from './ISymbolEnhancer.js';
-import type { SymbolMetadata, SymbolUsage, ExternalReference } from '../types/index.js';
+import type { SymbolMetadata, SymbolUsage } from '../types/index.js';
 import {
   getReferenceType,
   isPartOfDeclaration,
@@ -28,7 +28,9 @@ interface ReferenceInfo {
 
 /**
  * Enhancer that finds and classifies all references to symbols
- * Populates usages (runtime usage) and references (type references) fields
+ * Populates usages (runtime usage) field
+ *
+ * Note: Type dependencies are handled by TypeDependencyEnhancer
  */
 export class ReferenceEnhancer implements ISymbolEnhancer {
   public readonly name = 'ReferenceEnhancer';
@@ -255,71 +257,70 @@ export class ReferenceEnhancer implements ISymbolEnhancer {
   }
 
   /**
-   * Populate usages and references fields in SymbolMetadata
-   * Classifies references into:
-   * - usages: Runtime usages (function calls, property access)
-   * - references: Type references from other files
+   * Populate usages field in SymbolMetadata
+   * Tracks where the symbol is used (runtime usage and imports)
+   *
+   * Note: Type dependencies (what types the symbol USES) are handled by
+   * TypeDependencyEnhancer, which populates the `references` field.
+   *
+   * Imports and actual usages from the same file are stored as separate entries.
    *
    * @param symbol - Symbol to populate
    * @param references - All references found
    */
   private populateReferences(symbol: SymbolMetadata, references: ReferenceInfo[]): void {
-    // Group references by file for usages
+    // Separate maps for imports and actual usages (matching PoC behavior)
+    const importsByFile = new Map<string, Set<number>>();
     const usagesByFile = new Map<string, Set<number>>();
-    const externalReferences: ExternalReference[] = [];
 
     for (const ref of references) {
       const { fileName, line, referenceType } = ref;
 
-      // Determine if this is an actual usage or just a type reference
+      // Classify reference type
+      const isImport = referenceType === 'import' || referenceType === 'export';
       const isActualUsage = referenceType === 'usage';
-      const isTypeReference =
-        referenceType === 'type-reference' ||
-        referenceType === 'extends' ||
-        referenceType === 'implements';
 
-      // Populate usages (runtime usage + imports)
-      if (isActualUsage || referenceType === 'import') {
+      // Group imports separately
+      if (isImport) {
+        if (!importsByFile.has(fileName)) {
+          importsByFile.set(fileName, new Set());
+        }
+        importsByFile.get(fileName)!.add(line);
+      }
+
+      // Group actual usages separately
+      if (isActualUsage) {
         if (!usagesByFile.has(fileName)) {
           usagesByFile.set(fileName, new Set());
         }
         usagesByFile.get(fileName)!.add(line);
-
-        // We'll consolidate these into SymbolUsage objects below
-      }
-
-      // Populate references (type references from other files only)
-      if (isTypeReference && fileName !== symbol.filePath) {
-        externalReferences.push({
-          name: ref.text,
-          kind: referenceType,
-          from: fileName,
-          line,
-          module: this.getModuleFromPath(fileName),
-        });
       }
     }
 
-    // Convert usages map to SymbolUsage array
+    // Convert maps to SymbolUsage array
     const usages: SymbolUsage[] = [];
-    for (const [file, lines] of usagesByFile) {
-      // Determine kind: if all lines are imports, it's import; otherwise usage
-      const allRefsInFile = references.filter((r) => r.fileName === file);
-      const isImportOnly = allRefsInFile.every((r) => r.referenceType === 'import');
 
+    // Add import entries
+    for (const [file, lines] of importsByFile) {
       usages.push({
         file,
         lines: Array.from(lines).sort((a, b) => a - b),
-        kind: isImportOnly ? 'import' : 'usage',
+        kind: 'import',
       });
     }
 
-    // Populate symbol fields (only if non-empty)
+    // Add actual usage entries
+    for (const [file, lines] of usagesByFile) {
+      usages.push({
+        file,
+        lines: Array.from(lines).sort((a, b) => a - b),
+        kind: 'usage',
+      });
+    }
+
+    // Populate symbol usages field (only if non-empty)
     if (usages.length > 0) {
       symbol.usages = usages;
-    }
-    if (externalReferences.length > 0) {
-      symbol.references = externalReferences;
     }
   }
 
