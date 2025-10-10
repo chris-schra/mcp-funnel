@@ -268,7 +268,7 @@ export class TypeDependencyEnhancer implements ISymbolEnhancer {
         from: declFilePath,
         line: line + 1, // Convert to 1-based
         module,
-        preview: preview ? `${typeName} ⟶ ${preview}` : undefined,
+        preview: preview ? `⟶ ${preview}` : undefined,
       });
     }
   }
