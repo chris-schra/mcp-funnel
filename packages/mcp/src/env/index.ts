@@ -1,6 +1,7 @@
 import { dirname } from 'path';
 
 import {
+  EnvVarPatternResolver,
   filterEnvVars,
   getDefaultPassthroughEnv,
   resolveSecretsFromConfig,
@@ -84,8 +85,19 @@ export class DefaultServerEnvBuilder implements IServerEnvBuilder {
     }
 
     // 4. Apply server-specific env (highest priority)
+    // Resolve ${VAR} patterns so server.env can reference secrets and filtered process.env
     if (targetServer.env) {
-      finalEnv = { ...finalEnv, ...targetServer.env };
+      const resolvedServerEnv: Record<string, string> = {};
+      for (const [key, value] of Object.entries(targetServer.env)) {
+        if (typeof value === 'string') {
+          resolvedServerEnv[key] = EnvVarPatternResolver.containsPattern(value)
+            ? EnvVarPatternResolver.resolvePattern(value, { envSource: finalEnv })
+            : value;
+        } else {
+          resolvedServerEnv[key] = value;
+        }
+      }
+      finalEnv = { ...finalEnv, ...resolvedServerEnv };
     }
 
     return finalEnv;
