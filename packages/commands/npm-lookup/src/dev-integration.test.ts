@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MCPProxy, type ProxyConfig } from 'mcp-funnel';
+import { MCPProxy } from 'mcp-funnel';
 import { NPMCommand } from './command.js';
 import type { NPMClient } from './npm-client.js';
+import { z } from 'zod';
+import { ProxyConfigSchema } from '@mcp-funnel/schemas';
+
+type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
 
 // Mock NPMClient to avoid real network calls
 vi.mock('./npm-client.js', () => {
@@ -9,8 +13,7 @@ vi.mock('./npm-client.js', () => {
     getPackage: vi.fn().mockResolvedValue({
       name: 'react',
       version: '18.2.0',
-      description:
-        'React is a JavaScript library for building user interfaces.',
+      description: 'React is a JavaScript library for building user interfaces.',
       author: 'Meta Platforms, Inc.',
       license: 'MIT',
       homepage: 'https://reactjs.org',
@@ -29,8 +32,7 @@ vi.mock('./npm-client.js', () => {
         {
           name: 'react',
           version: '18.2.0',
-          description:
-            'React is a JavaScript library for building user interfaces.',
+          description: 'React is a JavaScript library for building user interfaces.',
           author: 'Meta Platforms, Inc.',
           keywords: ['react', 'javascript'],
           date: '2022-06-14T20:00:00.000Z',
@@ -57,8 +59,7 @@ describe('Command Integration', () => {
         getPackage: vi.fn().mockResolvedValue({
           name: 'react',
           version: '18.2.0',
-          description:
-            'React is a JavaScript library for building user interfaces.',
+          description: 'React is a JavaScript library for building user interfaces.',
           author: 'Meta Platforms, Inc.',
           license: 'MIT',
           homepage: 'https://reactjs.org',
@@ -77,8 +78,7 @@ describe('Command Integration', () => {
             {
               name: 'react',
               version: '18.2.0',
-              description:
-                'React is a JavaScript library for building user interfaces.',
+              description: 'React is a JavaScript library for building user interfaces.',
               author: 'Meta Platforms, Inc.',
               keywords: ['react', 'javascript'],
               date: '2022-06-14T20:00:00.000Z',
@@ -96,7 +96,7 @@ describe('Command Integration', () => {
         commands: { enabled: true, list: ['npm'] },
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Check that command tools are in the tool definition cache
@@ -112,9 +112,7 @@ describe('Command Integration', () => {
       expect(lookupTool).toBeDefined();
       expect(lookupTool!.serverName).toBe('commands');
       expect(lookupTool!.tool.name).toBe('npm_lookup');
-      expect(lookupTool!.tool.description).toBe(
-        'Get detailed information about an NPM package',
-      );
+      expect(lookupTool!.tool.description).toBe('Get detailed information about an NPM package');
 
       expect(searchTool).toBeDefined();
       expect(searchTool!.serverName).toBe('commands');
@@ -206,7 +204,7 @@ describe('Command Integration', () => {
         exposeTools: ['npm_lookup'], // Only expose lookup tool
       };
 
-      const proxyWithExpose = new MCPProxy(_configWithExpose);
+      const proxyWithExpose = new MCPProxy(_configWithExpose, './test-config.json');
       await proxyWithExpose.initialize();
 
       // Check tool definition cache - both should be registered for discovery
@@ -221,7 +219,7 @@ describe('Command Integration', () => {
         hideTools: ['npm_search'], // Hide search tool
       };
 
-      const proxyWithHide = new MCPProxy(_configWithHide);
+      const proxyWithHide = new MCPProxy(_configWithHide, './test-config.json');
       await proxyWithHide.initialize();
 
       // Check tool definition cache - hidden tools should NOT be in cache (firewall behavior)
@@ -236,7 +234,7 @@ describe('Command Integration', () => {
         commands: { enabled: false }, // Commands disabled
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Check that no command tools are registered
@@ -251,7 +249,7 @@ describe('Command Integration', () => {
         commands: { enabled: true, list: ['other-command'] }, // Not including 'npm'
       };
 
-      const proxy = new MCPProxy(config);
+      const proxy = new MCPProxy(config, './test-config.json');
       await proxy.initialize();
 
       // Check that npm tools are not registered when npm is not in the list
@@ -280,9 +278,7 @@ describe('Command Integration', () => {
       });
 
       expect(lookupResult.isError).toBe(true);
-      expect(lookupResult.content[0].text).toContain(
-        'Unexpected error: Network error',
-      );
+      expect(lookupResult.content[0].text).toContain('Unexpected error: Network error');
 
       // Test error handling for search
       const searchResult = await npmCommand.executeToolViaMCP('search', {
@@ -290,9 +286,7 @@ describe('Command Integration', () => {
       });
 
       expect(searchResult.isError).toBe(true);
-      expect(searchResult.content[0].text).toContain(
-        'Unexpected error: Search failed',
-      );
+      expect(searchResult.content[0].text).toContain('Unexpected error: Search failed');
     });
 
     it('should validate tool parameters correctly', async () => {
@@ -301,39 +295,27 @@ describe('Command Integration', () => {
       // Test missing required parameter for lookup
       const lookupResult = await npmCommand.executeToolViaMCP('lookup', {});
       expect(lookupResult.isError).toBe(true);
-      expect(lookupResult.content[0].text).toBe(
-        'Error: packageName parameter must be a string',
-      );
+      expect(lookupResult.content[0].text).toBe('Error: packageName parameter must be a string');
 
       // Test missing required parameter for search
       const searchResult = await npmCommand.executeToolViaMCP('search', {});
       expect(searchResult.isError).toBe(true);
-      expect(searchResult.content[0].text).toBe(
-        'Error: query parameter must be a string',
-      );
+      expect(searchResult.content[0].text).toBe('Error: query parameter must be a string');
 
       // Test invalid limit parameter for search
-      const searchWithInvalidLimit = await npmCommand.executeToolViaMCP(
-        'search',
-        {
-          query: 'react',
-          limit: 100, // Exceeds max limit
-        },
-      );
+      const searchWithInvalidLimit = await npmCommand.executeToolViaMCP('search', {
+        query: 'react',
+        limit: 100, // Exceeds max limit
+      });
       expect(searchWithInvalidLimit.isError).toBe(true);
       expect(searchWithInvalidLimit.content[0].text).toBe(
         'Error: limit must be a number between 1 and 50',
       );
 
       // Test unknown tool
-      const unknownToolResult = await npmCommand.executeToolViaMCP(
-        'unknown',
-        {},
-      );
+      const unknownToolResult = await npmCommand.executeToolViaMCP('unknown', {});
       expect(unknownToolResult.isError).toBe(true);
-      expect(unknownToolResult.content[0].text).toBe(
-        'Error: Unknown tool: unknown',
-      );
+      expect(unknownToolResult.content[0].text).toBe('Error: Unknown tool: unknown');
     });
   });
 });

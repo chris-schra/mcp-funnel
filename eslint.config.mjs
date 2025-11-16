@@ -2,12 +2,88 @@
 
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
+import {jsdoc} from 'eslint-plugin-jsdoc';
+import tsdoc from "eslint-plugin-tsdoc";
+import noComplexInlineReturnType from './tools/eslint-rules/no-complex-inline-return-type.js';
 
 export default tseslint.config(
   eslint.configs.recommended,
   tseslint.configs.recommended,
+  jsdoc({
+    config: 'flat/requirements-typescript',
+  }),
   {
-    ignores: ['**/generated/*', '**/dist/*', '**/build/*', '**/coverage/*'],
+    ignores: [
+      '**/generated/*',
+      '**/dist/*',
+      '**/build/*',
+      '**/coverage/*',
+      'docs/**/*',
+      '**/.react-router/**',
+      '**/fixtures/**',
+    ],
+  },
+  {
+    plugins : {
+      "tsdoc": tsdoc,
+      "custom": {
+        rules: {
+          "no-complex-inline-return-type": noComplexInlineReturnType
+        }
+      }
+    },
+    files: ['**/*.{ts,tsx}'],
+    extends: [importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript],
+    rules: {
+      "tsdoc/syntax": "warn",
+      'import/no-unresolved': 'off',
+      'jsdoc/require-example': 'off',
+      'jsdoc/require-throws-type': 'off',
+      'jsdoc/require-param': ['warn', { checkDestructured: false }],
+      'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
+      '@typescript-eslint/explicit-member-accessibility': 'warn',
+      "complexity": ["warn", { "max": 15 }],
+      "max-lines-per-function": ["warn", {
+        max: 80,
+        skipBlankLines: true,
+        skipComments: true
+      }],
+      "@typescript-eslint/prefer-as-const": "error",
+      "@typescript-eslint/ban-ts-comment": [
+        "error",
+        {
+          "ts-expect-error": "allow-with-description",
+          "minimumDescriptionLength": 10
+        }
+      ],
+      "custom/no-complex-inline-return-type": ["error", { "maxProperties": 1 }]
+
+    },
+    "settings": {
+      "import/resolver": {
+        "node": {
+          "extensions": [
+            ".js",
+            ".jsx"
+          ]
+        }
+      }
+    }
+  },
+  {
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/test/**/*.ts',
+      '**/test-*.ts',
+      '**/__tests__/**/*.ts',
+    ],
+    rules: {
+      '@typescript-eslint/explicit-member-accessibility': 'off',
+      'jsdoc/require-yields': 'off',
+      "complexity": 'off',
+      "max-lines-per-function": 'off'
+    },
   },
   {
     rules: {
@@ -83,6 +159,39 @@ export default tseslint.config(
     rules: {
       // Allow console in fixtures if used for test signaling
       'no-console': 'off',
+    },
+  },
+  {
+    files: ['packages/commands/js-debugger/test/fixtures/browser/**/*.js'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-debugger': 'off',
+    },
+  },
+  {
+    files: ['packages/commands/js-debugger/test/fixtures/node/**/*.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-debugger': 'off',
     },
   },
 );

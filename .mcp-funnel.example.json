@@ -3,14 +3,7 @@
     {
       "name": "github",
       "command": "docker",
-      "args": [
-        "run",
-        "--env-file",
-        ".env",
-        "-i",
-        "--rm",
-        "ghcr.io/github/github-mcp-server"
-      ],
+      "args": ["run", "--env-file", ".env", "-i", "--rm", "ghcr.io/github/github-mcp-server"],
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
@@ -26,21 +19,12 @@
     {
       "name": "filesystem",
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/path/to/allowed/directory"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/directory"]
     },
     {
       "name": "context7",
       "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp",
-        "--api-key",
-        "${CONTEXT7_API_KEY}"
-      ]
+      "args": ["-y", "@upstash/context7-mcp", "--api-key", "${CONTEXT7_API_KEY}"]
     },
     {
       "name": "code-reasoning",

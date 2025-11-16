@@ -39,41 +39,11 @@ npx mcp-funnel run validate --help
 yarn validate:new packages/commands
 ```
 
-### Try it via MCP (with Claude)
+### Usage in Claude Code, Codex CLI, Gemini CLI
 
-1. **Configure MCP Funnel** to expose the command:
-
-Create or update `.mcp-funnel.json`:
-
-```json
-{
-  "servers": [
-    // ... your other servers
-  ],
-  "commands": {
-    "enabled": true,
-    "list": ["ts-validate"]
-  }
-}
+Prompt:
 ```
-
-2. **Add to Claude Desktop** config:
-
-```json
-{
-  "mcpServers": {
-    "mcp-funnel": {
-      "command": "npx",
-      "args": ["mcp-funnel", "/path/to/.mcp-funnel.json"]
-    }
-  }
-}
-```
-
-3. **Use in Claude**:
-
-```
-Claude, please run TypeScript validation on the packages/mcp directory and fix any issues.
+run tool ts-validate on the packages/mcp directory and fix any issues.
 ```
 
 Claude will see the tool as `ts-validate` and can call it with:
@@ -285,7 +255,7 @@ The command respects your project's configuration files:
   - TypeScript is resolved per tsconfig.json group from the tsconfig's directory when available and compatible; otherwise the bundled TypeScript is used.
 - Compatibility policy for local toolchains (same-major preference):
   - Prettier: >= 3.0.0 < 4.0.0
-  - ESLint:   >= 9.0.0 < 10.0.0
+  - ESLint: >= 9.0.0 < 10.0.0
   - TypeScript: >= 5.0.0 < 6.0.0
 - If no compatible local version is found, the bundled dependency included with this command is used.
 - The JSON summary includes `toolStatuses` entries with `origin` (local|bundled) and `version` when available, plus `reason` when a tool is skipped (e.g., `no-eslint-config`, `no-tsconfig`, `no-ts-files`).

@@ -4,13 +4,13 @@ import { configRoute } from '../../src/api/config.js';
 import type { MCPProxy } from 'mcp-funnel';
 
 describe('API Config Endpoint - Record Format Integration', () => {
-  let mockMCPProxy: MCPProxy;
+  let mockMCPProxy: Partial<MCPProxy>;
   let app: Hono;
 
   beforeEach(() => {
     app = new Hono();
     app.use('*', async (c, next) => {
-      c.set('mcpProxy', mockMCPProxy);
+      c.set('mcpProxy', mockMCPProxy as MCPProxy);
       await next();
     });
     app.route('/config', configRoute);
@@ -36,7 +36,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
           exposeTools: [],
           exposeCoreTools: [],
         },
-      } as MCPProxy;
+      };
     });
 
     it('should return single server configuration correctly', async () => {
@@ -89,7 +89,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
           exposeTools: ['github__*', 'memory__store'],
           exposeCoreTools: [],
         },
-      } as MCPProxy;
+      };
     });
 
     it('should return all servers with proper mapping', async () => {
@@ -100,9 +100,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
       expect(res.status).toBe(200);
       expect(data.config.servers).toHaveLength(3);
 
-      const serverNames = data.config.servers.map(
-        (s: { name: string }) => s.name,
-      );
+      const serverNames = data.config.servers.map((s: { name: string }) => s.name);
       expect(serverNames).toEqual(['github', 'memory', 'filesystem']);
     });
 
@@ -147,7 +145,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
         config: {
           servers: [],
         },
-      } as MCPProxy;
+      };
     });
 
     it('should handle empty server list', async () => {
@@ -178,10 +176,11 @@ describe('API Config Endpoint - Record Format Integration', () => {
           exposeTools: [],
           exposeCoreTools: [],
         },
+        // @ts-expect-error partial mock
         server: {
           sendToolListChanged: vi.fn(),
         },
-      } as MCPProxy;
+      };
     });
 
     it('should update configuration and notify tool list change', async () => {
@@ -206,7 +205,7 @@ describe('API Config Endpoint - Record Format Integration', () => {
       expect(data.config.exposeTools).toEqual(['github__create_issue']);
       expect(data.config.exposeCoreTools).toEqual([]);
 
-      expect(mockMCPProxy.server.sendToolListChanged).toHaveBeenCalled();
+      expect(mockMCPProxy.server?.sendToolListChanged).toHaveBeenCalled();
     });
 
     it('should handle partial configuration updates', async () => {
@@ -244,10 +243,11 @@ describe('API Config Endpoint - Record Format Integration', () => {
           exposeTools: [],
           exposeCoreTools: [],
         },
+        // @ts-expect-error partial mock
         server: {
           sendToolListChanged: vi.fn(),
         },
-      } as MCPProxy;
+      };
     });
 
     it('should handle invalid update request body', async () => {

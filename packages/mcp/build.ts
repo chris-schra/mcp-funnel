@@ -12,6 +12,17 @@ const sharedOptions: BuildOptions = {
   target: 'node18',
 };
 
+/**
+ * Builds the mcp-funnel package with TypeScript types and bundled outputs.
+ *
+ * Creates three build artifacts:
+ * - TypeScript declaration files (.d.ts)
+ * - ESM bundle (dist/esm/index.js)
+ * - CommonJS bundle (dist/cjs/index.cjs)
+ * - CLI executable (dist/cli.js) with shebang
+ * @throws \{Error\} When TypeScript compilation or bundling fails
+ * @internal
+ */
 async function buildAll() {
   console.log('🔨 Building mcp-funnel...\n');
 

@@ -1,6 +1,30 @@
-import { useWebSocketStore } from '~/hooks/useWebSocket';
-import { cn } from '~/lib/cn';
+import { useWebSocketStore } from '~/hooks/useWebSocket.js';
+import { cn } from '~/lib/cn.js';
 
+/**
+ * Real-time log viewer component displaying system and server logs.
+ *
+ * Renders a scrollable log panel showing timestamped messages from WebSocket
+ * stream with color-coded severity levels. Includes a clear button to reset
+ * the log buffer. Logs are automatically limited to the last 100 entries.
+ *
+ * @returns React component rendering the log viewer interface
+ *
+ * @example
+ * ```tsx
+ * import { LogViewer } from '~/components/LogViewer.js';
+ *
+ * function Dashboard() {
+ *   return (
+ *     <div>
+ *       <LogViewer />
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @public
+ */
 export function LogViewer() {
   const { logs, clearLogs } = useWebSocketStore();
 

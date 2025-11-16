@@ -4,14 +4,29 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 
+/**
+ * Creates a temporary directory for test isolation.
+ * @param prefix - Prefix for the temporary directory name
+ * @returns Promise resolving to the temporary directory path
+ * @internal
+ */
 async function mkTmpDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
+/**
+ * Recursively removes a directory and all its contents.
+ * @param dir - Directory path to remove
+ * @internal
+ */
 async function rmrf(dir: string) {
   await fs.rm(dir, { recursive: true, force: true });
 }
 
+/**
+ * Tests autoFix behavior for automatic code formatting and fixing.
+ * @see file:../command.ts - TsValidateCommand implementation
+ */
 describe('MCP autoFix behavior', () => {
   let tmp: string;
   beforeAll(async () => {
@@ -61,12 +76,9 @@ describe('MCP autoFix behavior', () => {
     const txt = res.content![0].text as string;
     const payload = JSON.parse(txt);
     expect(Array.isArray(payload.fileResults[file])).toBe(true);
-    const msgs: { tool: string; message: string; severity: string }[] =
-      payload.fileResults[file];
+    const msgs: { tool: string; message: string; severity: string }[] = payload.fileResults[file];
     const prettierEntry = msgs.find((m) => m.tool === 'prettier');
-    expect(prettierEntry?.message.toLowerCase()).toContain(
-      'file needs formatting',
-    );
+    expect(prettierEntry?.message.toLowerCase()).toContain('file needs formatting');
     const content = await fs.readFile(file, 'utf8');
     expect(content.includes('const y=2')).toBe(true);
   });

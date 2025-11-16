@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { ConfigUpdateSchema } from '../types';
-import type { MCPProxy, ServersRecord } from 'mcp-funnel';
+import { ConfigUpdateSchema } from '../types/index.js';
+import type { MCPProxy } from 'mcp-funnel';
+import type { ServersRecord } from '@mcp-funnel/schemas';
 
 type Variables = {
   mcpProxy: MCPProxy;
@@ -15,12 +16,10 @@ configRoute.get('/', async (c) => {
   // Normalize servers to handle both array and record formats
   const servers = Array.isArray(mcpProxy.config.servers)
     ? mcpProxy.config.servers
-    : Object.entries(mcpProxy.config.servers as ServersRecord).map(
-        ([name, server]) => ({
-          name,
-          ...server,
-        }),
-      );
+    : Object.entries(mcpProxy.config.servers as ServersRecord).map(([name, server]) => ({
+        name,
+        ...server,
+      }));
 
   return c.json({
     config: {

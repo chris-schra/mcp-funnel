@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { BaseCoreTool } from './base-core-tool.js';
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CoreToolContext } from './core-tool.interface.js';
-import { ProxyConfig } from '../config.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 // Create a concrete implementation for testing
 class TestTool extends BaseCoreTool {
@@ -19,10 +19,7 @@ class TestTool extends BaseCoreTool {
     };
   }
 
-  async handle(
-    _args: Record<string, unknown>,
-    _context: CoreToolContext,
-  ): Promise<CallToolResult> {
+  async handle(_args: Record<string, unknown>, _context: CoreToolContext): Promise<CallToolResult> {
     return {
       content: [{ type: 'text', text: 'test result' }],
     };

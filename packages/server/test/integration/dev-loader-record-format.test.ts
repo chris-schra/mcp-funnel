@@ -1,37 +1,44 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  readFileSync,
-  existsSync,
-  writeFileSync,
-  unlinkSync,
-  mkdirSync,
-} from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 // We need to test the loadConfig function from dev.ts
 // Since it's not exported, we'll create a test version that mirrors the logic
 // The actual dev.ts checks for Array.isArray but we need to support both formats
-function loadConfigTest(configPath: string): {
-  servers:
-    | Array<{
-        name: string;
-        command: string;
-        args?: string[];
-        env?: Record<string, string>;
-      }>
-    | Record<
-        string,
-        {
-          command: string;
-          args?: string[];
-          env?: Record<string, string>;
-        }
-      >;
+
+/**
+ * Server configuration with command and optional arguments/environment
+ */
+type ServerConfig = {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+};
+
+/**
+ * Server configuration entry in array format (legacy)
+ */
+type ServerArrayEntry = ServerConfig & {
+  name: string;
+};
+
+/**
+ * Configuration object with servers and optional tool filters
+ */
+type McpFunnelConfig = {
+  servers: Array<ServerArrayEntry> | Record<string, ServerConfig>;
   hideTools?: string[];
   exposeTools?: string[];
   exposeCoreTools?: string[];
-} {
+};
+
+/**
+ * Test version of loadConfig that mirrors the logic from dev.ts.
+ * @param configPath - Path to the configuration file
+ * @returns Configuration object with servers and optional tool filters
+ */
+function loadConfigTest(configPath: string): McpFunnelConfig {
   if (existsSync(configPath)) {
     const txt = readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(txt) as unknown;

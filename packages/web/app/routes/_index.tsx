@@ -1,9 +1,9 @@
 import type { MetaFunction } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ServerList } from '~/components/ServerList';
-import { ToolExplorer } from '~/components/ToolExplorer';
-import { LogViewer } from '~/components/LogViewer';
-import { useWebSocket } from '~/hooks/useWebSocket';
+import { ServerList } from '~/components/ServerList.js';
+import { ToolExplorer } from '~/components/ToolExplorer.js';
+import { LogViewer } from '~/components/LogViewer.js';
+import { useWebSocket } from '~/hooks/useWebSocket.js';
 
 export const meta: MetaFunction = () => {
   return [
@@ -12,6 +12,28 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+/**
+ * Main dashboard page component for MCP Funnel web interface.
+ *
+ * Displays the primary dashboard with three key sections:
+ * - Server list showing connection status
+ * - Tool explorer for managing and executing MCP tools
+ * - Real-time log viewer for system messages
+ *
+ * Establishes WebSocket connection on mount and monitors server health
+ * every 30 seconds. The layout is responsive with a two-column grid on
+ * larger screens.
+ *
+ * @returns React component rendering the dashboard page
+ *
+ * @example
+ * ```tsx
+ * // This is the default export for the route at '/'
+ * import Index from '~/routes/_index.js';
+ * ```
+ *
+ * @public
+ */
 export default function Index() {
   const { isConnected } = useWebSocket();
 

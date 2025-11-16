@@ -1,6 +1,6 @@
 {
   "name": "mcp-funnel",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "MCP proxy that aggregates multiple servers with tool filtering - stop carrying 70k tokens of tools you'll never use",
   "author": "Christoph Schramm",
   "license": "MIT",
@@ -27,10 +27,6 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.cjs"
-    },
-    "./overrides": {
-      "import": "./dist/overrides/index.js",
-      "types": "./dist/types/overrides/index.d.ts"
     }
   },
   "files": [
@@ -45,15 +41,28 @@
     "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {
+    "@mcp-funnel/auth": "workspace:*",
     "@mcp-funnel/commands-core": "workspace:*",
+    "@mcp-funnel/schemas": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.18.0",
+    "commander": "^14.0.1",
     "deepmerge-ts": "^7.0.5",
+    "eventsource": "^4.0.0",
+    "rfdc": "^1.4.1",
+    "safe-stable-stringify": "^2.5.0",
+    "smol-toml": "^1.4.2",
+    "uuid": "^13.0.0",
+    "ws": "^8.18.3",
     "zod": "^4.1.8"
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^1.0.112",
     "@hono/zod-validator": "^0.7.2",
+    "@types/eventsource": "^3.0.0",
+    "@types/express": "^5.0.0",
     "@types/node": "^24.3.1",
+    "@types/uuid": "^11.0.0",
+    "@types/ws": "^8.18.1",
     "esbuild": "^0.25.9",
     "globby": "^14.1.0",
     "tsx": "^4.20.5",

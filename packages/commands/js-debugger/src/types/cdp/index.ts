@@ -1,0 +1,10 @@
+export type { CallFrame } from './call-frame';
+export type { ExceptionDetails } from './exception-details';
+export type { DebuggerCallFrame } from './debugger-call-frame';
+export type { Location } from './location';
+export type { RemoteObjectSubtype } from './remote-object-subtype';
+export type { RemoteObjectSummary } from './remote-object-summary';
+export type { RemoteObjectType } from './remote-object-type';
+export type { Scope, ScopeType } from './scope';
+export type { StackTrace } from './stack-trace';
+export type { StackTraceId } from './stack-trace-id';

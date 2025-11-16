@@ -1,8 +1,8 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { ProxyConfig } from '../config.js';
 import { ICommand } from '@mcp-funnel/commands-core';
-import { ToolRegistry } from '../tool-registry.js';
+import { ToolRegistry } from '../tool-registry/index.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 /**
  * Context provided to core tools for accessing proxy state and capabilities
@@ -12,19 +12,13 @@ export interface CoreToolContext {
   toolRegistry: ToolRegistry;
 
   /** Cache of all tool descriptions from connected MCP servers */
-  toolDescriptionCache: Map<
-    string,
-    { serverName: string; description: string }
-  >;
+  toolDescriptionCache: Map<string, { serverName: string; description: string }>;
 
   /** Cache of full tool definitions from connected MCP servers */
   toolDefinitionCache?: Map<string, { serverName: string; tool: Tool }>;
 
   /** Mapping of tool names to their client and original names */
-  toolMapping?: Map<
-    string,
-    { client: Client | null; originalName: string; command?: ICommand }
-  >;
+  toolMapping?: Map<string, { client: Client | null; originalName: string; command?: ICommand }>;
 
   /** Set of dynamically enabled tool names */
   dynamicallyEnabledTools: Set<string>;
@@ -32,11 +26,11 @@ export interface CoreToolContext {
   /** Current proxy configuration */
   config: ProxyConfig;
 
+  /** Path to the configuration file being used */
+  configPath: string;
+
   /** Method to send notifications to connected clients (when implemented) */
-  sendNotification?: (
-    method: string,
-    params?: Record<string, unknown>,
-  ) => Promise<void>;
+  sendNotification?: (method: string, params?: Record<string, unknown>) => Promise<void>;
 
   /** Enable tools dynamically at runtime */
   enableTools: (toolNames: string[]) => void;
@@ -59,10 +53,7 @@ export interface ICoreTool {
   isEnabled(config: ProxyConfig): boolean;
 
   /** Handle tool invocation */
-  handle(
-    args: Record<string, unknown>,
-    context: CoreToolContext,
-  ): Promise<CallToolResult>;
+  handle(args: Record<string, unknown>, context: CoreToolContext): Promise<CallToolResult>;
 
   /** Optional initialization when tool is registered */
   onInit?(context: CoreToolContext): void;

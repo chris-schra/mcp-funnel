@@ -12,6 +12,13 @@ const sharedOptions: BuildOptions = {
   target: 'node18',
 };
 
+/**
+ * Builds the npm-lookup package.
+ *
+ * Compiles TypeScript types and bundles ESM output using esbuild.
+ * External packages are marked as external to avoid bundling dependencies.
+ * @internal
+ */
 async function buildAll() {
   console.log('🔨 Building @mcp-funnel/command-npm-lookup...\n');
 

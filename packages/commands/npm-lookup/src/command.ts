@@ -1,34 +1,59 @@
 import { ICommand, Tool, CallToolResult } from '@mcp-funnel/commands-core';
-import {
-  NPMClient,
-  PackageNotFoundError,
-  NPMRegistryError,
-} from './npm-client.js';
+import { NPMClient, PackageNotFoundError, NPMRegistryError } from './npm-client.js';
 import { MAX_SEARCH_RESULTS } from './types.js';
+import {
+  validatePackageNameParameter,
+  validateQueryParameter,
+  validateLimitParameter,
+  createErrorResponse,
+  createTextResponse,
+  parseCLIArgs,
+} from './util/index.js';
 
 /**
- * NPM command implementation for MCP Funnel
- * @description Provides package lookup and search functionality via NPM Registry API
- * @implements {ICommand}
+ * NPM command implementation for MCP Funnel.
+ *
+ * Provides package lookup and search functionality via NPM Registry API,
+ * supporting both MCP protocol tool calls and direct CLI execution.
+ *
+ * Available tools:
+ * - lookup: Get detailed package information including dependencies and metadata
+ * - search: Search for packages by query with configurable result limits
+ * @example MCP tool usage
+ * ```typescript
+ * const cmd = new NPMCommand();
+ * const result = await cmd.executeToolViaMCP('lookup', { packageName: 'react' });
+ * ```
+ * @example CLI usage
+ * ```typescript
+ * const cmd = new NPMCommand();
+ * await cmd.executeViaCLI(['lookup', 'react']);
+ * await cmd.executeViaCLI(['search', 'typescript', '--limit', '10']);
+ * ```
+ * @public
+ * @see file:./npm-client.ts - NPM Registry API client
  */
 export class NPMCommand implements ICommand {
-  readonly name = 'npm';
-  readonly description = 'NPM package lookup and search';
+  public readonly name = 'npm';
+  public readonly description = 'NPM package lookup and search';
   private client: NPMClient;
 
   /**
-   * Create NPM command instance
-   * @param client - Optional NPMClient instance for dependency injection
+   * Creates NPM command instance.
+   * @param client - Optional NPMClient instance for dependency injection (primarily for testing)
    */
-  constructor(client?: NPMClient) {
+  public constructor(client?: NPMClient) {
     this.client = client || new NPMClient();
   }
 
   /**
-   * Get MCP tool definitions for this command
-   * @returns Array of tool definitions for lookup and search operations
+   * Returns MCP tool definitions for lookup and search operations.
+   *
+   * Provides tool schemas that describe parameters, types, and requirements
+   * for the MCP protocol integration.
+   * @returns Array of tool definitions with input schemas
    */
-  getMCPDefinitions(): Tool[] {
+  public getMCPDefinitions(): Tool[] {
     return [
       {
         name: 'lookup',
@@ -70,169 +95,101 @@ export class NPMCommand implements ICommand {
   }
 
   /**
-   * Execute a tool via MCP protocol
+   * Executes a tool via MCP protocol.
+   *
+   * Validates parameters, calls the NPM Registry API, and formats responses
+   * according to MCP protocol requirements. Handles all error cases including
+   * validation failures, network errors, and package not found scenarios.
    * @param toolName - Name of the tool to execute ('lookup' or 'search')
-   * @param args - Tool arguments containing packageName, query, limit, etc.
-   * @returns Tool execution result with package data or error information
+   * @param args - Tool arguments (packageName for lookup, query/limit for search)
+   * @returns CallToolResult with formatted package data or error message
+   * @throws Never throws - all errors are returned as CallToolResult with isError flag
    */
-  async executeToolViaMCP(
+  public async executeToolViaMCP(
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<CallToolResult> {
     try {
       switch (toolName) {
         case 'lookup': {
-          if (typeof args.packageName !== 'string') {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: 'Error: packageName parameter must be a string',
-                },
-              ],
-              isError: true,
-            };
+          const packageNameValidation = validatePackageNameParameter(args.packageName);
+          if (!packageNameValidation.valid) {
+            return createErrorResponse(packageNameValidation.error);
           }
 
-          const packageInfo = await this.client.getPackage(args.packageName);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(packageInfo, null, 2),
-              },
-            ],
-          };
+          const packageInfo = await this.client.getPackage(packageNameValidation.value);
+
+          return createTextResponse(
+            JSON.stringify(packageInfo, null, 2),
+            'Follow the homepage and repository links for more information about the package if usage examples are required.',
+          );
         }
 
         case 'search': {
-          if (typeof args.query !== 'string') {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: 'Error: query parameter must be a string',
-                },
-              ],
-              isError: true,
-            };
+          const queryValidation = validateQueryParameter(args.query);
+          if (!queryValidation.valid) {
+            return createErrorResponse(queryValidation.error);
           }
 
-          const limit = args.limit as number | undefined;
-          if (
-            limit !== undefined &&
-            (typeof limit !== 'number' ||
-              limit < 1 ||
-              limit > MAX_SEARCH_RESULTS)
-          ) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Error: limit must be a number between 1 and ${MAX_SEARCH_RESULTS}`,
-                },
-              ],
-              isError: true,
-            };
+          const limitValidation = validateLimitParameter(args.limit);
+          if (!limitValidation.valid) {
+            return createErrorResponse(limitValidation.error);
           }
 
-          const results = await this.client.searchPackages(args.query, limit);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(results, null, 2),
-              },
-            ],
-          };
+          const results = await this.client.searchPackages(
+            queryValidation.value,
+            limitValidation.value,
+          );
+          return createTextResponse(JSON.stringify(results, null, 2));
         }
 
         default:
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Error: Unknown tool: ${toolName}`,
-              },
-            ],
-            isError: true,
-          };
+          return createErrorResponse(`Error: Unknown tool: ${toolName}`);
       }
     } catch (error) {
       if (error instanceof PackageNotFoundError) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Package not found: ${error.message}`,
-            },
-          ],
-          isError: true,
-        };
+        return createErrorResponse(`Package not found: ${error.message}`);
       }
 
       if (error instanceof NPMRegistryError) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `NPM Registry error: ${error.message}`,
-            },
-          ],
-          isError: true,
-        };
+        return createErrorResponse(`NPM Registry error: ${error.message}`);
       }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return createErrorResponse(
+        `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
   /**
-   * Execute command via CLI interface
-   * @param args - Command line arguments array
+   * Executes command via CLI interface.
+   *
+   * Parses CLI arguments, executes the requested operation, and outputs
+   * results to stdout. Exits process with code 1 on errors.
+   *
+   * Supported commands:
+   * - npm lookup \<package-name\>
+   * - npm search \<query\> [--limit N]
+   * @param args - CLI arguments array (excluding 'npm' prefix)
+   * @throws Never throws - errors are logged to stderr and process.exit(1) is called
    */
-  async executeViaCLI(args: string[]): Promise<void> {
+  public async executeViaCLI(args: string[]): Promise<void> {
     try {
-      // Parse subcommand: npm lookup <package> or npm search <query>
-      const [subcommand, ...rest] = args;
+      const parsed = parseCLIArgs(args);
 
-      if (subcommand === 'lookup') {
-        const packageName = rest[0];
-        if (!packageName) {
+      if (parsed.subcommand === 'lookup') {
+        if (!parsed.packageName) {
           console.error('Usage: npm lookup <package-name>');
           process.exit(1);
         }
-        const result = await this.client.getPackage(packageName);
+        const result = await this.client.getPackage(parsed.packageName);
         console.info(JSON.stringify(result, null, 2));
-      } else if (subcommand === 'search') {
-        const query = rest.join(' ');
-        if (!query) {
+      } else if (parsed.subcommand === 'search') {
+        if (!parsed.query) {
           console.error('Usage: npm search <query>');
           process.exit(1);
         }
-
-        // Parse optional --limit flag
-        let limit: number | undefined;
-        const limitIndex = rest.indexOf('--limit');
-        if (limitIndex !== -1 && limitIndex < rest.length - 1) {
-          const limitValue = parseInt(rest[limitIndex + 1], 10);
-          if (!isNaN(limitValue)) {
-            limit = Math.min(Math.max(1, limitValue), MAX_SEARCH_RESULTS);
-          }
-          // Remove --limit and its value from the query
-          rest.splice(limitIndex, 2);
-        }
-
-        const finalQuery = rest.join(' ');
-        const results = await this.client.searchPackages(finalQuery, limit);
+        const results = await this.client.searchPackages(parsed.query, parsed.limit);
         console.info(JSON.stringify(results, null, 2));
       } else {
         console.error('Usage: npm <lookup|search> ...');
@@ -251,9 +208,7 @@ export class NPMCommand implements ICommand {
         process.exit(1);
       }
 
-      console.error(
-        `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      console.error(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
     }
   }

@@ -12,6 +12,18 @@ const sharedOptions: BuildOptions = {
   target: 'node18',
 };
 
+/**
+ * Builds the commands-core package in multiple formats.
+ *
+ * Generates TypeScript types and bundles the code as both ESM and CJS modules.
+ * The TypeScript compiler generates type declarations, while esbuild bundles
+ * the implementation code for each target format.
+ *
+ * @throws Error when TypeScript compilation fails
+ * @throws Error when esbuild bundling fails
+ *
+ * @internal
+ */
 async function buildAll() {
   console.log('🔨 Building @mcp-funnel/commands-core...\n');
 

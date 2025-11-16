@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, MockedFunction } from 'vitest';
 import { BridgeToolRequest } from './index.js';
 import { CoreToolContext } from '../core-tool.interface.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { ToolRegistry, ToolState } from '../../tool-registry.js';
+import { ToolRegistry, ToolState } from '../../tool-registry/index.js';
 
 describe('BridgeToolRequest', () => {
   let tool: BridgeToolRequest;
@@ -66,6 +66,7 @@ describe('BridgeToolRequest', () => {
           'get_tool_schema',
         ],
       },
+      configPath: './.mcp-funnel.json',
       enableTools: () => {},
     };
   });
@@ -118,21 +119,15 @@ describe('BridgeToolRequest', () => {
     });
 
     it('should be enabled when exposeCoreTools has matching pattern', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['bridge_*'] }),
-      ).toBe(true);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['bridge_*'] })).toBe(true);
     });
 
     it('should be enabled when exposeCoreTools is ["*"]', () => {
-      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
-        true,
-      );
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(true);
     });
 
     it('should be disabled when exposeCoreTools excludes the tool', () => {
-      expect(
-        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
-      ).toBe(false);
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] })).toBe(false);
     });
   });
 
@@ -181,18 +176,13 @@ describe('BridgeToolRequest', () => {
     });
 
     it('should return error for non-existent tool', async () => {
-      const result = await tool.handle(
-        { tool: 'nonexistent__tool' },
-        mockContext,
-      );
+      const result = await tool.handle({ tool: 'nonexistent__tool' }, mockContext);
 
       expect(result.content).toHaveLength(1);
       const content = result.content[0];
       expect(content.type).toBe('text');
       const textContent = content as { type: string; text: string };
-      expect(textContent.text).toContain(
-        'Tool not found or not exposed: nonexistent__tool',
-      );
+      expect(textContent.text).toContain('Tool not found or not exposed: nonexistent__tool');
       expect(result.isError).toBe(true);
     });
 
@@ -207,9 +197,7 @@ describe('BridgeToolRequest', () => {
 
       expect(result.content).toHaveLength(1);
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain(
-        'Failed to execute tool github__create_issue',
-      );
+      expect(textContent.text).toContain('Failed to execute tool github__create_issue');
       expect(textContent.text).toContain('API rate limit exceeded');
       expect(result.isError).toBe(true);
     });
@@ -217,10 +205,7 @@ describe('BridgeToolRequest', () => {
     it('should handle non-Error exceptions', async () => {
       mockClient.callTool.mockRejectedValue('String error');
 
-      const result = await tool.handle(
-        { tool: 'github__create_issue' },
-        mockContext,
-      );
+      const result = await tool.handle({ tool: 'github__create_issue' }, mockContext);
 
       const textContent = result.content[0] as { type: string; text: string };
       expect(textContent.text).toContain('String error');
@@ -242,10 +227,7 @@ describe('BridgeToolRequest', () => {
     it('should handle missing toolMapping gracefully', async () => {
       const contextWithoutMapping = { ...mockContext, toolMapping: undefined };
 
-      const result = await tool.handle(
-        { tool: 'any__tool' },
-        contextWithoutMapping,
-      );
+      const result = await tool.handle({ tool: 'any__tool' }, contextWithoutMapping);
 
       expect(result.content).toHaveLength(1);
       const textContent = result.content[0] as { type: string; text: string };

@@ -1,3 +1,15 @@
+# Ignore everything recursively
+*
+
+# But not the .ts files
+!*.ts
+!*.md
+!*.js
+!*.json
+
+# Check subdirectories too
+!*/
+
 **/dist
 **/.next
 **/coverage
@@ -5,3 +17,6 @@ node_modules
 *.tsbuildinfo
 packages/web/build/client/assets
 *.tgz
+*.md
+
+packages/commands/ts-unused-code/test/fixtures/**/*

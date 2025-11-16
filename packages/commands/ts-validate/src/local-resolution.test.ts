@@ -4,15 +4,30 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 
+/**
+ * Creates a temporary directory for test isolation.
+ * @param prefix - Prefix for the temporary directory name
+ * @returns Promise resolving to the temporary directory path
+ * @internal
+ */
 async function mkTmpDir(prefix: string): Promise<string> {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   return base;
 }
 
+/**
+ * Recursively removes a directory and all its contents.
+ * @param dir - Directory path to remove
+ * @internal
+ */
 async function rmrf(dir: string) {
   await fs.rm(dir, { recursive: true, force: true });
 }
 
+/**
+ * Tests local-first resolution for monorepo validator tools (prettier, eslint, typescript).
+ * @see file:./validator.ts - MonorepoValidator implementation
+ */
 describe('MonorepoValidator local-first resolution', () => {
   let tmp: string;
 
@@ -78,11 +93,7 @@ describe('MonorepoValidator local-first resolution', () => {
     );
     await fs.writeFile(
       path.join(prettierDir, 'package.json'),
-      JSON.stringify(
-        { name: 'prettier', version: '3.2.0', module: 'index.mjs' },
-        null,
-        2,
-      ),
+      JSON.stringify({ name: 'prettier', version: '3.2.0', module: 'index.mjs' }, null, 2),
     );
 
     // Local ESM eslint stub
@@ -100,11 +111,7 @@ describe('MonorepoValidator local-first resolution', () => {
     );
     await fs.writeFile(
       path.join(eslintDir, 'package.json'),
-      JSON.stringify(
-        { name: 'eslint', version: '9.10.0', module: 'index.mjs' },
-        null,
-        2,
-      ),
+      JSON.stringify({ name: 'eslint', version: '9.10.0', module: 'index.mjs' }, null, 2),
     );
 
     const file = path.join(proj, 'index.ts');

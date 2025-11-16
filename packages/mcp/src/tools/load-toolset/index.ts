@@ -11,23 +11,38 @@ export interface LoadToolsetByPatternsParams {
   tools: string[];
 }
 
-export type LoadToolsetParams =
-  | LoadToolsetByNameParams
-  | LoadToolsetByPatternsParams;
+export type LoadToolsetParams = LoadToolsetByNameParams | LoadToolsetByPatternsParams;
 
+/**
+ * Type guard checking if params contain a toolset name.
+ * @param params - Parameters to check
+ * @returns True if params has 'name' property
+ * @internal
+ */
 function isLoadByName(params: unknown): params is LoadToolsetByNameParams {
   return typeof params === 'object' && params !== null && 'name' in params;
 }
 
-function isLoadByPatterns(
-  params: unknown,
-): params is LoadToolsetByPatternsParams {
+/**
+ * Type guard checking if params contain tool patterns array.
+ * @param params - Parameters to check
+ * @returns True if params has 'tools' property
+ * @internal
+ */
+function isLoadByPatterns(params: unknown): params is LoadToolsetByPatternsParams {
   return typeof params === 'object' && params !== null && 'tools' in params;
 }
 
+/**
+ * Finds all discovered tools matching the given glob patterns.
+ * @param patterns - Array of glob patterns to match against tool names
+ * @param toolRegistry - Tool registry to search
+ * @returns Array of matching tool full names
+ * @internal
+ */
 function findMatchingTools(
   patterns: string[],
-  toolRegistry: import('../../tool-registry.js').ToolRegistry,
+  toolRegistry: import('../../tool-registry/index.js').ToolRegistry,
 ): string[] {
   const matchedTools: string[] = [];
   const allTools = toolRegistry.getAllTools();
@@ -45,10 +60,150 @@ function findMatchingTools(
   return matchedTools;
 }
 
-export class LoadToolset extends BaseCoreTool {
-  readonly name = 'load_toolset';
+/**
+ * Validates that params contain either 'name' or 'tools', but not both.
+ * @param args - Arguments to validate
+ * @returns Error result if validation fails, null otherwise
+ * @internal
+ */
+function validateParams(args: Record<string, unknown>): CallToolResult | null {
+  const hasName = 'name' in args && args.name !== undefined;
+  const hasTools = 'tools' in args && args.tools !== undefined;
 
-  get tool(): Tool {
+  if (!hasName && !hasTools) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: 'Either "name" or "tools" parameter is required',
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  if (hasName && hasTools) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: 'Provide either "name" or "tools", not both',
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Loads patterns from a named toolset in the configuration.
+ * @param name - Name of the toolset to load
+ * @param context - Core tool context
+ * @returns Patterns array or error result
+ * @internal
+ */
+function loadPatternsByName(
+  name: string,
+  context: CoreToolContext,
+): { patterns: string[] } | { error: CallToolResult } {
+  if (!context.config.toolsets) {
+    return {
+      error: {
+        content: [
+          {
+            type: 'text',
+            text: 'No toolsets configured. Add a "toolsets" object to your configuration.',
+          },
+        ],
+        isError: true,
+      },
+    };
+  }
+
+  const toolset = context.config.toolsets[name];
+  if (!toolset) {
+    const available = Object.keys(context.config.toolsets).join(', ');
+    return {
+      error: {
+        content: [
+          {
+            type: 'text',
+            text: `Toolset "${name}" not found. Available toolsets: ${available || 'none'}`,
+          },
+        ],
+        isError: true,
+      },
+    };
+  }
+
+  return { patterns: toolset };
+}
+
+/**
+ * Validates and returns explicit tool patterns from args.
+ * @param tools - Tools array to validate
+ * @returns Patterns array or error result
+ * @internal
+ */
+function loadPatternsByTools(tools: unknown): { patterns: string[] } | { error: CallToolResult } {
+  if (!tools || !Array.isArray(tools)) {
+    return {
+      error: {
+        content: [
+          {
+            type: 'text',
+            text: 'Invalid tools parameter: must be an array of tool patterns',
+          },
+        ],
+        isError: true,
+      },
+    };
+  }
+  return { patterns: tools };
+}
+
+/**
+ * Builds the success response for loaded tools.
+ * @param matchingTools - Array of matched tool names
+ * @param toolsetName - Optional name of the toolset that was loaded
+ * @returns Success call tool result
+ * @internal
+ */
+function buildSuccessResponse(
+  matchingTools: string[],
+  toolsetName: string | undefined,
+): CallToolResult {
+  const responseText = toolsetName
+    ? `Loaded ${matchingTools.length} tools from "${toolsetName}" toolset`
+    : `Loaded ${matchingTools.length} tools matching specified patterns`;
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: responseText,
+      },
+    ],
+  };
+}
+
+/**
+ * Core tool for loading predefined toolsets or explicit tool patterns.
+ *
+ * Enables bulk tool activation either by:
+ * - Named toolset (defined in config.toolsets)
+ * - Explicit array of glob patterns
+ *
+ * Useful for organizing tools into logical groups and enabling them together.
+ * @public
+ * @see file:../core-tool.interface.ts - Core tool interface
+ */
+export class LoadToolset extends BaseCoreTool {
+  public readonly name = 'load_toolset';
+
+  public get tool(): Tool {
     return {
       name: this.name,
       description:
@@ -58,14 +213,12 @@ export class LoadToolset extends BaseCoreTool {
         properties: {
           name: {
             type: 'string',
-            description:
-              'Name of predefined toolset to load (mutually exclusive with tools)',
+            description: 'Name of predefined toolset to load (mutually exclusive with tools)',
           },
           tools: {
             type: 'array',
             items: { type: 'string' },
-            description:
-              'Array of tool patterns to load (mutually exclusive with name)',
+            description: 'Array of tool patterns to load (mutually exclusive with name)',
           },
         },
         // Can't use oneOf at top level - will validate in handler
@@ -73,87 +226,34 @@ export class LoadToolset extends BaseCoreTool {
     };
   }
 
-  async handle(
+  public async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
   ): Promise<CallToolResult> {
     // Validate mutual exclusivity
-    const hasName = 'name' in args && args.name !== undefined;
-    const hasTools = 'tools' in args && args.tools !== undefined;
-
-    if (!hasName && !hasTools) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: 'Either "name" or "tools" parameter is required',
-          },
-        ],
-        isError: true,
-      };
+    const validationError = validateParams(args);
+    if (validationError) {
+      return validationError;
     }
 
-    if (hasName && hasTools) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: 'Provide either "name" or "tools", not both',
-          },
-        ],
-        isError: true,
-      };
-    }
-
+    // Determine patterns and toolset name
     let patterns: string[];
     let toolsetName: string | undefined;
 
     if (isLoadByName(args)) {
-      // Load from predefined toolset
-      if (!context.config.toolsets) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `No toolsets configured. Add a "toolsets" object to your configuration.`,
-            },
-          ],
-          isError: true,
-        };
+      const result = loadPatternsByName(args.name, context);
+      if ('error' in result) {
+        return result.error;
       }
-
-      const toolset = context.config.toolsets[args.name];
-      if (!toolset) {
-        const available = Object.keys(context.config.toolsets).join(', ');
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Toolset "${args.name}" not found. Available toolsets: ${available || 'none'}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      patterns = toolset;
+      patterns = result.patterns;
       toolsetName = args.name;
     } else if (isLoadByPatterns(args)) {
-      // Load explicit patterns
-      if (!args.tools || !Array.isArray(args.tools)) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Invalid tools parameter: must be an array of tool patterns',
-            },
-          ],
-          isError: true,
-        };
+      const result = loadPatternsByTools(args.tools);
+      if ('error' in result) {
+        return result.error;
       }
-      patterns = args.tools;
+      patterns = result.patterns;
     } else {
-      // This should never happen due to the validation above
       return {
         content: [
           {
@@ -184,18 +284,6 @@ export class LoadToolset extends BaseCoreTool {
     context.toolRegistry.enableTools(matchingTools, 'toolset');
     await context.sendNotification?.('tools/list_changed');
 
-    // Create response message
-    const responseText = toolsetName
-      ? `Loaded ${matchingTools.length} tools from "${toolsetName}" toolset`
-      : `Loaded ${matchingTools.length} tools matching specified patterns`;
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText,
-        },
-      ],
-    };
+    return buildSuccessResponse(matchingTools, toolsetName);
   }
 }

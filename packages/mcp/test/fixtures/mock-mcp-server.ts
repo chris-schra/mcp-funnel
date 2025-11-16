@@ -6,10 +6,7 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 const serverName = process.argv[2] || 'mock-server';
 const toolPrefix = process.argv[3] || 'test';
@@ -109,7 +106,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error(`Unknown tool: ${name}`);
 });
 
-// Start server with stdio transport
+/** Starts mock MCP server with stdio transport */
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

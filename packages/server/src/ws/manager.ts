@@ -1,10 +1,5 @@
 import { WebSocket } from 'ws';
-import {
-  WSMessageSchema,
-  type WSEvent,
-  type WSMessage,
-  type ExecuteTool,
-} from '../types/index.js';
+import { WSMessageSchema, type WSEvent, type WSMessage, type ExecuteTool } from '../types/index.js';
 import type { MCPProxy } from 'mcp-funnel';
 
 interface Client {
@@ -16,12 +11,12 @@ export class WebSocketManager {
   private clients: Set<Client> = new Set();
   private mcpProxy: MCPProxy;
 
-  constructor(mcpProxy: MCPProxy) {
+  public constructor(mcpProxy: MCPProxy) {
     this.mcpProxy = mcpProxy;
     this.setupProxyEventListeners();
   }
 
-  handleConnection(ws: WebSocket) {
+  public handleConnection(ws: WebSocket) {
     const client: Client = {
       ws,
       subscriptions: new Set(['*']), // Subscribe to all events by default
@@ -110,10 +105,7 @@ export class WebSocketManager {
         throw new Error(`Tool not found: ${payload.toolName}`);
       }
 
-      if (!mapping.client)
-        throw new Error(
-          `No mapping client found for tool: ${payload.toolName}`,
-        );
+      if (!mapping.client) throw new Error(`No mapping client found for tool: ${payload.toolName}`);
 
       const result = await mapping.client.callTool({
         name: mapping.originalName,
@@ -162,8 +154,7 @@ export class WebSocketManager {
 
     // Send current tools
     const tools = [];
-    for (const [fullName, { serverName, tool }] of this.mcpProxy
-      .toolDefinitionCache) {
+    for (const [fullName, { serverName, tool }] of this.mcpProxy.toolDefinitionCache) {
       tools.push({
         name: fullName,
         description: tool.description,
@@ -186,11 +177,48 @@ export class WebSocketManager {
   }
 
   private setupProxyEventListeners() {
-    // TODO: Add event listeners to MCPProxy for server connect/disconnect
-    // and tool list changes, then broadcast to WebSocket clients
+    if (!this.mcpProxy) {
+      console.warn('[ws] MCPProxy not available, skipping event listener setup');
+      return;
+    }
+
+    // Listen for server connection events
+    this.mcpProxy.on('server.connected', (data) => {
+      this.broadcast({
+        type: 'server.connected',
+        payload: {
+          serverName: data.serverName,
+          timestamp: data.timestamp,
+        },
+      });
+    });
+
+    // Listen for server disconnection events
+    this.mcpProxy.on('server.disconnected', (data) => {
+      this.broadcast({
+        type: 'server.disconnected',
+        payload: {
+          serverName: data.serverName,
+          timestamp: data.timestamp,
+          reason: data.reason,
+        },
+      });
+    });
+
+    // Listen for server reconnecting events
+    this.mcpProxy.on('server.reconnecting', (data) => {
+      this.broadcast({
+        type: 'server.reconnecting',
+        payload: {
+          serverName: data.serverName,
+          timestamp: data.timestamp,
+          retryAttempt: data.retryAttempt,
+        },
+      });
+    });
   }
 
-  broadcast(event: WSEvent) {
+  public broadcast(event: WSEvent) {
     const message = JSON.stringify(event);
 
     for (const client of this.clients) {
@@ -217,11 +245,7 @@ export class WebSocketManager {
     return false;
   }
 
-  sendLog(
-    level: 'info' | 'warn' | 'error' | 'debug',
-    message: string,
-    source: string,
-  ) {
+  public sendLog(level: 'info' | 'warn' | 'error' | 'debug', message: string, source: string) {
     this.broadcast({
       type: 'log.message',
       payload: {

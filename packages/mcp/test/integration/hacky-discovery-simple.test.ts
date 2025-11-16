@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MCPProxy } from '../../src';
-import { ProxyConfig } from '../../src/config.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { MCPProxy } from '../../src/index.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 // Simplified integration test that actually tests the behavior
 
@@ -15,7 +14,7 @@ describe('Core Tools Configuration', () => {
       servers: [],
     };
 
-    const proxy = new MCPProxy(config);
+    const proxy = new MCPProxy(config, './test-config.json');
     await proxy.initialize();
 
     // Get the actual exposed tools
@@ -38,7 +37,7 @@ describe('Core Tools Configuration', () => {
       exposeCoreTools: [], // Explicitly disable all core tools
     };
 
-    const proxy = new MCPProxy(config);
+    const proxy = new MCPProxy(config, './test-config.json');
     await proxy.initialize();
 
     // Should not have any core tools when explicitly disabled
@@ -56,7 +55,7 @@ describe('Core Tools Configuration', () => {
       servers: [],
     };
 
-    const proxy = new MCPProxy(config);
+    const proxy = new MCPProxy(config, './test-config.json');
     await proxy.initialize();
 
     const context = proxy['createToolContext']();
@@ -75,10 +74,7 @@ describe('Core Tools Configuration', () => {
 
     // Now discover it
     const discoverTool = proxy['coreTools'].get('discover_tools_by_words');
-    const result = await discoverTool?.handle(
-      { words: 'example test' },
-      context,
-    );
+    const result = await discoverTool?.handle({ words: 'example test' }, context);
 
     const text = (result?.content[0] as { text: string }).text;
     expect(text).toContain('test__example');
@@ -86,61 +82,68 @@ describe('Core Tools Configuration', () => {
   });
 
   it('should NOT discover tools that are in hideTools configuration', async () => {
-    // Mock a client with tools
-    const mockClient = {
-      listTools: vi.fn().mockResolvedValue({
-        tools: [
-          {
-            name: 'public_tool',
-            description: 'A public tool that should be discoverable',
-          },
-          {
-            name: 'secret_tool',
-            description: 'A secret tool that should be hidden',
-          },
-          {
-            name: 'private_tool',
-            description: 'A private tool that should be hidden',
-          },
-        ],
-      }),
-    } as unknown as Client;
-
     const config: ProxyConfig = {
       servers: [],
       hideTools: ['testserver__secret_*', 'testserver__private_tool'],
     };
 
-    const proxy = new MCPProxy(config);
-
-    // Manually set up the client to simulate a connected server
-    proxy['_clients'].set('testserver', mockClient);
-
+    const proxy = new MCPProxy(config, './test-config.json');
     await proxy.initialize();
 
-    // The caches are now populated by toolCollector.collectVisibleTools() during initialize()
-    // which correctly respects hideTools configuration
+    // Manually register tools through the registry to simulate server tools
+    // This respects the hideTools configuration
+    const toolRegistry = proxy['toolRegistry'];
+
+    // Register the public tool - should be allowed
+    toolRegistry.registerDiscoveredTool({
+      fullName: 'testserver__public_tool',
+      originalName: 'public_tool',
+      serverName: 'testserver',
+      definition: {
+        name: 'public_tool',
+        description: 'A public tool that should be discoverable',
+        inputSchema: { type: 'object' },
+      },
+    });
+
+    // Register the secret tool - should be blocked by hideTools
+    toolRegistry.registerDiscoveredTool({
+      fullName: 'testserver__secret_tool',
+      originalName: 'secret_tool',
+      serverName: 'testserver',
+      definition: {
+        name: 'secret_tool',
+        description: 'A secret tool that should be hidden',
+        inputSchema: { type: 'object' },
+      },
+    });
+
+    // Register the private tool - should be blocked by hideTools
+    toolRegistry.registerDiscoveredTool({
+      fullName: 'testserver__private_tool',
+      originalName: 'private_tool',
+      serverName: 'testserver',
+      definition: {
+        name: 'private_tool',
+        description: 'A private tool that should be hidden',
+        inputSchema: { type: 'object' },
+      },
+    });
+
     const context = proxy['createToolContext']();
 
     // Now try to discover hidden tools
     const discoverTool = proxy['coreTools'].get('discover_tools_by_words');
-    const result = await discoverTool?.handle(
-      { words: 'secret private' },
-      context,
-    );
+    const result = await discoverTool?.handle({ words: 'secret private' }, context);
 
     const text = (result?.content[0] as { text: string }).text;
 
-    // BUG: Currently this test FAILS because hidden tools ARE discoverable
-    // The test should pass after we fix populateToolCaches
+    // Hidden tools should not be discoverable
     expect(text).not.toContain('testserver__secret_tool');
     expect(text).not.toContain('testserver__private_tool');
 
     // But public tools should still be discoverable
-    const publicResult = await discoverTool?.handle(
-      { words: 'public' },
-      context,
-    );
+    const publicResult = await discoverTool?.handle({ words: 'public' }, context);
 
     const publicText = (publicResult?.content[0] as { text: string }).text;
     expect(publicText).toContain('testserver__public_tool');

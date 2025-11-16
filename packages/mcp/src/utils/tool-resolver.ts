@@ -1,8 +1,7 @@
 /**
  * Utility for resolving tool names, including short name resolution
  */
-
-import { ProxyConfig } from '../config.js';
+import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 export interface ToolResolverResult {
   resolved: boolean;
@@ -17,9 +16,9 @@ export interface ToolResolverResult {
 
 /**
  * Resolve a tool name, including short name resolution if enabled
- * @param inputName The tool name provided by the user
- * @param toolMapping Map of full tool names to their clients
- * @param config Proxy configuration
+ * @param inputName - The tool name provided by the user
+ * @param toolMapping - Map of full tool names to their clients
+ * @param config - Proxy configuration
  * @returns Resolution result with either resolved name or error details
  */
 export function resolveToolName(
@@ -38,9 +37,7 @@ export function resolveToolName(
 
   if (allowShort && looksShort) {
     // Try to find tools ending with __<shortname>
-    const candidates = Array.from(toolMapping.keys()).filter((k) =>
-      k.endsWith(`__${inputName}`),
-    );
+    const candidates = Array.from(toolMapping.keys()).filter((k) => k.endsWith(`__${inputName}`));
 
     if (candidates.length === 1) {
       // Unambiguous match found
@@ -70,9 +67,7 @@ export function resolveToolName(
   ];
 
   if (!looksShort || !allowShort) {
-    hintParts.push(
-      'To execute a tool, always use the fully prefixed name (e.g., "server__tool").',
-    );
+    hintParts.push('To execute a tool, always use the fully prefixed name (e.g., "server__tool").');
   }
 
   if (suggestions.length > 0) {

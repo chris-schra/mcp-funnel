@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "tsx watch src/dev.ts",
     "build": "tsx build.ts && tsc --emitDeclarationOnly --declaration --project tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run"
   },
@@ -25,6 +24,7 @@
     "@types/ws": "^8.18.1",
     "esbuild": "^0.25.9",
     "tsx": "^4.20.5",
+    "type-fest": "^5.0.1",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
