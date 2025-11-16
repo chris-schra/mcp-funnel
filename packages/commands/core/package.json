@@ -1,6 +1,6 @@
 {
   "name": "@mcp-funnel/commands-core",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Core infrastructure for MCP Funnel commands",
   "author": "Christoph Schramm",
   "license": "MIT",

@@ -16,7 +16,7 @@
       "registry_type": "npm",
       "registry_base_url": "https://registry.npmjs.org",
       "identifier": "mcp-funnel",
-      "version": "0.0.6",
+      "version": "0.0.7",
       "runtime_hint": "npx",
       "runtime_arguments": [
         {
