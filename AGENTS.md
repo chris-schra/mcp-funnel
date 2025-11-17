@@ -19,6 +19,10 @@
 - Use proper Typescript syntax (no `any` no `as unknown as`) and documentation so next dev can pick it up easily
 - Do NOT violate DRY - when reading / modifying existing code, if you see repeated patterns, abstract them out into reusable functions or classes
 - Do **NOT** create tests to test mocks, they are giving a false impression of coverage. Always create tests that test real implementations.
+- Focused files over god files: Each file serves one purpose (< 300 line target, 400 lines hard limit). Extract responsibilities when limits exceeded. 
+- Use explicit types and context objects instead of coupling everything through class inheritance.
+- **Define types, then use them**: Export named types (interfaces/types) from a central location. Never use inline object types (`{ prop: string }`) when a named type exists. If you're writing `as { ...
+  }` more than once, you need a type definition.
 
 ## Use tool parallelism:
 Single message, multiple tools:

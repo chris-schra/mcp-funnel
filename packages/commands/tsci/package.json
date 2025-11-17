@@ -1,0 +1,53 @@
+{
+  "name": "@mcp-funnel/command-tsci",
+  "version": "0.0.1",
+  "description": "TypeScript Code Intelligence command for MCP Funnel - provides symbol analysis and code navigation",
+  "author": "Christoph Schramm",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chris-schra/mcp-funnel.git"
+  },
+  "keywords": [
+    "mcp",
+    "tools",
+    "typescript",
+    "code-intelligence",
+    "symbols",
+    "analysis"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "build": "tsx build.ts",
+    "build:watch": "tsx build.ts --watch",
+    "test": "echo 'ERROR: Tests must be run via `yarn test` from repository root!' && exit 1",
+    "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
+  },
+  "dependencies": {
+    "@mcp-funnel/commands-core": "workspace:^",
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "typedoc": "^0.28.13",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "esbuild": "^0.25.9",
+    "tsx": "^4.20.5",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "yarn@4.9.2"
+}
