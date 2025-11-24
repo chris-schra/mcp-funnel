@@ -10,6 +10,7 @@ import { logError, logEvent } from '../../logger.js';
 import { handleSpawnError } from './utils/spawn-error-handler.js';
 import { handleStdoutLine, handleStderrLine } from './utils/stdio-line-handlers.js';
 import { spawnProcessWithTimeout, cleanupProcess } from './utils/process-spawn.js';
+import * as RequestUtils from '../../utils/RequestUtils.js';
 
 /**
  * Configuration options for StdioClientTransport.
@@ -195,7 +196,7 @@ export class StdioClientTransport implements Transport {
   public setProtocolVersion?(version: string): void {
     // Generate sessionId here, after successful initialization
     if (!this.sessionId) {
-      this.sessionId = `stdio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.sessionId = RequestUtils.generateSessionId();
     }
 
     logEvent('debug', 'transport:stdio:protocol_version_set', {
