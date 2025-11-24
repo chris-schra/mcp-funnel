@@ -10,6 +10,7 @@ import { logError, logEvent } from '../../logger.js';
 import { handleSpawnError } from './utils/spawn-error-handler.js';
 import { handleStdoutLine, handleStderrLine } from './utils/stdio-line-handlers.js';
 import { spawnProcessWithTimeout, cleanupProcess } from './utils/process-spawn.js';
+import * as RequestUtils from '../../utils/RequestUtils.js';
 
 /**
  * Configuration options for StdioClientTransport.
@@ -66,8 +67,12 @@ export class StdioClientTransport implements Transport {
       spawnTimeout: options.spawnTimeout,
     };
 
-    // Generate a session ID for this transport instance
-    this.sessionId = `stdio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // NOTE: sessionId must NOT be set in constructor!
+    // The MCP SDK checks if sessionId is already set in client.connect() and skips
+    // initialization if it is. Setting it here would cause "Received request before
+    // initialization was complete" errors.
+    // See: https://github.com/modelcontextprotocol/typescript-sdk/blob/main/src/client/index.ts
+    // The sessionId will be set later via setProtocolVersion() after successful init.
   }
 
   /**
@@ -185,9 +190,15 @@ export class StdioClientTransport implements Transport {
   /**
    * Sets the protocol version used for the connection.
    * Called when the initialize response is received.
+   * This is also where we set the sessionId, AFTER successful initialization.
    * @param version - Protocol version string
    */
   public setProtocolVersion?(version: string): void {
+    // Generate sessionId here, after successful initialization
+    if (!this.sessionId) {
+      this.sessionId = RequestUtils.generateSessionId();
+    }
+
     logEvent('debug', 'transport:stdio:protocol_version_set', {
       server: this.serverName,
       sessionId: this.sessionId,
