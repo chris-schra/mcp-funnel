@@ -34,6 +34,11 @@ vi.mock('@mcp-funnel/core', () => ({
   ReconnectionManager: vi.fn(),
 }));
 
+// Mock transport cache
+vi.mock('../../../utils/transport/index.js', () => ({
+  clearTransportCache: vi.fn(),
+}));
+
 describe('ServerConnectionManager - Slow Probe Mode', () => {
   let manager: ServerConnectionManager;
   let eventEmitter: EventEmitter;

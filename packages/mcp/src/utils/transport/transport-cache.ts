@@ -133,6 +133,32 @@ export function clearTransportCache(): void {
 }
 
 /**
+ * Removes a cached transport by its cache key.
+ * @param cacheKey - Cache key to remove
+ * @returns true if the transport was removed, false if not found
+ * @public
+ */
+export function removeCachedTransport(cacheKey: string): boolean {
+  return transportCache.delete(cacheKey);
+}
+
+/**
+ * Removes a cached transport that matches the given config.
+ * Useful for invalidating cache when a transport is closed/disconnected.
+ * @param config - Transport configuration to match
+ * @param dependencies - Optional dependencies used when transport was created
+ * @returns true if a transport was removed, false if not found
+ * @public
+ */
+export function invalidateCachedTransport(
+  config: TransportConfig,
+  dependencies?: TransportFactoryDependencies,
+): boolean {
+  const cacheKey = generateCacheKey(config, dependencies);
+  return transportCache.delete(cacheKey);
+}
+
+/**
  * Gets the current size of the transport cache.
  *
  * Useful for monitoring and debugging cache behavior.

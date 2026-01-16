@@ -5,6 +5,7 @@ import type { TargetServerZod, ProxyConfig, TargetServer } from '@mcp-funnel/sch
 import { ToolRegistry } from '../../tool-registry/index.js';
 import { EventEmitter } from 'events';
 import { connectToServer, type ConnectionConfig } from './connection-setup.js';
+import { clearTransportCache } from '../../utils/transport/index.js';
 import {
   createReconnectionManager,
   attemptReconnection,
@@ -171,6 +172,9 @@ export class ServerConnectionManager {
       }
 
       try {
+        // Clear transport cache to ensure we create a fresh transport (not the closed one)
+        clearTransportCache();
+
         await this.connectToSingleServer(targetServer);
 
         // Success! Stop slow probe mode
@@ -178,7 +182,7 @@ export class ServerConnectionManager {
         console.error(`[proxy] Server ${serverName}: Recovered via slow probe mode`);
         logEvent('info', 'server:slow_probe_recovered', { name: serverName });
       } catch {
-        // Still failing, continue probing (no log to avoid spam)
+        // Still failing, continue probing silently
       }
     }, ServerConnectionManager.SLOW_PROBE_INTERVAL_MS);
 
