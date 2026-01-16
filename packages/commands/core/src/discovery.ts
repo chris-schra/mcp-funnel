@@ -66,6 +66,14 @@ export async function discoverCommands(searchPath: string): Promise<CommandRegis
     for (const entry of entries) {
       if (entry.isDirectory() && entry.name !== 'core') {
         const commandPath = join(searchPath, entry.name);
+        const packageJsonPath = join(commandPath, 'package.json');
+
+        // Skip directories without package.json
+        try {
+          await fs.access(packageJsonPath);
+        } catch {
+          continue;
+        }
 
         try {
           const command = await loadCommand(commandPath);

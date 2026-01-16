@@ -22,9 +22,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-code@npm:^1.0.112":
-  version: 1.0.112
-  resolution: "@anthropic-ai/claude-code@npm:1.0.112"
+"@anthropic-ai/claude-code@npm:^1.0.128":
+  version: 1.0.128
+  resolution: "@anthropic-ai/claude-code@npm:1.0.128"
   dependencies:
     "@img/sharp-darwin-arm64": "npm:^0.33.5"
     "@img/sharp-darwin-x64": "npm:^0.33.5"
@@ -47,7 +47,7 @@ __metadata:
       optional: true
   bin:
     claude: cli.js
-  checksum: 10c0/b4a9f7278471a0f94ec76b6326333a6fb692d87e8d0f5b7a38a67579b54e6b9e178e2812066501fe5e9c951cc2c20d880f8610e8270f7c710ad3e5fbeb406b72
+  checksum: 10c0/b0474179e5a4748758b7114e2aec6081bc6fc88803ae940f45a39184c239311802761afe886f4c425ef1edf332cc4d13a44a08f8f2b0af607759a9bb71d48eb6
   languageName: node
   linkType: hard
 
@@ -1797,15 +1797,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/eventsource@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@types/eventsource@npm:3.0.0"
-  dependencies:
-    eventsource: "npm:*"
-  checksum: 10c0/a6f41505cb6a5869c86f8959fd841db573d2b14e9183ffb03221d89bbc955c656b411a59873b953bad829d75dccd3033032ccd3791c27febe5b15da6a899c334
-  languageName: node
-  linkType: hard
-
 "@types/express-serve-static-core@npm:^5.0.0":
   version: 5.0.7
   resolution: "@types/express-serve-static-core@npm:5.0.7"
@@ -1983,15 +1974,6 @@ __metadata:
   dependencies:
     source-map: "npm:*"
   checksum: 10c0/e7d67b93ab0a10e2d13800fe4310328fb4408b75631af7bc77548225dba2dc31c678d251fb7449366af4af9cf638fadb6829c5a22b760af75750ffb989f27af6
-  languageName: node
-  linkType: hard
-
-"@types/uuid@npm:^11.0.0":
-  version: 11.0.0
-  resolution: "@types/uuid@npm:11.0.0"
-  dependencies:
-    uuid: "npm:*"
-  checksum: 10c0/6ebf1448d8fdc78d348a8a84389b74083f2f58bed75a5a6cf3be8419d33dcf757735c8b2de746b066ff8ef07f4384d02549774dc84195ffa46b24745471e9d8e
   languageName: node
   linkType: hard
 
@@ -3845,21 +3827,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eventsource@npm:*, eventsource@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "eventsource@npm:4.0.0"
-  dependencies:
-    eventsource-parser: "npm:^3.0.1"
-  checksum: 10c0/908a3f64b60aadd053b9fd8ea8b6a896a4faf32dbbaf0150e91abbec179a9e2a3da261fb577ae296df8b744de91962d69a60b10e8d7092d7802e6e3e7a8b0f0e
-  languageName: node
-  linkType: hard
-
 "eventsource@npm:^3.0.2":
   version: 3.0.7
   resolution: "eventsource@npm:3.0.7"
   dependencies:
     eventsource-parser: "npm:^3.0.1"
   checksum: 10c0/c48a73c38f300e33e9f11375d4ee969f25cbb0519608a12378a38068055ae8b55b6e0e8a49c3f91c784068434efe1d9f01eb49b6315b04b0da9157879ce2f67d
+  languageName: node
+  linkType: hard
+
+"eventsource@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "eventsource@npm:4.0.0"
+  dependencies:
+    eventsource-parser: "npm:^3.0.1"
+  checksum: 10c0/908a3f64b60aadd053b9fd8ea8b6a896a4faf32dbbaf0150e91abbec179a9e2a3da261fb577ae296df8b744de91962d69a60b10e8d7092d7802e6e3e7a8b0f0e
   languageName: node
   linkType: hard
 
@@ -5351,16 +5333,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "mcp-funnel@workspace:packages/mcp"
   dependencies:
-    "@anthropic-ai/claude-code": "npm:^1.0.112"
+    "@anthropic-ai/claude-code": "npm:^1.0.128"
     "@hono/zod-validator": "npm:^0.7.2"
     "@mcp-funnel/auth": "workspace:*"
     "@mcp-funnel/commands-core": "workspace:*"
     "@mcp-funnel/schemas": "workspace:*"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
-    "@types/eventsource": "npm:^3.0.0"
     "@types/express": "npm:^5.0.0"
     "@types/node": "npm:^24.3.1"
-    "@types/uuid": "npm:^11.0.0"
     "@types/ws": "npm:^8.18.1"
     commander: "npm:^14.0.1"
     deepmerge-ts: "npm:^7.0.5"
@@ -7806,7 +7786,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuid@npm:*, uuid@npm:^13.0.0":
+"uuid@npm:^13.0.0":
   version: 13.0.0
   resolution: "uuid@npm:13.0.0"
   bin:

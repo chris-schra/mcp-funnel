@@ -9,14 +9,14 @@
     "id": "1055597409",
     "subfolder": "packages/mcp"
   },
-  "version": "0.0.7",
+  "version": "0.0.8",
   "website_url": "https://github.com/chris-schra/mcp-funnel#readme",
   "packages": [
     {
       "registry_type": "npm",
       "registry_base_url": "https://registry.npmjs.org",
       "identifier": "mcp-funnel",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "runtime_hint": "npx",
       "runtime_arguments": [
         {
