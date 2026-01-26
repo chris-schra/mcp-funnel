@@ -4,6 +4,7 @@ import { mkdirSync, existsSync, writeFileSync, readFileSync, unlinkSync } from '
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
+import { execSync } from 'child_process';
 import { logError, logEvent } from '@mcp-funnel/core';
 import { normalizeServers } from './utils/normalizeServers.js';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
@@ -24,27 +25,57 @@ function isProcessRunning(pid: number): boolean {
 }
 
 /**
- * Kills stale MCP-Funnel processes and establishes this instance as the singleton.
- * This prevents zombie processes from accumulating across Claude Code sessions.
+ * Checks if a process is orphaned (parent process no longer exists).
+ * Orphaned processes are "zombies" that should be cleaned up.
  */
-function enforceSignleton(): void {
+function isOrphanedProcess(pid: number): boolean {
+  try {
+    // Get parent PID
+    const ppidStr = execSync(`ps -o ppid= -p ${pid} 2>/dev/null`, { encoding: 'utf-8' }).trim();
+    const ppid = parseInt(ppidStr, 10);
+
+    if (isNaN(ppid) || ppid <= 1) {
+      // Parent is init/launchd (PID 1) - process was orphaned and adopted
+      return true;
+    }
+
+    // Check if parent is still running
+    return !isProcessRunning(ppid);
+  } catch {
+    // If we can't determine, assume it's orphaned to be safe
+    return true;
+  }
+}
+
+/**
+ * Cleans up orphaned MCP-Funnel processes (zombies).
+ * Only kills processes whose parent (Claude Code) no longer exists.
+ * This prevents zombie processes while allowing multiple active sessions.
+ */
+function cleanupOrphanedProcesses(): void {
   try {
     if (existsSync(PID_FILE)) {
       const oldPid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10);
       if (!isNaN(oldPid) && oldPid !== process.pid && isProcessRunning(oldPid)) {
-        logEvent('info', 'cli:killing_stale_process', { oldPid });
-        try {
-          process.kill(oldPid, 'SIGTERM');
-          // Give it a moment to shut down gracefully
-          const start = Date.now();
-          while (isProcessRunning(oldPid) && Date.now() - start < 2000) {
-            // Wait up to 2 seconds
+        // Only kill if the process is orphaned (its parent Claude Code session is gone)
+        if (isOrphanedProcess(oldPid)) {
+          logEvent('info', 'cli:killing_orphaned_process', { oldPid });
+          try {
+            process.kill(oldPid, 'SIGTERM');
+            // Give it a moment to shut down gracefully
+            const start = Date.now();
+            while (isProcessRunning(oldPid) && Date.now() - start < 2000) {
+              // Wait up to 2 seconds
+            }
+            if (isProcessRunning(oldPid)) {
+              process.kill(oldPid, 'SIGKILL');
+            }
+          } catch {
+            // Process may have died between check and kill
           }
-          if (isProcessRunning(oldPid)) {
-            process.kill(oldPid, 'SIGKILL');
-          }
-        } catch {
-          // Process may have died between check and kill
+        } else {
+          logEvent('info', 'cli:existing_process_has_active_parent', { oldPid });
+          // Don't kill - it belongs to an active Claude Code session
         }
       }
     }
@@ -204,8 +235,8 @@ program
  * @param configPathArg - Path to the MCP Funnel configuration file
  */
 async function startProxy(configPathArg: string): Promise<void> {
-  // Enforce singleton: kill any stale processes before starting
-  enforceSignleton();
+  // Clean up orphaned processes (zombies) but keep active sessions alive
+  cleanupOrphanedProcesses();
 
   const configPath = configPathArg ?? '.mcp-funnel.json';
   const resolvedPath = resolve(process.cwd(), configPath);
