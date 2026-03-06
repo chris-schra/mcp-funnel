@@ -225,6 +225,28 @@ program
   });
 
 program
+  .command('daemon [configPath]')
+  .description(
+    'Start mcp-funnel as a shared daemon. Spawns target servers once and accepts ' +
+      'multiple client connections via Unix domain socket (~/.mcp-funnel.sock)',
+  )
+  .action(async (configPathArg?: string) => {
+    const { runDaemon } = await import('./commands/daemon.js');
+    await runDaemon(configPathArg);
+  });
+
+program
+  .command('connect [socketPath]')
+  .description(
+    'Connect to a running mcp-funnel daemon via stdio bridge. ' +
+      'Auto-starts the daemon if not running. Use this in Claude Code mcpServers config.',
+  )
+  .action(async (socketPathArg?: string) => {
+    const { runConnect } = await import('./commands/connect.js');
+    await runConnect(socketPathArg);
+  });
+
+program
   .argument('[configPath]', 'Path to MCP Funnel configuration file', '.mcp-funnel.json')
   .action(async (configPathArg: string) => {
     await startProxy(configPathArg);

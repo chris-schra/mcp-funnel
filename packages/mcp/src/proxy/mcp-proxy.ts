@@ -2,6 +2,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { EventEmitter } from 'events';
 
 import { ICoreTool } from '../tools/core-tool.interface.js';
@@ -190,26 +191,28 @@ export class MCPProxy extends EventEmitter {
     return this.connectionManager.disconnectServer(name);
   }
 
-  private setupRequestHandlers() {
-    this._server.setRequestHandler(ListToolsRequestSchema, async () => {
-      // Get all exposed tools from registry (including core tools)
+  /**
+   * Binds MCP request handlers (ListTools, CallTool) to a Server instance.
+   * Uses the shared ToolRegistry and core tools, making it safe to call
+   * for multiple Server instances in daemon mode.
+   */
+  private bindRequestHandlers(server: Server) {
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = this.toolRegistry.getExposedTools();
       return { tools };
     });
 
-    this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
 
-      // Check core tools first
       const coreTool = this.coreTools.get(toolName);
       if (coreTool) {
         return coreTool.handle(
           toolArgs || {},
-          createToolContext(this.toolRegistry, this._config, this._configPath, this._server),
+          createToolContext(this.toolRegistry, this._config, this._configPath, server),
         );
       }
 
-      // Get tool from registry
       const tool = this.toolRegistry.getToolForExecution(toolName);
       if (!tool) {
         return {
@@ -218,7 +221,6 @@ export class MCPProxy extends EventEmitter {
         };
       }
 
-      // Execute based on type
       if (tool.command) {
         return tool.command.executeToolViaMCP(tool.originalName, toolArgs || {});
       }
@@ -236,6 +238,38 @@ export class MCPProxy extends EventEmitter {
         isError: true,
       };
     });
+  }
+
+  private setupRequestHandlers() {
+    this.bindRequestHandlers(this._server);
+  }
+
+  /**
+   * Creates a new MCP Server session backed by the shared ToolRegistry and client connections.
+   * Used by the daemon to serve multiple clients over a single proxy instance.
+   * @param transport - Transport to connect the session to (e.g., SocketTransport)
+   * @returns The created Server instance
+   * @public
+   */
+  public createSession(transport: Transport): Server {
+    const server = new Server(
+      {
+        name: 'mcp-funnel',
+        version: Package.version,
+      },
+      {
+        capabilities: {
+          tools: {
+            listChanged: true,
+          },
+        },
+      },
+    );
+
+    this.bindRequestHandlers(server);
+    server.connect(transport);
+
+    return server;
   }
 
   public async start(options?: ProxyStartOptions) {
