@@ -1,16 +1,12 @@
 import { Command } from 'commander';
 import { MCPProxy } from './index.js';
 import { mkdirSync, existsSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
-import { resolve, dirname, join } from 'path';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { homedir } from 'os';
 import { execSync } from 'child_process';
 import { logError, logEvent } from '@mcp-funnel/core';
-import { normalizeServers } from './utils/normalizeServers.js';
 import { resolveConfigPath, checkConfigExists, loadConfiguration } from './utils/load-configuration.js';
-
-// PID file for singleton enforcement
-const PID_FILE = join(homedir(), '.mcp-funnel.pid');
+import { DEFAULT_PID_FILE, DEFAULT_CONFIG_FILENAME } from './daemon/index.js';
 
 /**
  * Checks if a process with the given PID is running.
@@ -54,8 +50,8 @@ function isOrphanedProcess(pid: number): boolean {
  */
 function cleanupOrphanedProcesses(): void {
   try {
-    if (existsSync(PID_FILE)) {
-      const oldPid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10);
+    if (existsSync(DEFAULT_PID_FILE)) {
+      const oldPid = parseInt(readFileSync(DEFAULT_PID_FILE, 'utf-8').trim(), 10);
       if (!isNaN(oldPid) && oldPid !== process.pid && isProcessRunning(oldPid)) {
         // Only kill if the process is orphaned (its parent Claude Code session is gone)
         if (isOrphanedProcess(oldPid)) {
@@ -85,7 +81,7 @@ function cleanupOrphanedProcesses(): void {
 
   // Write our PID
   try {
-    writeFileSync(PID_FILE, process.pid.toString(), 'utf-8');
+    writeFileSync(DEFAULT_PID_FILE, process.pid.toString(), 'utf-8');
   } catch (error) {
     logError('pid-write', error);
   }
@@ -96,10 +92,10 @@ function cleanupOrphanedProcesses(): void {
  */
 function cleanupPidFile(): void {
   try {
-    if (existsSync(PID_FILE)) {
-      const storedPid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10);
+    if (existsSync(DEFAULT_PID_FILE)) {
+      const storedPid = parseInt(readFileSync(DEFAULT_PID_FILE, 'utf-8').trim(), 10);
       if (storedPid === process.pid) {
-        unlinkSync(PID_FILE);
+        unlinkSync(DEFAULT_PID_FILE);
       }
     }
   } catch {
@@ -222,11 +218,11 @@ program
       'Each session spawns its own proxy and child servers.',
   )
   .action(async (configPathArg?: string) => {
-    await startProxy(configPathArg ?? '.mcp-funnel.json');
+    await startProxy(configPathArg ?? DEFAULT_CONFIG_FILENAME);
   });
 
 program
-  .argument('[configPath]', 'Path to MCP Funnel configuration file', '.mcp-funnel.json')
+  .argument('[configPath]', 'Path to MCP Funnel configuration file', DEFAULT_CONFIG_FILENAME)
   .action(async (configPathArg: string) => {
     // Default: use daemon mode via connect bridge.
     // Auto-starts the daemon if not running, reuses it if already running.
@@ -243,10 +239,8 @@ async function startProxy(configPathArg: string): Promise<void> {
   // Clean up orphaned processes (zombies) but keep active sessions alive
   cleanupOrphanedProcesses();
 
-  const configPath = configPathArg ?? '.mcp-funnel.json';
+  const configPath = configPathArg ?? DEFAULT_CONFIG_FILENAME;
   const resolvedPath = resolveConfigPath(configPath);
-
-  proxyInstance = undefined;
 
   const { projectExists, userBaseExists } = checkConfigExists(resolvedPath);
 
@@ -254,49 +248,36 @@ async function startProxy(configPathArg: string): Promise<void> {
     displayUsageAndExit();
   }
 
-  const { config, actualConfigPath } = loadConfiguration(resolvedPath, 'cli:config-load');
+  let config;
+  let actualConfigPath: string;
+  try {
+    ({ config, actualConfigPath } = loadConfiguration(resolvedPath));
+  } catch (error) {
+    console.error('Failed to load configuration:', error);
+    logError('cli:config-load', error, { path: resolvedPath });
+    process.exit(1);
+  }
 
-  const normalizedServers = normalizeServers(config.servers);
-  logEvent('info', 'cli:config_loaded', {
-    path: actualConfigPath,
-    servers: normalizedServers.map((s) => ({
-      name: s.name,
-      cmd: s.command,
-    })),
-  });
+  logEvent('info', 'cli:config_loaded', { path: actualConfigPath });
 
   const proxy = new MCPProxy(config, actualConfigPath);
-  proxyInstance = proxy;
+
+  // Signal handlers scoped to direct mode only — daemon and connect manage their own lifecycle
+  let isShuttingDown = false;
+  const handleShutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    logEvent('info', 'cli:shutdown', { signal, exit_code: 0 });
+    cleanupPidFile();
+    await proxy.shutdown();
+    process.exit(0);
+  };
+  process.once('SIGINT', () => handleShutdown('SIGINT'));
+  process.once('SIGTERM', () => handleShutdown('SIGTERM'));
 
   logEvent('info', 'cli:proxy_starting');
   await proxy.start();
   logEvent('info', 'cli:proxy_started');
-}
-
-// Setup shutdown handlers
-let isShuttingDown = false;
-let proxyInstance: MCPProxy | undefined;
-/**
- * Handles graceful shutdown of the MCP proxy server.
- *
- * Ensures the server shuts down cleanly when receiving termination signals.
- * Prevents duplicate shutdown attempts and logs the shutdown event.
- * @param signal - The OS signal that triggered the shutdown (e.g., 'SIGINT', 'SIGTERM')
- * @param proxy - Optional MCPProxy instance to shut down; if provided, calls proxy.shutdown() before exiting
- */
-async function handleShutdown(signal: string, proxy?: MCPProxy) {
-  if (isShuttingDown) return;
-  isShuttingDown = true;
-
-  logEvent('info', `cli:shutdown`, { signal, exit_code: 0 });
-
-  cleanupPidFile();
-
-  if (proxy) {
-    await proxy.shutdown();
-  }
-
-  process.exit(0);
 }
 
 /**
@@ -311,10 +292,6 @@ async function bootstrap(): Promise<void> {
 
   await program.parseAsync(process.argv);
 }
-
-// Register signal handlers at module level to prevent memory leaks
-process.once('SIGINT', () => handleShutdown('SIGINT', proxyInstance));
-process.once('SIGTERM', () => handleShutdown('SIGTERM', proxyInstance));
 
 bootstrap().catch((error) => {
   console.error('Fatal error:', error);

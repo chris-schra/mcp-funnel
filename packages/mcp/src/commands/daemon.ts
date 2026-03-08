@@ -1,7 +1,6 @@
 import { MCPProxy } from '../index.js';
-import { DaemonServer, DEFAULT_SOCKET_PATH, DEFAULT_PID_FILE, DEFAULT_LOG_FILE } from '../daemon/index.js';
+import { DaemonServer, DEFAULT_SOCKET_PATH, DEFAULT_PID_FILE, DEFAULT_LOG_FILE, DEFAULT_CONFIG_FILENAME } from '../daemon/index.js';
 import { logEvent } from '@mcp-funnel/core';
-import { normalizeServers } from '../utils/normalizeServers.js';
 import { resolveConfigPath, checkConfigExists, loadConfiguration } from '../utils/load-configuration.js';
 
 /**
@@ -9,7 +8,7 @@ import { resolveConfigPath, checkConfigExists, loadConfiguration } from '../util
  * Initializes the proxy once and listens for client connections on a Unix domain socket.
  */
 export async function runDaemon(configPathArg?: string): Promise<void> {
-  const configPath = configPathArg ?? '.mcp-funnel.json';
+  const configPath = configPathArg ?? DEFAULT_CONFIG_FILENAME;
   const resolvedPath = resolveConfigPath(configPath);
 
   const { projectExists, userBaseExists, userBasePath } = checkConfigExists(resolvedPath);
@@ -21,13 +20,17 @@ export async function runDaemon(configPathArg?: string): Promise<void> {
     process.exit(1);
   }
 
-  const { config, actualConfigPath } = loadConfiguration(resolvedPath, 'daemon:config-load');
+  let config;
+  let actualConfigPath: string;
+  try {
+    ({ config, actualConfigPath } = loadConfiguration(resolvedPath));
+  } catch (error) {
+    console.error('Failed to load configuration:', error);
+    logEvent('error', 'daemon:config-load', { path: resolvedPath, error: String(error) });
+    process.exit(1);
+  }
 
-  const normalizedServers = normalizeServers(config.servers);
-  logEvent('info', 'daemon:config_loaded', {
-    path: actualConfigPath,
-    servers: normalizedServers.map((s) => ({ name: s.name, cmd: s.command })),
-  });
+  logEvent('info', 'daemon:config_loaded', { path: actualConfigPath });
 
   const proxy = new MCPProxy(config, actualConfigPath);
   const daemon = new DaemonServer(proxy, {

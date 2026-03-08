@@ -16,6 +16,9 @@ export const DAEMON_STARTUP_TIMEOUT_MS = 30_000;
 /** Interval (ms) to poll for daemon readiness during auto-start */
 export const DAEMON_POLL_INTERVAL_MS = 200;
 
+/** Default configuration filename */
+export const DEFAULT_CONFIG_FILENAME = '.mcp-funnel.json';
+
 /** Configuration for the daemon server */
 export interface DaemonConfig {
   socketPath: string;

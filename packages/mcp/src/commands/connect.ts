@@ -82,16 +82,19 @@ function connectToSocket(socketPath: string): Promise<Socket> {
 }
 
 async function autoStartDaemon(configPath?: string): Promise<void> {
-  // Check if daemon process exists but socket is gone (stale PID)
+  // Check if daemon process exists but socket is gone (may still be starting)
   if (existsSync(DEFAULT_PID_FILE)) {
     const pid = parseInt(readFileSync(DEFAULT_PID_FILE, 'utf-8').trim(), 10);
     if (!isNaN(pid)) {
       try {
         process.kill(pid, 0);
-        // Process exists but socket doesn't work — wait a bit, it might be starting
+        // Process is alive — daemon is probably still starting up. Skip spawning
+        // a duplicate and go straight to socket polling.
         console.error(`[connect] Daemon PID ${pid} exists, waiting for socket...`);
+        await waitForSocket();
+        return;
       } catch {
-        // Process doesn't exist, stale PID file
+        // Process doesn't exist, stale PID file — continue to spawn
       }
     }
   }
@@ -116,7 +119,14 @@ async function autoStartDaemon(configPath?: string): Promise<void> {
 
   child.unref(); // Allow this process to exit independently
 
-  // Wait for the socket to become available
+  await waitForSocket();
+}
+
+/**
+ * Polls for the daemon socket to become available (accepting connections).
+ * Used both when an existing daemon PID is found and after spawning a new one.
+ */
+async function waitForSocket(): Promise<void> {
   const deadline = Date.now() + DAEMON_STARTUP_TIMEOUT_MS;
   while (Date.now() < deadline) {
     if (existsSync(DEFAULT_SOCKET_PATH)) {
@@ -124,7 +134,7 @@ async function autoStartDaemon(configPath?: string): Promise<void> {
         // Try to actually connect (file existing != server listening)
         const testSocket = await connectToSocket(DEFAULT_SOCKET_PATH);
         testSocket.destroy();
-        console.error('[connect] Daemon started successfully');
+        console.error('[connect] Daemon ready');
         return;
       } catch {
         // Socket file exists but not yet accepting connections
@@ -133,5 +143,5 @@ async function autoStartDaemon(configPath?: string): Promise<void> {
     await new Promise((r) => setTimeout(r, DAEMON_POLL_INTERVAL_MS));
   }
 
-  throw new Error(`Daemon failed to start within ${DAEMON_STARTUP_TIMEOUT_MS / 1000}s`);
+  throw new Error(`Daemon failed to become ready within ${DAEMON_STARTUP_TIMEOUT_MS / 1000}s`);
 }

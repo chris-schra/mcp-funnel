@@ -6,6 +6,7 @@ export {
   DEFAULT_LOG_FILE,
   DAEMON_STARTUP_TIMEOUT_MS,
   DAEMON_POLL_INTERVAL_MS,
+  DEFAULT_CONFIG_FILENAME,
   type DaemonConfig,
   type DaemonSession,
 } from './types.js';

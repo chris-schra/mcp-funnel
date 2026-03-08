@@ -1,7 +1,6 @@
 import { existsSync } from 'fs';
 import { resolve } from 'path';
 import { getUserBasePath, resolveMergedProxyConfig } from '../index.js';
-import { logError } from '@mcp-funnel/core';
 import type { ProxyConfig } from '@mcp-funnel/schemas';
 
 /**
@@ -45,22 +44,15 @@ export function checkConfigExists(resolvedPath: string): {
 
 /**
  * Loads and merges proxy configuration from project and user paths.
- * Exits the process with an error message if loading fails.
  *
  * @param resolvedPath - Absolute path to the project configuration file
- * @param context - Caller context for log messages (e.g., 'cli', 'daemon')
  * @returns Loaded configuration and actual config path
+ * @throws If the configuration cannot be loaded or parsed
  */
-export function loadConfiguration(resolvedPath: string, context = 'config-load'): LoadedConfiguration {
-  try {
-    const merged = resolveMergedProxyConfig(resolvedPath);
-    return {
-      config: merged.config,
-      actualConfigPath: merged.paths.projectConfigPath,
-    };
-  } catch (error) {
-    console.error('Failed to load configuration:', error);
-    logError(context, error, { path: resolvedPath });
-    process.exit(1);
-  }
+export function loadConfiguration(resolvedPath: string): LoadedConfiguration {
+  const merged = resolveMergedProxyConfig(resolvedPath);
+  return {
+    config: merged.config,
+    actualConfigPath: merged.paths.projectConfigPath,
+  };
 }
