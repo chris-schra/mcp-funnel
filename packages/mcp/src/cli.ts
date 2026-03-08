@@ -225,31 +225,39 @@ program
   });
 
 program
-  .command('daemon [configPath]')
-  .description(
-    'Start mcp-funnel as a shared daemon. Spawns target servers once and accepts ' +
-      'multiple client connections via Unix domain socket (~/.mcp-funnel.sock)',
-  )
+  .command('daemon [configPath]', { hidden: true })
+  .description('Start the daemon process directly (internal, used by auto-start)')
   .action(async (configPathArg?: string) => {
     const { runDaemon } = await import('./commands/daemon.js');
     await runDaemon(configPathArg);
   });
 
 program
-  .command('connect [socketPath]')
-  .description(
-    'Connect to a running mcp-funnel daemon via stdio bridge. ' +
-      'Auto-starts the daemon if not running. Use this in Claude Code mcpServers config.',
-  )
+  .command('connect [socketPath]', { hidden: true })
+  .description('Connect to a running daemon via stdio bridge (internal)')
   .action(async (socketPathArg?: string) => {
     const { runConnect } = await import('./commands/connect.js');
     await runConnect(socketPathArg);
   });
 
 program
+  .command('direct [configPath]')
+  .description(
+    'Run in direct stdio mode without daemon (legacy, for debugging). ' +
+      'Each session spawns its own proxy and child servers.',
+  )
+  .action(async (configPathArg?: string) => {
+    await startProxy(configPathArg ?? '.mcp-funnel.json');
+  });
+
+program
   .argument('[configPath]', 'Path to MCP Funnel configuration file', '.mcp-funnel.json')
   .action(async (configPathArg: string) => {
-    await startProxy(configPathArg);
+    // Default: use daemon mode via connect bridge.
+    // Auto-starts the daemon if not running, reuses it if already running.
+    // This replaces the old direct mode which spawned N×11 processes.
+    const { runConnect } = await import('./commands/connect.js');
+    await runConnect(undefined, configPathArg);
   });
 
 /**

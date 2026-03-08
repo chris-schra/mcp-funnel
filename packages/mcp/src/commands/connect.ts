@@ -1,6 +1,6 @@
 import { connect, type Socket } from 'net';
 import { existsSync, readFileSync } from 'fs';
-import { fork } from 'child_process';
+import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import {
@@ -14,8 +14,11 @@ import {
  * Connects to the mcp-funnel daemon via Unix domain socket.
  * Bridges stdio (what Claude Code speaks) to the socket (what the daemon speaks).
  * Auto-starts the daemon if not running.
+ *
+ * @param socketPath - Override for the Unix domain socket path (default: ~/.mcp-funnel.sock)
+ * @param configPath - Config file path to pass to the daemon on auto-start
  */
-export async function runConnect(socketPath?: string): Promise<void> {
+export async function runConnect(socketPath?: string, configPath?: string): Promise<void> {
   const targetSocket = socketPath ?? DEFAULT_SOCKET_PATH;
 
   // Try to connect, auto-start daemon if needed
@@ -25,7 +28,7 @@ export async function runConnect(socketPath?: string): Promise<void> {
   } catch {
     // Daemon not running — auto-start it
     console.error('[connect] Daemon not running, starting...');
-    await autoStartDaemon();
+    await autoStartDaemon(configPath);
     socket = await connectToSocket(targetSocket);
   }
 
@@ -78,7 +81,7 @@ function connectToSocket(socketPath: string): Promise<Socket> {
   });
 }
 
-async function autoStartDaemon(): Promise<void> {
+async function autoStartDaemon(configPath?: string): Promise<void> {
   // Check if daemon process exists but socket is gone (stale PID)
   if (existsSync(DEFAULT_PID_FILE)) {
     const pid = parseInt(readFileSync(DEFAULT_PID_FILE, 'utf-8').trim(), 10);
@@ -93,11 +96,14 @@ async function autoStartDaemon(): Promise<void> {
     }
   }
 
-  // Fork the daemon process in detached mode
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  const cliPath = resolve(__dirname, '../cli.js');
+  // Spawn the daemon process in detached mode.
+  // In bundled builds, import.meta.url points to the bundle (dist/cli.js),
+  // so we resolve relative to the bundle's own directory.
+  const thisFile = fileURLToPath(import.meta.url);
+  const cliPath = resolve(dirname(thisFile), 'cli.js');
 
-  const child = fork(cliPath, ['daemon'], {
+  const daemonArgs = configPath ? ['daemon', configPath] : ['daemon'];
+  const child = spawn(process.execPath, [cliPath, ...daemonArgs], {
     detached: true,
     stdio: ['ignore', 'ignore', 'pipe'], // Capture stderr for startup logging
   });
