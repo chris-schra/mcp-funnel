@@ -1,9 +1,8 @@
-import { resolve } from 'path';
-import { existsSync } from 'fs';
-import { MCPProxy, getUserBasePath, resolveMergedProxyConfig } from '../index.js';
+import { MCPProxy } from '../index.js';
 import { DaemonServer, DEFAULT_SOCKET_PATH, DEFAULT_PID_FILE, DEFAULT_LOG_FILE } from '../daemon/index.js';
-import { logError, logEvent } from '@mcp-funnel/core';
+import { logEvent } from '@mcp-funnel/core';
 import { normalizeServers } from '../utils/normalizeServers.js';
+import { resolveConfigPath, checkConfigExists, loadConfiguration } from '../utils/load-configuration.js';
 
 /**
  * Starts the mcp-funnel daemon process.
@@ -11,11 +10,9 @@ import { normalizeServers } from '../utils/normalizeServers.js';
  */
 export async function runDaemon(configPathArg?: string): Promise<void> {
   const configPath = configPathArg ?? '.mcp-funnel.json';
-  const resolvedPath = resolve(process.cwd(), configPath);
+  const resolvedPath = resolveConfigPath(configPath);
 
-  const projectExists = existsSync(resolvedPath);
-  const userBasePath = getUserBasePath();
-  const userBaseExists = existsSync(userBasePath);
+  const { projectExists, userBaseExists, userBasePath } = checkConfigExists(resolvedPath);
 
   if (!projectExists && !userBaseExists) {
     console.error('No configuration file found.');
@@ -24,17 +21,7 @@ export async function runDaemon(configPathArg?: string): Promise<void> {
     process.exit(1);
   }
 
-  let config;
-  let actualConfigPath: string;
-  try {
-    const merged = resolveMergedProxyConfig(resolvedPath);
-    config = merged.config;
-    actualConfigPath = merged.paths.projectConfigPath;
-  } catch (error) {
-    console.error('Failed to load configuration:', error);
-    logError('daemon:config-load', error, { path: resolvedPath });
-    process.exit(1);
-  }
+  const { config, actualConfigPath } = loadConfiguration(resolvedPath, 'daemon:config-load');
 
   const normalizedServers = normalizeServers(config.servers);
   logEvent('info', 'daemon:config_loaded', {
@@ -64,7 +51,7 @@ export async function runDaemon(configPathArg?: string): Promise<void> {
     await daemon.start();
   } catch (error) {
     console.error('Failed to start daemon:', error);
-    logError('daemon:start-failed', error);
+    logEvent('error', 'daemon:start-failed', { error: String(error) });
     process.exit(1);
   }
 }

@@ -1,5 +1,5 @@
 import { createServer, type Server as NetServer, type Socket } from 'net';
-import { existsSync, unlinkSync, writeFileSync, readFileSync } from 'fs';
+import { chmodSync, existsSync, unlinkSync, writeFileSync, readFileSync } from 'fs';
 import { v4 as uuid } from 'uuid';
 import { logEvent, logError } from '@mcp-funnel/core';
 import { MCPProxy } from '../proxy/mcp-proxy.js';
@@ -44,10 +44,15 @@ export class DaemonServer {
 
     return new Promise((resolve, reject) => {
       this.socketServer!.listen(this.config.socketPath, () => {
-        const sessionCount = 0;
+        // Restrict socket permissions to owner only (defense in depth on multi-user systems)
+        try {
+          chmodSync(this.config.socketPath, 0o600);
+        } catch {
+          // Non-fatal: some platforms may not support chmod on sockets
+        }
         console.error(`[daemon] Listening on ${this.config.socketPath}`);
         console.error(`[daemon] PID: ${process.pid}`);
-        console.error(`[daemon] Active sessions: ${sessionCount}`);
+        console.error(`[daemon] Active sessions: ${this.sessions.size}`);
         logEvent('info', 'daemon:started', {
           socketPath: this.config.socketPath,
           pid: process.pid,
@@ -65,6 +70,7 @@ export class DaemonServer {
 
   private handleConnection(socket: Socket): void {
     if (this.isShuttingDown) {
+      console.error('[daemon] Rejecting connection during shutdown');
       socket.destroy();
       return;
     }

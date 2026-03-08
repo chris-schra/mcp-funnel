@@ -55,11 +55,11 @@ export async function runConnect(socketPath?: string, configPath?: string): Prom
   });
 
   // Handle our own shutdown
-  process.on('SIGINT', () => {
+  process.once('SIGINT', () => {
     socket.destroy();
     process.exit(0);
   });
-  process.on('SIGTERM', () => {
+  process.once('SIGTERM', () => {
     socket.destroy();
     process.exit(0);
   });

@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { MCPProxy, getUserBasePath, resolveMergedProxyConfig } from './index.js';
+import { MCPProxy } from './index.js';
 import { mkdirSync, existsSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -7,7 +7,7 @@ import { homedir } from 'os';
 import { execSync } from 'child_process';
 import { logError, logEvent } from '@mcp-funnel/core';
 import { normalizeServers } from './utils/normalizeServers.js';
-import type { ProxyConfig } from '@mcp-funnel/schemas';
+import { resolveConfigPath, checkConfigExists, loadConfiguration } from './utils/load-configuration.js';
 
 // PID file for singleton enforcement
 const PID_FILE = join(homedir(), '.mcp-funnel.pid');
@@ -176,33 +176,6 @@ function displayUsageAndExit(): never {
   process.exit(1);
 }
 
-/**
- * Result of loading and merging proxy configuration.
- */
-interface LoadedConfiguration {
-  config: ProxyConfig;
-  actualConfigPath: string;
-}
-
-/**
- * Loads and merges proxy configuration from project and user paths.
- * @param configPath - Path to the project configuration file
- * @returns Loaded configuration and actual config path
- */
-function loadConfiguration(configPath: string): LoadedConfiguration {
-  try {
-    const merged = resolveMergedProxyConfig(configPath);
-    return {
-      config: merged.config,
-      actualConfigPath: merged.paths.projectConfigPath,
-    };
-  } catch (error) {
-    console.error('Failed to load configuration:', error);
-    logError('config-load', error, { path: configPath });
-    process.exit(1);
-  }
-}
-
 const program = new Command();
 
 program
@@ -271,19 +244,17 @@ async function startProxy(configPathArg: string): Promise<void> {
   cleanupOrphanedProcesses();
 
   const configPath = configPathArg ?? '.mcp-funnel.json';
-  const resolvedPath = resolve(process.cwd(), configPath);
+  const resolvedPath = resolveConfigPath(configPath);
 
   proxyInstance = undefined;
 
-  const projectExists = existsSync(resolvedPath);
-  const userBasePath = getUserBasePath();
-  const userBaseExists = existsSync(userBasePath);
+  const { projectExists, userBaseExists } = checkConfigExists(resolvedPath);
 
   if (!projectExists && !userBaseExists) {
     displayUsageAndExit();
   }
 
-  const { config, actualConfigPath } = loadConfiguration(resolvedPath);
+  const { config, actualConfigPath } = loadConfiguration(resolvedPath, 'cli:config-load');
 
   const normalizedServers = normalizeServers(config.servers);
   logEvent('info', 'cli:config_loaded', {
