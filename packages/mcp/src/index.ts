@@ -14,5 +14,9 @@ export {
   type MergedProxyConfigResult,
 } from './config-loader.js';
 
+// Daemon mode
+export { DaemonServer, SocketTransport } from './daemon/index.js';
+export type { DaemonConfig, DaemonSession } from './daemon/index.js';
+
 // Default export for backward compatibility
 export { MCPProxy } from './proxy/mcp-proxy.js';

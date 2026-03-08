@@ -5,6 +5,7 @@ import type { TargetServerZod, ProxyConfig, TargetServer } from '@mcp-funnel/sch
 import { ToolRegistry } from '../../tool-registry/index.js';
 import { EventEmitter } from 'events';
 import { connectToServer, type ConnectionConfig } from './connection-setup.js';
+import { clearTransportCache } from '../../utils/transport/index.js';
 import {
   createReconnectionManager,
   attemptReconnection,
@@ -40,7 +41,11 @@ export class ServerConnectionManager {
   private reconnectionManagers = new Map<string, ReconnectionManager>();
   private manualReconnections = new Map<string, Promise<void>>();
   private manualDisconnectRequests = new Set<string>();
+  private slowProbeTimers = new Map<string, ReturnType<typeof setInterval>>();
   private isShuttingDown = false;
+
+  /** Default interval for slow probe mode in milliseconds (60 seconds). @internal */
+  private static readonly SLOW_PROBE_INTERVAL_MS = 60000;
 
   public constructor(
     private config: ProxyConfig,
@@ -115,6 +120,8 @@ export class ServerConnectionManager {
         serverName,
         onMaxAttemptsReached: (name) => {
           this.reconnectionManagers.delete(name);
+          // Instead of giving up, enter slow probe mode
+          this.startSlowProbeMode(targetServer);
         },
       });
 
@@ -125,6 +132,73 @@ export class ServerConnectionManager {
     const reconnectionManager = this.reconnectionManagers.get(serverName);
     if (reconnectionManager) {
       reconnectionManager.scheduleReconnection(() => this.attemptAutoReconnection(targetServer));
+    }
+  }
+
+  /**
+   * Starts slow probe mode for a server after max reconnection attempts.
+   * Periodically attempts to reconnect at a slower interval (every 60 seconds)
+   * instead of giving up entirely. This follows the circuit breaker pattern
+   * best practice of continuing to probe for recovery.
+   * @param targetServer - Server configuration to probe
+   * @internal
+   */
+  private startSlowProbeMode(targetServer: TargetServer | TargetServerZod): void {
+    const serverName = targetServer.name;
+
+    // Don't start if already in slow probe mode or shutting down
+    if (this.slowProbeTimers.has(serverName) || this.isShuttingDown) {
+      return;
+    }
+
+    console.error(
+      `[proxy] Server ${serverName}: Max reconnection attempts reached. Entering slow probe mode (every ${ServerConnectionManager.SLOW_PROBE_INTERVAL_MS / 1000}s)`,
+    );
+    logEvent('info', 'server:slow_probe_started', { name: serverName });
+
+    // Emit event for slow probe mode
+    this.eventEmitter.emit('server.slow_probe_started', {
+      serverName,
+      status: 'slow_probe',
+      timestamp: new Date().toISOString(),
+      probeIntervalMs: ServerConnectionManager.SLOW_PROBE_INTERVAL_MS,
+    });
+
+    const probeTimer = setInterval(async () => {
+      // Stop probing if shutting down or manually disconnected
+      if (this.isShuttingDown || this.manualDisconnectRequests.has(serverName)) {
+        this.stopSlowProbeMode(serverName);
+        return;
+      }
+
+      try {
+        // Clear transport cache to ensure we create a fresh transport (not the closed one)
+        clearTransportCache();
+
+        await this.connectToSingleServer(targetServer);
+
+        // Success! Stop slow probe mode
+        this.stopSlowProbeMode(serverName);
+        console.error(`[proxy] Server ${serverName}: Recovered via slow probe mode`);
+        logEvent('info', 'server:slow_probe_recovered', { name: serverName });
+      } catch {
+        // Still failing, continue probing silently
+      }
+    }, ServerConnectionManager.SLOW_PROBE_INTERVAL_MS);
+
+    this.slowProbeTimers.set(serverName, probeTimer);
+  }
+
+  /**
+   * Stops slow probe mode for a server.
+   * @param serverName - Name of the server to stop probing
+   * @internal
+   */
+  private stopSlowProbeMode(serverName: string): void {
+    const timer = this.slowProbeTimers.get(serverName);
+    if (timer) {
+      clearInterval(timer);
+      this.slowProbeTimers.delete(serverName);
     }
   }
 
@@ -188,6 +262,9 @@ export class ServerConnectionManager {
     this.connectedServers.set(targetServer.name, targetServer);
     this.disconnectedServers.delete(targetServer.name);
     this.clients.set(targetServer.name, client);
+
+    // Stop slow probe mode if it was running (server recovered)
+    this.stopSlowProbeMode(targetServer.name);
 
     // Emit server connected event
     this.eventEmitter.emit('server.connected', {
@@ -342,6 +419,11 @@ export class ServerConnectionManager {
     for (const [name, manager] of this.reconnectionManagers.entries()) {
       manager.cancel();
       this.reconnectionManagers.delete(name);
+    }
+
+    // Cancel all slow probe timers
+    for (const [name] of this.slowProbeTimers.entries()) {
+      this.stopSlowProbeMode(name);
     }
 
     // Close all active client connections
