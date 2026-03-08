@@ -117,6 +117,12 @@ try {
 
 // Global error handlers
 process.on('uncaughtException', (error) => {
+  // EPIPE/ECONNRESET are normal when child processes die — don't crash the proxy
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === 'EPIPE' || code === 'ECONNRESET') {
+    logError('uncaught-exception-ignored', error);
+    return;
+  }
   console.error('Uncaught Exception:', error);
   logError('uncaught-exception', error);
   process.exit(1);
@@ -232,13 +238,9 @@ program
     await runDaemon(configPathArg);
   });
 
-program
-  .command('connect [socketPath]', { hidden: true })
-  .description('Connect to a running daemon via stdio bridge (internal)')
-  .action(async (socketPathArg?: string) => {
-    const { runConnect } = await import('./commands/connect.js');
-    await runConnect(socketPathArg);
-  });
+// NOTE: No 'connect' subcommand registered here. Claude Code auto-detects
+// subcommands and tries to use them directly, bypassing settings.json args.
+// The runConnect() function is called internally by the default action.
 
 program
   .command('direct [configPath]')
